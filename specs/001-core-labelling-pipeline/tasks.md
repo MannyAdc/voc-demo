@@ -88,7 +88,7 @@ T001 to T016 except T011. Until dbt lands, `load_month.py` runs the missing ID, 
 - Wednesday 12:00: T001 to T009 merged.
 - Wednesday 18:00: T010 to T014 merged and the T014b smoke test done.
 - Wednesday 23:00: first full development run (T016).
-- Thursday 12:00: prompt versions done or stopped. Then API and dashboard.
+- Thursday 12:00: prompt versions done or stopped. Then API and dashboard. Also look again at the "carried-over failing test" allowance in the test gate (owner decision, 28 October): count its uses in `BUILD_LOG.md` and any weakened test the reviewer found. If any was weakened, go back to the strict rule.
 - Thursday 22:00: final test run (T019) and README results (T020).
 
 At Wednesday 12:00, make a cut decision whatever the state. After that, if a checkpoint is missed by more than 2 hours, cut further from the list below. The API and dashboard are not on the cut list, because the brief needs them to answer the feedback.

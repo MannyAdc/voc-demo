@@ -12,8 +12,9 @@ Two modes:
   run on exactly what will be committed.
 
 A commit that changes only `tests/test_*.py` files may have failing tests,
-as long as every failing test is new. It may not delete a test, or make an
-existing passing test skip or fail.
+as long as every failing test is new or was already failing before it. It
+may not delete a test, or make an existing passing test skip or fail. Each
+already failing test it carries over is printed as a notice.
 """
 import io
 import json
@@ -160,8 +161,11 @@ def _test_problems(repo):
             problems.append(f"tests-only commit removes a test: {test_id}")
         elif outcome == "passed" and new[test_id] != "passed":
             problems.append(f"tests-only commit stops an existing test passing: {test_id}")
-        elif new[test_id] == "failed":
+        elif outcome != "failed" and new[test_id] == "failed":
             problems.append(f"failing test is not new: {test_id}")
+        elif outcome == "failed" and new[test_id] == "failed":
+            # Allowed by owner decision (two red commits in a row), but never silent.
+            print(f"pre-commit: notice: carried-over failing test: {test_id}")
     if code not in (0, 1):
         problems.append(f"the tests did not run cleanly (pytest exit code {code})")
     return problems

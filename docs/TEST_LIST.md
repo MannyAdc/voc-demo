@@ -256,6 +256,7 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - test gate: a commit is blocked when tests fail
 - test gate: a commit is allowed when tests pass
 - test gate: a commit that changes only `tests/test_*.py` files is allowed when the only failing tests are new ones
+- test gate: a second red commit may keep tests that were already failing, prints each as a notice, and may still not delete one (owner decision, T004)
 - test gate: a commit that changes `tests/conftest.py` or fixtures is gated like any other (review)
 - test gate: `git -C . commit`, `git commit -a` and `git commit <path>` are all recognised, and the real committed files are checked (review)
 - test gate: a commit run from PowerShell is gated too (review)
