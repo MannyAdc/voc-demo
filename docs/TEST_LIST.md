@@ -10,7 +10,8 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 
 - the test suite cannot open a network connection (reused)
 - a subprocess started by a test cannot reach the network either (review, CI only: CI runs tests with no network)
-- tests run with DuckDB extension auto-install off, dbt usage stats off, no `ANTHROPIC_API_KEY`, and `.env` loading pointed at an empty temp file (review)
+- tests run with dbt usage stats off, proxy settings cleared, and none of `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN` visible, from import time until the process exits (review)
+- DuckDB extension auto-install off is tested in `tests/test_load.py` (T010). `.env` isolation is tested in `tests/test_backends.py` (T009). (review)
 
 ## Output safety (B21 layer 1), `tests/test_output_safety.py`
 
@@ -289,4 +290,5 @@ Started in the first pull request that adds an entry point (T002b), and extended
 ## Later features (listed now, specified later)
 
 - API: typed schemas, input checks, paging, error messages, request logging
+- API: test servers run with `loop="asyncio"`, because uvloop would bypass the Python socket block (review of #3)
 - Browser: one end-to-end test per analyst task in `docs/USER.md`
