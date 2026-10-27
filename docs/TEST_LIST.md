@@ -1,12 +1,15 @@
 # Test list
 
-Status: approved by the owner on 2026-10-28. Each line is one test. Tests check behaviour against [the spec](../specs/001-core-labelling-pipeline/spec.md). They run offline in seconds and never call a model. Label quality is measured separately by evaluation.
+Status: approved by the owner on 2026-10-28, then revised after review round 1. Each line is one test. Tests check behaviour against [the spec](../specs/001-core-labelling-pipeline/spec.md). They run offline in seconds and never call a model. Label quality is measured separately by evaluation.
 
-Lines marked (reused) come from test ideas in an earlier unpublished start of this project. The rest are new.
+Lines marked (reused) come from test ideas in an earlier unpublished start of this project. Lines marked (review) were added after a reviewer finding. The rest are new.
+
+All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so they can never be mistaken for real CFPB IDs.
 
 ## Network block (B7), `tests/test_network.py`
 
 - the test suite cannot open a network connection (reused)
+- a subprocess started by a test cannot reach the network either (review, CI only: CI runs tests with no network)
 
 ## Quote check (B1, B6), `tests/test_evidence.py`
 
@@ -16,16 +19,20 @@ Lines marked (reused) come from test ideas in an earlier unpublished start of th
 - a quote not in the text is rejected, with no position (reused)
 - an empty or blank quote is rejected (reused)
 - a quote needs at least 3 words (reused)
+- redaction marks do not count toward the 3 words (review)
+- a quote that starts or ends inside a word is rejected (review)
+- curly and straight quote marks, apostrophes and dashes match each other (review)
 - "XXXX" in a quote matches "XXXX" in the text (reused)
 - a guess in place of "XXXX" does not match (reused)
 - a quote of only redaction marks is not evidence (reused)
 
 ## Prompt and parsing (B4, B5), `tests/test_prompt.py`
 
-- the prompt function takes only the text and the labels (reused)
+- the prompt is built only from the version's instruction block, the labels, the text and training examples (reused, changed)
 - the prompt contains the text and every label (reused)
 - the text sits between one pair of boundaries (reused)
 - text cannot close the data section early (reused)
+- an example from the development or test split is refused (review)
 - valid JSON is parsed (reused)
 - JSON inside a code fence is parsed (reused)
 - prose is unparseable (reused)
@@ -42,27 +49,35 @@ Lines marked (reused) come from test ideas in an earlier unpublished start of th
 - short and empty quotes are quarantined (reused)
 - a label outside the list is quarantined even with a real quote (reused)
 - an unparseable answer is quarantined (reused)
-- check order is parse, label, quote, agreement (reused)
+- a failed, refused or cut-off model call is quarantined as `model_error` (review)
+- check order is model call, parse, label, quote, agreement (reused, changed)
 - an obeyed injection with a real quote is caught by agreement (reused)
 - an obeyed injection with an invented quote is caught by the quote check (reused)
 - a quarantined decision never has an accepted label, 4 cases (reused)
 
 ## Ledger (B8), `tests/test_budget.py`
 
-- a new ledger has used nothing (reused)
+- a ledger created with the init command has used nothing (reused, changed)
+- a missing or unreadable ledger refuses every live call (review)
 - charges add up (reused)
 - use survives a restart (reused)
-- a call that just fits is allowed, one more token is refused (reused)
-- actual use above the estimate blocks the next call (reused)
+- a reservation that just fits is allowed, one more token is refused (reused, changed)
+- the reservation is input estimate plus the output limit (review)
+- the input estimate is never below the real input count on the recorded fixtures (review)
+- after a call, the reservation is replaced by the real use (review)
+- a failed call is charged the full reservation (review)
+- a call with no reported usage is charged the full reservation (review)
+- two processes reserving at once cannot both pass the cap (review)
 - a negative charge is an error (reused)
 
 ## Record and replay (B7, B8), `tests/test_replay.py`
 
-- the key is a stable hash of model, settings and prompt (reused, settings added)
+- the key is a stable hash of backend, model, settings and prompt (reused, changed)
 - first call is live, second comes from the recording (reused)
 - replay mode serves a recording with no inner client (reused)
 - replay mode with no recording is an error, not a live call (reused)
-- a different model or prompt is not served the old recording (reused)
+- a different backend, model, setting or prompt is not served the old recording (reused, changed)
+- a recording file holds no headers and no key (review)
 - a live call is charged, a replayed call is free (reused)
 - a live call past the cap is refused before it is sent (reused)
 - a recording is still served when the budget is spent (reused)
@@ -73,7 +88,9 @@ Lines marked (reused) come from test ideas in an earlier unpublished start of th
 - an unknown `LLM_BACKEND` value is an error that names the allowed values
 - `api` with no key in the environment fails with a clear message
 - the key never appears in an error message or log line
-- `cli` builds the expected `claude -p` command (the process itself is faked)
+- `cli` builds a command with no tools, no MCP servers and no settings or instruction files (review, the process itself is faked)
+- `cli` runs in a new empty temporary folder (review)
+- `cli` passes an environment with no API key and no repo paths (review)
 
 ## Cost (B13), `tests/test_costs.py`
 
@@ -81,21 +98,25 @@ Lines marked (reused) come from test ideas in an earlier unpublished start of th
 - the price table names its source and the date checked
 - a model missing from the price table is an error, not zero cost
 - each run records its tokens and cost
+- a replayed run reports zero own cost and the original live cost (review)
 
 ## Loading (B14), `tests/test_load.py` and dbt data tests
 
-- loading a fixture file twice gives the same row count
+- loading a synthetic fixture file twice gives the same row count
 - a column with the wrong type fails the schema check
 - a second month loads with one command and keeps the first month
 - dbt: a missing complaint ID fails the build
 - dbt: a repeated complaint ID fails the build
 - dbt: a Product outside the known list fails the build
 
-## Samples (B9), `tests/test_data.py`
+## Samples (B9, B16), `tests/test_data.py`
 
 - the opening key ignores case, digits and redaction runs (reused)
 - different openings have different keys (reused)
-- dedupe keeps the first of each group, in order (reused)
+- two narratives with the same opening but different bodies are both kept (review)
+- a copy with a different opening is found by full-text similarity (review)
+- dedupe gives the same result whatever order the rows arrive in (review)
+- the number removed is reported (review)
 - short text is not cut (reused)
 - long text is cut at the limit and flagged (reused)
 - the three sets never overlap and cover all rows (reused)
@@ -103,53 +124,81 @@ Lines marked (reused) come from test ideas in an earlier unpublished start of th
 - a small class gives at most half to test and keeps training rows (reused)
 - same seed gives the same split, a different seed a different test set (reused)
 - the test set does not change when the development size changes (reused)
+- a command given IDs that do not match the committed list refuses to run (review)
+- adding a new month of rows does not change the committed lists (review)
 
 ## Baselines (B11), `tests/test_baselines.py`
 
 - the most-common-class baseline predicts the most common training label for every row
 - TF-IDF is fitted on the training split only
+- TF-IDF sees the same cut text as the LLM (review)
 - TF-IDF gives a label and a confidence for every row
+- the TF-IDF settings are read from a recorded config, not from code defaults (review)
 
-## Metrics (B3, B10), `tests/test_metrics.py`
+## Metrics (B3, B10, B18), `tests/test_metrics.py`
 
 - quarantine counts as wrong in the strict figure (reused)
 - nothing accepted gives no accuracy and zero strict accuracy (reused)
 - a summary of nothing is an error (reused)
 - the baseline is scored on its most confident share (reused)
+- ties at the cut-off are broken by complaint ID (review)
 - the baseline needs a coverage that keeps at least one item (reused)
 - a clear win is "beats" (reused)
 - a tie is not a win (reused)
 - a loss is "does_not_beat" (reused)
 - a small positive difference with a wide interval is "inconclusive" (reused)
+- the bootstrap resamples within each Product and is paired (review)
 - the same seed gives the same result (reused)
 - inputs must describe the same complaints (reused)
 - a pipeline that accepts nothing cannot be compared (reused)
+- a run with any `not_run_budget` complaint gets no verdict (review)
+- per-Product figures and the re-weighted figure match a hand count (review)
 
 ## Pipeline (B4, B5, B9), `tests/test_pipeline.py`
 
 - a good complaint is accepted and keeps its ID (reused)
-- recorded Product, Issue and company never reach the model (reused)
+- no column other than the narrative reaches the model, including Sub-product and Sub-issue (reused, changed)
 - a complaint with no text is quarantined with no model call (reused)
 - long text is cut and flagged, and the model sees only the cut text (reused)
 - a quote from the cut part is not evidence (reused)
 - text that tries to close the data section does not change the outcome (reused)
+- when the budget runs out partway, the rest are `not_run_budget` and none is missing (review)
 
-## Evaluation record (B15), `tests/test_evaluate.py`
+## Evaluation record (B15, B17, B19), `tests/test_evaluate.py`
 
 - an evaluation appends exactly one row to `EVAL_VERSIONS.md`
-- the row has prompt version, date, accuracy, coverage, quarantine rate, interval and cost
-- evaluation refuses the frozen test set unless `final` is given
-- a `final` run is written to the run log
+- the row has every field B15 lists
+- old rows are never changed (review)
+- the results file has every field B19 lists and no narrative text (review)
+- any command that loads the test IDs refuses unless `final` is given (review, changed)
+- a replayed scoring of the test set is logged like a live one (review)
+- a second `final` scoring needs a written reason (review)
+
+## Human review (B20), later feature
+
+- an analyst decision never changes the scored results (review, written with the review screen)
 
 ## Hooks, `tests/test_hooks.py`
 
 - test gate: a commit is blocked when tests fail
-- test gate: a commit that changes only test files is allowed even when tests fail
 - test gate: a commit is allowed when tests pass
+- test gate: a commit that changes only `tests/test_*.py` files is allowed even when tests fail
+- test gate: a commit that changes `tests/conftest.py` or fixtures is gated like any other (review)
+- test gate: `git -C . commit`, `git commit -a` and `git commit <path>` are all recognised, and the real committed files are checked (review)
+- test gate: a commit run from PowerShell is gated too (review)
 - data guard: writing a file with the CFPB header row is blocked
+- data guard: a synthetic fixture with only `SYN-` IDs under `tests/fixtures/` is allowed (review)
 - data guard: writing a `.env` file is blocked
 - data guard: content that looks like an Anthropic key is blocked (the fake key is built while the test runs)
 - data guard: a normal source file is allowed
+
+## CI checks, `.github/workflows/ci.yml`
+
+- gitleaks scans the full history (review: also run locally before each commit if installed)
+- a names check fails on any word from a deny list kept outside the repo, in a CI secret (review)
+- any tracked file over a size limit fails (review)
+- any tracked file with the CFPB header row and a non-`SYN-` ID fails (review)
+- dbt build with data tests runs, with usage stats off (review)
 
 ## Later features (listed now, specified later)
 

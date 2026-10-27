@@ -40,13 +40,21 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Tests never open a network connection or call a model. `tests/conftest.py` blocks sockets.
 - Tests check behaviour against the spec. Label quality is measured by `/eval`, not by tests.
 - Test names start with the rule ID: `test_B1_...`.
-- Test text is synthetic. Fake keys in tests are built while the test runs, never written as one string.
+- Test text is synthetic. Synthetic complaint IDs start with `SYN-`. Fake keys in tests are built while the test runs, never written as one string.
 
 ## Hooks (in `.claude/settings.json`)
 
-- Test gate: before `git commit`, run the tests. Block the commit if they fail, unless the commit changes only test files.
-- Data guard: before writing a file, block it if it is raw CFPB data, a `.env` file, or contains something that looks like an API key.
-- Hooks only see Claude's own tool calls. CI covers everything else.
+- Test gate: before any `git commit` from Bash or PowerShell, in any form, run the tests on the files that will really be committed. Block the commit if they fail. The one exception is a commit that changes only `tests/test_*.py` files (the red test commit). Changes to `tests/conftest.py` or fixtures are always gated.
+- Data guard: before Write, Edit or NotebookEdit, block the file if it is raw CFPB data (CFPB header row without `SYN-` IDs), a `.env` file, or contains something that looks like an API key.
+- Hooks only see Claude's own tool calls. Shell commands that write files are not covered by the data guard. CI checks cover everything that reaches GitHub (see below).
+
+## CI checks
+
+- Tests, with no network.
+- gitleaks on the full history.
+- A names check against a deny list kept outside the repo (a CI secret, and a git-ignored `.names-denylist` locally).
+- No tracked file over the size limit. No tracked file with the CFPB header row and a real ID.
+- `dbt build` with data tests and usage stats off.
 
 ## Data
 
@@ -58,9 +66,11 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 ## LLM use
 
 - `LLM_BACKEND` is `api`, `cli` or `mock`. Tests and CI use `mock` only.
+- The `cli` backend is a plain text call: no tools, no MCP, no settings, an empty temporary folder, no API key in its environment. Complaint text must never reach an agent that can act.
 - Default model for iteration: `claude-haiku-5-5`.
-- Every live call goes through the record and replay cache and the token ledger.
-- Evaluation runs on the development set. The frozen test set runs once, at the end, only when the owner says "final".
+- Every live call goes through the record and replay cache and the token ledger. The ledger path comes from an environment variable, so all worktrees share one cap.
+- Samples are frozen by the committed ID lists in `splits/`. Never regenerate them.
+- Evaluation runs on the development set. The frozen test set is scored once, at the end, only when the owner says "final". Claude never passes `final` on its own.
 
 ## Secrets
 
@@ -70,7 +80,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 ## Names
 
 - No personal names, employer names or company names in any file. Nothing from any employer.
-- Before each commit, scan the staged diff for names.
+- Before each commit, scan the staged diff against the local deny list. CI runs the same check.
 
 ## Build log
 

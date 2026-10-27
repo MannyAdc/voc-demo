@@ -21,7 +21,7 @@ description: "Task list for the core labelling pipeline"
 
 - [ ] T001 First commit on `main`: `CLAUDE.md`, `BUILD_LOG.md`, `.gitignore`, README stub, Spec Kit files
 - [ ] T002 PR "project skeleton": `pyproject.toml` with uv, pytest config, `tests/conftest.py` that blocks sockets, one test that proves the block (B7)
-- [ ] T003 PR "CI": `.github/workflows/ci.yml` runs pytest and gitleaks on every pull request
+- [ ] T003 PR "CI": `.github/workflows/ci.yml` runs pytest with no network, gitleaks on the full history, the names check, the file size and raw data checks on every pull request. `dbt build` is added to CI in T011.
 
 ## Phase 2: Foundational
 
@@ -43,13 +43,14 @@ description: "Task list for the core labelling pipeline"
 
 - [ ] T010 [P] [US3] PR "staged load": check DuckDB and dbt versions first, tests in `tests/test_load.py` (B14 re-runnable, schema check), then `scripts/load_month.py`
 - [ ] T011 [US3] PR "dbt curated and data tests": dbt project in `dbt/`, data tests for missing or repeated IDs and unknown Product, a test that a bad fixture fails the build. Lineage graph generated.
-- [ ] T012 [US3] PR "samples": tests in `tests/test_data.py` (B9), then `src/voc/data.py` and the `sample` command
+- [ ] T012 [US3] PR "samples": tests in `tests/test_data.py` (B9, B16), then `src/voc/data.py`, the `sample` command, and the committed ID lists in `splits/`
 
 ## Phase 5: User Story 2 and User Story 1 - Label, quarantine, score (P1, P2)
 
-- [ ] T013 [P] [US1] PR "baselines and metrics": tests in `tests/test_baselines.py` and `tests/test_metrics.py` (B3, B10, B11), then `src/voc/baselines.py` and `src/voc/metrics.py`
+- [ ] T013 [P] [US1] PR "baselines and metrics": tests in `tests/test_baselines.py` and `tests/test_metrics.py` (B3, B10, B11, B18), then `src/voc/baselines.py` and `src/voc/metrics.py`
 - [ ] T014 [US2] PR "pipeline": tests in `tests/test_pipeline.py` (B4, B5, B9 end to end with a fake model), then `src/voc/pipeline.py` and the `label` command
-- [ ] T015 [US1] PR "eval skill": tests for the `evaluate` command and the `EVAL_VERSIONS.md` row (B15), then `.claude/skills/eval/SKILL.md`
+- [ ] T015 [US1] PR "eval skill": tests in `tests/test_evaluate.py` (B15, B17, B19), then the `evaluate` command, the test run log, the results file and `.claude/skills/eval/SKILL.md`
+- [ ] T015b [US1] Synthetic injection set: about 10 synthetic complaints with injection attempts, labelled synthetic, added to the evaluation (B5 real-model check)
 - [ ] T016 [US1] First real run: prompt v1 on 50 development complaints, then the full development set if it looks right. Row in `EVAL_VERSIONS.md`.
 
 ## Phase 6: Polish

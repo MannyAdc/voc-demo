@@ -40,6 +40,7 @@ Rationale: a small lucky gain, or a gain measured on data the prompt was tuned o
 ### IV. Untrusted Input, Safe by Default
 
 - Complaint text is data, not instructions. It sits between fixed boundaries and cannot close them.
+- Complaint text MUST never reach a model or agent that can run tools, read files or use the network.
 - The redaction mark "XXXX" MUST stay exactly as written. The model must not guess what it hides.
 - Secrets MUST live only in environment variables or a git-ignored `.env`. A key is never printed.
 - Live model calls MUST stop at a token cap kept in a ledger file.
@@ -82,4 +83,4 @@ contradict it. If they disagree, this file wins until both are fixed in the same
 Amendments are made in a pull request and logged in `BUILD_LOG.md`. Versions follow semantic
 versioning: MAJOR for removing or redefining a principle, MINOR for adding one, PATCH for wording.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-10-28
+**Version**: 1.1.0 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-10-28 (1.1.0: untrusted text never reaches an agent that can act, added after review round 1)

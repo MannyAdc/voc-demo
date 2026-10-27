@@ -10,6 +10,13 @@ Each item is checked on its official source before the pull request that needs i
 | Current price per token for `claude-haiku-5-5` | costs pull request (B13) | open |
 | Anthropic terms on using `claude -p` with a personal subscription | backend pull request (B12) | open |
 | Exact Product strings in the July 2026 file | data tests (B14) | open |
+| `claude -p` flags for no tools, no MCP servers, no settings or instruction files, one turn | backend pull request (B12) | open |
+| Does an `ANTHROPIC_API_KEY` in the environment make `claude -p` bill the API instead of the subscription | backend pull request (B12) | open |
+| Does `claude -p` report token use in its JSON output | backend pull request (B8, B12) | open |
+| Is the UTF-8 byte count of a prompt always at least its token count | ledger pull request (B8) | open |
+| Training cutoff of `claude-haiku-5-5`, compared with the July 2026 complaint dates | README | open |
+| Is GitHub push protection for secrets available on a private personal repo | CI pull request | open |
+| How to run CI tests with no network on GitHub-hosted Linux runners | CI pull request | open |
 
 ## Answered
 

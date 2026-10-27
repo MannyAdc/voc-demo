@@ -18,6 +18,13 @@ data/
 recordings/
 ledger.json
 
+# Small synthetic fixtures and dbt seeds are committed (synthetic IDs start with SYN-)
+!tests/fixtures/**/*.csv
+!dbt/seeds/*.csv
+
+# Local names deny list for the names check, never committed
+.names-denylist
+
 # dbt build output
 dbt/target/
 dbt/logs/
