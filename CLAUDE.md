@@ -30,8 +30,9 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 
 ## Who does what
 
-- The owner pushes branches and merges. The owner creates any account and enters any password.
-- Claude may run `gh pr create` and `gh pr comment`. Claude never pushes, merges, or changes repo settings.
+- Claude may push feature branches, run `gh pr create` and `gh pr comment`. Claude never pushes to `main`, never pushes with force, never deletes a branch, never merges, and never changes repo settings. Pushing is proposing. Merging is deciding.
+- The owner merges, using a normal merge commit (not squash or rebase). The owner creates any account and enters any password.
+- Until the repo is public, GitHub cannot block a merge when CI fails (protected branches need a paid plan on private repos). So the owner checks that CI is green before merging.
 - Before merge, a fresh reviewer agent reads only the diff, the spec and this file. It lists problems and does not edit. Claude posts its findings as a comment on the pull request. The owner decides what to fix.
 
 ## Tests

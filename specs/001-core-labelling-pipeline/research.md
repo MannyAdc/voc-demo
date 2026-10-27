@@ -18,11 +18,11 @@ Each item is checked on its official source before the pull request that needs i
 | How many input tokens `claude -p` adds for its own system prompt (the `cli` allowance) | backend pull request (B8, B12) | open |
 | Export download URL for the July 2026 file, and its SHA-256 | download pull request (B16) | open |
 | Does `claude -p` let us set an output-token limit and a temperature | backend pull request (B8, B12) | open |
-| Is branch protection with required checks available on a private personal repo, or only after it goes public | CI pull request | open |
-| Is GitHub push protection for secrets available on a private personal repo | CI pull request | open |
 | How to run CI tests with no network on GitHub-hosted Linux runners | CI pull request | open |
 
 ## Answered
 
 - **Who sets Product?** The consumer. CFPB field reference: "The type of product the consumer identified in the complaint". https://cfpb.github.io/api/ccdb/fields.html, read 2026-10-27.
 - **Spec Kit install.** v1.2.3, installed from the official repo tag. `uv` needed `--native-tls` on this machine because of a certificate error. https://github.github.io/spec-kit/installation.html, read 2026-10-28.
+- **Branch protection on a private personal repo.** GitHub's plans page lists "Protected branches" for private repositories under GitHub Pro only. Free gives public repositories "a full feature set". So required checks are possible once the repo is public. https://docs.github.com/en/get-started/learning-about-github/githubs-plans, read 2026-10-28.
+- **GitHub push protection.** For personal accounts it is on by default and "Blocks you from pushing secrets to public repositories". For private repositories it "Requires GitHub Secret Protection to be enabled." So while the repo is private, our own gitleaks checks are the guard. https://docs.github.com/en/code-security/secret-scanning/introduction/about-push-protection, read 2026-10-28.
