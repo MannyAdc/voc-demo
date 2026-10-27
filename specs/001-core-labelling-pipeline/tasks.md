@@ -21,6 +21,7 @@ description: "Task list for the core labelling pipeline"
 
 - [ ] T001 First commit on `main`: `CLAUDE.md`, `BUILD_LOG.md`, `.gitignore`, README stub, Spec Kit files
 - [ ] T002 PR "project skeleton": `pyproject.toml` with uv, pytest config, `tests/conftest.py` that blocks sockets, one test that proves the block (B7)
+- [ ] T002b PR "download and profile": tests in `tests/test_download.py` and `tests/test_analysis.py` (B16 SHA-256 check, B22), then `scripts/download.py` (pinned export URL, date and SHA-256) and the `profile` command
 - [ ] T003 PR "CI": `.github/workflows/ci.yml` runs pytest with no network, gitleaks on the full history, the names check, the file size and raw data checks on every pull request. `dbt build` is added to CI in T011.
 
 ## Phase 2: Foundational
@@ -37,6 +38,7 @@ description: "Task list for the core labelling pipeline"
 ## Phase 3: User Story 4 - Re-runs are free and spend has a hard stop (P4, built early because every live run needs it)
 
 - [ ] T008 [US4] PR "ledger and replay": tests in `tests/test_budget.py` and `tests/test_replay.py` (B7, B8), then `src/voc/budget.py` and `src/voc/replay.py`
+- [ ] T008b Owner task: set the monthly dollar limit in the Anthropic console. Claude writes down the steps. The owner does it and logs the time.
 - [ ] T009 [US4] PR "backends and cost": check terms and prices first (research.md), tests in `tests/test_backends.py` and `tests/test_costs.py` (B12, B13), then `src/voc/backends.py` and `src/voc/costs.py`
 
 ## Phase 4: User Story 3 - Load a new month safely (P3)
@@ -56,7 +58,9 @@ description: "Task list for the core labelling pipeline"
 ## Phase 6: Polish
 
 - [ ] T017 README "Why this stack" with checked facts, and the dbt lineage graph
-- [ ] T018 Error analysis and prompt versions v2 onward (one cause per version)
+- [ ] T018 Error analysis (B21) and prompt versions v2 onward (one cause per version)
+- [ ] T019 Final test run, once, with the chosen prompt version, only when the owner says "final" (B17)
+- [ ] T020 README results: every figure with the command that produced it, both views, per-Product table, re-weighted figure, synthetic injection results reported apart
 
 ## Dependencies
 
@@ -73,4 +77,13 @@ description: "Task list for the core labelling pipeline"
 
 ## MVP
 
-T001 to T009 plus T012 to T014: one development run with quote check, quarantine, spend stop and an honest score.
+T001 to T016 except T011 (dbt can follow the first run): one development run with quote check, quarantine, spend stop and an honest score. Then T019 and T020 must happen before the deadline, whatever else is cut.
+
+## Cut list if time runs short (owner to confirm)
+
+Cut in this order, never cutting the quote check, quarantine, tests, CI, the spend stop or the build log:
+
+1. The `cli` backend (use `api` and `mock` only). This removes the canary check too.
+2. PowerShell commit parsing in the test gate (the git pre-commit hook still covers it).
+3. Full-text similarity dedupe across all pairs (keep exact normalised-text duplicates, and compare full text only where openings match).
+4. The brief's own cut order after that: synthetic sales calls, Azure, the dbt lineage graph, the agreement step.
