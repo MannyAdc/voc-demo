@@ -226,3 +226,10 @@ def _our_conftest():
 def test_B7_dbt_usage_stats_are_off():
     assert os.environ.get("DBT_SEND_ANONYMOUS_USAGE_STATS") == "False"
     assert os.environ.get("DO_NOT_TRACK") == "1"
+
+
+@pytest.mark.skipif(os.environ.get("VOC_CI_NO_NETWORK") != "1",
+                    reason="CI only: there the tests run in a network namespace with loopback only")
+def test_B7_ci_runs_the_tests_with_no_network_interface_except_loopback():
+    # Subprocesses inherit the namespace, so DuckDB, dbt and git are cut off too.
+    assert [name for _, name in socket.if_nameindex()] == ["lo"]
