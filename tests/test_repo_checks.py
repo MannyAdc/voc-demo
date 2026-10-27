@@ -139,6 +139,10 @@ def test_files_over_the_limit_are_listed():
 # Reading blobs
 
 
+def test_valid_utf8_with_a_nul_byte_is_still_checked_as_text():
+    assert texts_in_blob("a.py", b"x = 1\x00 qwertyname") == [("a.py", "x = 1\x00 qwertyname")]
+
+
 def test_utf16_text_is_decoded_and_checked():
     data = "hello qwertyname".encode("utf-16")
     assert texts_in_blob("a.txt", data) == [("a.txt", "hello qwertyname")]
@@ -155,7 +159,7 @@ def test_zip_and_gzip_members_are_checked():
 
 
 def test_an_unreadable_file_returns_none_but_images_are_allowed():
-    assert texts_in_blob("a.docx", b"\x00\x01binary") is None
+    assert texts_in_blob("a.bin", b"\x00\xc3\x28\xff binary") is None  # not valid UTF-8
     assert texts_in_blob("a.png", b"\x89PNG\x00\x01") == []
 
 
