@@ -60,8 +60,11 @@ def load_deny_list(env, path):
     """Names from NAMES_DENYLIST, else from the local file. Fails if there are none."""
     text = env.get("NAMES_DENYLIST")
     if not text and path is not None and Path(path).is_file():
-        text = Path(path).read_text(encoding="utf-8-sig")
-    names = [line.strip() for line in (text or "").splitlines()]
+        text = _decode(Path(path).read_bytes())
+        if text is None:
+            raise DenyListMissing("the local deny list file is not UTF-8 or UTF-16")
+    # A BOM can also sit mid-file when two saved files are joined.
+    names = [line.strip() for line in (text or "").replace("﻿", "").splitlines()]
     names = [n for n in names if n and not n.startswith("#")]
     if not names:
         raise DenyListMissing("the names deny list is missing or empty")
