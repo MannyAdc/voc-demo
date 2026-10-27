@@ -167,6 +167,27 @@ def test_a_new_test_file_that_cannot_import_yet_is_allowed(gate, project):
     assert gate.check_staged(project) == []
 
 
+def _red_commit(repo):
+    """Commit a failing new test without the gate, as an earlier red test commit."""
+    _stage(repo, "tests/test_mod.py", PROJECT["tests/test_mod.py"]
+           + "\n\ndef test_g():\n    from mod import g\n    assert g() == 2\n")
+    _git(repo, "commit", "-q", "-m", "red")
+
+
+def test_a_second_red_commit_may_keep_tests_that_were_already_failing(gate, project, capsys):
+    _red_commit(project)
+    _stage(project, "tests/test_more.py", "def test_h():\n    from mod import h\n    assert h() == 3\n")
+    assert gate.check_staged(project) == []
+    out = capsys.readouterr().out
+    assert "carried-over failing test" in out and "test_g" in out
+
+
+def test_a_red_commit_may_still_not_delete_a_test_that_was_already_failing(gate, project):
+    _red_commit(project)
+    _stage(project, "tests/test_mod.py", PROJECT["tests/test_mod.py"])
+    assert gate.check_staged(project)
+
+
 def test_a_tests_only_commit_that_breaks_an_existing_test_is_blocked(gate, project):
     _stage(project, "tests/test_mod.py", "from mod import f\n\n\ndef test_f():\n    assert f() == 3\n")
     assert gate.check_staged(project)
