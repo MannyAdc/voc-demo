@@ -26,6 +26,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Tests first. In each pull request, commit the failing tests in a commit that changes only test files. Then commit the code that makes them pass.
 - Never rewrite, squash, amend pushed commits, or backdate history.
 - Commit author for this repo is the GitHub username with the GitHub noreply email.
+- Commits made with Claude end with the line `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
 ## Who does what
 
