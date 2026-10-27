@@ -3,11 +3,14 @@
 Targets are reserved so they can never reach a real server: 192.0.2.1 and
 2001:db8::1 are documentation addresses (RFC 5737, RFC 3849) and .invalid
 names never resolve (RFC 2606). If the block were broken, a packet or a
-lookup could still leave the machine, so every call has a short timeout.
+lookup could still leave the machine. Connections use a short timeout. Name
+lookups have no timeout parameter, so a broken block could make them wait
+for the resolver.
 """
 import asyncio
 import os
 import socket
+import sys
 import urllib.request
 
 import pytest
@@ -39,9 +42,11 @@ def test_B7_connect_ex_is_blocked_too():
 
 
 def test_B7_an_ipv6_outside_address_is_blocked():
-    if not socket.has_ipv6:
-        pytest.skip("no IPv6 on this machine")
-    with _tcp(socket.AF_INET6) as s, pytest.raises(RuntimeError, match=BLOCKED):
+    try:
+        s = _tcp(socket.AF_INET6)
+    except OSError:
+        pytest.skip("IPv6 sockets are not available here")
+    with s, pytest.raises(RuntimeError, match=BLOCKED):
         s.connect(OUTSIDE_V6)
 
 
@@ -83,6 +88,22 @@ def test_B7_a_web_request_is_blocked():
         urllib.request.urlopen("http://192.0.2.1/", timeout=1)
 
 
+def test_B7_proxy_settings_cannot_route_a_request_out(monkeypatch):
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:9")
+    monkeypatch.setenv("https_proxy", "http://127.0.0.1:9")
+    # A fresh opener reads the proxy settings now. urlopen() reuses an old one.
+    opener = urllib.request.build_opener()
+    with pytest.raises(RuntimeError, match=BLOCKED):
+        opener.open("https://192.0.2.1/", timeout=1)
+
+
+def test_B7_proxy_variables_are_cleared_and_no_proxy_is_set():
+    proxies = [n for n in os.environ if n.lower().endswith("_proxy") and n.lower() != "no_proxy"]
+    assert proxies == []
+    assert os.environ.get("NO_PROXY") == "*"
+    assert os.environ.get("no_proxy") == "*"
+
+
 def test_B7_an_asyncio_connection_is_blocked():
     # On Windows the default event loop connects without socket.connect.
     async def attempt():
@@ -90,6 +111,24 @@ def test_B7_an_asyncio_connection_is_blocked():
 
     with pytest.raises(RuntimeError, match=BLOCKED):
         asyncio.run(attempt())
+
+
+def test_B7_an_asyncio_datagram_to_outside_is_blocked():
+    async def attempt():
+        loop = asyncio.get_running_loop()
+        await asyncio.wait_for(
+            loop.create_datagram_endpoint(asyncio.DatagramProtocol, remote_addr=OUTSIDE), timeout=1)
+
+    with pytest.raises(RuntimeError, match=BLOCKED):
+        asyncio.run(attempt())
+
+
+def test_B7_the_default_event_loop_is_kept_so_subprocesses_work():
+    async def run_child():
+        child = await asyncio.create_subprocess_exec(sys.executable, "-c", "pass")
+        return await child.wait()
+
+    assert asyncio.run(run_child()) == 0
 
 
 # Loopback stays open, so local test servers work
@@ -115,6 +154,7 @@ def test_B7_connect_ex_to_loopback_works(local_server):
 
 def test_B7_localhost_still_resolves():
     assert socket.getaddrinfo("localhost", 80)
+    assert socket.getaddrinfo(b"localhost", 80)  # anyio passes bytes
 
 
 def test_B7_a_socket_pair_still_works():
@@ -151,6 +191,31 @@ def test_B7_no_credential_is_visible_and_the_block_is_on_at_import_time(pytester
     """)
     result = pytester.runpytest_subprocess("-p", "no:cacheprovider")
     result.assert_outcomes(passed=1)
+
+
+def test_B7_the_block_stays_on_until_the_process_exits(pytester, monkeypatch, tmp_path):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-" + "ant-" + "y" * 20)
+    report = tmp_path / "at_exit.txt"
+    pytester.makeconftest(_our_conftest())
+    pytester.makepyfile(test_inner=f"""
+        import atexit, os, socket
+
+        def check_at_exit():
+            try:
+                socket.create_connection(("192.0.2.1", 443), timeout=1)
+                blocked = "open"
+            except RuntimeError:
+                blocked = "blocked"
+            key = "key" if "ANTHROPIC_API_KEY" in os.environ else "nokey"
+            open({str(report)!r}, "w").write(blocked + " " + key)
+
+        atexit.register(check_at_exit)
+
+        def test_inner():
+            pass
+    """)
+    pytester.runpytest_subprocess("-p", "no:cacheprovider").assert_outcomes(passed=1)
+    assert report.read_text() == "blocked nokey"
 
 
 def _our_conftest():
