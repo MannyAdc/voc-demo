@@ -277,15 +277,16 @@ Started in the first pull request that adds an entry point (T002b), and extended
 
 ## CI checks, `.github/workflows/ci.yml`
 
-- gitleaks scans the full history
+- gitleaks scans the full history, in its own job so other failures cannot hide it (review of #4)
+- names, raw data, size and unreadable-file checks cover every blob in history, file paths, tags and pull request text (review of #4)
 - git pre-commit hook: gitleaks runs on every commit, and the hook fails if gitleaks is not installed (review, changed)
 - a names check fails on any word from a deny list kept outside the repo, in a CI secret, and fails if the list is missing or empty (review)
-- `runs/TEST_RUNS.md` only grows compared with `main` (review)
+- `runs/TEST_RUNS.md` only grows compared with `main` (review, deferred to T015, when the file first exists)
 - the names check also scans commit authors, commit messages and branch names, and prints only the file and line of a match, never the word (review)
-- no tracked Parquet, JSONL or headerless CSV holds a real-format complaint ID with a text field, except committed results files with no text (review)
+- no tracked Parquet, JSONL or headerless CSV holds a real-format complaint ID with a text field, except committed results files with no text (review) (deferred to T012, when the first JSONL files are written)
 - any tracked file over a size limit fails (review)
 - any tracked file with the CFPB header row and a non-`SYN-` ID fails (review)
-- dbt build with data tests runs, with usage stats off (review)
+- dbt build with data tests runs, with usage stats off (review, deferred to T011)
 
 ## Later features (listed now, specified later)
 
