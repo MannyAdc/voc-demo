@@ -78,7 +78,38 @@ def test_the_deny_list_is_read_from_the_local_file(tmp_path):
     assert load_deny_list({}, path=f) == ["Qwertyname"]
 
 
-@pytest.mark.parametrize("env", [{}, {"NAMES_DENYLIST": ""}, {"NAMES_DENYLIST": "# only\n\n"}])
+def test_a_local_file_saved_with_a_bom_still_matches_its_first_name(tmp_path):
+    # Windows PowerShell 5.1 and some editors save UTF-8 with a BOM.
+    f = tmp_path / ".names-denylist"
+    f.write_text("Qwertyname\nZorblax Corp\n", encoding="utf-8-sig")
+    names = load_deny_list({}, path=f)
+    assert names == NAMES
+    assert find_name_matches({"a.txt": "by qwertyname"}, names) == [("a.txt", 1)]
+
+
+def test_a_local_file_saved_as_utf16_is_read(tmp_path):
+    # Windows PowerShell 5.1 `"Name" > file` writes UTF-16LE with a BOM.
+    f = tmp_path / ".names-denylist"
+    f.write_text("Qwertyname\nZorblax Corp\n", encoding="utf-16")
+    assert load_deny_list({}, path=f) == NAMES
+
+
+def test_a_bom_in_the_middle_of_the_file_does_not_hide_a_name(tmp_path):
+    # Two files saved with a BOM and then joined.
+    f = tmp_path / ".names-denylist"
+    f.write_bytes("Qwertyname\n".encode("utf-8-sig") + "Zorblax Corp\n".encode("utf-8-sig"))
+    assert load_deny_list({}, path=f) == NAMES
+
+
+def test_a_local_file_in_another_encoding_fails_with_a_clear_error(tmp_path):
+    # Not UTF-8 and not UTF-16, for example a non-ASCII name in a legacy code page.
+    f = tmp_path / ".names-denylist"
+    f.write_bytes(b"Qwertyname\n\x82\xa0\n")
+    with pytest.raises(DenyListMissing, match="UTF-8 or UTF-16"):
+        load_deny_list({}, path=f)
+
+
+@pytest.mark.parametrize("env",[{}, {"NAMES_DENYLIST": ""}, {"NAMES_DENYLIST": "# only\n\n"}])
 def test_a_missing_or_empty_deny_list_fails(env, tmp_path):
     with pytest.raises(DenyListMissing):
         load_deny_list(env, path=tmp_path / "does-not-exist")
