@@ -26,7 +26,7 @@ Mixing the two makes both untrustworthy.
 ### III. Honest Measurement
 
 - Every report MUST show coverage and quarantine rate next to accuracy.
-- The recorded CFPB label MUST be used only for scoring, never in a prompt.
+- The recorded CFPB label MUST be used only for scoring, never in a labelling prompt. (The error analyser may see it, on development data only, because its job is to explain disagreements.)
 - Prompt changes MUST be scored on the development set only. The frozen test set is run once, at
   the end. A second run MUST be logged with its reason.
 - The success rule: two claims are fixed before the first run (spec B10). Each must beat the TF-IDF
@@ -75,7 +75,7 @@ Rationale: three days of work should go into verification, not infrastructure.
 - CI runs the tests and a secret scan on every pull request.
 - `BUILD_LOG.md` records work times, AI mistakes and how they were caught, overruled suggestions, and
   parallel work, as they happen. Entries are never invented or tidied.
-- Git history is never rewritten, squashed to hide time, or backdated.
+- Git history is never rewritten, squashed to hide time, or backdated. The one exception is removing a leaked key or name before the repo goes public. Only the owner decides it, and it is logged with its reason.
 
 ## Governance
 
@@ -84,4 +84,4 @@ contradict it. If they disagree, this file wins until both are fixed in the same
 Amendments are made in a pull request and logged in `BUILD_LOG.md`. Versions follow semantic
 versioning: MAJOR for removing or redefining a principle, MINOR for adding one, PATCH for wording.
 
-**Version**: 1.2.0 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-10-28 (1.1.0: untrusted text never reaches an agent that can act. 1.2.0: two claims fixed in advance)
+**Version**: 1.3.0 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-10-28 (1.1.0: untrusted text never reaches an agent that can act. 1.2.0: two claims fixed in advance. 1.3.0: analyser exception and leak exception, after review round 4)

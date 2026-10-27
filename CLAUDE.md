@@ -44,9 +44,9 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 
 ## Hooks (in `.claude/settings.json`)
 
-- Test gate: before any `git commit` from Bash or PowerShell, in any form, run the tests on the files that will really be committed. Block the commit if they fail. The one exception is a commit that changes only `tests/test_*.py` files and where the only failing tests are new ones (the red test commit). Such a commit may not delete a test or make an existing test skip. Changes to `tests/conftest.py` or fixtures are always gated. `--no-verify` is blocked. A git pre-commit hook runs the same gate for commits made outside Claude.
+- Test gate: before any `git commit` from Bash or PowerShell, in any form, run the tests on the files that will really be committed. Block the commit if they fail. The one exception is a commit that changes only `tests/test_*.py` files and where the only failing tests are new ones (the red test commit). Such a commit may not delete a test or make an existing test skip. Changes to `tests/conftest.py` or fixtures are always gated. `--no-verify` is blocked. A git pre-commit hook runs the same gate, plus gitleaks, for commits made outside Claude. The hook fails if gitleaks is not installed.
 - Data guard: before Write, Edit or NotebookEdit, block the file if it is raw CFPB data (CFPB header row without `SYN-` IDs), a `.env` file, contains something that looks like an API key, or (when local data is present) contains a long run of text copied from a sampled narrative. `.env.example` is allowed if it holds no key-like value. Edits to `.claude/settings.json` and the hook scripts ask the owner first.
-- Read guard: block Claude from reading the raw data folder or the DuckDB file. Ask the owner before Claude runs `show` or any command containing `final`.
+- Read guard: block Claude from reading the raw data folder, the DuckDB file, the recordings and the ledger folder, with any tool. Block Claude from running `show` or `dbt show` at all. Ask the owner before Claude runs any command containing `final`.
 - Hooks only see Claude's own tool calls, and they parse command text, so they are best effort. Shell commands that write files are not covered by the data guard. The real gate is CI, plus branch protection with required checks on `main` once the repo is public.
 
 ## CI checks
@@ -73,14 +73,14 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Every live call goes through the record and replay cache and the token ledger. The ledger lives at one fixed path in the home folder, so all worktrees share one cap. The cap can only be lowered by an override.
 - Samples are frozen by the committed ID and content-hash lists in `splits/`. Never regenerate them.
 - Claude never prints or reads narrative text, quotes or raw model answers from real data. Commands print only IDs, labels, reasons, positions and counts.
-- Error analysis runs through the analyser (a tool-less model call that answers with one cause from a fixed list). Claude sees only the causes and counts. The owner spot-checks 10 per round with `show` in the owner's own terminal. Notes hold IDs and short descriptions, never copied text.
+- Error analysis runs through the analyser (a tool-less model call that answers with one cause from a fixed list). Claude sees only the causes and counts. The owner spot-checks 10 per round with `show` in the owner's own terminal. Claude never runs `show`. Notes hold IDs and short descriptions, never copied text.
 - Evaluation runs on the development set. The frozen test set is scored once, at the end, only when the owner says "final". Claude never passes `final` on its own.
 
 ## Secrets
 
 - Keys only in environment variables or a git-ignored `.env`, which the command line loads at start-up.
 - Never print, log or echo a key.
-- If a key leaks: rotate it at once. If a name leaks: tell the owner. Any history rewrite is the owner's decision, logged with its reason.
+- If a key leaks: rotate it at once. If a name leaks: tell the owner. Removing a leak from history is the only allowed rewrite, only before the repo is public, only by the owner's decision, and logged with its reason.
 
 ## Names
 

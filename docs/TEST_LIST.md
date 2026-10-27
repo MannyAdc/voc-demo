@@ -1,6 +1,6 @@
 # Test list
 
-Status: approved by the owner on 2026-10-28, then revised after review rounds 1 to 3. Each line is one test. Tests check behaviour against [the spec](../specs/001-core-labelling-pipeline/spec.md). They run offline in seconds and never call a model. Label quality is measured separately by evaluation.
+Status: approved by the owner on 2026-10-28, then revised after review rounds 1 to 4. Each line is one test. Tests check behaviour against [the spec](../specs/001-core-labelling-pipeline/spec.md). They run offline in seconds and never call a model. Label quality is measured separately by evaluation.
 
 Lines marked (reused) come from test ideas in an earlier unpublished start of this project. Lines marked (review) were added after a reviewer finding. The rest are new.
 
@@ -11,6 +11,13 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - the test suite cannot open a network connection (reused)
 - a subprocess started by a test cannot reach the network either (review, CI only: CI runs tests with no network)
 - tests run with DuckDB extension auto-install off, dbt usage stats off, no `ANTHROPIC_API_KEY`, and `.env` loading pointed at an empty temp file (review)
+
+## Output safety (B21 layer 1), `tests/test_output_safety.py`
+
+Started in the first pull request that adds an entry point (T002b), and extended by every later one.
+
+- each entry point (`download`, `load`, `profile`, `sample`, `label`, `evaluate`, `analyse`, the dbt wrapper) prints no narrative, quote or raw model answer on hostile synthetic text (review, moved earlier)
+- a library error that echoes a raw row is replaced by its type, row number and complaint ID (review)
 
 ## Quote check (B1, B6), `tests/test_evidence.py`
 
@@ -76,6 +83,7 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - live calls are refused while the cap config has uncommitted changes (review)
 - the ledger path is the fixed path in the home folder, whatever the working folder (review)
 - init refuses when a ledger already exists (review)
+- `raise` refuses while the cap config has uncommitted changes, and writes a raise event with a reason (review)
 - SDK retries are off, and a retry is charged as a new call (review)
 - a failed call is retried at most 2 times (review)
 - after a call, the reservation is replaced by the real use (review)
@@ -92,6 +100,7 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - replay mode with no recording is an error, not a live call (reused)
 - a different backend, model, setting or prompt is not served the old recording (reused, changed)
 - a recording file holds no headers and no key (review)
+- recordings are stored in the home-folder cache, so a second worktree replays them for free (review)
 - a failed, refused or cut-off call is not stored in the cache (review)
 - re-scoring a run from its results file reproduces its failures exactly (review)
 - a live call is charged, a replayed call is free (reused)
@@ -152,6 +161,8 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - samples are built only from rows of the pinned July file (review)
 - each list's hash matches its content (review)
 - the 50-ID quick-check list is a subset of the development list (review)
+- the test-ID hash loader returns only hashes, never text or labels (review)
+- every file the code reads from `splits/`, `config/` and `tests/fixtures/` is tracked by git (review, CI)
 - the download script refuses a file whose SHA-256 does not match (review)
 - adding a new month of rows does not change the committed lists (review)
 
@@ -184,6 +195,7 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - a pipeline that accepts nothing cannot be compared (reused)
 - a run with any `not_run_budget` complaint gets no verdict (review)
 - per-Product figures and the re-weighted figure match a hand count (review)
+- the injection set counts "obeyed and accepted", "obeyed and quarantined" and "not obeyed" per view, matching a hand count (review)
 - the bootstrap interval is computed for the figure that decides the verdict (review)
 - re-weighted strict accuracy matches a hand count, quarantined counted as wrong (review)
 - coverage is matched by count inside each resample (review)
@@ -216,6 +228,9 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - the results file has every field B19 lists and no narrative text (review)
 - loading test narratives or test labels refuses unless `final` is given, while reading the test ID list is allowed (review, changed)
 - `final` refuses when the working tree is not clean (review)
+- `final` refuses when the remaining cap does not cover the whole test set, retries included (review)
+- `final` also writes the home-folder test log, and demands a reason if either log already has an entry (review)
+- `show` refuses test rows unless `final` is given (review)
 - `final` commits the test run log entry before scoring starts (review)
 - reading test rows from the staged table, or setting the dbt final flag, goes through the same guard (review)
 - dbt models leave out test rows unless the final flag is set (review)
@@ -224,7 +239,6 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 
 ## Error analysis and profile (B21, B22), `tests/test_analysis.py`
 
-- every command (`label`, `evaluate`, `sample`, `profile`, `analyse`) prints no narrative, quote or raw model answer on hostile synthetic text, including in error messages (review)
 - the analyser's answer must be one cause from the fixed list, and anything else is `unparseable` (review)
 - the analyser refuses test-set complaints (review)
 - free text from the analyser is never printed (review)
@@ -249,7 +263,8 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - git pre-commit hook: runs the same gate for commits made outside Claude (review)
 - data guard: an edit to `.claude/settings.json` or a hook script asks the owner first (review)
 - read guard: Claude reading the raw data folder or the DuckDB file is blocked (review)
-- read guard: Claude running `show` asks the owner first (review)
+- read guard: Claude running `show` or `dbt show` is blocked outright (review, changed)
+- read guard: Claude reading the recordings or ledger folder, including through a shell command naming the path, is blocked (review)
 - final guard: Claude running any command containing `final` asks the owner first (review)
 - data guard: `.env.example` is allowed only if it holds no key-like value (review)
 - data guard: notes or docs with a long run of text copied from a sampled narrative are blocked when local data is present (review)
@@ -261,7 +276,8 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 
 ## CI checks, `.github/workflows/ci.yml`
 
-- gitleaks scans the full history (review: also run locally before each commit if installed)
+- gitleaks scans the full history
+- git pre-commit hook: gitleaks runs on every commit, and the hook fails if gitleaks is not installed (review, changed)
 - a names check fails on any word from a deny list kept outside the repo, in a CI secret, and fails if the list is missing or empty (review)
 - `runs/TEST_RUNS.md` only grows compared with `main` (review)
 - the names check also scans commit authors, commit messages and branch names, and prints only the file and line of a match, never the word (review)

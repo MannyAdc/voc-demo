@@ -17,13 +17,15 @@ __pycache__/
 *.jsonl
 *.duckdb
 *.duckdb.wal
-recordings/
+/recordings/
 ledger.json
 
 # Small synthetic fixtures and dbt seeds are committed (synthetic IDs start with SYN-)
 !tests/fixtures/**/*.csv
 !dbt/seeds/*.csv
 !results/*.jsonl
+!splits/**
+!config/**
 !tests/fixtures/**/*.jsonl
 
 # Local names deny list for the names check, never committed

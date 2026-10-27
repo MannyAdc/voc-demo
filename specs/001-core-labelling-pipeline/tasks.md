@@ -44,7 +44,6 @@ description: "Task list for the core labelling pipeline"
 
 ## Phase 4: User Story 3 - Load a new month safely (P3)
 
-- [ ] T009b Live smoke test: 20 development complaints through the real `api` backend as soon as T008, T009 and T012 are merged. Checks real Product strings, the quote match rate and real token counts (recorded as the token count fixture). Logged.
 - [ ] T010 [P] [US3] PR "staged load": check DuckDB and dbt versions first, tests in `tests/test_load.py` (B14 re-runnable, schema check), then `scripts/load_month.py`
 - [ ] T011 [US3] PR "dbt curated and data tests": dbt project in `dbt/`, data tests for missing or repeated IDs and unknown Product, a test that a bad fixture fails the build. Lineage graph generated.
 - [ ] T012 [US3] PR "samples": tests in `tests/test_data.py` (B9, B16), then `src/voc/data.py`, the `sample` command, and the committed ID lists in `splits/`
@@ -53,6 +52,8 @@ description: "Task list for the core labelling pipeline"
 
 - [ ] T013 [P] [US1] PR "baselines and metrics": tests in `tests/test_baselines.py` and `tests/test_metrics.py` (B3, B10, B11, B18), then `src/voc/baselines.py` and `src/voc/metrics.py`
 - [ ] T014 [US2] PR "pipeline": tests in `tests/test_pipeline.py` (B4, B5, B9 end to end with a fake model), then `src/voc/pipeline.py` and the `label` command
+- [ ] T014b Live smoke test: 20 development complaints through the tested `label` command and the real `api` backend, right after T014. It prints only counts. It checks real Product strings, the quote match rate and real token counts. The token count fixture keeps only (byte count, token count) pairs, with no text or IDs. Logged.
+- [ ] T014c PR "show command": tests (refuses test rows without `final`, blocked for Claude by the read guard), then the `show` command for the owner
 - [ ] T015 [US1] PR "eval skill": tests in `tests/test_evaluate.py` (B15, B17, B19), then the `evaluate` command, the test run log, the results file and `.claude/skills/eval/SKILL.md`
 - [ ] T015b [US1] Synthetic injection set: about 10 synthetic complaints with injection attempts, labelled synthetic, added to the evaluation (B5 real-model check)
 - [ ] T016 [US1] First real run: prompt v1 on 50 development complaints, then the full development set if it looks right. Row in `EVAL_VERSIONS.md`.
@@ -80,17 +81,17 @@ description: "Task list for the core labelling pipeline"
 
 ## MVP
 
-T001 to T016 except T011 (dbt can follow the first run): one development run with quote check, quarantine, spend stop and an honest score. Then T019 and T020 must happen before the deadline, whatever else is cut.
+T001 to T016 except T011. Until dbt lands, `load_month.py` runs the missing ID, repeated ID and unknown Product checks itself, and the labeller reads the sample table built by the `sample` command. dbt then adds the same checks as data tests and builds the serving views: one development run with quote check, quarantine, spend stop and an honest score. Then T019 and T020 must happen before the deadline, whatever else is cut.
 
 ## Checkpoints
 
 - Wednesday 12:00: T001 to T009 merged.
-- Wednesday 18:00: T009b smoke test done, T010 to T014 merged.
+- Wednesday 18:00: T010 to T014 merged and the T014b smoke test done.
 - Wednesday 23:00: first full development run (T016).
 - Thursday 12:00: prompt versions done or stopped. Then API and dashboard.
 - Thursday 22:00: final test run (T019) and README results (T020).
 
-If a checkpoint is missed by more than 2 hours, cut from the list below.
+At Wednesday 12:00, make a cut decision whatever the state. After that, if a checkpoint is missed by more than 2 hours, cut further from the list below. The API and dashboard are not on the cut list, because the brief needs them to answer the feedback.
 
 ## Cut list if time runs short (confirmed by the owner 2026-10-28)
 
@@ -102,4 +103,6 @@ Cut in this order, never cutting the quote check, quarantine, tests, CI, the spe
 4. Narrative-copy detection in the data guard, and every rare commit form in the test gate (move both to Known limits).
 5. The CI check that the test run log only grows (the log stays committed).
 6. The version-to-version interval (keep the interval against TF-IDF).
-7. The brief's own cut order after that: synthetic sales calls, Azure, the dbt lineage graph, the agreement step.
+7. Method comparison extras beyond the confusion matrices and the who-was-right table (owner to confirm).
+8. The analyser (owner to confirm). The fallback is that the owner reads examples with `show` and Claude sees only counts.
+9. The brief's own cut order after that: synthetic sales calls, Azure, the dbt lineage graph. The agreement step is never cut, because claim B depends on it.

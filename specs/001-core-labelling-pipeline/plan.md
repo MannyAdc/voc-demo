@@ -85,7 +85,7 @@ splits/            # committed ID lists of the frozen samples, with hashes (B16)
 results/           # committed per-complaint results, no narrative text (B19)
 ```
 
-**Structure Decision**: a single Python package plus a dbt project. The four data layers map as: Raw (CSV outside git), Staged (DuckDB table from `load_month.py`), Curated (dbt models), Serving (dbt views). The labeller reads a curated sample and writes results back to DuckDB, then dbt builds the serving views.
+**Structure Decision**: a single Python package plus a dbt project. The four data layers map as: Raw (CSV outside git), Staged (DuckDB table from `load_month.py`), Curated (dbt models), Serving (dbt views). The labeller reads the sample table built by the `sample` command and writes results back to DuckDB, then dbt builds the curated and serving models. Until dbt lands, `load_month.py` runs the ID and Product checks itself. Recordings and the ledger live outside the repo, in the home folder.
 
 ## Complexity Tracking
 
