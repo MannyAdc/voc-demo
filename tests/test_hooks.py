@@ -10,7 +10,9 @@ blocks ways around it (`--no-verify`, changing `core.hooksPath`) and refuses
 a commit while the git hook is not installed.
 """
 import importlib.util
+import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -87,6 +89,15 @@ def test_a_commit_in_any_form_is_refused_while_the_git_hook_is_not_installed(gat
 def test_a_command_that_is_not_a_commit_is_allowed_without_the_hook(gate):
     assert gate.decide("Bash", {"command": "git status"}, hooks_path=None) is None
     assert gate.decide("Bash", {"command": "git log -m"}, hooks_path=None) is None
+
+
+@pytest.mark.parametrize("command", [
+    'git -C "my dir" commit -n -m x',
+    "git commit --no-veri -m x",
+])
+def test_rare_forms_that_skip_the_git_hook_are_blocked(gate, command):
+    decision = gate.decide("Bash", {"command": command}, hooks_path=".githooks")
+    assert decision and decision[0] == "deny"
 
 
 def test_a_commit_message_that_mentions_n_is_allowed(gate):
@@ -188,6 +199,20 @@ def test_a_red_commit_may_still_not_delete_a_test_that_was_already_failing(gate,
     assert gate.check_staged(project)
 
 
+@pytest.mark.parametrize("marker", ["skip", "xfail"])
+def test_a_red_commit_may_not_turn_an_already_failing_test_into_a_skip(gate, project, marker):
+    _red_commit(project)
+    _stage(project, "tests/test_mod.py", "import pytest\n" + PROJECT["tests/test_mod.py"]
+           + f"\n\n@pytest.mark.{marker}\ndef test_g():\n    from mod import g\n    assert g() == 2\n")
+    assert gate.check_staged(project)
+
+
+def test_test_files_hidden_by_export_ignore_are_still_run(gate, project):
+    _stage(project, ".gitattributes", "tests/test_mod.py export-ignore\n")
+    _stage(project, "src/mod.py", "def f():\n    return 2\n")
+    assert gate.check_staged(project)
+
+
 def test_a_tests_only_commit_that_breaks_an_existing_test_is_blocked(gate, project):
     _stage(project, "tests/test_mod.py", "from mod import f\n\n\ndef test_f():\n    assert f() == 3\n")
     assert gate.check_staged(project)
@@ -237,9 +262,10 @@ def hooked(project, tmp_path):
     hooks.mkdir()
     python = Path(sys.executable).as_posix()
     script = (HOOKS / "test_gate.py").as_posix()
-    pre_commit = hooks / "pre-commit"
-    pre_commit.write_text(f'#!/bin/sh\nexec "{python}" "{script}" --git-pre-commit\n', encoding="utf-8")
-    pre_commit.chmod(0o755)
+    for name in ("pre-commit", "pre-merge-commit"):
+        hook = hooks / name
+        hook.write_text(f'#!/bin/sh\nexec "{python}" "{script}" --git-pre-commit\n', encoding="utf-8")
+        hook.chmod(0o755)
     fake = tmp_path / "fakebin"
     fake.mkdir()
     if sys.platform == "win32":
@@ -265,6 +291,29 @@ def test_the_git_hook_blocks_a_failing_commit_and_allows_a_passing_one(hooked):
     assert _commit(repo, env, "-m", "break").returncode != 0
     _stage(repo, "src/mod.py", "def f():\n    return 1  # ok\n")
     assert _commit(repo, env, "-m", "fine").returncode == 0
+
+
+def test_a_merge_commit_runs_the_same_gate(hooked):
+    repo, env = hooked
+    _git(repo, "checkout", "-q", "-b", "side")
+    _write(repo, "src/mod.py", "def f():\n    return 2\n")
+    _git(repo, "commit", "-q", "-a", "-m", "break on a side branch", "--no-verify", env=env)
+    _git(repo, "checkout", "-q", "main")
+    _write(repo, "notes.md", "x\n")
+    _git(repo, "add", "notes.md")
+    assert _commit(repo, env, "-m", "main moves on").returncode == 0
+    merge = subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+                            "merge", "--no-ff", "-q", "-m", "merge", "side"],
+                           cwd=repo, capture_output=True, text=True, env=env)
+    assert merge.returncode != 0
+
+
+def test_the_real_merge_hook_runs_the_same_gate_as_the_commit_hook():
+    githooks = HOOKS.parent.parent / ".githooks"
+    commit_hook = (githooks / "pre-commit").read_text(encoding="utf-8")
+    merge_hook = (githooks / "pre-merge-commit").read_text(encoding="utf-8")
+    run_line = [line for line in commit_hook.splitlines() if "test_gate.py" in line]
+    assert run_line and all(line in merge_hook for line in run_line)
 
 
 def test_the_git_hook_checks_commit_a_and_commit_with_a_path(hooked):
@@ -340,6 +389,20 @@ def test_an_edit_to_settings_or_a_hook_script_asks_the_owner(data_guard, tmp_pat
     assert decision and decision[0] == "ask"
 
 
+def test_an_edit_to_the_checks_the_guards_import_asks_the_owner(data_guard, tmp_path):
+    tool_input = {"file_path": str(tmp_path / "src/voc/repo_checks.py"), "old_string": "a", "new_string": "b"}
+    decision = data_guard.decide("Edit", tool_input, root=tmp_path, home=tmp_path / "home")
+    assert decision and decision[0] == "ask"
+
+
+@pytest.mark.parametrize("name", ["settings.json", "settings.local.json"])
+def test_an_edit_to_the_user_level_claude_settings_asks_the_owner(data_guard, tmp_path, name):
+    home = tmp_path / "home"
+    tool_input = {"file_path": str(home / ".claude" / name), "content": "{}\n"}
+    decision = data_guard.decide("Write", tool_input, root=tmp_path / "repo", home=home)
+    assert decision and decision[0] == "ask"
+
+
 # Read guard (B21) and final guard (B17)
 
 
@@ -392,6 +455,69 @@ def test_B21_a_shell_command_naming_a_protected_path_is_blocked(read_guard, plac
 def test_B21_a_shell_command_with_the_full_data_folder_path_is_blocked(read_guard, places):
     command = "type " + str(places["data"]).replace("/", "\\") + "\\x.csv"
     decision = _read_decision(read_guard, places, "PowerShell", {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+def test_B21_a_path_with_dot_dot_is_resolved_before_it_is_checked(read_guard, places):
+    sneaky = str(places["root"] / ".." / "home" / "x" / ".." / ".voc" / "ledger.json")
+    assert _read_decision(read_guard, places, "Read", {"file_path": sneaky})[0] == "deny"
+    sneaky_data = str(places["data"] / ".." / places["data"].name / "a.csv")
+    assert _read_decision(read_guard, places, "Read", {"file_path": sneaky_data})[0] == "deny"
+
+
+@pytest.mark.parametrize("field", ["home", "data_parent"])
+def test_B21_searching_a_folder_that_holds_a_protected_place_is_blocked(read_guard, places, field):
+    folder = places["home"] if field == "home" else places["data"].parent
+    for tool in ("Grep", "Glob"):
+        decision = _read_decision(read_guard, places, tool, {"pattern": "x", "path": str(folder)})
+        assert decision and decision[0] == "deny"
+
+
+def test_B21_searching_the_repo_is_still_allowed(read_guard, places):
+    assert _read_decision(read_guard, places, "Grep", {"pattern": "x", "path": str(places["root"])}) is None
+
+
+@pytest.mark.parametrize("tool_input, expected", [
+    ({"command": "cat ~/.voc/ledger.json"}, "deny"),
+    ({"command": "uv run voc show 1"}, "deny"),
+    ({"command": "uv run voc evaluate --final"}, "ask"),
+])
+def test_B21_any_tool_with_a_command_is_checked_like_a_shell(read_guard, places, tool_input, expected):
+    decision = _read_decision(read_guard, places, "Monitor", tool_input)
+    assert decision and decision[0] == expected
+
+
+@pytest.mark.parametrize("tool, tool_input", [
+    ("Artifact", {"file_paths": ["{voc}/recordings/a.json"]}),
+    ("mcp__browser__upload_file", {"filePath": "{voc}/ledger.json"}),
+    ("SomeTool", {"files": {"page.html": {"from": "{voc}/ledger.json"}}}),
+])
+def test_B21_every_path_in_any_tool_input_is_checked(read_guard, places, tool, tool_input):
+    voc = str(places["home"] / ".voc")
+    filled = json.loads(json.dumps(tool_input).replace("{voc}", voc.replace("\\", "/")))
+    decision = _read_decision(read_guard, places, tool, filled)
+    assert decision and decision[0] == "deny"
+
+
+def test_B21_text_written_into_a_file_is_not_treated_as_a_path(read_guard, places):
+    tool_input = {"file_path": str(places["root"] / "notes.md"), "content": "the ledger lives in ~/.voc/"}
+    assert _read_decision(read_guard, places, "Write", tool_input) is None
+
+
+@pytest.mark.parametrize("command", [
+    "cd ~ && cat .voc/ledger.json",
+    "Get-Content (Join-Path $HOME '.voc' 'ledger.json')",
+    "head -3 /c/data/cfpb_2026_07/a.csv",
+    "cd /c/data && head -3 cfpb_2026_07/a.csv",
+])
+def test_B21_more_shell_forms_of_protected_paths_are_blocked(read_guard, places, command):
+    env = {"VOC_DATA_DIR": "C:\\data\\cfpb_2026_07"}
+    decision = _read_decision(read_guard, places, "Bash", {"command": command}, env=env)
+    assert decision and decision[0] == "deny"
+
+
+def test_B21_a_single_ampersand_separates_commands(read_guard, places):
+    decision = _read_decision(read_guard, places, "Bash", {"command": "git status & uv run voc show 1"})
     assert decision and decision[0] == "deny"
 
 
@@ -453,6 +579,30 @@ def test_a_hook_given_bad_input_blocks_with_exit_code_2(name):
                             capture_output=True, text=True)
     assert result.returncode == 2
     assert "hook failed" in result.stderr  # our own message, not Python failing to start
+
+
+@pytest.mark.skipif(shutil.which("sh") is None, reason="no sh on this PATH (CI has one)")
+def test_the_hook_runner_turns_any_failure_into_exit_code_2():
+    result = subprocess.run(["sh", str(HOOKS / "run.sh"), "read_guard.py"], input="not json",
+                            capture_output=True, text=True)
+    assert result.returncode == 2
+    assert "hook failed" in result.stderr
+    missing = subprocess.run(["sh", str(HOOKS / "run.sh"), "no_such_hook.py"], input="{}",
+                             capture_output=True, text=True)
+    assert missing.returncode == 2
+
+
+def test_every_hook_is_wired_to_fail_closed():
+    settings = json.loads((HOOKS.parent / "settings.json").read_text(encoding="utf-8"))
+    wired = {}
+    for group in settings["hooks"]["PreToolUse"]:
+        for hook in group["hooks"]:
+            assert hook["onFailure"] == "block"
+            assert hook["command"].endswith("|| exit 2")
+            script = hook["command"].split("run.sh\" ")[1].split()[0]
+            wired[script] = group["matcher"]
+    assert wired == {"read_guard.py": "*", "test_gate.py": "Bash|PowerShell",
+                     "data_guard.py": "Write|Edit|MultiEdit|NotebookEdit"}
 
 
 def test_a_hook_prints_a_deny_decision_as_json(read_guard):
