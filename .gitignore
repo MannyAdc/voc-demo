@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+.pytest_cache/
+.venv/
+*.egg-info/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Raw data and anything derived from it stays out of git
+data/
+*.csv
+*.zip
+*.duckdb
+*.duckdb.wal
+recordings/
+ledger.json
+
+# dbt build output
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+
+# Node
+node_modules/
+web/dist/
+
+# Claude Code local settings
+.claude/settings.local.json
