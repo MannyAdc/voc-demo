@@ -27,6 +27,8 @@ The guards in this spec (hooks, checks, logs, the spend stop) are built to stop 
 - On Claude Code versions before 2.1.295, a hook that times out lets the action through. A crash still blocks, through exit code 2.
 - The git hook is switched on per clone with `git config core.hooksPath .githooks`. A fresh clone has no test gate until the owner runs it. Claude refuses to commit until then.
 - The read guard blocks any shell command with the word `show` unless it starts with `git`, so it also blocks harmless commands such as `echo show`.
+- `git cherry-pick`, `git revert` and `git commit-tree` run no pre-commit hook, so they can create a commit the test gate has not checked. Only CI catches it.
+- The read guard checks path-like fields and command text. A path built at run time inside a script (for example joined from parts in Python) is not seen.
 
 ## User Scenarios & Testing *(mandatory)*
 

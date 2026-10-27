@@ -16,7 +16,6 @@ as long as every failing test is new or was already failing before it. It
 may not delete a test, or make an existing passing test skip or fail. Each
 already failing test it carries over is printed as a notice.
 """
-import io
 import json
 import os
 import re
@@ -24,14 +23,13 @@ import shlex
 import shutil
 import subprocess
 import sys
-import tarfile
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 HOOKS_PATH = ".githooks"
 TESTS_ONLY = re.compile(r"^tests/test_[^/]+\.py$")
-SEGMENTS = re.compile(r"&&|\|\||[;|\n]")
+SEGMENTS = re.compile(r"&&|\|\||[;|&\n]")
 COMMIT = re.compile(r"\bgit\b(?:\s+(?:-C\s+\S+|-c\s+\S+|--?[\w-]+(?:=\S+)?))*\s+commit\b")
 # Short options of `git commit` that take a value, so letters after them are the value.
 VALUE_OPTIONS = set("mFCctSu")
@@ -45,6 +43,12 @@ def _tokens(segment):
         return shlex.split(segment)
     except ValueError:
         return segment.split()
+
+
+def _is_git_commit(segment):
+    """Token check, for forms the regex misses, such as `git -C "my dir" commit`."""
+    tokens = _tokens(segment)
+    return "git" in tokens and "commit" in tokens[tokens.index("git") + 1:]
 
 
 def _skips_hooks(segment):
@@ -72,9 +76,10 @@ def _skips_hooks(segment):
 def decide(tool_name, tool_input, hooks_path):
     command = tool_input.get("command") or ""
     lower = command.lower()
-    if "no-verify" in lower or "hookspath" in lower:
+    # `--no-v` also catches the short forms git accepts, such as `--no-veri`.
+    if "--no-v" in lower or "hookspath" in lower:
         return ("deny", "test gate: skipping or changing the git hooks is not allowed for Claude.")
-    commits = [s for s in SEGMENTS.split(command) if COMMIT.search(s)]
+    commits = [s for s in SEGMENTS.split(command) if COMMIT.search(s) or _is_git_commit(s)]
     if not commits:
         return None
     if any(_skips_hooks(s) for s in commits):
@@ -125,11 +130,14 @@ def _outcomes(report):
 
 def _run_tests(repo, tree):
     """Run the tests on one git tree in a clean folder. Returns (exit code, outcomes)."""
-    archive = _git(repo, "archive", "--format=tar", tree)
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         work, report = Path(tmp) / "tree", Path(tmp) / "report.xml"
-        with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
-            tar.extractall(work, filter="data")
+        # A temporary index and checkout-index, not `git archive`, which would
+        # leave out files marked `export-ignore` in `.gitattributes`.
+        index_env = dict(os.environ, GIT_INDEX_FILE=str(Path(tmp) / "index"))
+        subprocess.run(["git", "read-tree", tree], cwd=repo, env=index_env, check=True, capture_output=True)
+        subprocess.run(["git", "checkout-index", "-a", f"--prefix={work.as_posix()}/"],
+                       cwd=repo, env=index_env, check=True, capture_output=True)
         # Git sets GIT_DIR, GIT_INDEX_FILE and others for hooks. Tests that run
         # git in their own folders must not see them.
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
@@ -159,6 +167,8 @@ def _test_problems(repo):
     for test_id, outcome in sorted(old.items()):
         if test_id not in new:
             problems.append(f"tests-only commit removes a test: {test_id}")
+        elif new[test_id] == "skipped" and outcome != "skipped":
+            problems.append(f"tests-only commit makes an existing test skip: {test_id}")
         elif outcome == "passed" and new[test_id] != "passed":
             problems.append(f"tests-only commit stops an existing test passing: {test_id}")
         elif outcome != "failed" and new[test_id] == "failed":
