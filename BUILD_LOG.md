@@ -28,3 +28,4 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - 00:15 AI error: Claude made the first commit without the `Co-Authored-By` line that marks AI help. Caught by Claude when checking the commit right after. Not fixed by amending, so history stays as it happened. From now on every commit gets the line, and `CLAUDE.md` will say so.
 - 00:22 Correction to the 00:14 entry: `4126874` was not the first commit. The owner had already created the GitHub repo at 23:53 with an MIT licence (`0b525c3`, "Initial commit"). The two histories had no common commit, so a plain push would be refused. Claude merged the GitHub commit into local `main` (`95ea801`) instead of force-pushing over it. Nothing was rewritten.
 - 00:23 The owner pushed `main` and `docs/plan-approval`. Claude opened pull request #1 at 00:23 (branch started 00:15).
+- 00:29 The owner approved the spec and the test list, and asked for a check for defects and loopholes before merge.

@@ -1,6 +1,6 @@
 # Test list
 
-Status: draft, waiting for the owner's approval before any code. Each line is one test. Tests check behaviour against [the spec](../specs/001-core-labelling-pipeline/spec.md). They run offline in seconds and never call a model. Label quality is measured separately by evaluation.
+Status: approved by the owner on 2026-10-28. Each line is one test. Tests check behaviour against [the spec](../specs/001-core-labelling-pipeline/spec.md). They run offline in seconds and never call a model. Label quality is measured separately by evaluation.
 
 Lines marked (reused) come from test ideas in an earlier unpublished start of this project. The rest are new.
 

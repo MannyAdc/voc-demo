@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-28
 
-**Status**: Draft
+**Status**: Approved by the owner 2026-10-28
 
 **Input**: User description: "Label each CFPB consumer complaint by Product with an LLM. Every label quotes the sentence that supports it. A script checks the quote. Labels that fail go to quarantine with a reason. Compare against simple baselines at the same coverage."
 
