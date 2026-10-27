@@ -70,7 +70,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - `LLM_BACKEND` is `api`, `cli` or `mock`. Tests and CI use `mock` only.
 - The `cli` backend is a plain text call: no tools, no MCP, no settings, an empty temporary folder, no API key in its environment. Complaint text must never reach an agent that can act.
 - Default model for iteration: `claude-haiku-5-5`.
-- Every live call goes through the record and replay cache and the token ledger. The ledger path comes from an environment variable, so all worktrees share one cap.
+- Every live call goes through the record and replay cache and the token ledger. The ledger lives at one fixed path in the home folder, so all worktrees share one cap. The cap can only be lowered by an override.
 - Samples are frozen by the committed ID and content-hash lists in `splits/`. Never regenerate them.
 - Claude never prints or reads narrative text, quotes or raw model answers from real data. Commands print only IDs, labels, reasons, positions and counts.
 - Error analysis runs through the analyser (a tool-less model call that answers with one cause from a fixed list). Claude sees only the causes and counts. The owner spot-checks 10 per round with `show` in the owner's own terminal. Notes hold IDs and short descriptions, never copied text.
