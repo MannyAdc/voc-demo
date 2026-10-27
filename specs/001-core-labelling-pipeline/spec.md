@@ -24,6 +24,9 @@ The guards in this spec (hooks, checks, logs, the spend stop) are built to stop 
 - A script that opens the DuckDB file directly skips the `final` guard and the dbt test-row filter.
 - `git commit --no-verify` in the owner's own terminal skips the git hook. Only CI catches it.
 - Hooks read command text, so an unusual command form can slip past them.
+- On Claude Code versions before 2.1.295, a hook that times out lets the action through. A crash still blocks, through exit code 2.
+- The git hook is switched on per clone with `git config core.hooksPath .githooks`. A fresh clone has no test gate until the owner runs it. Claude refuses to commit until then.
+- The read guard blocks any shell command with the word `show` unless it starts with `git`, so it also blocks harmless commands such as `echo show`.
 
 ## User Scenarios & Testing *(mandatory)*
 

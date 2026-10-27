@@ -1,0 +1,12 @@
+#!/bin/sh
+# Test gate for every commit, including commits made outside Claude Code:
+# gitleaks, the names check and the tests, on exactly what will be committed.
+# Install once per clone: git config core.hooksPath .githooks
+root=$(git rev-parse --show-toplevel) || exit 1
+for py in "$root/.venv/Scripts/python.exe" "$root/.venv/bin/python"; do
+  if [ -x "$py" ]; then
+    exec "$py" "$root/.claude/hooks/test_gate.py" --git-pre-commit
+  fi
+done
+echo "pre-commit: no project Python in .venv, run uv sync" >&2
+exit 1

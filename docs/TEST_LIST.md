@@ -268,7 +268,11 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - read guard: Claude reading the recordings or ledger folder, including through a shell command naming the path, is blocked (review)
 - final guard: Claude running any command containing `final` asks the owner first (review)
 - data guard: `.env.example` is allowed only if it holds no key-like value (review)
-- data guard: notes or docs with a long run of text copied from a sampled narrative are blocked when local data is present (review)
+- data guard: notes or docs with a long run of text copied from a sampled narrative are blocked when local data is present (review) (not built in T004, cut list item 4, decided at the Wednesday 12:00 checkpoint)
+- data guard: an edit is checked on the file as it would be after the edit, so adding a real row to a synthetic fixture is blocked (T004)
+- read guard: Claude reading the `.env` file is blocked, with any tool, and `.env.example` is allowed (T004)
+- each hook fails closed: bad input exits 2 with the hook's own message (T004)
+- the git pre-commit hook clears git's own variables before running the tests, so tests that run git are not pointed at the real index (T004)
 - data guard: writing a file with the CFPB header row is blocked
 - data guard: a synthetic fixture with only `SYN-` IDs under `tests/fixtures/` is allowed (review)
 - data guard: writing a `.env` file is blocked
