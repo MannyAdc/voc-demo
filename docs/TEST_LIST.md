@@ -1,6 +1,6 @@
 # Test list
 
-Status: approved by the owner on 2026-10-28, then revised after review rounds 1 and 2. Each line is one test. Tests check behaviour against [the spec](../specs/001-core-labelling-pipeline/spec.md). They run offline in seconds and never call a model. Label quality is measured separately by evaluation.
+Status: approved by the owner on 2026-10-28, then revised after review rounds 1 to 3. Each line is one test. Tests check behaviour against [the spec](../specs/001-core-labelling-pipeline/spec.md). They run offline in seconds and never call a model. Label quality is measured separately by evaluation.
 
 Lines marked (reused) come from test ideas in an earlier unpublished start of this project. Lines marked (review) were added after a reviewer finding. The rest are new.
 
@@ -10,6 +10,7 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 
 - the test suite cannot open a network connection (reused)
 - a subprocess started by a test cannot reach the network either (review, CI only: CI runs tests with no network)
+- tests run with DuckDB extension auto-install off, dbt usage stats off, no `ANTHROPIC_API_KEY`, and `.env` loading pointed at an empty temp file (review)
 
 ## Quote check (B1, B6), `tests/test_evidence.py`
 
@@ -33,8 +34,11 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - the prompt contains the text and every label (reused)
 - the text sits between one pair of boundaries (reused)
 - a text containing a boundary tag, in any capitalisation, is quarantined as `boundary_in_text` with no model call (reused, changed)
+- lookalike tags (`</ complaint>`, `&lt;/complaint&gt;`) are caught too (review)
+- example text with a boundary tag is refused (review)
 - the same complaint gives the same prompt on every run, so its recording key is stable (review)
 - an example from the development or test split is refused (review)
+- a training example may show its recorded Product (review)
 - valid JSON is parsed (reused)
 - JSON inside a code fence is parsed (reused)
 - prose is unparseable (reused)
@@ -67,11 +71,13 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - use survives a restart (reused)
 - a reservation that just fits is allowed, one more token is refused (reused, changed)
 - the reservation is input estimate plus the output limit, plus the `cli` allowance for `cli` (review)
-- the input estimate is never below the real count on non-ASCII and redaction-heavy synthetic text (review)
-- the cap is read from the committed config and no flag can raise it (review)
+- the input estimate is never below the real count, checked against a fixture of real token counts recorded once in a logged live counting run (review, changed)
+- the cap is copied into the ledger at init and an override can only lower it (review, changed)
+- live calls are refused while the cap config has uncommitted changes (review)
+- the ledger path is the fixed path in the home folder, whatever the working folder (review)
 - init refuses when a ledger already exists (review)
 - SDK retries are off, and a retry is charged as a new call (review)
-- the input estimate is never below the real input count on the recorded fixtures (review)
+- a failed call is retried at most 2 times (review)
 - after a call, the reservation is replaced by the real use (review)
 - a failed call is charged the full reservation (review)
 - a call with no reported usage is charged the full reservation (review)
@@ -86,7 +92,8 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - replay mode with no recording is an error, not a live call (reused)
 - a different backend, model, setting or prompt is not served the old recording (reused, changed)
 - a recording file holds no headers and no key (review)
-- a failed, refused or cut-off call is not recorded, so a re-run calls live again (review)
+- a failed, refused or cut-off call is not stored in the cache (review)
+- re-scoring a run from its results file reproduces its failures exactly (review)
 - a live call is charged, a replayed call is free (reused)
 - a live call past the cap is refused before it is sent (reused)
 - a recording is still served when the budget is spent (reused)
@@ -102,6 +109,7 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - `cli` passes an environment with no API key and no repo paths (review)
 - `cli` refuses real complaints until a canary result is logged (review)
 - the temperature is recorded with each run (review)
+- a comparison that mixes backends is refused (review)
 - the key does not appear in recordings, results files or reports (review)
 - a `.env` file is loaded into the environment at start-up (review)
 
@@ -139,7 +147,9 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - same seed gives the same split, a different seed a different test set (reused)
 - the test set does not change when the development size changes (reused)
 - a command given IDs that do not match the committed list refuses to run (review)
-- a complaint whose narrative or Product hash has changed is refused (review)
+- a complaint whose narrative and Product hash has changed is refused (review)
+- the content hash covers narrative and Product together, so it does not reveal the Product (review)
+- samples are built only from rows of the pinned July file (review)
 - each list's hash matches its content (review)
 - the 50-ID quick-check list is a subset of the development list (review)
 - the download script refuses a file whose SHA-256 does not match (review)
@@ -152,6 +162,7 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - TF-IDF sees the same cut text as the LLM (review)
 - TF-IDF gives a label and a confidence for every row
 - the TF-IDF settings are read from a recorded config, not from code defaults (review)
+- changing the TF-IDF config after the first logged development evaluation needs its own `EVAL_VERSIONS.md` row (review)
 - changing the TF-IDF config after a test run is logged is refused (review)
 - the most-common-class baseline is reported at full coverage only (review)
 
@@ -174,6 +185,17 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - a run with any `not_run_budget` complaint gets no verdict (review)
 - per-Product figures and the re-weighted figure match a hand count (review)
 - the bootstrap interval is computed for the figure that decides the verdict (review)
+- re-weighted strict accuracy matches a hand count, quarantined counted as wrong (review)
+- coverage is matched by count inside each resample (review)
+- claims A and B each get their own verdict (review)
+
+## Method comparison (B23), `tests/test_metrics.py`
+
+- each confusion matrix matches a hand count, for the LLM, TF-IDF and the combined system
+- per-Product precision, recall and F1, and macro-F1, match a hand count
+- the who-was-right table counts both, only LLM, only TF-IDF and neither correctly
+- the precision and coverage points match a hand count
+- the review queue breakdown matches a hand count
 - synthetic results are reported apart and never enter accuracy figures (review)
 
 ## Pipeline (B4, B5, B9), `tests/test_pipeline.py`
@@ -193,13 +215,21 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - old rows are never changed (review)
 - the results file has every field B19 lists and no narrative text (review)
 - loading test narratives or test labels refuses unless `final` is given, while reading the test ID list is allowed (review, changed)
+- `final` refuses when the working tree is not clean (review)
+- `final` commits the test run log entry before scoring starts (review)
+- reading test rows from the staged table, or setting the dbt final flag, goes through the same guard (review)
 - dbt models leave out test rows unless the final flag is set (review)
 - a replayed scoring of the test set is logged like a live one (review)
 - a second `final` scoring needs a written reason (review)
 
 ## Error analysis and profile (B21, B22), `tests/test_analysis.py`
 
-- the error analysis output for Claude holds IDs, labels, reasons, positions and counts, and no narrative text (review)
+- every command (`label`, `evaluate`, `sample`, `profile`, `analyse`) prints no narrative, quote or raw model answer on hostile synthetic text, including in error messages (review)
+- the analyser's answer must be one cause from the fixed list, and anything else is `unparseable` (review)
+- the analyser refuses test-set complaints (review)
+- free text from the analyser is never printed (review)
+- a quote mismatch is typed by a script (spacing, quote marks, paraphrase, not found) (review)
+- the owner's spot-check result is recorded per round (review)
 - the `profile` command prints every data fact the README uses, from a synthetic fixture (review)
 
 ## Human review (B20), later feature
@@ -218,6 +248,9 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - test gate: `--no-verify` is blocked (review)
 - git pre-commit hook: runs the same gate for commits made outside Claude (review)
 - data guard: an edit to `.claude/settings.json` or a hook script asks the owner first (review)
+- read guard: Claude reading the raw data folder or the DuckDB file is blocked (review)
+- read guard: Claude running `show` asks the owner first (review)
+- final guard: Claude running any command containing `final` asks the owner first (review)
 - data guard: `.env.example` is allowed only if it holds no key-like value (review)
 - data guard: notes or docs with a long run of text copied from a sampled narrative are blocked when local data is present (review)
 - data guard: writing a file with the CFPB header row is blocked
@@ -231,6 +264,8 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 - gitleaks scans the full history (review: also run locally before each commit if installed)
 - a names check fails on any word from a deny list kept outside the repo, in a CI secret, and fails if the list is missing or empty (review)
 - `runs/TEST_RUNS.md` only grows compared with `main` (review)
+- the names check also scans commit authors, commit messages and branch names, and prints only the file and line of a match, never the word (review)
+- no tracked Parquet, JSONL or headerless CSV holds a real-format complaint ID with a text field, except committed results files with no text (review)
 - any tracked file over a size limit fails (review)
 - any tracked file with the CFPB header row and a non-`SYN-` ID fails (review)
 - dbt build with data tests runs, with usage stats off (review)

@@ -29,8 +29,9 @@ Mixing the two makes both untrustworthy.
 - The recorded CFPB label MUST be used only for scoring, never in a prompt.
 - Prompt changes MUST be scored on the development set only. The frozen test set is run once, at
   the end. A second run MUST be logged with its reason.
-- The success rule is: beat the TF-IDF baseline at the same coverage, with a 95 percent bootstrap
-  interval that lies wholly above zero.
+- The success rule: two claims are fixed before the first run (spec B10). Each must beat the TF-IDF
+  baseline at the same coverage, with a 95 percent bootstrap interval wholly above zero, on the
+  single test run.
 - Every prompt version MUST get a row in `EVAL_VERSIONS.md`, including versions that made things
   worse.
 - Every number in the README MUST come from a run in this repo, with the command shown.
@@ -83,4 +84,4 @@ contradict it. If they disagree, this file wins until both are fixed in the same
 Amendments are made in a pull request and logged in `BUILD_LOG.md`. Versions follow semantic
 versioning: MAJOR for removing or redefining a principle, MINOR for adding one, PATCH for wording.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-10-28 (1.1.0: untrusted text never reaches an agent that can act, added after review round 1)
+**Version**: 1.2.0 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-10-28 (1.1.0: untrusted text never reaches an agent that can act. 1.2.0: two claims fixed in advance)

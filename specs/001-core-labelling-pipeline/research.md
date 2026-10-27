@@ -17,6 +17,8 @@ Each item is checked on its official source before the pull request that needs i
 | Training cutoff of `claude-haiku-5-5`, compared with the July 2026 complaint dates | README | open |
 | How many input tokens `claude -p` adds for its own system prompt (the `cli` allowance) | backend pull request (B8, B12) | open |
 | Export download URL for the July 2026 file, and its SHA-256 | download pull request (B16) | open |
+| Does `claude -p` let us set an output-token limit and a temperature | backend pull request (B8, B12) | open |
+| Is branch protection with required checks available on a private personal repo, or only after it goes public | CI pull request | open |
 | Is GitHub push protection for secrets available on a private personal repo | CI pull request | open |
 | How to run CI tests with no network on GitHub-hosted Linux runners | CI pull request | open |
 

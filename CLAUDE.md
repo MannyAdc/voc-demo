@@ -6,7 +6,7 @@ Conventions for anyone, human or agent, working in this repo. The principles are
 
 A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database. An LLM labels each complaint by Product and quotes the sentence that supports it. A script checks the quote. Failures go to quarantine with a reason.
 
-- Spec: [specs/001-core-labelling-pipeline/spec.md](specs/001-core-labelling-pipeline/spec.md) (rules B1 to B22)
+- Spec: [specs/001-core-labelling-pipeline/spec.md](specs/001-core-labelling-pipeline/spec.md) (rules B1 to B23, and a threat model)
 - Tasks: [specs/001-core-labelling-pipeline/tasks.md](specs/001-core-labelling-pipeline/tasks.md)
 - Test list: [docs/TEST_LIST.md](docs/TEST_LIST.md)
 - Build log: [BUILD_LOG.md](BUILD_LOG.md)
@@ -46,7 +46,8 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 
 - Test gate: before any `git commit` from Bash or PowerShell, in any form, run the tests on the files that will really be committed. Block the commit if they fail. The one exception is a commit that changes only `tests/test_*.py` files and where the only failing tests are new ones (the red test commit). Such a commit may not delete a test or make an existing test skip. Changes to `tests/conftest.py` or fixtures are always gated. `--no-verify` is blocked. A git pre-commit hook runs the same gate for commits made outside Claude.
 - Data guard: before Write, Edit or NotebookEdit, block the file if it is raw CFPB data (CFPB header row without `SYN-` IDs), a `.env` file, contains something that looks like an API key, or (when local data is present) contains a long run of text copied from a sampled narrative. `.env.example` is allowed if it holds no key-like value. Edits to `.claude/settings.json` and the hook scripts ask the owner first.
-- Hooks only see Claude's own tool calls. Shell commands that write files are not covered by the data guard. CI checks cover everything that reaches GitHub (see below).
+- Read guard: block Claude from reading the raw data folder or the DuckDB file. Ask the owner before Claude runs `show` or any command containing `final`.
+- Hooks only see Claude's own tool calls, and they parse command text, so they are best effort. Shell commands that write files are not covered by the data guard. The real gate is CI, plus branch protection with required checks on `main` once the repo is public.
 
 ## CI checks
 
@@ -71,13 +72,15 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Default model for iteration: `claude-haiku-5-5`.
 - Every live call goes through the record and replay cache and the token ledger. The ledger path comes from an environment variable, so all worktrees share one cap.
 - Samples are frozen by the committed ID and content-hash lists in `splits/`. Never regenerate them.
-- Error analysis: Claude Code sees only IDs, labels, reasons, quote positions and counts. Claude never prints or reads narrative text from real data. The owner reads narratives with the `show` command in the owner's own terminal. Notes hold IDs and short descriptions, never copied narrative text.
+- Claude never prints or reads narrative text, quotes or raw model answers from real data. Commands print only IDs, labels, reasons, positions and counts.
+- Error analysis runs through the analyser (a tool-less model call that answers with one cause from a fixed list). Claude sees only the causes and counts. The owner spot-checks 10 per round with `show` in the owner's own terminal. Notes hold IDs and short descriptions, never copied text.
 - Evaluation runs on the development set. The frozen test set is scored once, at the end, only when the owner says "final". Claude never passes `final` on its own.
 
 ## Secrets
 
 - Keys only in environment variables or a git-ignored `.env`, which the command line loads at start-up.
 - Never print, log or echo a key.
+- If a key leaks: rotate it at once. If a name leaks: tell the owner. Any history rewrite is the owner's decision, logged with its reason.
 
 ## Names
 

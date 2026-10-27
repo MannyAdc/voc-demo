@@ -21,12 +21,13 @@ description: "Task list for the core labelling pipeline"
 
 - [ ] T001 First commit on `main`: `CLAUDE.md`, `BUILD_LOG.md`, `.gitignore`, README stub, Spec Kit files
 - [ ] T002 PR "project skeleton": `pyproject.toml` with uv, pytest config, `tests/conftest.py` that blocks sockets, one test that proves the block (B7)
+- [ ] T004 [P] PR "hooks" moves here: it must exist before any task touches real data
 - [ ] T002b PR "download and profile": tests in `tests/test_download.py` and `tests/test_analysis.py` (B16 SHA-256 check, B22), then `scripts/download.py` (pinned export URL, date and SHA-256) and the `profile` command
 - [ ] T003 PR "CI": `.github/workflows/ci.yml` runs pytest with no network, gitleaks on the full history, the names check, the file size and raw data checks on every pull request. `dbt build` is added to CI in T011.
 
 ## Phase 2: Foundational
 
-- [ ] T004 [P] PR "hooks": tests in `tests/test_hooks.py`, then `.claude/hooks/test_gate.py` (tests-only commits allowed) and `.claude/hooks/data_guard.py` (raw CFPB data, `.env`, key-like content), wired in `.claude/settings.json`
+- [ ] T004 (built before T002b, see above) PR "hooks": tests in `tests/test_hooks.py`, then `.claude/hooks/test_gate.py` (tests-only commits allowed) and `.claude/hooks/data_guard.py` (raw CFPB data, `.env`, key-like content), wired in `.claude/settings.json`
 - [ ] T005 [P] PR "quote check": tests in `tests/test_evidence.py` (B1, B6), then `src/voc/evidence.py`
 - [ ] T006 [P] PR "prompt and parsing": tests in `tests/test_prompt.py` (B4, B5), then `src/voc/prompt.py`
 - [ ] T007 PR "decision": tests in `tests/test_decision.py` (B2 both views, B3, B5), then `src/voc/decision.py`. Needs T005, T006.
@@ -43,6 +44,7 @@ description: "Task list for the core labelling pipeline"
 
 ## Phase 4: User Story 3 - Load a new month safely (P3)
 
+- [ ] T009b Live smoke test: 20 development complaints through the real `api` backend as soon as T008, T009 and T012 are merged. Checks real Product strings, the quote match rate and real token counts (recorded as the token count fixture). Logged.
 - [ ] T010 [P] [US3] PR "staged load": check DuckDB and dbt versions first, tests in `tests/test_load.py` (B14 re-runnable, schema check), then `scripts/load_month.py`
 - [ ] T011 [US3] PR "dbt curated and data tests": dbt project in `dbt/`, data tests for missing or repeated IDs and unknown Product, a test that a bad fixture fails the build. Lineage graph generated.
 - [ ] T012 [US3] PR "samples": tests in `tests/test_data.py` (B9, B16), then `src/voc/data.py`, the `sample` command, and the committed ID lists in `splits/`
@@ -58,9 +60,10 @@ description: "Task list for the core labelling pipeline"
 ## Phase 6: Polish
 
 - [ ] T017 README "Why this stack" with checked facts, and the dbt lineage graph
+- [ ] T018a PR "analyser": tests in `tests/test_analysis.py` (B21), then the `analyse` command with its fixed cause list
 - [ ] T018 Error analysis (B21) and prompt versions v2 onward (one cause per version)
 - [ ] T019 Final test run, once, with the chosen prompt version, only when the owner says "final" (B17)
-- [ ] T020 README results: every figure with the command that produced it, both views, per-Product table, re-weighted figure, synthetic injection results reported apart
+- [ ] T020 README results: every figure with the command that produced it, both views, per-Product table, re-weighted figure, synthetic injection results reported apart. README checklist, checked by the reviewer agent: the CFPB "not a statistical sample" sentence, narratives are a 1.5 percent subset with a different class mix, labels are set by the consumer, "quote found in the text" not "quote supports the label", the injection caveat for the quote-only view, the model's training cutoff, the CFPB file changes over time, Known limits (from the threat model), every number with its command
 
 ## Dependencies
 
@@ -79,11 +82,24 @@ description: "Task list for the core labelling pipeline"
 
 T001 to T016 except T011 (dbt can follow the first run): one development run with quote check, quarantine, spend stop and an honest score. Then T019 and T020 must happen before the deadline, whatever else is cut.
 
-## Cut list if time runs short (owner to confirm)
+## Checkpoints
+
+- Wednesday 12:00: T001 to T009 merged.
+- Wednesday 18:00: T009b smoke test done, T010 to T014 merged.
+- Wednesday 23:00: first full development run (T016).
+- Thursday 12:00: prompt versions done or stopped. Then API and dashboard.
+- Thursday 22:00: final test run (T019) and README results (T020).
+
+If a checkpoint is missed by more than 2 hours, cut from the list below.
+
+## Cut list if time runs short (confirmed by the owner 2026-10-28)
 
 Cut in this order, never cutting the quote check, quarantine, tests, CI, the spend stop or the build log:
 
 1. The `cli` backend (use `api` and `mock` only). This removes the canary check too.
 2. PowerShell commit parsing in the test gate (the git pre-commit hook still covers it).
 3. Full-text similarity dedupe across all pairs (keep exact normalised-text duplicates, and compare full text only where openings match).
-4. The brief's own cut order after that: synthetic sales calls, Azure, the dbt lineage graph, the agreement step.
+4. Narrative-copy detection in the data guard, and every rare commit form in the test gate (move both to Known limits).
+5. The CI check that the test run log only grows (the log stays committed).
+6. The version-to-version interval (keep the interval against TF-IDF).
+7. The brief's own cut order after that: synthetic sales calls, Azure, the dbt lineage graph, the agreement step.
