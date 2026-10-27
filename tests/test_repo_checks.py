@@ -78,6 +78,15 @@ def test_the_deny_list_is_read_from_the_local_file(tmp_path):
     assert load_deny_list({}, path=f) == ["Qwertyname"]
 
 
+def test_a_local_file_saved_with_a_bom_still_matches_its_first_name(tmp_path):
+    # Windows PowerShell 5.1 and some editors save UTF-8 with a BOM.
+    f = tmp_path / ".names-denylist"
+    f.write_text("Qwertyname\nZorblax Corp\n", encoding="utf-8-sig")
+    names = load_deny_list({}, path=f)
+    assert names == NAMES
+    assert find_name_matches({"a.txt": "by qwertyname"}, names) == [("a.txt", 1)]
+
+
 @pytest.mark.parametrize("env", [{}, {"NAMES_DENYLIST": ""}, {"NAMES_DENYLIST": "# only\n\n"}])
 def test_a_missing_or_empty_deny_list_fails(env, tmp_path):
     with pytest.raises(DenyListMissing):
