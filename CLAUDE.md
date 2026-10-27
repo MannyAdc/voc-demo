@@ -32,6 +32,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 
 - Claude may push feature branches, run `gh pr create` and `gh pr comment`. Claude never pushes to `main`, never pushes with force, never deletes a branch, never merges, and never changes repo settings. Pushing is proposing. Merging is deciding.
 - Deny rules in `.claude/settings.json` block force pushes, pushes to `main`, branch deletion and `gh pr merge`, from Bash and PowerShell. They match command text only, so they are best effort.
+- Every pull request is opened as a draft, so GitHub cannot merge it yet. Claude marks it ready only after the reviewer agent's findings are posted and the owner has decided what to fix. Claude then writes "PR #N is ready to merge." in the chat. Without those words, the owner waits.
 - The owner merges, using a normal merge commit (not squash or rebase). The owner creates any account and enters any password.
 - Until the repo is public, GitHub cannot block a merge when CI fails (protected branches need a paid plan on private repos). So the owner checks that CI is green before merging.
 - Before merge, a fresh reviewer agent reads only the diff, the spec and this file. It lists problems and does not edit. Claude posts its findings as a comment on the pull request. The owner decides what to fix.

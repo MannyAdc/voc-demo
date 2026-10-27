@@ -40,11 +40,11 @@ description: "Task list for the core labelling pipeline"
 
 - [ ] T008 [US4] PR "ledger and replay": tests in `tests/test_budget.py` and `tests/test_replay.py` (B7, B8), then `src/voc/budget.py` and `src/voc/replay.py`
 - [ ] T008b Owner task: set the monthly dollar limit in the Anthropic console. Claude writes down the steps. The owner does it and logs the time.
-- [ ] T009 [US4] PR "backends and cost": check terms and prices first (research.md), tests in `tests/test_backends.py` and `tests/test_costs.py` (B12, B13), then `src/voc/backends.py` and `src/voc/costs.py`
+- [ ] T009 [US4] PR "backends and cost" (also owns: `.env` loading, with tests pointing it at an empty temp file, and `cli` backend tests run with the home folder and `CLAUDE_CONFIG_DIR` pointed at an empty temp folder, so a badly mocked test cannot use the owner's stored login): check terms and prices first (research.md), tests in `tests/test_backends.py` and `tests/test_costs.py` (B12, B13), then `src/voc/backends.py` and `src/voc/costs.py`
 
 ## Phase 4: User Story 3 - Load a new month safely (P3)
 
-- [ ] T010 [P] [US3] PR "staged load": check DuckDB and dbt versions first, tests in `tests/test_load.py` (B14 re-runnable, schema check), then `scripts/load_month.py`
+- [ ] T010 [P] [US3] PR "staged load" (also owns: DuckDB extension auto-install and auto-load turned off on every connection, with a test): check DuckDB and dbt versions first, tests in `tests/test_load.py` (B14 re-runnable, schema check), then `scripts/load_month.py`
 - [ ] T011 [US3] PR "dbt curated and data tests": dbt project in `dbt/`, data tests for missing or repeated IDs and unknown Product, a test that a bad fixture fails the build. Lineage graph generated.
 - [ ] T012 [US3] PR "samples": tests in `tests/test_data.py` (B9, B16), then `src/voc/data.py`, the `sample` command, and the committed ID lists in `splits/`
 
