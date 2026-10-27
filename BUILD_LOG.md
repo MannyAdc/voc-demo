@@ -72,3 +72,4 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - 01:46 Fact confirmed: draft pull requests work on this private GitHub Free repo (#3 opened as a draft).
 - 01:49 AI error (caught by Claude in the red run): the new proxy test passed while red. Cause: `urlopen()` reuses one opener built on its first call, before the test set the proxy, so the test never used the proxy. A test that passes while red proves nothing. Fixed by building a fresh opener, then it failed red as it should.
 - 01:49 Review fixes for pull request #3 done. Red: 5 failed. Green: 23 passed, 1 skipped in 1.6 s with `uv run --native-tls pytest -p no:cacheprovider -W error`. Items 6 (isolate the `claude` login in `cli` tests) and 7 (no uvloop in API test servers) are written into T009 and the test list, not built now, as the owner agreed.
+- 01:49 Pull request #3 marked ready after its review and fixes (branch started 01:39).
