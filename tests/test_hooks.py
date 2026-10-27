@@ -391,6 +391,22 @@ def test_B21_running_show_is_blocked_outright(read_guard, places, tool, command)
     assert decision and decision[0] == "deny"
 
 
+@pytest.mark.parametrize("tool, tool_input", [
+    ("Read", {"file_path": ".env"}),
+    ("Grep", {"pattern": "KEY", "path": "config/.env"}),
+    ("Bash", {"command": "cat .env"}),
+    ("PowerShell", {"command": r"Get-Content C:\work\repo\.env"}),
+])
+def test_reading_the_env_file_with_the_key_is_blocked(read_guard, places, tool, tool_input):
+    decision = _read_decision(read_guard, places, tool, tool_input)
+    assert decision and decision[0] == "deny"
+
+
+def test_reading_env_example_is_allowed(read_guard, places):
+    assert _read_decision(read_guard, places, "Read", {"file_path": ".env.example"}) is None
+    assert _read_decision(read_guard, places, "Bash", {"command": "cat .env.example"}) is None
+
+
 def test_B21_git_show_and_normal_reads_are_allowed(read_guard, places):
     assert _read_decision(read_guard, places, "Bash", {"command": "git show --stat HEAD"}) is None
     assert _read_decision(read_guard, places, "Read", {"file_path": str(places["root"] / "README.md")}) is None
