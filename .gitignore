@@ -10,13 +10,26 @@ __pycache__/
 !.env.example
 
 # Raw data and anything derived from it stays out of git
-data/
+/data/
 *.csv
 *.zip
+*.parquet
+*.jsonl
 *.duckdb
 *.duckdb.wal
-recordings/
+/recordings/
 ledger.json
+
+# Small synthetic fixtures and dbt seeds are committed (synthetic IDs start with SYN-)
+!tests/fixtures/**/*.csv
+!dbt/seeds/*.csv
+!results/*.jsonl
+!splits/**
+!config/**
+!tests/fixtures/**/*.jsonl
+
+# Local names deny list for the names check, never committed
+.names-denylist
 
 # dbt build output
 dbt/target/
