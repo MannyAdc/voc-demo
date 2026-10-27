@@ -256,6 +256,7 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - test gate: a commit is blocked when tests fail
 - test gate: a commit is allowed when tests pass
 - test gate: a commit that changes only `tests/test_*.py` files is allowed when the only failing tests are new ones
+- test gate: a second red commit may keep tests that were already failing, prints each as a notice, and may still not delete one (owner decision, T004)
 - test gate: a commit that changes `tests/conftest.py` or fixtures is gated like any other (review)
 - test gate: `git -C . commit`, `git commit -a` and `git commit <path>` are all recognised, and the real committed files are checked (review)
 - test gate: a commit run from PowerShell is gated too (review)
@@ -268,7 +269,11 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - read guard: Claude reading the recordings or ledger folder, including through a shell command naming the path, is blocked (review)
 - final guard: Claude running any command containing `final` asks the owner first (review)
 - data guard: `.env.example` is allowed only if it holds no key-like value (review)
-- data guard: notes or docs with a long run of text copied from a sampled narrative are blocked when local data is present (review)
+- data guard: notes or docs with a long run of text copied from a sampled narrative are blocked when local data is present (review) (not built in T004, cut list item 4, decided at the Wednesday 12:00 checkpoint)
+- data guard: an edit is checked on the file as it would be after the edit, so adding a real row to a synthetic fixture is blocked (T004)
+- read guard: Claude reading the `.env` file is blocked, with any tool, and `.env.example` is allowed (T004)
+- each hook fails closed: bad input exits 2 with the hook's own message (T004)
+- the git pre-commit hook clears git's own variables before running the tests, so tests that run git are not pointed at the real index (T004)
 - data guard: writing a file with the CFPB header row is blocked
 - data guard: a synthetic fixture with only `SYN-` IDs under `tests/fixtures/` is allowed (review)
 - data guard: writing a `.env` file is blocked
