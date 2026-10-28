@@ -97,7 +97,8 @@ As a rough reading guide (our own, not a standard): under 0.05 is very similar, 
 
 ## The label set (B24)
 
-- There are **11 categories**. The file covers one month, so no category was renamed, merged or retired inside it. The CFPB says its category lists changed in April 2017 and in 2023 (its complaint database page, read 28 October 2026), so older files would need this check again.
+- There are **11 categories**. They are exactly the 11 products in the CFPB's own list, "Consumer complaint form product and issue options", effective 24 August 2023 ([PDF](https://files.consumerfinance.gov/f/documents/cfpb_consumer_complaint_form_product_issue_options_August_2023_FINAL.pdf), read 28 October 2026). The file covers one month, so no category was renamed, merged or retired inside it. The CFPB says its lists changed in April 2017 and in 2023, so older files would need this check again.
+- **The CFPB publishes no written definition of each category.** That document's "definitions" only explain its change markers. What it does give is the official list of sub-categories under each category. These lists are the label definitions this project uses, in `config/labels.toml`, copied word for word.
 - Each category has between 2 and 11 sub-categories among complaints with text, not counting values too rare to show. They are counted as background only and are not labelled.
 - Some categories overlap in ways a consumer could confuse. These are guesses from the category names, to check later in error analysis:
   - Debt collection and the loan categories (credit card, student loan, payday loan), when a collector chases a loan.
@@ -105,7 +106,7 @@ As a rough reading guide (our own, not a standard): under 0.05 is very similar, 
   - Credit reporting and debt or credit management, when a credit repair service is involved.
   - Checking or savings account, money transfer and prepaid card, which all move money.
 
-**Proposal:** use all 11 categories as they are, with no merging or mapping. They are frozen in `config/labels.toml` after the owner agrees.
+**Decided by the owner on 28 October:** all 11 categories are used as they are, with no merging or mapping. They are frozen in `config/labels.toml`.
 
 ## Sample sizes (B25)
 
@@ -141,7 +142,7 @@ Split across categories in proportion to the pool:
 - In the **test set**, two categories fall below 30: prepaid card (27) and debt or credit management (19). Their per-category scores are shown as "too few to judge". They still count in the overall score.
 - In the **development set**, 8 of 11 categories are below 30. The development set is used to find error patterns, not to score categories, so no per-category score is reported from it.
 
-## For the owner to decide
+## Decisions (owner, 28 October)
 
-1. Use all 11 categories as they are, with no merging?
-2. Accept "too few to judge" for prepaid card and debt or credit management in the test set, and no per-category scores from the development set?
+1. All 11 categories are used as they are, with no merging.
+2. Prepaid card and debt or credit management are "too few to judge" in the per-category test tables, and the development set gives no per-category scores. Small categories are where the two methods differ most. TF-IDF learns only from examples, and prepaid card has about 100 in training. The LLM reads the category's official sub-category list and needs no examples (zero-shot). So small categories are a fair test of that difference, and the README will report it with its limits: few test complaints, and definitions that are lists, not prose.

@@ -1,0 +1,70 @@
+# The frozen label set (B24). Decided by the owner on 28 October 2026, after docs/DATA.md.
+#
+# Labels are the 11 Product values in the July 2026 file, used as they are.
+# `covers` lists the sub-products the CFPB's complaint form offers under each one,
+# copied from "Consumer complaint form product and issue options", effective
+# 24 August 2023, with its change markers such as "(added)" left out:
+# https://files.consumerfinance.gov/f/documents/cfpb_consumer_complaint_form_product_issue_options_August_2023_FINAL.pdf
+# (read 28 October 2026, SHA-256 6827dc88463217507e103fb0ec0eb7583dc203eb608ff6efd152bebc18655535).
+# The CFPB publishes no written definition of each category. These lists are the closest official description.
+
+[[label]]
+name = "Checking or savings account"
+covers = ["CD", "Checking account", "Other banking product or service", "Savings account"]
+
+[[label]]
+name = "Credit card"
+covers = ["General-purpose credit card or charge card", "Store credit card"]
+
+[[label]]
+name = "Credit reporting or other personal consumer reports"
+covers = ["Credit reporting", "Other personal consumer report"]
+
+[[label]]
+name = "Debt collection"
+covers = [
+    "Auto debt", "Credit card debt", "Federal student loan debt", "Medical debt", "Mortgage debt",
+    "Payday loan debt", "Private student loan debt", "Rental debt", "Telecommunications debt", "Other debt",
+    "I do not know",
+]
+
+[[label]]
+name = "Debt or credit management"
+covers = [
+    "Credit repair services", "Debt settlement", "Mortgage modification or foreclosure avoidance",
+    "Student loan debt relief",
+]
+
+[[label]]
+name = "Money transfer, virtual currency, or money service"
+covers = [
+    "Domestic (US) money transfer", "International money transfer (remittance)", "Virtual currency",
+    "Check cashing service", "Foreign currency exchange", "Mobile or digital wallet",
+    "Money order, traveler's check or cashier's check",
+]
+
+[[label]]
+name = "Mortgage"
+covers = [
+    "Conventional home mortgage", "FHA mortgage", "Home equity loan or line of credit (HELOC)",
+    "Manufactured home loan", "Reverse mortgage", "USDA mortgage", "VA mortgage", "Other type of mortgage",
+]
+
+[[label]]
+name = "Payday loan, title loan, personal loan, or advance loan"
+covers = [
+    "Installment loan", "Payday loan", "Pawn loan", "Personal line of credit", "Title loan", "Earned wage access",
+    "Tax refund anticipation loan or check", "Other advances of future income",
+]
+
+[[label]]
+name = "Prepaid card"
+covers = ["General-purpose prepaid card", "Gift card", "Government benefit card", "Payroll card", "Student prepaid card"]
+
+[[label]]
+name = "Student loan"
+covers = ["Federal student loan", "Private student loan"]
+
+[[label]]
+name = "Vehicle loan or lease"
+covers = ["Loan", "Lease"]
