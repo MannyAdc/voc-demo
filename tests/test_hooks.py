@@ -570,6 +570,65 @@ def test_B17_a_word_that_only_contains_final_is_not_asked(read_guard, places):
     assert _read_decision(read_guard, places, "Bash", {"command": "echo finally finalise"}) is None
 
 
+# T010 add-on 1: the next month's data folder (`VOC_NEXT_DATA_DIR`) is protected like July's
+
+
+@pytest.fixture
+def next_places(places, tmp_path):
+    following = tmp_path / "rawnext_2026_08"
+    following.mkdir()
+    env = {"VOC_DATA_DIR": str(places["data"]), "VOC_NEXT_DATA_DIR": str(following)}
+    return {**places, "next": following, "env": env}
+
+
+@pytest.mark.parametrize("tool, field", [("Read", "file_path"), ("Grep", "path"), ("Glob", "path")])
+def test_B21_reading_the_next_month_data_folder_is_blocked(read_guard, next_places, tool, field):
+    decision = _read_decision(read_guard, next_places, tool, {field: str(next_places["next"] / "x.csv")})
+    assert decision and decision[0] == "deny"
+
+
+def test_B21_the_next_month_folder_is_blocked_when_only_it_is_set(read_guard, next_places):
+    env = {"VOC_NEXT_DATA_DIR": str(next_places["next"])}
+    decision = _read_decision(read_guard, next_places, "Read", {"file_path": str(next_places["next"] / "x.csv")},
+                              env=env)
+    assert decision and decision[0] == "deny"
+
+
+def test_B21_the_next_month_folder_is_also_found_in_a_local_env_file(read_guard, next_places):
+    next_places["root"].mkdir()
+    (next_places["root"] / ".env").write_text(
+        f"VOC_DATA_DIR={next_places['data']}\nVOC_NEXT_DATA_DIR={next_places['next']}\n", encoding="utf-8")
+    decision = _read_decision(read_guard, next_places, "Read", {"file_path": str(next_places["next"] / "x.csv")},
+                              env={})
+    assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("command", [
+    'ls "$VOC_NEXT_DATA_DIR"',
+    r"Get-ChildItem $env:VOC_NEXT_DATA_DIR",
+    "cd /c && head -3 rawnext_2026_08/a.csv",
+])
+def test_B21_a_shell_command_naming_the_next_month_folder_is_blocked(read_guard, next_places, command):
+    decision = _read_decision(read_guard, next_places, "Bash", {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+def test_B21_a_shell_command_with_the_full_next_month_path_is_blocked(read_guard, next_places):
+    command = "type " + str(next_places["next"]).replace("/", "\\") + "\\x.csv"
+    decision = _read_decision(read_guard, next_places, "PowerShell", {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+def test_B21_searching_a_folder_that_holds_the_next_month_folder_is_blocked(read_guard, next_places, tmp_path):
+    following = tmp_path / "elsewhere" / "rawnext_2026_08"
+    following.mkdir(parents=True)
+    env = {"VOC_DATA_DIR": str(next_places["data"]), "VOC_NEXT_DATA_DIR": str(following)}
+    for tool in ("Grep", "Glob"):
+        decision = _read_decision(read_guard, next_places, tool, {"pattern": "x", "path": str(following.parent)},
+                                  env=env)
+        assert decision and decision[0] == "deny"
+
+
 # Each hook script fails closed
 
 
