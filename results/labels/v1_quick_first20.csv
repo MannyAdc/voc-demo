@@ -1,0 +1,21 @@
+complaint_id,split,prompt_version,proposed_label,quote_start,quote_end,decision,reason,label,cut,recording_key,source,input_tokens,output_tokens
+23754556,dev,v1,"Money transfer, virtual currency, or money service",0,92,accepted,,"Money transfer, virtual currency, or money service",no,36f2ea4677547f2e267e02bab59eaae9cd940c76d0877adbabfe6d5f7ec42ed7,live,1256,367
+23763937,dev,v1,Credit card,0,63,accepted,,Credit card,no,f56a2819d22a75a88e945f82aeeec4d9d6d21ae68f1cb8f2b624840f5b57fb14,live,1111,43
+23771988,dev,v1,Credit reporting or other personal consumer reports,198,231,accepted,,Credit reporting or other personal consumer reports,no,e4a34e11521e87bb454626babb7cc2dbea84410877be4c69c004e014db138883,live,2089,231
+23777406,dev,v1,Checking or savings account,49,90,accepted,,Checking or savings account,no,3b405f8e85270638c802a9b730812bcf6b1db4f9ca7ead77bb56d39a42368d27,live,1599,139
+23779205,dev,v1,Credit reporting or other personal consumer reports,0,88,accepted,,Credit reporting or other personal consumer reports,no,e0af7909c2b65af9d2c0ebd6782663bb698bc2a3c569f3b42dbfa0c6f67da0a5,live,977,65
+23792826,dev,v1,Credit reporting or other personal consumer reports,34,64,accepted,,Credit reporting or other personal consumer reports,no,5093a687caad4ad6d5ea7edfd271e7fcd3f1d121717e4736754d0bc122628af6,live,939,142
+23809590,dev,v1,Credit reporting or other personal consumer reports,106,176,accepted,,Credit reporting or other personal consumer reports,yes,e1f3d4c2c1c285cb7fe5e0906e2e4703193f5b9a19c0cf146d0db69406f749d6,live,2055,544
+23822259,dev,v1,Debt collection,437,524,accepted,,Debt collection,no,a628f6dd73477abbb70375b2613b1ba789f67846f17e7075ab3a076a3faec15f,live,1401,271
+23846924,dev,v1,Student loan,316,391,accepted,,Student loan,no,92e775bcbfd9e6958b907fb2ce6f4a9a625bfe44815c972af79c9f0d2708ee34,live,1352,39
+23851291,dev,v1,Credit card,0,50,accepted,,Credit card,no,d3c3e6fb50abbb0cb0ef136ce18e16c527e54f491dec56ba77aa603401fb9b82,live,1254,34
+23872283,dev,v1,Credit reporting or other personal consumer reports,985,1082,accepted,,Credit reporting or other personal consumer reports,no,3eae2eb0fda74d0c699db0b2be88373745100810a5b2b31862eb51baabfce127,live,1316,223
+23873633,dev,v1,Debt collection,36,114,accepted,,Debt collection,no,4c1b3991ddd60daf9fc545f2ec971e19f29db02c4fc71a2f6119940f2735a625,live,964,222
+23885818,dev,v1,Credit reporting or other personal consumer reports,0,97,accepted,,Credit reporting or other personal consumer reports,no,42cc9f8e054d0fefd9e5b05dd7df57838655dd53c896dc537486b176b681056a,live,1042,315
+23888639,dev,v1,Mortgage,0,53,accepted,,Mortgage,no,9fa9f522a347e1e4fff678340d21ad6d072d4cd028c5fc5d63ef8c7873903622,live,1831,49
+23903174,dev,v1,Debt collection,0,57,accepted,,Debt collection,no,6b8d59dbbb325c0680b9136b5b656402ba8e3e284e186610be602db76cd32d43,live,1334,231
+23934787,dev,v1,"Money transfer, virtual currency, or money service",135,189,accepted,,"Money transfer, virtual currency, or money service",no,b04524fcb6046a2f32ca6f82f47fcf91b2003f2bec0e48aac5cf1eaee9c5d47a,live,973,136
+23942356,dev,v1,Checking or savings account,39,128,accepted,,Checking or savings account,no,0946d6fa9f6d3570ea1af1073631e1e9b1891b4d4de595da7674cd05a0657f98,live,1020,45
+23945682,dev,v1,Checking or savings account,0,77,accepted,,Checking or savings account,no,ed3d4cc88eb079b0f5190e1dec124d999eb1dfb83aa47e1350c6bc8f64fe14bb,live,1177,50
+23949809,dev,v1,Mortgage,43,119,accepted,,Mortgage,no,1d9f7f36ee56b943bb54d64b581afd5352e4135c7829994aab5a589530562c64,live,1528,515
+23964125,dev,v1,Student loan,0,56,accepted,,Student loan,no,2ddead4497bd26de32c084964f6e1ecc2a9337601f5771738307de467b340619,live,1575,38
