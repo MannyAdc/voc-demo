@@ -528,3 +528,37 @@ def test_B7_a_complete_run_records_no_stop(repo):
     assert _run(repo, _env(repo, _good("")), "dev") == 0
     summary = json.loads((repo / "results" / "labels" / "v1_dev.json").read_text(encoding="utf-8"))
     assert summary["stopped"] is None and summary["not_tried"] == 0
+
+
+# B23, B25: the run time is measured, so the cost and time per 1,000 complaints can be reported
+
+def test_B23_the_run_summary_records_the_run_time_and_the_time_per_1000_complaints():
+    from voc.pipeline import format_run, summarise
+
+    outcomes = _label(_complaints(_text(0), _text(1), _text(2), _text(3)), FakeCall(_good))
+    summary = summarise(outcomes, "dev", _version(), "fake", "0" * 64, run_seconds=2.0)
+    assert summary["run_seconds"] == 2.0
+    assert summary["seconds_per_1000_complaints"] == 500.0
+    assert "run time: 2.0 seconds, 500.0 seconds per 1,000 complaints" in format_run(summary, "results/labels/x.csv")
+
+
+def test_B23_a_summary_with_no_complaints_has_no_time_per_1000():
+    from voc.pipeline import summarise
+
+    summary = summarise([], "dev", _version(), "fake", "0" * 64, run_seconds=0.5)
+    assert summary["run_seconds"] == 0.5 and summary["seconds_per_1000_complaints"] is None
+
+
+def test_B23_voc_label_writes_its_run_time(repo):
+    assert _run(repo, _env(repo, _good("")), "dev") == 0
+    summary = json.loads((repo / "results" / "labels" / "v1_dev.json").read_text(encoding="utf-8"))
+    assert isinstance(summary["run_seconds"], float) and summary["run_seconds"] >= 0
+    assert summary["seconds_per_1000_complaints"] is not None
+
+
+def test_B19_the_results_file_names_its_accepted_label_column(repo):
+    assert _run(repo, _env(repo, _good("")), "dev") == 0
+    rows = list(csv.DictReader((repo / "results" / "labels" / "v1_dev.csv").read_text(encoding="utf-8")
+                               .splitlines()))
+    assert rows and all(r["accepted_label"] == "Mortgage" for r in rows)
+    assert "label" not in rows[0]
