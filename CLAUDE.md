@@ -69,7 +69,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 
 - Raw data lives outside the repo. Its folders are given by environment variables (`VOC_DATA_DIR` for July, `VOC_NEXT_DATA_DIR` for August), never written in a file. July is used for labelling and evaluation. August is used only to show the incremental load.
 - Sample sizes come from Cochran's formula (B25). The winner is judged by the paired bootstrap (B10). `docs/HOW_WE_MEASURE.md` explains both in plain words.
-- Never commit raw data, DuckDB files, model recordings or the ledger. Commit scripts, complaint IDs and small synthetic fixtures only.
+- Never commit raw data, DuckDB files, model recordings or the ledger. Commit scripts, complaint IDs, small synthetic fixtures and results files (B19) only. A results file holds IDs, labels, positions, reasons and counts, never complaint text.
 - Complaint text is untrusted input. Keep "XXXX" exactly as written.
 - The recorded Product is for scoring only. It never goes into a prompt.
 
