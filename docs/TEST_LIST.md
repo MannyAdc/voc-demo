@@ -142,7 +142,8 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - the opening key ignores case, digits and redaction runs (reused)
 - different openings have different keys (reused)
 - two narratives with the same opening but different bodies are both kept (review)
-- a copy with a different opening is found by full-text similarity (review)
+- a copy with a different opening is found by full-text similarity (review) (cut on 28 October with cut list item 3: full text is compared only where openings match)
+- two narratives with the same opening and very similar full text count as one duplicate (cut list item 3, what is kept)
 - dedupe gives the same result whatever order the rows arrive in (review)
 - the number removed is reported (review)
 - the similarity threshold is recorded with the sample (review)
@@ -243,6 +244,13 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - a quote mismatch is typed by a script (spacing, quote marks, paraphrase, not found) (review)
 - the owner's spot-check result is recorded per round (review)
 - the `profile` command prints every data fact the README uses, from a synthetic fixture (review)
+- the `profile` command prints, per Product, the narrative count, length percentiles, Sub-product counts and counts per year received, from a synthetic fixture (B22, 28 October)
+- the `profile` command prints counts only: a hostile synthetic narrative never appears in its output (B22, B21)
+- the label set config lists every label once, and the prompt and both baselines read the same list from it (B24)
+- a recorded Product that is not in the label set, and has no mapping, stops sampling with a clear message (B24)
+- the sample size function gives about 2,732 for a margin of 1.5 points at 80 percent and 95 percent (B25)
+- the test sample takes every complaint of a Product with fewer than the cap, and records that it did (B25)
+- a smaller test size than B25 gives is refused unless a reason is given, and the reason is written with the sample (B25)
 
 ## Human review (B20), later feature
 
@@ -266,7 +274,7 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - read guard: Claude reading the recordings or ledger folder, including through a shell command naming the path, is blocked (review)
 - final guard: Claude running any command containing `final` asks the owner first (review)
 - data guard: `.env.example` is allowed only if it holds no key-like value (review)
-- data guard: notes or docs with a long run of text copied from a sampled narrative are blocked when local data is present (review) (not built in T004, cut list item 4, decided at the Wednesday 12:00 checkpoint)
+- data guard: notes or docs with a long run of text copied from a sampled narrative are blocked when local data is present (review) (cut on 28 October, cut list item 4, moved to Known limits)
 - data guard: an edit is checked on the file as it would be after the edit, so adding a real row to a synthetic fixture is blocked (T004)
 - read guard: Claude reading the `.env` file is blocked, with any tool, and `.env.example` is allowed (T004)
 - each hook fails closed: bad input exits 2 with the hook's own message (T004)

@@ -26,7 +26,7 @@ A batch pipeline loads the CFPB July 2026 export into DuckDB, builds de-duplicat
 
 **Constraints**: one hard token cap shared by all runs and worktrees. No raw data in git. No network in tests.
 
-**Scale/Scope**: one month of data, about 10,000 narratives, a development sample of about 300 and a frozen test set of about 1,000.
+**Scale/Scope**: the July 2026 export. Row and narrative counts come from the `profile` command (B22). A development sample of about 300 and a frozen test set of about 3,000 (B25). *Changed on 28 October: the earlier estimate of about 10,000 narratives and a test set of about 1,000 is replaced.*
 
 ## Constitution Check
 

@@ -22,15 +22,21 @@ description: "Task list for the core labelling pipeline"
 - [x] T001 First commit on `main`: `CLAUDE.md`, `BUILD_LOG.md`, `.gitignore`, README stub, Spec Kit files
 - [x] T002 PR "project skeleton": `pyproject.toml` with uv, pytest config, `tests/conftest.py` that blocks sockets, one test that proves the block (B7)
 - [x] T004 [P] PR "hooks" moves here: it must exist before any task touches real data
-- [ ] T002b PR "download and profile": tests in `tests/test_download.py` and `tests/test_analysis.py` (B16 SHA-256 check, B22), then `scripts/download.py` (pinned export URL, date and SHA-256) and the `profile` command. Then, from its output (counts only), `docs/DATA.md`: the exploratory data analysis, the label set assessment (B24) and the sample size calculation (B25). The owner reviews `docs/DATA.md` before T012 draws any sample.
+- [ ] T002b PR "download and profile": tests in `tests/test_download.py` and `tests/test_analysis.py` (B16 SHA-256 check, B22), then `scripts/download.py` (pinned export URL, date and SHA-256) and the `profile` command. Then, from its output (counts only), `docs/DATA.md`: the exploratory data analysis, the label set assessment (B24) and the sample size calculation (B25). From `docs/DATA.md`, the frozen label set in `config/labels.toml`. The owner reviews both before T012 draws any sample.
 - [x] T003 PR "CI": `.github/workflows/ci.yml` runs pytest with no network, gitleaks on the full history, the names check, the file size and raw data checks on every pull request. `dbt build` is added to CI in T011.
 
 ## Phase 2: Foundational
 
 - [x] T004 (built before T002b, see above) PR "hooks": tests in `tests/test_hooks.py`, then `.claude/hooks/test_gate.py` (tests-only commits allowed) and `.claude/hooks/data_guard.py` (raw CFPB data, `.env`, key-like content), wired in `.claude/settings.json`
 - [ ] T005 [P] PR "quote check": tests in `tests/test_evidence.py` (B1, B6), then `src/voc/evidence.py`
-- [ ] T006 [P] PR "prompt and parsing": tests in `tests/test_prompt.py` (B4, B5), then `src/voc/prompt.py`
-- [ ] T006b PR "merge verdict", right after T005 and T006: a `/merge-verdict` command. A script checks CI is green, the red commit came before the code, every review finding is fixed or deferred with a reason, and for parallel branches that they touch no shared file and the tests pass on both merged together. Claude then gives a one-line verdict (MERGE or FIX FIRST, with the reason and, for parallel branches, the merge order). The owner still merges. Used on every pull request from then on.
+- [ ] T006 [P] PR "prompt and parsing": tests in `tests/test_prompt.py` (B4, B5), then `src/voc/prompt.py`. The prompt takes the label list as an input, and tests use synthetic labels. The real list comes later from `config/labels.toml`, which T002b creates (B24).
+- [ ] T006b PR "merge verdict", right after T005 and T006: a `/merge-verdict` command. A script runs the mechanical checks:
+  - CI is green.
+  - The red commit came before the code.
+  - Every review finding is fixed or deferred with a reason.
+  - For parallel branches: they touch no shared file, and the tests pass on both merged together.
+
+  Claude then gives a one-line verdict: MERGE or FIX FIRST, with the reason, and the merge order for parallel branches. The owner still merges. T005 and T006 get the same checks by hand. The command is used on every pull request from T007 on.
 - [ ] T007 PR "decision": tests in `tests/test_decision.py` (B2 both views, B3, B5), then `src/voc/decision.py`. Needs T005, T006.
 
 **Checkpoint**: one model answer can be checked and accepted or quarantined, with no model call.
@@ -79,7 +85,7 @@ description: "Task list for the core labelling pipeline"
 - Workstream B (data): T010, T011, T012
 - Workstream C (tooling): T004, then T015
 - Each workstream runs in its own git worktree. Every run in parallel is logged in `BUILD_LOG.md`.
-- Agreed on 28 October: T005 and T006 run in parallel, one by Claude in the main worktree and one by a second agent in its own worktree. Each gets its own red commit, reviewer and owner merge. Both go through `/merge-verdict` (T006b).
+- Agreed on 28 October: T005 and T006 run in parallel, one by Claude in the main worktree and one by a second agent in its own worktree. Each gets its own red commit, reviewer and owner merge. Both get the `/merge-verdict` checks by hand, because T006b builds the command after them. The second agent does not edit `BUILD_LOG.md`, so the two branches share no file. Claude logs the parallel run.
 
 ## MVP
 
