@@ -11,6 +11,7 @@ import os
 import sys
 from pathlib import Path
 
+from voc.budget import BudgetError, init_ledger, raise_cap
 from voc.datafile import DataFileError, find_export, load_pins, sha256_of, verify
 from voc.env import settings
 from voc.profile import format_profile, profile
@@ -40,7 +41,18 @@ def _profile(config, root, args):
         print(f"\nwritten: {args.write}")
 
 
-COMMANDS = {"data-hash": _data_hash, "profile": _profile}
+def _ledger_init(config, root, args):
+    cap = init_ledger(root, cap=args.cap)
+    print(f"ledger created in the home folder, cap {cap:,} tokens")
+
+
+def _ledger_raise(config, root, args):
+    cap = raise_cap(root, reason=args.reason)
+    print(f"cap raised to {cap:,} tokens, event written to the ledger and BUILD_LOG.md")
+
+
+COMMANDS = {"data-hash": _data_hash, "profile": _profile,
+            ("ledger", "init"): _ledger_init, ("ledger", "raise"): _ledger_raise}
 
 
 def main(argv=None, env=None, root=None):
@@ -49,12 +61,18 @@ def main(argv=None, env=None, root=None):
     sub.add_parser("data-hash", help="print the export file's name, size and SHA-256")
     p = sub.add_parser("profile", help="print data facts as counts (B22)")
     p.add_argument("--write", help="also write the facts as JSON to this file")
+    ledger = sub.add_parser("ledger", help="the token ledger (B8)").add_subparsers(dest="action", required=True)
+    init = ledger.add_parser("init", help="create the ledger with the committed cap")
+    init.add_argument("--cap", type=int, help="a lower cap than the committed one")
+    up = ledger.add_parser("raise", help="raise the cap to the committed value")
+    up.add_argument("--reason", required=True, help="why the cap is raised, written to the ledger and the build log")
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
     root = Path.cwd() if root is None else Path(root)
     config = settings(dict(os.environ) if env is None else env, root)
     try:
-        COMMANDS[args.command](config, root, args)
-    except DataFileError as err:
+        command = (args.command, args.action) if args.command == "ledger" else args.command
+        COMMANDS[command](config, root, args)
+    except (DataFileError, BudgetError) as err:
         print(f"error: {err}")
         return 1
     except Exception as err:  # B21: the type only, never the message

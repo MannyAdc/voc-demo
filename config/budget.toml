@@ -1,0 +1,11 @@
+# B8: the token cap for all live model calls, input plus output tokens.
+# Every change to this file is a visible commit. Live calls and `voc ledger raise`
+# are refused while this file has uncommitted changes.
+# The cap is copied into the ledger by `voc ledger init`. To raise it later,
+# commit a higher value here, then run `voc ledger raise --reason "..."`.
+cap_tokens = 20000000
+
+# Added to the UTF-8 byte count of a prompt to make the worst-case input estimate.
+# It covers the tokens the API adds around the prompt. Still to be checked against
+# real token counts from the live smoke test (T014b).
+input_margin_tokens = 100
