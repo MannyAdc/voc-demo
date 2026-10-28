@@ -112,7 +112,11 @@ As a rough reading guide (our own, not a standard): under 0.05 is very similar, 
 
 The samples were drawn on 28 October with `uv run --native-tls voc sample` (about 5 seconds), from the July rows loaded with `uv run --native-tls voc load july_2026`. The settings are in `config/samples.toml` and the frozen lists in `splits/`.
 
-- **Copies removed: 699.** These are the 623 exact copies, plus 76 near-copies: narratives that open with the same words and share at least 90 percent of their five-word phrases (Jaccard similarity of word 5-grams). The lowest complaint ID of each group is kept.
+- **Copies removed: 699.** `voc sample` prints 623 exact copies and 76 near-copies. The 623 match the profile's count of exact copies.
+  - An exact copy has the same text as an earlier narrative, after ignoring case and spacing.
+  - A near-copy opens with the same six words as a kept narrative, and the two texts overlap closely. We split each text into its runs of five words in a row. We count the runs both texts share, and divide by the runs found in either text. A near-copy scores at least 0.9 (statisticians call this the Jaccard similarity of word 5-grams).
+  - The lowest complaint ID of each group is kept.
+- **This copy test is strict.** Two changed words far apart in a 100-word text give about 0.81, so both texts are kept. A few close copies may therefore sit in both the training and the test set. That can only help TF-IDF, which learns from the training set. It cannot help the LLM, which learns nothing. So it does not flatter the LLM.
 - **The pool: 9,303 complaints.**
 
 Cochran's formula, with the correction for a pool of this size (see [How we measure](HOW_WE_MEASURE.md)):

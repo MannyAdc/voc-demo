@@ -30,6 +30,8 @@ The guards in this spec (hooks, checks, logs, the spend stop) are built to stop 
 - `git cherry-pick`, `git revert` and `git commit-tree` run no pre-commit hook, so they can create a commit the test gate has not checked. Only CI catches it.
 - The read guard checks path-like fields and command text. A path built at run time inside a script (for example joined from parts in Python) is not seen.
 - The data guard does not check for complaint text copied into notes or docs (cut on 28 October, cut list item 4). The read guard keeps Claude from reading that text in the first place.
+- `voc sample` records the pinned file's SHA-256 in `splits/manifest.json`, but it does not check that the staged rows came from that file. `voc load` checks the file against its pin before loading, and the staged table does not keep the file's hash.
+- No CI check yet stops `splits/` from changing compared with `main`. `voc sample` refuses to run while any list file is there, but a deleted folder can be rebuilt. With the same code and seed, the rebuilt lists are the same.
 
 ## User Scenarios & Testing *(mandatory)*
 

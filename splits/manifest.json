@@ -1,7 +1,9 @@
 {
+  "dev_margin": 0.05,
   "duplicate_measure": "Jaccard similarity of word 5-grams, punctuation ignored",
   "duplicate_threshold": 0.9,
   "duplicates_removed": 699,
+  "exact_copies": 623,
   "lists": {
     "dev": {
       "count": 370,
@@ -16,6 +18,8 @@
       "sha256": "9e1c70d399e927d88ffaf574f790db836c2581648cd5cff1f973a51341f6a5e7"
     }
   },
+  "month": "july_2026",
+  "near_copies": 76,
   "opening_words": 6,
   "quick_check": [
     "23754556",
@@ -70,5 +74,6 @@
     "24735887"
   ],
   "seed": 20261028,
-  "source_sha256": "beb05a0a61e1ccfe186ad1f7c6ab062bc7a089f7bda28adfe7e6c4c9ccefa57c"
+  "source_sha256": "beb05a0a61e1ccfe186ad1f7c6ab062bc7a089f7bda28adfe7e6c4c9ccefa57c",
+  "test_margin": 0.02
 }
