@@ -157,6 +157,23 @@ def test_a_commit_is_allowed_when_tests_pass(gate, project):
     assert gate.check_staged(project) == []
 
 
+def test_the_gate_saves_the_full_pytest_output_and_names_the_folder(gate, project, tmp_path, monkeypatch):
+    # The gate printed only test names, so the cause of a failure was lost (BUILD_LOG.md, 29 October).
+    monkeypatch.setattr(gate, "LOG_DIR", tmp_path / "gate-log")
+    _stage(project, "src/mod.py", "def f():\n    return 2\n")
+    problems = gate.check_staged(project)
+    assert "assert 2 == 1" in (tmp_path / "gate-log" / "staged.txt").read_text(encoding="utf-8")
+    assert (tmp_path / "gate-log" / "staged.xml").is_file()
+    assert any(str(tmp_path / "gate-log") in problem for problem in problems)
+
+
+def test_a_tests_only_commit_saves_the_output_of_both_runs(gate, project, tmp_path, monkeypatch):
+    monkeypatch.setattr(gate, "LOG_DIR", tmp_path / "gate-log")
+    _stage(project, "tests/test_new.py", "def test_new():\n    assert False\n")
+    assert gate.check_staged(project) == []
+    assert (tmp_path / "gate-log" / "staged.txt").is_file() and (tmp_path / "gate-log" / "head.txt").is_file()
+
+
 def test_only_the_staged_files_are_tested_not_the_working_tree(gate, project):
     _stage(project, "src/mod.py", "def f():\n    return 1  # staged\n")
     _write(project, "src/mod.py", "def f():\n    return 99\n")  # not staged
@@ -276,7 +293,19 @@ def hooked(project, tmp_path):
     _git(project, "config", "core.hooksPath", hooks.as_posix())
     env = dict(os.environ, NAMES_DENYLIST="Qwertyname")
     env["PATH"] = str(fake) + os.pathsep + env["PATH"]
+    # The gate inside these tests keeps its output apart, so it never replaces the output of the gate
+    # that runs these tests.
+    env["VOC_GATE_LOG_DIR"] = str(tmp_path / "inner-gate-log")
     return project, env
+
+
+def test_the_gate_output_folder_comes_from_the_environment(hooked, tmp_path):
+    repo, env = hooked
+    _stage(repo, "src/mod.py", "def f():\n    return 2\n")
+    result = _commit(repo, env, "-m", "break")
+    assert result.returncode != 0
+    assert (tmp_path / "inner-gate-log" / "staged.txt").is_file()
+    assert str(tmp_path / "inner-gate-log") in result.stdout + result.stderr
 
 
 def _commit(repo, env, *args):
