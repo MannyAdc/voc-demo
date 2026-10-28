@@ -499,7 +499,7 @@ def test_B8_the_margin_is_confirmed_only_through_a_committed_config_and_the_even
 
 def test_B8_the_committed_config_has_the_trial_limit_until_the_margin_is_confirmed(budget):
     config = budget.load_config(Path(__file__).resolve().parents[1])
-    assert config["trial_cap_tokens"] == 100_000
+    assert config["trial_cap_tokens"] == 200_000  # raised from 100,000 on 29 October (owner decision)
     assert config["margin_confirmed"] is False
 
 
