@@ -117,7 +117,7 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - `api` with no key in the environment fails with a clear message
 - the key never appears in an error message or log line
 - `LLM_BACKEND=cli` is an unknown value and fails with a clear message (the `cli` backend and its four tests were cut on 28 October)
-- the temperature is recorded with each run (review), or the effort setting if the API no longer accepts a temperature (checked in T009)
+- the effort setting, model and API version are recorded with each run, and no temperature is ever sent (review, changed in T009: the API refuses a temperature)
 - a comparison that mixes backends is refused (review)
 - the key does not appear in recordings, results files or reports (review)
 - a `.env` file is loaded into the environment at start-up (review)
