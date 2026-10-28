@@ -10,21 +10,27 @@ estimate and the recording key both see it.
 
 `mock` serves recorded fixtures only and never uses the network.
 """
+import os
+
 from voc.replay import Answer, ModelError, SDK_MAX_RETRIES
 
 ALLOWED = ("api", "mock")
 DEFAULT_MODEL = "claude-haiku-5-5"
 # The API version the pinned SDK (anthropic 1.13.0) sends.
 API_VERSION = "2023-06-01"
+BASE_URL = "https://api.anthropic.com"
+# The SDK reads these itself. They could send the key elsewhere, change the API version or log prompts.
+REFUSED_VARIABLES = ("ANTHROPIC_BASE_URL", "ANTHROPIC_CUSTOM_HEADERS", "ANTHROPIC_LOG")
 
 
 class BackendError(ValueError):
     pass
 
 
-def run_settings(effort="low", thinking="adaptive", max_tokens=2048):
-    """The settings sent with every call of a prompt version. They are recorded with each run (B12, B15)."""
-    return {"effort": effort, "thinking": thinking, "max_tokens": max_tokens, "api_version": API_VERSION}
+def run_settings(effort="low", thinking="adaptive", max_tokens=2048, model=DEFAULT_MODEL):
+    """The settings of a prompt version. They are recorded with each run (B12, B15)."""
+    return {"model": model, "effort": effort, "thinking": thinking, "max_tokens": max_tokens,
+            "api_version": API_VERSION}
 
 
 def _anthropic_client(**kwargs):
@@ -42,12 +48,17 @@ def _mock(fixtures):
 
 
 def _api(env, model, client_factory):
+    for name in REFUSED_VARIABLES:
+        if os.environ.get(name):
+            raise BackendError(f"{name} is set, so the api backend refuses to run. Unset it first.")
     key = env.get("ANTHROPIC_API_KEY")
     if not key:
         raise BackendError("ANTHROPIC_API_KEY is not set in the environment")
-    client = client_factory(api_key=key, max_retries=SDK_MAX_RETRIES)
+    client = client_factory(api_key=key, max_retries=SDK_MAX_RETRIES, base_url=BASE_URL,
+                            default_headers={"anthropic-version": API_VERSION})
 
     def backend(prompt, settings):
+        failure = None
         try:
             response = client.messages.create(
                 model=model,
@@ -56,11 +67,15 @@ def _api(env, model, client_factory):
                 output_config={"effort": settings["effort"]},
                 thinking={"type": settings["thinking"]},
             )
-        except Exception as err:  # the SDK's message can hold request details, so only the type is kept
-            raise ModelError(f"the API call failed: {type(err).__name__}") from None
+        except Exception as err:  # the SDK error holds the request, and so the key: keep only its type
+            failure = type(err).__name__
+        if failure:
+            raise ModelError(f"the API call failed: {failure}")
         usage = response.usage
         cached = (getattr(usage, "cache_read_input_tokens", 0) or 0) + (getattr(usage, "cache_creation_input_tokens", 0) or 0)
         text = "".join(block.text for block in response.content if getattr(block, "type", None) == "text")
+        if not text.strip():
+            raise ModelError("the answer held no text")
         return Answer(text=text, input_tokens=usage.input_tokens + cached, output_tokens=usage.output_tokens,
                       stop_reason=response.stop_reason)
     return backend

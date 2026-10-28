@@ -1,5 +1,7 @@
 # Prices per million tokens, in US dollars (B13). Every entry names its source and the date it was checked.
 # A model missing here is an error, never zero cost.
+# Cached input is priced here as normal input. The project sends no cache_control, so cache reads and
+# writes should both be zero. If caching is ever used, add its own prices (reads are cheaper, writes dearer).
 
 [models.claude-haiku-5-5]
 source = "https://platform.claude.com/docs/en/about-claude/pricing"

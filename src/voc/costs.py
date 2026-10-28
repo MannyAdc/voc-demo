@@ -26,10 +26,21 @@ def call_cost(prices, model, input_tokens, output_tokens):
 
 
 def run_cost(prices, model, replies):
-    """Tokens and cost for a run. A replayed reply costs nothing now, but its original live cost is kept."""
-    summary = {"input_tokens": 0, "output_tokens": 0, "own_cost_usd": Decimal(0), "live_cost_usd": Decimal(0)}
+    """Tokens and cost for a run. A replayed reply costs nothing now, but its original live cost is kept.
+
+    A reply with no usage is costed from what the ledger charged, as if every charged token were output
+    (the dearest kind), and counted in `calls_without_usage`, so its cost is never too low. Calls that
+    returned no reply at all (failed, refused or cut off) are charged in the ledger, and the run report
+    takes them from there (T014).
+    """
+    summary = {"input_tokens": 0, "output_tokens": 0, "own_cost_usd": Decimal(0), "live_cost_usd": Decimal(0),
+               "calls_without_usage": 0}
     for reply in replies:
-        tokens_in, tokens_out = reply.input_tokens or 0, reply.output_tokens or 0
+        if reply.input_tokens is None or reply.output_tokens is None:
+            summary["calls_without_usage"] += 1
+            tokens_in, tokens_out = 0, reply.live_cost_tokens
+        else:
+            tokens_in, tokens_out = reply.input_tokens, reply.output_tokens
         cost = call_cost(prices, model, tokens_in, tokens_out)
         summary["input_tokens"] += tokens_in
         summary["output_tokens"] += tokens_out
