@@ -177,6 +177,9 @@ def _run_tests(repo, tree, label):
 
 
 def _test_problems(repo):
+    # A file left from an earlier run would look like this run's output.
+    for name in ("staged.txt", "staged.xml", "head.txt", "head.xml"):
+        (LOG_DIR / name).unlink(missing_ok=True)
     problems = _tree_problems(repo)
     if problems:
         problems.append(f"full pytest output in {LOG_DIR}")
