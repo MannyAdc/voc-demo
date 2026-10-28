@@ -24,6 +24,8 @@ ledger.json
 !tests/fixtures/**/*.csv
 !dbt/seeds/*.csv
 !results/*.jsonl
+# Labelling results hold IDs, labels, quote positions and token counts, never complaint text
+!results/labels/*.csv
 !splits/**
 !config/**
 !tests/fixtures/**/*.jsonl
