@@ -5,7 +5,9 @@ cannot reach the prompt (B4). The text is cut at 4,000 characters, and the
 model sees and quotes only the cut text (B9). A text with no words or with a
 boundary tag is decided with no call (B5, B9). Once the cap is reached, that
 complaint and every later one is `not_run_budget`, with no more calls (B8).
-A missing recording in replay mode stops the run (B7).
+Any other ledger problem, and a missing recording in replay mode, stops the
+run (B7, B8). Only the wanted development rows are read, never the test rows
+(B17).
 
 B21: the results hold IDs, labels, reasons, positions and counts only. A
 proposed label outside the list is model text, so it is written as a marker.
@@ -20,8 +22,8 @@ from pathlib import Path
 
 from voc.backends import API_VERSION
 from voc.baselines import cut_text
-from voc.budget import BudgetError
-from voc.data import SampleMismatch, _manifest, _month_rows, quick_check_ids, read_splits, verify_ids
+from voc.budget import CapReached
+from voc.data import Row, SampleMismatch, _manifest, quick_check_ids, read_splits, verify_ids
 from voc.decision import NOT_RUN_BUDGET, CallOutcome, Decision, before_call, decide
 from voc.prompt import build_prompt
 from voc.replay import ModelError, recording_key
@@ -55,8 +57,8 @@ class Outcome:
     prompt_bytes: int | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
-    charged_tokens: int = 0
     live_cost_tokens: int = 0
+    error: str | None = None  # our own ModelError message, never model text
 
 
 def load_prompt_version(root, name):
@@ -101,17 +103,16 @@ def label_complaints(complaints, version, labels, call, backend_name):
         size = len(prompt.encode("utf-8"))
         try:
             reply = call(prompt)
-        except BudgetError:
+        except CapReached:
             budget_stopped = True
             outcomes.append(Outcome(Decision(cid, reason=NOT_RUN_BUDGET), cut, recording_key=key, prompt_bytes=size))
             continue
-        except ModelError:
+        except ModelError as err:
             outcomes.append(Outcome(decide(cid, text, CallOutcome("failed"), names), cut, recording_key=key,
-                                    prompt_bytes=size))
+                                    prompt_bytes=size, error=str(err)))
             continue
         outcomes.append(Outcome(decide(cid, text, CallOutcome("ok", reply.text), names), cut, reply.source, key,
-                                size, reply.input_tokens, reply.output_tokens, reply.charged_tokens,
-                                reply.live_cost_tokens))
+                                size, reply.input_tokens, reply.output_tokens, reply.live_cost_tokens))
     return outcomes
 
 
@@ -121,13 +122,28 @@ def token_pairs(outcomes):
                   if o.source == "live" and o.input_tokens is not None)
 
 
+def _rows_by_id(db_path, month, ids):
+    """Only the rows with these IDs, selected in the database, so no other row is ever read (B17)."""
+    from voc.db import connect
+    from voc.load import TABLE
+
+    con = connect(db_path)
+    try:
+        found = con.execute(f"""
+            SELECT complaint_id, product, narrative FROM {TABLE}
+            WHERE source = ? AND list_contains(?::VARCHAR[], complaint_id)""", [month, sorted(ids)]).fetchall()
+    finally:
+        con.close()
+    return [Row(*values) for values in found]
+
+
 def load_complaints(db_path, splits_dir, set_name):
     """The complaints of a development set, checked against the frozen list. Never the test set (B16, B17)."""
     if set_name not in SETS:
         raise SampleMismatch(f"only {' and '.join(SETS)} can be labelled here. The test set waits for the final run")
     manifest = _manifest(splits_dir)
     wanted = set(quick_check_ids(splits_dir)) if set_name == "quick" else set(read_splits(splits_dir)["dev"])
-    rows = [row for row in _month_rows(db_path, manifest["month"]) if row.complaint_id in wanted]
+    rows = _rows_by_id(db_path, manifest["month"], wanted)
     found = {row.complaint_id for row in rows}
     if found != wanted:
         raise SampleMismatch(f"{len(wanted - found)} development complaints are missing from the staged table")
@@ -159,7 +175,7 @@ def results_csv(outcomes, set_name, version, names):
     return out.getvalue()
 
 
-def summarise(outcomes, set_name, version, backend_name, list_sha256):
+def summarise(outcomes, set_name, version, backend_name, list_sha256, limit=None):
     """Counts only (B21)."""
     reasons, accepted = {}, {}
     for o in outcomes:
@@ -172,8 +188,12 @@ def summarise(outcomes, set_name, version, backend_name, list_sha256):
     for o in outcomes:
         if o.source:
             sources[o.source] = sources.get(o.source, 0) + 1
+    errors = {}
+    for o in outcomes:
+        if o.error:
+            errors[o.error] = errors.get(o.error, 0) + 1
     pairs = token_pairs(outcomes)
-    return {"set": set_name, "prompt_version": version.name, "backend": backend_name,
+    return {"set": set_name, "limit": limit, "prompt_version": version.name, "backend": backend_name,
             "model": version.settings["model"], "settings": version.settings, "list_sha256": list_sha256,
             "complaints": len(outcomes), "accepted": sum(accepted.values()),
             "quarantined": sum(reasons.values()), "accepted_by_label": dict(sorted(accepted.items())),
@@ -181,7 +201,7 @@ def summarise(outcomes, set_name, version, backend_name, list_sha256):
             "calls_by_source": dict(sorted(sources.items())),
             "input_tokens": sum(o.input_tokens or 0 for o in outcomes),
             "output_tokens": sum(o.output_tokens or 0 for o in outcomes),
-            "charged_tokens": sum(o.charged_tokens for o in outcomes),
+            "model_errors_by_cause": dict(sorted(errors.items())), "calls_without_answer": sum(errors.values()),
             "live_cost_tokens": sum(o.live_cost_tokens for o in outcomes),
             "token_pairs": pairs,
             "largest_tokens_over_bytes": max((t - b for b, t in pairs), default=None)}
@@ -190,7 +210,7 @@ def summarise(outcomes, set_name, version, backend_name, list_sha256):
 def write_run(folder, outcomes, summary, version, names):
     """Write the results file and the run summary. A run on another backend never overwrites one (B12)."""
     folder = Path(folder)
-    stem = f"{version.name}_{summary['set']}"
+    stem = f"{version.name}_{summary['set']}" + (f"_first{summary['limit']}" if summary.get("limit") else "")
     summary_path = folder / f"{stem}.json"
     if summary_path.exists():
         before = json.loads(summary_path.read_text(encoding="utf-8"))
@@ -221,11 +241,13 @@ def format_run(summary, results_path):
     lines += [f"  quarantined as {reason}: {n}" for reason, n in summary["quarantine_reasons"].items()]
     lines.append(f"cut at 4,000 characters: {summary['cut']}")
     lines.append("calls: " + (", ".join(f"{n} {s}" for s, n in summary["calls_by_source"].items()) or "none"))
-    lines.append(f"tokens: input {summary['input_tokens']}, output {summary['output_tokens']}, "
-                 f"charged in the ledger by this run {summary['charged_tokens']}")
+    lines += [f"  model error: {cause}: {n}" for cause, n in summary["model_errors_by_cause"].items()]
+    lines.append(f"tokens, calls that returned an answer: input {summary['input_tokens']}, "
+                 f"output {summary['output_tokens']}")
     if summary.get("cost"):
-        lines.append(f"cost: this run ${summary['cost']['own_cost_usd']}, "
-                     f"original live ${summary['cost']['live_cost_usd']}")
+        lines.append(f"cost, calls that returned an answer: this run ${summary['cost']['own_cost_usd']}, "
+                     f"original live ${summary['cost']['live_cost_usd']}. "
+                     f"{summary['calls_without_answer']} calls returned no answer")
     if summary["largest_tokens_over_bytes"] is not None:
         lines.append(f"largest (real input tokens minus prompt bytes): {summary['largest_tokens_over_bytes']}")
     lines.append(f"results: {Path(results_path).as_posix()}")

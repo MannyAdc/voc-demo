@@ -159,7 +159,7 @@ def _label(config, root, args):
     outcomes = pipeline.label_complaints(complaints, version, labels, call, backend_name)
     names = [label.name for label in labels]
     summary = pipeline.summarise(outcomes, args.set, version, backend_name,
-                                 pipeline.list_sha256(root / "splits", args.set, complaints))
+                                 pipeline.list_sha256(root / "splits", args.set, complaints), limit=args.limit)
     if backend_name == "api":
         cost = run_cost(load_prices(root / "config" / "prices.toml"), model, [o for o in outcomes if o.source])
         summary["cost"] = {key: str(value) for key, value in cost.items()}
@@ -168,7 +168,8 @@ def _label(config, root, args):
     results = pipeline.write_run(root / "results" / "labels", outcomes, summary, version, names)
     print(pipeline.format_run(summary, results.relative_to(root)))
     if "ledger_charged_tokens" in summary:
-        print(f"ledger: {summary['ledger_charged_tokens']} tokens charged by this run, failed calls included")
+        print(f"ledger: {summary['ledger_charged_tokens']} tokens charged while this run went on, failed calls "
+              "included. Any other run at the same time is counted too")
 
 
 COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample, "label": _label,

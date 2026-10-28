@@ -303,7 +303,8 @@ def test_B21_a_proposed_label_outside_the_list_is_never_written_or_printed(repo,
 def test_B9_limit_takes_the_first_complaints_in_id_order(repo):
     answer = _good("")
     assert _run(repo, _env(repo, answer), "dev", "--limit", "3") == 0
-    rows = list(csv.DictReader((repo / "results" / "labels" / "v1_dev.csv").read_text(encoding="utf-8")
+    # A limited run writes its own file since the review of #20 (finding 4).
+    rows = list(csv.DictReader((repo / "results" / "labels" / "v1_dev_first3.csv").read_text(encoding="utf-8")
                                .splitlines()))
     from voc.data import read_splits
 
@@ -398,7 +399,8 @@ def test_B3_model_errors_are_counted_by_their_cause():
             raise ModelError("the model call failed 3 times, last error APIConnectionError")
         return _good(prompt)
 
-    outcomes = _label(_complaints(_text(0), _text(1), _text(2), _text(10)), FakeCall(answer))
+    # _text(3), not _text(10): the text of 10 opens "story alpha bravo", which the first check would match.
+    outcomes = _label(_complaints(_text(0), _text(1), _text(2), _text(3)), FakeCall(answer))
     summary = summarise(outcomes, "dev", _version(), "fake", "0" * 64)
     assert summary["model_errors_by_cause"] == {"the model call ended with stop reason max_tokens": 1,
                                                 "the model call failed 3 times, last error APIConnectionError": 1}
