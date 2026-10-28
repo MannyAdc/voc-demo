@@ -179,6 +179,51 @@ def load_test_hashes(folder):
     return dict(_read_list(folder, "test", _manifest(folder)))
 
 
+def _month_rows(db_path, month):
+    from voc.db import connect
+    from voc.load import TABLE
+
+    con = connect(db_path)
+    try:
+        found = con.execute(rf"""
+            SELECT complaint_id, product, narrative FROM {TABLE}
+            WHERE source = ? AND narrative IS NOT NULL AND regexp_matches(narrative, '\S')""", [month]).fetchall()
+    finally:
+        con.close()
+    return [Row(*values) for values in found]
+
+
+def build_samples(db_path, month, seed, splits_dir, source_sha256, dev_margin=0.05, test_margin=0.02):
+    """Build and freeze the samples from one month of the staged table. Returns counts only (B21)."""
+    splits_dir = Path(splits_dir)
+    if (splits_dir / "manifest.json").exists():
+        raise SampleMismatch("the sample lists already exist, and they are never regenerated")
+    kept, removed = dedupe(_month_rows(db_path, month))
+    dev_size, test_size = cochran_size(dev_margin, len(kept)), cochran_size(test_margin, len(kept))
+    sets = split(kept, dev_size, test_size, seed)
+    write_splits(splits_dir, sets, removed=removed, source_sha256=source_sha256, seed=seed)
+    by_product = {}
+    for name in LISTS:
+        for row in sets[name]:
+            by_product.setdefault(row.product, dict.fromkeys(LISTS, 0))[name] += 1
+    return {"pool": len(kept), "duplicates_removed": removed, "dev": len(sets["dev"]),
+            "test": len(sets["test"]), "train": len(sets["train"]), "dev_target": dev_size,
+            "test_target": test_size, "test_by_product": {p: c["test"] for p, c in sorted(by_product.items())},
+            "by_product": dict(sorted(by_product.items()))}
+
+
+def format_summary(summary):
+    lines = [f"pool: {summary['pool']} (after {summary['duplicates_removed']} duplicates removed)",
+             f"development: {summary['dev']} (Cochran target {summary['dev_target']})",
+             f"test: {summary['test']} (Cochran target {summary['test_target']})",
+             f"training: {summary['train']}", "",
+             f"{'Product':<56} {'dev':>5} {'test':>6} {'train':>6}"]
+    for product, counts in summary["by_product"].items():
+        flag = "  too few to judge" if counts["test"] < 30 else ""
+        lines.append(f"{product[:56]:<56} {counts['dev']:>5} {counts['test']:>6} {counts['train']:>6}{flag}")
+    return "\n".join(lines)
+
+
 def verify_ids(folder, name, rows):
     """Refuse unless every row is in the committed list with the same narrative and Product."""
     committed = _read_list(folder, name, _manifest(folder))
