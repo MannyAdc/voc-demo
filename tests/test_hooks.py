@@ -675,6 +675,14 @@ def test_B8_claude_must_ask_the_owner_before_changing_the_ledger(tool, command):
     assert f"{tool}(*voc ledger {command}*)" in settings["permissions"]["ask"]
 
 
+@pytest.mark.parametrize("tool", ["Bash", "PowerShell"])
+@pytest.mark.parametrize("command", ["init", "raise", "release", "clear-overrun"])
+def test_B8_the_ask_rule_also_covers_the_voc_exe_form(tool, command):
+    # Best effort: rules match command text, so other forms (for example python -c) can still slip past.
+    settings = json.loads((HOOKS.parent / "settings.json").read_text(encoding="utf-8"))
+    assert f"{tool}(*voc.exe ledger {command}*)" in settings["permissions"]["ask"]
+
+
 def test_every_hook_is_wired_to_fail_closed():
     settings = json.loads((HOOKS.parent / "settings.json").read_text(encoding="utf-8"))
     wired = {}

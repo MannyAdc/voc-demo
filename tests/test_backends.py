@@ -125,3 +125,58 @@ def test_B12_each_run_records_the_model_effort_thinking_and_api_version():
     assert recorded["effort"] == "low" and recorded["thinking"] == "adaptive"
     assert recorded["api_version"] == API_VERSION == "2023-06-01"
     assert "temperature" not in recorded
+
+
+# Review of pull request #14
+
+
+@pytest.mark.parametrize("variable", ["ANTHROPIC_BASE_URL", "ANTHROPIC_CUSTOM_HEADERS", "ANTHROPIC_LOG"])
+def test_B12_sdk_environment_overrides_are_refused(variable, monkeypatch):
+    # The SDK reads these itself: they could send the key elsewhere, change the API version, or log prompts.
+    monkeypatch.setenv(variable, "set")
+    with pytest.raises(BackendError, match=variable):
+        _api(FakeClient(_response([_text("ok")])))
+
+
+def test_B12_the_client_is_pinned_to_the_anthropic_address_and_the_recorded_api_version():
+    client = FakeClient(_response([_text("ok")]))
+    _api(client)("prompt", run_settings())
+    assert client.made_with["base_url"] == "https://api.anthropic.com"
+    assert client.made_with["default_headers"] == {"anthropic-version": API_VERSION}
+
+
+def test_B12_the_recorded_api_version_is_the_installed_sdks_own():
+    import anthropic._constants
+
+    assert API_VERSION == anthropic._constants.ANTHROPIC_API_VERSION
+
+
+def test_B12_the_real_client_is_built_offline_with_retries_off_and_the_fixed_address():
+    from voc.backends import _anthropic_client
+
+    client = _anthropic_client(api_key=_fake_key(), max_retries=0, base_url="https://api.anthropic.com",
+                               default_headers={"anthropic-version": API_VERSION})
+    assert client.max_retries == 0
+    assert str(client.base_url).rstrip("/") == "https://api.anthropic.com"
+
+
+def test_B12_an_sdk_error_keeps_no_trace_of_the_original_exception():
+    key = _fake_key()
+    with pytest.raises(ModelError) as err:
+        _api(FakeClient(error=RuntimeError(f"bad {key}")), env={"ANTHROPIC_API_KEY": key})("prompt", run_settings())
+    assert err.value.__context__ is None and err.value.__cause__ is None
+
+
+def test_B12_an_answer_with_no_text_is_a_model_error():
+    blocks = [SimpleNamespace(type="thinking", thinking="")]
+    with pytest.raises(ModelError):
+        _api(FakeClient(_response(blocks)))("prompt", run_settings())
+
+
+def test_B12_an_answer_holds_only_text_tokens_and_the_stop_reason():
+    answer = _api(FakeClient(_response([_text("ok")])))("prompt", run_settings())
+    assert set(vars(answer)) == {"text", "input_tokens", "output_tokens", "stop_reason"}
+
+
+def test_B12_each_run_records_the_model_too():
+    assert run_settings(model="claude-haiku-5-5")["model"] == "claude-haiku-5-5"

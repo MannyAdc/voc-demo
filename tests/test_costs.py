@@ -51,3 +51,23 @@ def test_B13_a_replayed_run_reports_zero_own_cost_and_the_original_live_cost():
                        [_reply("replay", 1_000, 200), _reply("live", 2_000, 300)])
     assert summary["own_cost_usd"] == Decimal("0.00035")
     assert summary["live_cost_usd"] == Decimal("0.00055")
+
+
+# Review of pull request #14
+
+
+def test_B13_a_prompt_of_exactly_the_threshold_uses_the_normal_price():
+    assert call_cost(load_prices(PRICES), "claude-haiku-5-5", 100_000, 0) == Decimal("0.01")
+
+
+def test_B13_a_long_prompt_pays_the_higher_output_price_too():
+    assert call_cost(load_prices(PRICES), "claude-haiku-5-5", 100_001, 1_000) == Decimal("0.0525005")
+
+
+def test_B13_a_live_reply_with_no_usage_is_costed_as_what_the_ledger_charged_and_flagged():
+    reply = Reply(text="x", source="live", input_tokens=None, output_tokens=None,
+                  charged_tokens=4_000, live_cost_tokens=4_000, attempts=1)
+    summary = run_cost(load_prices(PRICES), "claude-haiku-5-5", [reply])
+    assert summary["calls_without_usage"] == 1
+    # Priced as if every charged token were output, the dearest kind, so it is never too low.
+    assert summary["own_cost_usd"] == Decimal("0.002")
