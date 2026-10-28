@@ -55,19 +55,17 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - extra keys, two JSON objects, or text after the JSON are unparseable (review)
 - the examples used are logged by complaint ID (review)
 
-## Decision (B2, B3, B5), `tests/test_decision.py`
+## Decision (B3, B5), `tests/test_decision.py`
 
-- agreement view: accepted when the quote is real and both sources agree (reused)
-- agreement view: disagreement is quarantined as `disputed` (reused)
-- quote-only view: the same disagreement is accepted
+- a label with a real quote is accepted whatever TF-IDF says, and TF-IDF's label is never an input (B2 removed on 28 October, the three agreement tests are dropped)
 - a quarantined decision keeps the proposal but has no label (reused)
 - a made-up quote is quarantined (reused)
 - short and empty quotes are quarantined (reused)
 - a label outside the list is quarantined even with a real quote (reused)
 - an unparseable answer is quarantined (reused)
 - a failed, refused or cut-off model call is quarantined as `model_error` (review)
-- check order is model call, parse, label, quote, agreement (reused, changed)
-- an obeyed injection with a real quote is caught by agreement (reused)
+- check order is model call, parse, label, quote (reused, changed on 28 October)
+- an obeyed injection with a real quote is accepted, and the synthetic injection report counts it as "obeyed and accepted" (changed on 28 October: no agreement to catch it)
 - an obeyed injection with an invented quote is caught by the quote check (reused)
 - a quarantined decision never has an accepted label, 4 cases (reused)
 
@@ -78,7 +76,7 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - charges add up (reused)
 - use survives a restart (reused)
 - a reservation that just fits is allowed, one more token is refused (reused, changed)
-- the reservation is input estimate plus the output limit, plus the `cli` allowance for `cli` (review)
+- the reservation is input estimate plus the output limit (review)
 - the input estimate is never below the real count, checked against a fixture of real token counts recorded once in a logged live counting run (review, changed)
 - the cap is copied into the ledger at init and an override can only lower it (review, changed)
 - live calls are refused while the cap config has uncommitted changes (review)
@@ -114,11 +112,8 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - an unknown `LLM_BACKEND` value is an error that names the allowed values
 - `api` with no key in the environment fails with a clear message
 - the key never appears in an error message or log line
-- `cli` builds a command with no tools, no MCP servers and no settings or instruction files (review, the process itself is faked)
-- `cli` runs in a new empty temporary folder (review)
-- `cli` passes an environment with no API key and no repo paths (review)
-- `cli` refuses real complaints until a canary result is logged (review)
-- the temperature is recorded with each run (review)
+- `LLM_BACKEND=cli` is an unknown value and fails with a clear message (the `cli` backend and its four tests were cut on 28 October)
+- the temperature is recorded with each run (review), or the effort setting if the API no longer accepts a temperature (checked in T009)
 - a comparison that mixes backends is refused (review)
 - the key does not appear in recordings, results files or reports (review)
 - a `.env` file is loaded into the environment at start-up (review)
@@ -145,7 +140,8 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - the opening key ignores case, digits and redaction runs (reused)
 - different openings have different keys (reused)
 - two narratives with the same opening but different bodies are both kept (review)
-- a copy with a different opening is found by full-text similarity (review)
+- a copy with a different opening is found by full-text similarity (review) (cut on 28 October with cut list item 3: full text is compared only where openings match)
+- two narratives with the same opening and very similar full text count as one duplicate (cut list item 3, what is kept)
 - dedupe gives the same result whatever order the rows arrive in (review)
 - the number removed is reported (review)
 - the similarity threshold is recorded with the sample (review)
@@ -196,19 +192,20 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - a pipeline that accepts nothing cannot be compared (reused)
 - a run with any `not_run_budget` complaint gets no verdict (review)
 - per-Product figures and the re-weighted figure match a hand count (review)
-- the injection set counts "obeyed and accepted", "obeyed and quarantined" and "not obeyed" per view, matching a hand count (review)
+- the injection set counts "obeyed and accepted", "obeyed and quarantined" and "not obeyed", matching a hand count (review)
 - the bootstrap interval is computed for the figure that decides the verdict (review)
 - re-weighted strict accuracy matches a hand count, quarantined counted as wrong (review)
 - coverage is matched by count inside each resample (review)
-- claims A and B each get their own verdict (review)
+- the one claim gets one verdict, and no verdict is given with any `not_run_budget` complaint (changed on 28 October: claim B dropped)
 
 ## Method comparison (B23), `tests/test_metrics.py`
 
-- each confusion matrix matches a hand count, for the LLM, TF-IDF and the combined system
+- each confusion matrix matches a hand count, for the LLM and TF-IDF
 - per-Product precision, recall and F1, and macro-F1, match a hand count
 - the who-was-right table counts both, only LLM, only TF-IDF and neither correctly
 - the precision and coverage points match a hand count
-- the review queue breakdown matches a hand count
+- the review queue breakdown (quarantined LLM labels by reason, and how often TF-IDF was right on them) matches a hand count
+- cost and run time per 1,000 complaints are reported for each method (B23, 28 October)
 - synthetic results are reported apart and never enter accuracy figures (review)
 
 ## Pipeline (B4, B5, B9), `tests/test_pipeline.py`
@@ -246,6 +243,16 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - a quote mismatch is typed by a script (spacing, quote marks, paraphrase, not found) (review)
 - the owner's spot-check result is recorded per round (review)
 - the `profile` command prints every data fact the README uses, from a synthetic fixture (review)
+- the `profile` command prints, per Product, the narrative count, length percentiles, Sub-product counts and counts per year received, from a synthetic fixture (B22, 28 October)
+- the `profile` command prints counts only: a hostile synthetic narrative never appears in its output (B22, B21)
+- the label set config lists every label once, and the prompt and both baselines read the same list from it (B24)
+- a recorded Product that is not in the label set, and has no mapping, stops sampling with a clear message (B24)
+- Cochran's formula gives 385, 1,068 and 2,401 for margins of 5, 3 and 2 points at 95 percent and p = 0.5 (B25)
+- the finite pool correction makes n smaller for a small pool, and changes almost nothing for a large one (B25)
+- the split across Products follows the pool's shares and the parts add up to n exactly (B25)
+- a Product with fewer than 30 complaints in a sample is marked "too few to judge" (B25)
+- no Product sends more than half of its pool to the test set (B9, B25)
+- a smaller test size than the rule gives is refused unless a reason is given, and the reason is written with the sample (B25)
 
 ## Human review (B20), later feature
 
@@ -269,7 +276,7 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - read guard: Claude reading the recordings or ledger folder, including through a shell command naming the path, is blocked (review)
 - final guard: Claude running any command containing `final` asks the owner first (review)
 - data guard: `.env.example` is allowed only if it holds no key-like value (review)
-- data guard: notes or docs with a long run of text copied from a sampled narrative are blocked when local data is present (review) (not built in T004, cut list item 4, decided at the Wednesday 12:00 checkpoint)
+- data guard: notes or docs with a long run of text copied from a sampled narrative are blocked when local data is present (review) (cut on 28 October, cut list item 4, moved to Known limits)
 - data guard: an edit is checked on the file as it would be after the edit, so adding a real row to a synthetic fixture is blocked (T004)
 - read guard: Claude reading the `.env` file is blocked, with any tool, and `.env.example` is allowed (T004)
 - each hook fails closed: bad input exits 2 with the hook's own message (T004)

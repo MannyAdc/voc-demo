@@ -26,7 +26,7 @@ A batch pipeline loads the CFPB July 2026 export into DuckDB, builds de-duplicat
 
 **Constraints**: one hard token cap shared by all runs and worktrees. No raw data in git. No network in tests.
 
-**Scale/Scope**: one month of data, about 10,000 narratives, a development sample of about 300 and a frozen test set of about 1,000.
+**Scale/Scope**: the July 2026 export. Row and narrative counts come from the `profile` command (B22). A development sample of about 385 and a frozen test set of about 2,400, from Cochran's formula (B25). *Changed on 28 October: the earlier estimate of about 10,000 narratives and a test set of about 1,000 is replaced.*
 
 ## Constitution Check
 
@@ -58,11 +58,11 @@ specs/001-core-labelling-pipeline/
 src/voc/
 ├── evidence.py    # B1, B6 quote check
 ├── prompt.py      # B4, B5 build prompt, parse answer
-├── decision.py    # B2, B3 accept or quarantine
+├── decision.py    # B3 accept or quarantine
 ├── pipeline.py    # one complaint in, one decision out
 ├── replay.py      # B7 record and replay
 ├── budget.py      # B8 token ledger
-├── backends.py    # B12 api, cli, mock
+├── backends.py    # B12 api, mock
 ├── costs.py       # B13 tokens to dollars
 ├── data.py        # B9 dedupe, truncate, split
 ├── baselines.py   # B11 most-common-class, TF-IDF
