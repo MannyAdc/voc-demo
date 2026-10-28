@@ -77,21 +77,29 @@ def _similar(a, b):
     return len(a & b) / len(a | b) >= DUPLICATE_THRESHOLD
 
 
-def dedupe(rows):
-    """Keep the lowest complaint ID of each duplicate group. Returns the kept rows and the number removed."""
-    kept, seen, by_opening = [], set(), {}
+def _dedupe(rows):
+    """The kept rows, and the number removed as exact copies and as near-copies."""
+    kept, seen, by_opening, removed = [], set(), {}, {"exact": 0, "near": 0}
     for row in _by_id(rows):
         normal = _normal(row.narrative)
         if normal in seen:
+            removed["exact"] += 1
             continue
         grams = _grams(normal)
         group = by_opening.setdefault(opening_key(row.narrative), [])
         if any(_similar(grams, other) for other in group):
+            removed["near"] += 1
             continue
         seen.add(normal)
         group.append(grams)
         kept.append(row)
-    return kept, len(rows) - len(kept)
+    return kept, removed
+
+
+def dedupe(rows):
+    """Keep the lowest complaint ID of each duplicate group. Returns the kept rows and the number removed."""
+    kept, removed = _dedupe(rows)
+    return kept, removed["exact"] + removed["near"]
 
 
 def cochran_size(margin, pool):
@@ -146,12 +154,13 @@ def _list_bytes(rows):
     return out.getvalue().encode("utf-8")
 
 
-def write_splits(folder, sets, removed, source_sha256, seed):
+def write_splits(folder, sets, removed, source_sha256, seed, settings=None):
+    """`settings` adds the month, the margins and the copy counts to the manifest."""
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
     manifest = {"seed": seed, "duplicate_threshold": DUPLICATE_THRESHOLD, "duplicate_measure": DUPLICATE_MEASURE,
                 "opening_words": OPENING_WORDS,
-                "duplicates_removed": removed, "source_sha256": source_sha256, "lists": {}}
+                "duplicates_removed": removed, "source_sha256": source_sha256, "lists": {}, **(settings or {})}
     for name in LISTS:
         data = _list_bytes(sets[name])
         (folder / f"{name}.csv").write_bytes(data)
@@ -188,7 +197,10 @@ def quick_check_ids(folder):
 
 
 def load_test_hashes(folder):
-    """The only allowed way to touch test rows without `final`: IDs and hashes, never text or labels (B17)."""
+    """The committed test list: IDs and hashes only, never text or labels (B17).
+
+    This reads the list, not the test rows. The loader that hashes real test rows comes with evaluation (T015).
+    """
     return dict(_read_list(folder, "test", _manifest(folder)))
 
 
@@ -209,24 +221,31 @@ def _month_rows(db_path, month):
 def build_samples(db_path, month, seed, splits_dir, source_sha256, dev_margin=0.05, test_margin=0.02):
     """Build and freeze the samples from one month of the staged table. Returns counts only (B21)."""
     splits_dir = Path(splits_dir)
-    if (splits_dir / "manifest.json").exists():
+    if any((splits_dir / name).exists() for name in ("manifest.json", *(f"{n}.csv" for n in LISTS))):
         raise SampleMismatch("the sample lists already exist, and they are never regenerated")
-    kept, removed = dedupe(_month_rows(db_path, month))
+    kept, copies = _dedupe(_month_rows(db_path, month))
+    if not kept:
+        raise SampleMismatch(f"no {month} rows with text in the staged table. Run `voc load {month}` first")
+    removed = copies["exact"] + copies["near"]
     dev_size, test_size = cochran_size(dev_margin, len(kept)), cochran_size(test_margin, len(kept))
     sets = split(kept, dev_size, test_size, seed)
-    write_splits(splits_dir, sets, removed=removed, source_sha256=source_sha256, seed=seed)
+    write_splits(splits_dir, sets, removed=removed, source_sha256=source_sha256, seed=seed,
+                 settings={"month": month, "dev_margin": dev_margin, "test_margin": test_margin,
+                           "exact_copies": copies["exact"], "near_copies": copies["near"]})
     by_product = {}
     for name in LISTS:
         for row in sets[name]:
             by_product.setdefault(row.product, dict.fromkeys(LISTS, 0))[name] += 1
-    return {"pool": len(kept), "duplicates_removed": removed, "dev": len(sets["dev"]),
+    return {"pool": len(kept), "duplicates_removed": removed, "exact_copies": copies["exact"],
+            "near_copies": copies["near"], "dev": len(sets["dev"]),
             "test": len(sets["test"]), "train": len(sets["train"]), "dev_target": dev_size,
             "test_target": test_size, "test_by_product": {p: c["test"] for p, c in sorted(by_product.items())},
             "by_product": dict(sorted(by_product.items()))}
 
 
 def format_summary(summary):
-    lines = [f"pool: {summary['pool']} (after {summary['duplicates_removed']} duplicates removed)",
+    lines = [f"pool: {summary['pool']} (after {summary['duplicates_removed']} duplicates removed: "
+             f"{summary['exact_copies']} exact copies, {summary['near_copies']} near-copies)",
              f"development: {summary['dev']} (Cochran target {summary['dev_target']})",
              f"test: {summary['test']} (Cochran target {summary['test_target']})",
              f"training: {summary['train']}", "",
