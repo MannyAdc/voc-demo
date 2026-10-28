@@ -341,6 +341,18 @@ def test_B9_the_summary_and_the_manifest_count_exact_copies_and_near_copies_apar
     assert "1 exact copies" in format_summary(summary) and "1 near-copies" in format_summary(summary)
 
 
+def test_B9_an_exact_repeat_of_a_removed_near_copy_counts_as_an_exact_copy(tmp_path):
+    from voc.data import build_samples
+
+    db = tmp_path / "voc.duckdb"
+    near = _long(200, {199: "different"})
+    _staged(db, _month_rows("july_2026", 0, 60) + [("SYN-901", "Mortgage", _long(200), "july_2026"),
+                                                    ("SYN-902", "Mortgage", near, "july_2026"),
+                                                    ("SYN-903", "Mortgage", near.upper(), "july_2026")])
+    summary = build_samples(db, "july_2026", seed=1, splits_dir=tmp_path / "splits", source_sha256="a" * 64)
+    assert (summary["pool"], summary["exact_copies"], summary["near_copies"]) == (61, 1, 1)
+
+
 def test_B25_the_manifest_records_the_month_and_both_margins(tmp_path):
     from voc.data import build_samples
 
