@@ -51,7 +51,7 @@ def _make_repo(path):
     (path / "config").mkdir(parents=True)
     (path / "config" / "budget.toml").write_text(f"cap_tokens = {CAP}\ninput_margin_tokens = 100\n",
                                                  encoding="utf-8")
-    _git(path, "init", "-q")
+    _git(path, "init", "-q", "-b", "main")
     _git(path, "add", ".")
     _git(path, "commit", "-q", "-m", "Start")
     return path
@@ -211,3 +211,82 @@ def test_B8_a_recording_is_still_served_when_the_budget_is_spent(budget, replay,
     reply = _caller(replay, repo, backend).call(PROMPT)
     assert reply.source == "replay"
     assert backend.calls == 0
+
+
+# Review round 1 on PR #13
+
+
+def test_B7_settings_with_a_tuple_are_served_from_the_recording(replay, repo, ledger):
+    settings = {"max_tokens": 50, "stop_sequences": ("SYN-END",), "temperature": 0}
+    backend = FakeBackend(replay)
+    caller = _caller(replay, repo, backend, settings=settings)
+    caller.call(PROMPT)
+    second = caller.call(PROMPT)
+    assert second.source == "replay"
+    assert backend.calls == 1
+    assert _caller(replay, repo, None, mode="replay", settings=settings).call(PROMPT).source == "replay"
+
+
+def test_B21_an_unknown_stop_reason_is_never_echoed_in_the_error(replay, repo, ledger):
+    with pytest.raises(replay.ModelError) as caught:
+        _caller(replay, repo, FakeBackend(replay, stop="SYN leaked model words")).call(PROMPT)
+    assert "SYN leaked" not in str(caught.value)
+    assert "other" in str(caught.value)
+
+
+def test_B21_a_known_stop_reason_is_named_in_the_error(replay, repo, ledger):
+    with pytest.raises(replay.ModelError) as caught:
+        _caller(replay, repo, FakeBackend(replay, stop="refusal")).call(PROMPT)
+    assert "refusal" in str(caught.value)
+
+
+def _corrupt(home, kind):
+    [path] = _recording_files(home)
+    if kind == "not json":
+        path.write_text("not json {", encoding="utf-8")
+        return
+    record = json.loads(path.read_text(encoding="utf-8"))
+    if kind == "no usage":
+        del record["usage"]
+    elif kind == "usage is null":
+        record["usage"] = {"input_tokens": None, "output_tokens": 7}
+    elif kind == "other prompt":
+        record["key_material"]["prompt"] = "SYN some other prompt"
+    path.write_text(json.dumps(record), encoding="utf-8")
+
+
+@pytest.mark.parametrize("mode", ["live", "replay"])
+@pytest.mark.parametrize("kind", ["not json", "no usage", "usage is null", "other prompt"])
+def test_B7_a_corrupt_recording_is_an_error_not_a_silent_paid_call(budget, replay, repo, ledger, home, mode, kind):
+    _caller(replay, repo, FakeBackend(replay)).call(PROMPT)
+    _corrupt(home, kind)
+    used = budget.Ledger().state()["used"]
+    backend = FakeBackend(replay)
+    with pytest.raises(replay.RecordingCorrupt):
+        _caller(replay, repo, backend, mode=mode).call(PROMPT)
+    assert backend.calls == 0
+    assert budget.Ledger().state()["used"] == used
+
+
+class LeakyAnswer:
+    """A backend answer that also carries headers and a key-like value."""
+
+    def __init__(self, key):
+        self.text = '{"label": "x", "quote": "y"}'
+        self.input_tokens = 30
+        self.output_tokens = 7
+        self.stop_reason = "end_turn"
+        self.headers = {"x-api-key": key, "authorization": "Bearer " + key}
+        self.api_key = key
+        self.request = {"headers": {"x-api-key": key}}
+
+
+def test_B7_headers_and_keys_on_a_backend_answer_never_reach_the_recording(replay, repo, ledger, home):
+    fake_key = "sk-" + "ant-" + "api03-" + "SYN" + "z" * 30
+    _caller(replay, repo, lambda p, s: LeakyAnswer(fake_key)).call(PROMPT)
+    [path] = _recording_files(home)
+    text = path.read_text(encoding="utf-8")
+    assert fake_key not in text
+    assert "header" not in text.lower()
+    assert "bearer" not in text.lower()
+    assert "api_key" not in text

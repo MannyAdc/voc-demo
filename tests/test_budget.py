@@ -65,7 +65,7 @@ def repo(tmp_path):
     (repo / "config").mkdir(parents=True)
     (repo / "config" / "budget.toml").write_text(_config(CAP), encoding="utf-8")
     (repo / "BUILD_LOG.md").write_text("# Build log\n", encoding="utf-8")
-    _git(repo, "init", "-q")
+    _git(repo, "init", "-q", "-b", "main")
     _git(repo, "add", ".")
     _git(repo, "commit", "-q", "-m", "Start")
     return repo
@@ -367,3 +367,230 @@ def test_B8_the_committed_cap_config_is_valid(budget):
     config = budget.load_config(root)
     assert config["cap_tokens"] == 20_000_000
     assert config["input_margin_tokens"] > 0
+
+
+# Review round 1 on PR #13
+
+
+def _write_full_config(repo, cap, trial, confirmed, commit=True):
+    text = (f"cap_tokens = {cap}\ninput_margin_tokens = {MARGIN}\n"
+            f"trial_cap_tokens = {trial}\nmargin_confirmed = {'true' if confirmed else 'false'}\n")
+    (repo / "config" / "budget.toml").write_text(text, encoding="utf-8")
+    if commit:
+        _git(repo, "commit", "-q", "-am", "Change the budget config")
+
+
+def _throwaway_repo(tmp_path, cap):
+    other = tmp_path / "throwaway"
+    (other / "config").mkdir(parents=True)
+    (other / "config" / "budget.toml").write_text(_config(cap), encoding="utf-8")
+    (other / "BUILD_LOG.md").write_text("# Build log\n", encoding="utf-8")
+    _git(other, "init", "-q", "-b", "main")
+    _git(other, "add", ".")
+    _git(other, "commit", "-q", "-m", "Start")
+    return other
+
+
+def _tamper(budget, change):
+    path = budget.ledger_path()
+    state = json.loads(path.read_text(encoding="utf-8"))
+    change(state)
+    path.write_text(json.dumps(state), encoding="utf-8")
+
+
+def test_B8_raise_from_a_throwaway_repo_is_refused(budget, ledger, tmp_path):
+    from voc import cli
+
+    other = _throwaway_repo(tmp_path, 10 ** 12)
+    with pytest.raises(budget.BudgetError):
+        budget.raise_cap(other, reason="SYN throwaway try")
+    assert cli.main(["ledger", "raise", "--reason", "SYN throwaway try"], env={}, root=other) == 1
+    assert budget.Ledger().state()["cap"] == CAP
+    assert "SYN throwaway try" not in (other / "BUILD_LOG.md").read_text(encoding="utf-8")
+
+
+def test_B8_raise_reads_the_cap_from_main_not_from_the_current_branch(budget, ledger, repo):
+    _git(repo, "checkout", "-q", "-b", "feature")
+    _write_config(repo, 5_000, commit=True)
+    with pytest.raises(budget.BudgetError):
+        budget.raise_cap(repo, reason="SYN branch try")
+    assert budget.Ledger().state()["cap"] == CAP
+
+
+def test_B8_raise_prints_the_old_and_new_cap(budget, repo, capsys):
+    from voc import cli
+
+    assert cli.main(["ledger", "init"], env={}, root=repo) == 0
+    capsys.readouterr()
+    _write_config(repo, 5_000, commit=True)
+    assert cli.main(["ledger", "raise", "--reason", "SYN more runs"], env={}, root=repo) == 0
+    out = capsys.readouterr().out
+    assert "1,000" in out
+    assert "5,000" in out
+
+
+def test_B8_a_settle_above_the_reservation_is_an_overrun_that_stops_later_reservations(budget, ledger):
+    ledger.settle(ledger.reserve(10), 11)
+    state = ledger.state()
+    assert state["used"] == 11
+    assert state["overrun"] is not None
+    assert any(e["type"] == "overrun" for e in state["events"])
+    with pytest.raises(budget.Overrun):
+        ledger.reserve(1)
+
+
+def test_B8_real_use_above_the_reservation_stops_every_later_live_call(budget, replay, repo, ledger):
+    big = lambda p, s: _answer(replay, input_tokens=500, output_tokens=7)
+    _caller(replay, repo, big).call("SYN small prompt")
+    assert budget.Ledger().state()["used"] == 507
+    sent = []
+    caller = _caller(replay, repo, lambda p, s: sent.append(p) or _answer(replay))
+    with pytest.raises(budget.Overrun):
+        caller.call("SYN another prompt")
+    assert sent == []
+
+
+def test_B8_clear_overrun_needs_a_reason_and_allows_live_calls_again(budget, replay, repo, ledger):
+    from voc import cli
+
+    ledger.settle(ledger.reserve(10), 11)
+    with pytest.raises(budget.BudgetError):
+        budget.clear_overrun(reason="  ")
+    assert cli.main(["ledger", "clear-overrun", "--reason", "SYN estimate checked"], env={}, root=repo) == 0
+    state = budget.Ledger().state()
+    assert state["overrun"] is None
+    assert state["events"][-1]["type"] == "overrun_cleared"
+    assert state["events"][-1]["reason"] == "SYN estimate checked"
+    assert _caller(replay, repo, lambda p, s: _answer(replay)).call("SYN prompt").source == "live"
+
+
+def test_B8_while_the_margin_is_unconfirmed_the_trial_cap_limits_live_use(budget, repo):
+    _write_full_config(repo, 1_000, 300, False)
+    budget.init_ledger(repo)
+    ledger = budget.Ledger()
+    ledger.reserve(300)
+    with pytest.raises(budget.CapReached):
+        ledger.reserve(1)
+
+
+def test_B8_the_margin_is_confirmed_only_through_a_committed_config_and_the_event_is_logged(budget, repo):
+    _write_full_config(repo, 1_000, 300, False)
+    budget.init_ledger(repo)
+    _write_full_config(repo, 1_000, 300, True, commit=False)
+    with pytest.raises(budget.BudgetError):
+        budget.raise_cap(repo, reason="SYN margin checked")
+    assert budget.Ledger().state()["margin_confirmed"] is False
+    _git(repo, "commit", "-q", "-am", "Confirm the margin")
+    budget.raise_cap(repo, reason="SYN margin checked")
+    state = budget.Ledger().state()
+    assert state["margin_confirmed"] is True
+    assert any(e["type"] == "margin_confirmed" and e["reason"] == "SYN margin checked" for e in state["events"])
+    budget.Ledger().reserve(1_000)
+
+
+def test_B8_the_committed_config_has_the_trial_limit_until_the_margin_is_confirmed(budget):
+    config = budget.load_config(Path(__file__).resolve().parents[1])
+    assert config["trial_cap_tokens"] == 100_000
+    assert config["margin_confirmed"] is False
+
+
+@pytest.mark.parametrize("flag", ["--skip-worktree", "--assume-unchanged"])
+def test_B8_a_hidden_change_to_the_cap_config_is_still_caught(budget, repo, flag):
+    _git(repo, "update-index", flag, "config/budget.toml")
+    _write_config(repo, 5_000, commit=False)
+    with pytest.raises(budget.BudgetError):
+        budget.require_clean_config(repo)
+
+
+def test_B8_a_git_error_in_the_clean_check_is_a_budget_error(budget, repo, monkeypatch):
+    real = subprocess.run
+
+    def flaky(args, *rest, **kwargs):
+        if "status" in args:
+            return real(args, *rest, **kwargs)
+        raise OSError("synthetic git failure")
+
+    monkeypatch.setattr(budget.subprocess, "run", flaky)
+    with pytest.raises(budget.BudgetError):
+        budget.require_clean_config(repo)
+
+
+@pytest.mark.parametrize("change", [
+    lambda s: s.update(reserved=s["reserved"] - 50),
+    lambda s: s["open"].update(bad=-5) or s.update(reserved=s["reserved"] - 5),
+    lambda s: s["open"].update(bad="many"),
+])
+def test_B8_open_reservations_must_be_valid_and_add_up_to_the_reserved_total(budget, ledger, change):
+    ledger.reserve(100)
+    _tamper(budget, change)
+    with pytest.raises(budget.BudgetError):
+        budget.Ledger().state()
+
+
+def test_B8_release_closes_a_reservation_left_open_by_a_crash_and_charges_it_in_full(budget, ledger):
+    rid = ledger.reserve(100)
+    with pytest.raises(budget.BudgetError):
+        budget.release(rid, reason=" ")
+    budget.release(rid, reason="SYN crashed run")
+    state = budget.Ledger().state()
+    assert (state["used"], state["reserved"], state["open"]) == (100, 0, {})
+    assert state["events"][-1]["type"] == "release"
+    assert state["events"][-1]["reason"] == "SYN crashed run"
+    with pytest.raises(budget.BudgetError):
+        budget.release(rid, reason="SYN again")
+
+
+def test_B8_cli_ledger_status_and_release(budget, repo, capsys):
+    from voc import cli
+
+    assert cli.main(["ledger", "init"], env={}, root=repo) == 0
+    rid = budget.Ledger().reserve(40)
+    capsys.readouterr()
+    assert cli.main(["ledger", "status"], env={}, root=repo) == 0
+    assert rid in capsys.readouterr().out
+    assert cli.main(["ledger", "release", rid, "--reason", "SYN crashed run"], env={}, root=repo) == 0
+    assert budget.Ledger().state()["used"] == 40
+
+
+def test_B8_settling_an_unknown_reservation_is_an_error(budget, ledger):
+    ledger.reserve(100)
+    with pytest.raises(budget.BudgetError):
+        ledger.settle("SYN-unknown", 5)
+    state = ledger.state()
+    assert (state["used"], state["reserved"]) == (0, 100)
+
+
+def test_B8_a_lock_held_too_long_is_an_error_not_an_endless_wait(budget, ledger, monkeypatch):
+    monkeypatch.setattr(budget, "LOCK_TIMEOUT_SECONDS", 0.2)
+    with budget._locked(budget.ledger_path()):
+        with pytest.raises(budget.BudgetError):
+            budget.Ledger().reserve(1)
+    budget.Ledger().reserve(1)
+
+
+def test_B8_the_ledger_is_flushed_to_disk_before_it_is_replaced(budget, ledger, monkeypatch):
+    order = []
+    real_fsync, real_replace = os.fsync, os.replace
+    monkeypatch.setattr(budget.os, "fsync", lambda fd: order.append("fsync") or real_fsync(fd))
+    monkeypatch.setattr(budget.os, "replace", lambda a, b: order.append("replace") or real_replace(a, b))
+    ledger.reserve(1)
+    assert "fsync" in order
+    assert order.index("fsync") < order.index("replace")
+
+
+def test_B8_a_raise_that_cannot_be_logged_is_refused(budget, ledger, repo):
+    _write_config(repo, 5_000, commit=True)
+    log = repo / "BUILD_LOG.md"
+    log.unlink()
+    log.mkdir()
+    with pytest.raises(budget.BudgetError):
+        budget.raise_cap(repo, reason="SYN more runs")
+    assert budget.Ledger().state()["cap"] == CAP
+
+
+def test_B8_a_call_with_partial_usage_is_charged_the_full_reservation(budget, replay, repo, ledger):
+    prompt = "SYN prompt with half the usage"
+    _caller(replay, repo, lambda p, s: _answer(replay, input_tokens=30, output_tokens=None)).call(prompt)
+    state = budget.Ledger().state()
+    assert state["used"] == _worst_case(prompt)
+    assert state["reserved"] == 0
