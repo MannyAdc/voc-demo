@@ -45,3 +45,6 @@ web/dist/
 
 # Personal editor settings
 .vscode/
+
+# Worktrees made for parallel agents
+.claude/worktrees/
