@@ -1,0 +1,51 @@
+complaint_id,split,prompt_version,proposed_label,quote_start,quote_end,decision,reason,accepted_label,cut,recording_key,source,input_tokens,output_tokens
+23741032,dev,v1,Debt collection,182,288,accepted,,Debt collection,no,072148fda9be00f6a52bf4baebd387f335764418879c54cacd0f47255b78e169,live,1101,58
+23743242,dev,v1,"Payday loan, title loan, personal loan, or advance loan",282,355,accepted,,"Payday loan, title loan, personal loan, or advance loan",no,459d1315adebfc951661456b6011d2315902131211790ddf022cb92e6fc32768,live,1334,399
+23743842,dev,v1,Vehicle loan or lease,0,53,accepted,,Vehicle loan or lease,no,807e2638efa342d1053cfdefe0647cfc4eb089a6928635e741f7ea3fb4f96dc0,live,1150,301
+23745215,dev,v1,Checking or savings account,541,591,accepted,,Checking or savings account,no,9688b9da33da64ca88a4ae4b3ec13f17c4a7f8fb07a0ddd3e0db656cb356c0e0,live,1084,430
+23745978,dev,v1,Prepaid card,45,142,accepted,,Prepaid card,no,4017c5202ee4545caf650c1ea781ae0d941f6ae7cdd9e9330c5d878a3c567729,live,972,59
+23747400,dev,v1,Debt collection,0,79,accepted,,Debt collection,no,595d57d08a1c8e7c2f1909c29085fc9afd9aeb401e105a5659df93f66d8fb324,live,1059,409
+23750165,dev,v1,Debt collection,116,203,accepted,,Debt collection,no,bcde3ca6b34dae1dbbf406e885677f37d836b31384212fc3c4b4ac3b6d7fce6d,live,1004,224
+23750725,dev,v1,Debt collection,0,42,accepted,,Debt collection,no,d79e85958ff3b7f0486e3cb0eaae65835d3a058882767fe7ef3351bcc0634f1d,live,1149,257
+23751707,dev,v1,"Money transfer, virtual currency, or money service",193,279,accepted,,"Money transfer, virtual currency, or money service",no,ea96e55cf461a2223dfe09b23ce5a0e1d9f83c72bc7da9b2dddc8b96ce6db8c8,live,1680,317
+23753212,dev,v1,Debt collection,342,385,accepted,,Debt collection,no,e593bbaab040f9b61d5288c920d6e68777ca68df9ff598b4a5d7bd73b1047181,live,1435,225
+23753401,dev,v1,Credit card,39,174,accepted,,Credit card,no,2c136b47eb3dd90f714f8d4d9addcd6e7f58668e116ef9fb16be5d7f2740adde,live,1210,66
+23754556,dev,v1,"Money transfer, virtual currency, or money service",0,92,accepted,,"Money transfer, virtual currency, or money service",no,36f2ea4677547f2e267e02bab59eaae9cd940c76d0877adbabfe6d5f7ec42ed7,replay,1256,367
+23755269,dev,v1,"Payday loan, title loan, personal loan, or advance loan",0,43,accepted,,"Payday loan, title loan, personal loan, or advance loan",no,90f916372822f6cba31f8b7c596d27c70d3b621185c15b06c750eb0f5d6adfbc,live,1516,217
+23756523,dev,v1,Checking or savings account,620,694,accepted,,Checking or savings account,no,1a120c6fa1bac60fdb9aee1efa88427db946d785a88f5de89794f2262dba1d37,live,1505,46
+23757866,dev,v1,Credit card,0,65,accepted,,Credit card,no,a67404ba872f31dda8c5203973de5d58323177a21e8ba10f813a21253853be05,live,1132,47
+23762149,dev,v1,Credit card,43,68,accepted,,Credit card,no,35891e7d9458d16d1fb7e6561d45de1c764652d467a4be6405ed6734c1e9212d,live,945,322
+23763811,dev,v1,Checking or savings account,16,63,accepted,,Checking or savings account,no,dd819eef0e06fb328d31c230c073a310ffcc29823e35c03672651fbe2b1e361e,live,935,165
+23763937,dev,v1,Credit card,0,63,accepted,,Credit card,no,f56a2819d22a75a88e945f82aeeec4d9d6d21ae68f1cb8f2b624840f5b57fb14,replay,1111,43
+23764451,dev,v1,Vehicle loan or lease,163,238,accepted,,Vehicle loan or lease,no,e4ac69f02d3dd6e249ae286739c037e7e299c55b6b95fa89863cbe8645682296,live,1178,417
+23765896,dev,v1,Checking or savings account,0,68,accepted,,Checking or savings account,no,8d94ef474500ae9e0afa7b067b860762732c241470d4f316281675b4d04a99be,live,1359,196
+23768219,dev,v1,Debt collection,182,254,accepted,,Debt collection,no,1eb3fc56da1f5aa62f8cd6622db78b8c0353c07b491bf2efdec0b59a3a74f5c5,live,1657,228
+23768722,dev,v1,Debt collection,149,256,accepted,,Debt collection,no,f157a2379abb34001ddb7285eb02b70a04b2f4abebc1e89ba87c59d4910ce22a,live,1355,344
+23768788,dev,v1,Debt or credit management,544,587,accepted,,Debt or credit management,no,83a65d6a4c8650d419b948e70b490264cd70c7c7c8eefe9d2ca5e245c0b4af73,live,2211,267
+23771988,dev,v1,Credit reporting or other personal consumer reports,198,231,accepted,,Credit reporting or other personal consumer reports,no,e4a34e11521e87bb454626babb7cc2dbea84410877be4c69c004e014db138883,replay,2089,231
+23772160,dev,v1,Debt collection,0,28,accepted,,Debt collection,no,f845a42105c1e64a91c9b229dc035cc249af1ab4e3e47dc1590aa04e13a1ff70,live,1084,30
+23774010,dev,v1,Debt collection,83,136,accepted,,Debt collection,no,576d6eaa994aa182c67573767afd8c3b44b5e0cb997f4f2a21d5dd6952032d7e,live,1770,38
+23774129,dev,v1,Debt collection,0,85,accepted,,Debt collection,no,be08d765442bd18d9a632cb6b2fa16f6a668944410654748e9251700ceb4ffb4,live,1060,212
+23776106,dev,v1,Debt collection,78,140,accepted,,Debt collection,no,ff6312561346df3353b36b9f5c5d525f647bd7e839982f3241597dfc479b5920,live,1261,317
+23777406,dev,v1,Checking or savings account,49,90,accepted,,Checking or savings account,no,3b405f8e85270638c802a9b730812bcf6b1db4f9ca7ead77bb56d39a42368d27,replay,1599,139
+23777611,dev,v1,Student loan,96,175,accepted,,Student loan,no,48f82b6eda57416260b553226428e7f3dd87f9da84a01b14816627ebe54e1af9,live,1025,68
+23779081,dev,v1,Vehicle loan or lease,946,972,accepted,,Vehicle loan or lease,no,bcebcd73aa8dafe3a8feb0d19fda8c5d743f16ab05152601878e504c2056c404,live,1477,35
+23779205,dev,v1,Credit reporting or other personal consumer reports,0,88,accepted,,Credit reporting or other personal consumer reports,no,e0af7909c2b65af9d2c0ebd6782663bb698bc2a3c569f3b42dbfa0c6f67da0a5,replay,977,65
+23783570,dev,v1,Mortgage,0,75,accepted,,Mortgage,no,04965dd869952f250497cfe3311ed1f9e5ff10dc2b55ab39a5a87ccfb0ffc038,live,1418,311
+23787184,dev,v1,Credit card,0,88,accepted,,Credit card,no,01010640054b8c7ac883d0803b2652bbfc6eaba5f654515f8e4fb674fbf60b17,live,1374,357
+23790898,dev,v1,"Money transfer, virtual currency, or money service",0,70,accepted,,"Money transfer, virtual currency, or money service",no,6c756d914cf778ed474f1d129401172ea1a1120699c81feef83245423dba4081,live,1126,237
+23792577,dev,v1,"Money transfer, virtual currency, or money service",12,67,accepted,,"Money transfer, virtual currency, or money service",no,1d8d74eac1bb05cbdc92ba45a8410641d17084576a751e94ffaf00028a93228b,live,1014,190
+23792826,dev,v1,Credit reporting or other personal consumer reports,34,64,accepted,,Credit reporting or other personal consumer reports,no,5093a687caad4ad6d5ea7edfd271e7fcd3f1d121717e4736754d0bc122628af6,replay,939,142
+23795429,dev,v1,Prepaid card,1331,1381,accepted,,Prepaid card,no,538a04768ba0091663d825c1a5b771580a0315b518a6e16bf1585d093baf8fab,live,1803,274
+23796797,dev,v1,Mortgage,409,489,accepted,,Mortgage,no,d07c9a26c5a9e4d1269a51909ddab483436297145bc2265e68a156f334741c86,live,1067,43
+23797340,dev,v1,Credit card,0,77,accepted,,Credit card,no,84a451bd9987aa71536ca395e15e68b7be2e71e4557f60ef1cbb7a35466f117d,live,1412,44
+23801850,dev,v1,Credit card,0,79,accepted,,Credit card,no,8b870991ba7f6bf7227869662b42c01026aa4cfc520dd88ba04717f4c93b4cea,live,1005,43
+23802303,dev,v1,Checking or savings account,590,640,accepted,,Checking or savings account,no,4fa96cb35ec8e6c36e5cfa42b7601e5169a0008be36e692c119d2717f48b9863,live,1562,133
+23804422,dev,v1,Checking or savings account,39,157,accepted,,Checking or savings account,no,3d0e54ddf2e3681fae2b8028a8a5e1aed6a9cc0d4bab7cf24add2437940a1e82,live,1836,68
+23805500,dev,v1,Credit card,0,97,accepted,,Credit card,no,7d05c2589737f4f9d8edc97ccfa447c104d3998c892ddec1e54dc5794282942e,live,1236,64
+23806038,dev,v1,Checking or savings account,0,76,accepted,,Checking or savings account,no,fdd4ad29179390f101b90345a7a7ed14ccf7cbd6f664b515bc1ac7e2a16241c8,live,1067,44
+23806058,dev,v1,Credit reporting or other personal consumer reports,231,297,accepted,,Credit reporting or other personal consumer reports,no,3dbdba1b702d2d93e31934006e5f69de198b7c0ef8da1a23242c9b99d4ba0f71,live,1208,158
+23808584,dev,v1,Vehicle loan or lease,287,345,accepted,,Vehicle loan or lease,yes,074b029886d167e25a6c5a8a27ed1351faaf65954b6f8b52802f5e6745c25774,live,2191,44
+23809590,dev,v1,Credit reporting or other personal consumer reports,106,176,accepted,,Credit reporting or other personal consumer reports,yes,e1f3d4c2c1c285cb7fe5e0906e2e4703193f5b9a19c0cf146d0db69406f749d6,replay,2055,544
+23809803,dev,v1,Checking or savings account,1112,1173,accepted,,Checking or savings account,no,1dfdf2c4ffb86ab829c5a9b6c2d8b2677a8c0940a001d3bfb7bfb68e741db5c1,live,2148,248
+23811505,dev,v1,"Money transfer, virtual currency, or money service",204,259,accepted,,"Money transfer, virtual currency, or money service",no,3ddfafed97eea02e99c477bf24435a3ff87f0c21e43cd5190d9c423229f1f64b,live,1083,470
