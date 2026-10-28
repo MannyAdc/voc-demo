@@ -73,8 +73,9 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 
 ## LLM use
 
-- `LLM_BACKEND` is `api`, `cli` or `mock`. Tests and CI use `mock` only.
-- The `cli` backend is a plain text call: no tools, no MCP, no settings, an empty temporary folder, no API key in its environment. Complaint text must never reach an agent that can act.
+- `LLM_BACKEND` is `api` or `mock`. Tests and CI use `mock` only.
+- There is no `cli` backend (cut on 28 October). Complaint text must never reach an agent that can act, and `claude -p` is one.
+- The LLM is not trained. Prompt versions are judged on the development set. Sample sizes and the label set come from `docs/DATA.md` (B24, B25).
 - Default model for iteration: `claude-haiku-5-5`.
 - Every live call goes through the record and replay cache and the token ledger. The ledger lives at one fixed path in the home folder, so all worktrees share one cap. The cap can only be lowered by an override.
 - Samples are frozen by the committed ID and content-hash lists in `splits/`. Never regenerate them.

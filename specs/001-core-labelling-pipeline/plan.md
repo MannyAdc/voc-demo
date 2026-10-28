@@ -62,7 +62,7 @@ src/voc/
 ├── pipeline.py    # one complaint in, one decision out
 ├── replay.py      # B7 record and replay
 ├── budget.py      # B8 token ledger
-├── backends.py    # B12 api, cli, mock
+├── backends.py    # B12 api, mock
 ├── costs.py       # B13 tokens to dollars
 ├── data.py        # B9 dedupe, truncate, split
 ├── baselines.py   # B11 most-common-class, TF-IDF

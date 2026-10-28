@@ -64,7 +64,7 @@ Rationale: three days of work should go into verification, not infrastructure.
 - Stack: Python 3.13 with uv, pytest, DuckDB, dbt-duckdb, scikit-learn, the Anthropic Python SDK,
   FastAPI with Pydantic, React with Vite and TypeScript, Playwright, GitHub Actions, gitleaks.
 - The LLM never runs inside a web request. Labelling is a batch job. The API only reads results.
-- LLM backend is chosen by `LLM_BACKEND` (`api`, `cli` or `mock`). Tests and CI use `mock` only.
+- LLM backend is chosen by `LLM_BACKEND` (`api` or `mock`). Tests and CI use `mock` only. There is no `cli` backend.
 
 ## Workflow and Quality Gates
 
@@ -84,4 +84,4 @@ contradict it. If they disagree, this file wins until both are fixed in the same
 Amendments are made in a pull request and logged in `BUILD_LOG.md`. Versions follow semantic
 versioning: MAJOR for removing or redefining a principle, MINOR for adding one, PATCH for wording.
 
-**Version**: 1.3.0 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-10-28 (1.1.0: untrusted text never reaches an agent that can act. 1.2.0: two claims fixed in advance. 1.3.0: analyser exception and leak exception, after review round 4)
+**Version**: 1.3.1 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-10-28 (1.1.0: untrusted text never reaches an agent that can act. 1.2.0: two claims fixed in advance. 1.3.0: analyser exception and leak exception, after review round 4. 1.3.1: `cli` removed from the backend constraint, owner cut decision)

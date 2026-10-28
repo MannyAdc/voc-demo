@@ -19,17 +19,18 @@ description: "Task list for the core labelling pipeline"
 
 ## Phase 1: Setup
 
-- [ ] T001 First commit on `main`: `CLAUDE.md`, `BUILD_LOG.md`, `.gitignore`, README stub, Spec Kit files
-- [ ] T002 PR "project skeleton": `pyproject.toml` with uv, pytest config, `tests/conftest.py` that blocks sockets, one test that proves the block (B7)
-- [ ] T004 [P] PR "hooks" moves here: it must exist before any task touches real data
-- [ ] T002b PR "download and profile": tests in `tests/test_download.py` and `tests/test_analysis.py` (B16 SHA-256 check, B22), then `scripts/download.py` (pinned export URL, date and SHA-256) and the `profile` command
-- [ ] T003 PR "CI": `.github/workflows/ci.yml` runs pytest with no network, gitleaks on the full history, the names check, the file size and raw data checks on every pull request. `dbt build` is added to CI in T011.
+- [x] T001 First commit on `main`: `CLAUDE.md`, `BUILD_LOG.md`, `.gitignore`, README stub, Spec Kit files
+- [x] T002 PR "project skeleton": `pyproject.toml` with uv, pytest config, `tests/conftest.py` that blocks sockets, one test that proves the block (B7)
+- [x] T004 [P] PR "hooks" moves here: it must exist before any task touches real data
+- [ ] T002b PR "download and profile": tests in `tests/test_download.py` and `tests/test_analysis.py` (B16 SHA-256 check, B22), then `scripts/download.py` (pinned export URL, date and SHA-256) and the `profile` command. Then, from its output (counts only), `docs/DATA.md`: the exploratory data analysis, the label set assessment (B24) and the sample size calculation (B25). The owner reviews `docs/DATA.md` before T012 draws any sample.
+- [x] T003 PR "CI": `.github/workflows/ci.yml` runs pytest with no network, gitleaks on the full history, the names check, the file size and raw data checks on every pull request. `dbt build` is added to CI in T011.
 
 ## Phase 2: Foundational
 
-- [ ] T004 (built before T002b, see above) PR "hooks": tests in `tests/test_hooks.py`, then `.claude/hooks/test_gate.py` (tests-only commits allowed) and `.claude/hooks/data_guard.py` (raw CFPB data, `.env`, key-like content), wired in `.claude/settings.json`
+- [x] T004 (built before T002b, see above) PR "hooks": tests in `tests/test_hooks.py`, then `.claude/hooks/test_gate.py` (tests-only commits allowed) and `.claude/hooks/data_guard.py` (raw CFPB data, `.env`, key-like content), wired in `.claude/settings.json`
 - [ ] T005 [P] PR "quote check": tests in `tests/test_evidence.py` (B1, B6), then `src/voc/evidence.py`
 - [ ] T006 [P] PR "prompt and parsing": tests in `tests/test_prompt.py` (B4, B5), then `src/voc/prompt.py`
+- [ ] T006b PR "merge verdict", right after T005 and T006: a `/merge-verdict` command. A script checks CI is green, the red commit came before the code, every review finding is fixed or deferred with a reason, and for parallel branches that they touch no shared file and the tests pass on both merged together. Claude then gives a one-line verdict (MERGE or FIX FIRST, with the reason and, for parallel branches, the merge order). The owner still merges. Used on every pull request from then on.
 - [ ] T007 PR "decision": tests in `tests/test_decision.py` (B2 both views, B3, B5), then `src/voc/decision.py`. Needs T005, T006.
 
 **Checkpoint**: one model answer can be checked and accepted or quarantined, with no model call.
@@ -39,14 +40,14 @@ description: "Task list for the core labelling pipeline"
 ## Phase 3: User Story 4 - Re-runs are free and spend has a hard stop (P4, built early because every live run needs it)
 
 - [ ] T008 [US4] PR "ledger and replay": tests in `tests/test_budget.py` and `tests/test_replay.py` (B7, B8), then `src/voc/budget.py` and `src/voc/replay.py`
-- [ ] T008b Owner task: set the monthly dollar limit in the Anthropic console. Claude writes down the steps. The owner does it and logs the time.
-- [ ] T009 [US4] PR "backends and cost" (also owns: `.env` loading, with tests pointing it at an empty temp file, and `cli` backend tests run with the home folder and `CLAUDE_CONFIG_DIR` pointed at an empty temp folder, so a badly mocked test cannot use the owner's stored login): check terms and prices first (research.md), tests in `tests/test_backends.py` and `tests/test_costs.py` (B12, B13), then `src/voc/backends.py` and `src/voc/costs.py`
+- [ ] T008b Owner task: set the monthly dollar limit in the Anthropic console to $20 (owner decision, 28 October). Claude writes down the steps. The owner does it and logs the time.
+- [ ] T009 [US4] PR "backends and cost" (also owns: `.env` loading, with tests pointing it at an empty temp file): check prices and API settings first (research.md), including whether the API still accepts a temperature setting (B12), then tests in `tests/test_backends.py` and `tests/test_costs.py` (B12, B13), then `src/voc/backends.py` and `src/voc/costs.py`. Only `api` and `mock`: `cli` was cut on 28 October.
 
 ## Phase 4: User Story 3 - Load a new month safely (P3)
 
 - [ ] T010 [P] [US3] PR "staged load" (also owns: DuckDB extension auto-install and auto-load turned off on every connection, with a test): check DuckDB and dbt versions first, tests in `tests/test_load.py` (B14 re-runnable, schema check), then `scripts/load_month.py`
 - [ ] T011 [US3] PR "dbt curated and data tests": dbt project in `dbt/`, data tests for missing or repeated IDs and unknown Product, a test that a bad fixture fails the build. Lineage graph generated.
-- [ ] T012 [US3] PR "samples": tests in `tests/test_data.py` (B9, B16), then `src/voc/data.py`, the `sample` command, and the committed ID lists in `splits/`
+- [ ] T012 [US3] PR "samples": tests in `tests/test_data.py` (B9, B16, B25), then `src/voc/data.py`, the `sample` command, and the committed ID lists in `splits/`. Uses the label set and the sizes from `docs/DATA.md` (B24, B25), after the owner has reviewed it.
 
 ## Phase 5: User Story 2 and User Story 1 - Label, quarantine, score (P1, P2)
 
@@ -64,7 +65,7 @@ description: "Task list for the core labelling pipeline"
 - [ ] T018a PR "analyser": tests in `tests/test_analysis.py` (B21), then the `analyse` command with its fixed cause list
 - [ ] T018 Error analysis (B21) and prompt versions v2 onward (one cause per version)
 - [ ] T019 Final test run, once, with the chosen prompt version, only when the owner says "final" (B17)
-- [ ] T020 README results: every figure with the command that produced it, both views, per-Product table, re-weighted figure, synthetic injection results reported apart. README checklist, checked by the reviewer agent: the CFPB "not a statistical sample" sentence, narratives are a 1.5 percent subset with a different class mix, labels are set by the consumer, "quote found in the text" not "quote supports the label", the injection caveat for the quote-only view, the model's training cutoff, the CFPB file changes over time, Known limits (from the threat model), every number with its command
+- [ ] T020 README results: every figure with the command that produced it, both views, per-Product table, re-weighted figure, synthetic injection results reported apart. README checklist, checked by the reviewer agent: the CFPB "not a statistical sample" sentence, narratives are a 1.5 percent subset with a different class mix, labels are set by the consumer, "quote found in the text" not "quote supports the label", the injection caveat for the quote-only view, the model's training cutoff, the CFPB file changes over time, Known limits (from the threat model), why there is no `cli` backend (untrusted text must never reach an agent with tools, and one code path keeps every number reproducible), the cost to label every narrative projected from measured tokens, every number with its command
 
 ## Dependencies
 
@@ -78,6 +79,7 @@ description: "Task list for the core labelling pipeline"
 - Workstream B (data): T010, T011, T012
 - Workstream C (tooling): T004, then T015
 - Each workstream runs in its own git worktree. Every run in parallel is logged in `BUILD_LOG.md`.
+- Agreed on 28 October: T005 and T006 run in parallel, one by Claude in the main worktree and one by a second agent in its own worktree. Each gets its own red commit, reviewer and owner merge. Both go through `/merge-verdict` (T006b).
 
 ## MVP
 
@@ -85,10 +87,12 @@ T001 to T016 except T011. Until dbt lands, `load_month.py` runs the missing ID, 
 
 ## Checkpoints
 
-- Wednesday 12:00: T001 to T009 merged.
-- Wednesday 18:00: T010 to T014 merged and the T014b smoke test done.
-- Wednesday 23:00: first full development run (T016).
-- Thursday 12:00: prompt versions done or stopped. Then API and dashboard. Also look again at the "carried-over failing test" allowance in the test gate (owner decision, 28 October): count its uses in `BUILD_LOG.md` and any weakened test the reviewer found. If any was weakened, go back to the strict rule.
+Changed on 28 October by owner decision, because the Wednesday 12:00 target (T001 to T009) would be missed. The original targets were: Wednesday 12:00 T001 to T009, Wednesday 18:00 T010 to T014 and T014b, Wednesday 23:00 T016.
+
+- Wednesday 18:00: T002b and T005 to T009 merged.
+- Thursday 01:00: T010 to T014 merged and the T014b smoke test done.
+- Thursday 10:00: first full development run (T016).
+- Thursday 12:00: prompt versions done or stopped. Then API and dashboard (Thursday 12:00 to 18:00). Also look again at the "carried-over failing test" allowance in the test gate (owner decision, 28 October): count its uses in `BUILD_LOG.md` and any weakened test the reviewer found. If any was weakened, go back to the strict rule.
 - Thursday 22:00: final test run (T019) and README results (T020).
 
 At Wednesday 12:00, make a cut decision whatever the state. After that, if a checkpoint is missed by more than 2 hours, cut further from the list below. The API and dashboard are not on the cut list, because the brief needs them to answer the feedback.
@@ -106,3 +110,9 @@ Cut in this order, never cutting the quote check, quarantine, tests, CI, the spe
 7. Method comparison extras beyond the confusion matrices and the who-was-right table (owner to confirm).
 8. The analyser (owner to confirm). The fallback is that the owner reads examples with `show` and Claude sees only counts.
 9. The brief's own cut order after that: synthetic sales calls, Azure, the dbt lineage graph. The agreement step is never cut, because claim B depends on it.
+
+### Cut decision, 28 October (owner)
+
+- Cut: items 1, 2, 3, 4 and 6. Item 2 and the rare commit forms in item 4 needed no work: the git pre-commit hook covers every commit form. The narrative-copy check from item 4 moves to Known limits.
+- Kept for now, looked at again at the Thursday 12:00 checkpoint: items 5, 7 and 8.
+- Added: the label set assessment and the sample size calculation (B24, B25), and the test set raised to about 3,000.

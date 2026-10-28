@@ -78,7 +78,7 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - charges add up (reused)
 - use survives a restart (reused)
 - a reservation that just fits is allowed, one more token is refused (reused, changed)
-- the reservation is input estimate plus the output limit, plus the `cli` allowance for `cli` (review)
+- the reservation is input estimate plus the output limit (review)
 - the input estimate is never below the real count, checked against a fixture of real token counts recorded once in a logged live counting run (review, changed)
 - the cap is copied into the ledger at init and an override can only lower it (review, changed)
 - live calls are refused while the cap config has uncommitted changes (review)
@@ -114,11 +114,8 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - an unknown `LLM_BACKEND` value is an error that names the allowed values
 - `api` with no key in the environment fails with a clear message
 - the key never appears in an error message or log line
-- `cli` builds a command with no tools, no MCP servers and no settings or instruction files (review, the process itself is faked)
-- `cli` runs in a new empty temporary folder (review)
-- `cli` passes an environment with no API key and no repo paths (review)
-- `cli` refuses real complaints until a canary result is logged (review)
-- the temperature is recorded with each run (review)
+- `LLM_BACKEND=cli` is an unknown value and fails with a clear message (the `cli` backend and its four tests were cut on 28 October)
+- the temperature is recorded with each run (review), or the effort setting if the API no longer accepts a temperature (checked in T009)
 - a comparison that mixes backends is refused (review)
 - the key does not appear in recordings, results files or reports (review)
 - a `.env` file is loaded into the environment at start-up (review)
