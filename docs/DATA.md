@@ -16,7 +16,7 @@ Status: **draft for the owner's review.** No sample is drawn until the owner has
 
 - **672,036 complaints**, all received between **1 and 31 July 2026**. Every date was read. No complaint ID is missing or appears twice.
 - They are about **1,789 different companies**. This repo names no company.
-- **Complaints only.** The CFPB calls it "a database of financial product and service complaints". There is no positive feedback.
+- **Complaints only.** The CFPB calls it "a database of financial product and service complaints" ([its consumer complaint database page](https://www.consumerfinance.gov/data-research/consumer-complaints/), read 28 October 2026). There is no positive feedback.
 - One industry: US consumer finance. Each complaint has a **Product**, a broad category the consumer chose when filing, such as "Credit card" or "Mortgage". We call it the category.
 - The file name says 20 July 2026, but it holds complaints received up to 31 July. So the file was downloaded on or after 31 July. Its name is not its download date.
 
@@ -55,13 +55,13 @@ Only **10,002 complaints (1.5 percent) have a narrative**, the consumer's own de
 
 **Does the text set represent all complaints? Overall, no.** We measure the gap between two mixes with one number, the difference: 0 percent means the same mix, 100 percent means no overlap at all. (Statisticians call it the total variation distance.)
 
-- Between all complaints and the text set, the difference is **87 percent**. Credit reporting is 92 percent of all complaints, but only 1 in 1,000 of them has text.
+- Between all complaints and the text set, the difference is **87 percent**. Credit reporting is 92 percent of all complaints, but only about 1 in 1,300 of them has text.
 - Leaving credit reporting out, the difference falls to **17 percent**. Most categories have text for about 1 in 4 complaints. Debt collection is lower, at about 1 in 9.
 - Why credit reporting complaints so rarely have text cannot be answered from this file.
 
 ## Within each category, do complaints with text look like the rest?
 
-For each category, we compared the complaints with text against all complaints in that category, on six fields every complaint has. The numbers are the difference, from 0 (the same mix) to 1 (no overlap).
+For each category, we compared the complaints with text against all complaints in that category, on six fields recorded for each complaint. An empty value is compared as its own group, which matters for Tags (97.9 percent empty). The numbers are the difference, from 0 (the same mix) to 1 (no overlap). Values seen fewer than 5 times are grouped together, which can only make a difference smaller, so these are lower bounds.
 
 | Category | How submitted | Issue | Company response | On time | Tags | State |
 |---|---|---|---|---|---|---|
@@ -82,12 +82,12 @@ As a rough reading guide (our own, not a standard): under 0.05 is very similar, 
 **What stands out:**
 
 - **How submitted.** In every category, every complaint with text came through the web form. Of all complaints, between 85.8 percent (prepaid card) and 99.9 percent (credit reporting) did.
-- **Company response.** No complaint with text is still "in progress". In credit reporting, 16.4 percent of all complaints are in progress, and 0 percent of those with text.
+- **Company response.** Almost no complaint with text is still "in progress": 5 of 10,002. In credit reporting, 16.4 percent of all complaints are in progress, and none of those with text.
 - **Issue, in debt collection.** "Took or threatened to take negative or legal action" is 22.4 percent of all debt collection complaints, but 7.1 percent of those with text. "Written notification about debt" is 17.0 percent of all, and 25.0 percent of those with text.
 - **On time, in student loans.** The company answered late for 21.8 percent of all student loan complaints, but 40.0 percent of those with text.
 - **State.** Some states are over- or under-represented. In credit reporting, Texas is 16.9 percent of all complaints and 27.0 percent of those with text.
 
-**What this means for the project.** Within most categories, complaints with text are similar to the rest on most fields, but not the same. So our results describe **complaints that have text**: mostly sent through the web form and already answered by the company. They do not describe all complaints, and they say least about credit reporting. The README will say this (task T020).
+**What this means for the project.** Within most categories, complaints with text are similar to the rest on most fields, but not the same. So our results describe **complaints that have text**: all sent through the web form, and almost all already answered by the company. They do not describe all complaints, and they say least about credit reporting. The README will say this (task T020).
 
 ## The text itself
 
@@ -98,7 +98,7 @@ As a rough reading guide (our own, not a standard): under 0.05 is very similar, 
 ## The label set (B24)
 
 - There are **11 categories**. They are exactly the 11 products in the CFPB's own list, "Consumer complaint form product and issue options", effective 24 August 2023 ([PDF](https://files.consumerfinance.gov/f/documents/cfpb_consumer_complaint_form_product_issue_options_August_2023_FINAL.pdf), read 28 October 2026). The file covers one month, so no category was renamed, merged or retired inside it. The CFPB says its lists changed in April 2017 and in 2023, so older files would need this check again.
-- **The CFPB publishes no written definition of each category.** That document's "definitions" only explain its change markers. What it does give is the official list of sub-categories under each category. These lists are the label definitions this project uses, in `config/labels.toml`, copied word for word.
+- **The CFPB publishes no written definition of each category.** That document's "definitions" only explain its change markers. What it does give is the official list of sub-categories under each category. These lists are the label definitions this project uses, in `config/labels.toml`, copied word for word except one curly apostrophe written straight. The July file words three sub-products differently from the form (for example "CD (Certificate of Deposit)" for "CD"). The file notes them.
 - Each category has between 2 and 11 sub-categories among complaints with text, not counting values too rare to show. They are counted as background only and are not labelled.
 - Some categories overlap in ways a consumer could confuse. These are guesses from the category names, to check later in error analysis:
   - Debt collection and the loan categories (credit card, student loan, payday loan), when a collector chases a loan.
@@ -140,7 +140,7 @@ Split across categories in proportion to the pool:
 **Small categories.**
 
 - In the **test set**, two categories fall below 30: prepaid card (27) and debt or credit management (19). Their per-category scores are shown as "too few to judge". They still count in the overall score.
-- In the **development set**, 8 of 11 categories are below 30. The development set is used to find error patterns, not to score categories, so no per-category score is reported from it.
+- In the **development set**, 7 of 11 categories are below 30. The development set is used to find error patterns, not to score categories, so no per-category score is reported from it.
 
 ## Decisions (owner, 28 October)
 

@@ -7,6 +7,11 @@
 # https://files.consumerfinance.gov/f/documents/cfpb_consumer_complaint_form_product_issue_options_August_2023_FINAL.pdf
 # (read 28 October 2026, SHA-256 6827dc88463217507e103fb0ec0eb7583dc203eb608ff6efd152bebc18655535).
 # The CFPB publishes no written definition of each category. These lists are the closest official description.
+# Copied word for word, except one curly apostrophe in "traveler's check" written straight.
+# The July 2026 file words three sub-products differently from the form, so match on these when needed:
+#   "CD (Certificate of Deposit)" in the data is "CD" here
+#   "International money transfer" in the data is "International money transfer (remittance)" here
+#   "Federal student loan servicing" in the data is "Federal student loan" here
 
 [[label]]
 name = "Checking or savings account"

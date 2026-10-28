@@ -28,6 +28,8 @@ def download(url, dest_dir, fetch=_fetch):
     if target.exists():
         raise FileExistsError(f"{target.name} already exists, so nothing was downloaded")
     partial = target.with_name(target.name + ".part")
+    if partial.exists():
+        raise FileExistsError(f"{partial.name} already exists, so nothing was downloaded")
     digest = hashlib.sha256()
     try:
         with open(partial, "wb") as f:

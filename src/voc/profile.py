@@ -77,12 +77,14 @@ def _load(con, path):
             THEN trim(regexp_replace(lower(narrative), '\s+', ' ', 'g')) END AS norm,
           ({RECEIVED})::DATE AS received
         FROM base""")
-    # The first copy of each text, by complaint ID, is the one kept (B9).
-    con.execute(f"""
+    # The first copy of each text, by complaint ID as a number, is the one kept (B9).
+    # Real IDs are numbers. Synthetic IDs are SYN- and a number, so the number is read from the end.
+    con.execute(rf"""
         CREATE TEMP TABLE t AS SELECT
           product, received, length(narrative) AS chars,
           row_number() OVER (PARTITION BY norm
-            ORDER BY try_cast(complaint_id AS BIGINT) NULLS LAST, complaint_id) = 1 AS first_copy,
+            ORDER BY try_cast(regexp_extract(complaint_id, '(\d+)$', 1) AS BIGINT) NULLS LAST,
+                     complaint_id) = 1 AS first_copy,
           {_safe('sub_product', 'product, sub_product')} AS sub_product
         FROM c WHERE has_text""")
 
