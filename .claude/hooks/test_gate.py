@@ -245,22 +245,29 @@ def git_pre_commit(repo, env):
 # Entry point
 
 
+def _git_out(cwd, *args):
+    """A git command's output, decoded as UTF-8 (never the Windows code page), or None."""
+    result = subprocess.run(["git", *args], cwd=cwd, capture_output=True, encoding="utf-8", errors="replace")
+    return result.stdout.strip() or None if result.returncode == 0 else None
+
+
 def _hooks_path(cwd):
-    result = subprocess.run(["git", "config", "--get", "core.hooksPath"], cwd=cwd, capture_output=True, text=True)
-    return result.stdout.strip() or None
+    return _git_out(cwd, "config", "--get", "core.hooksPath")
 
 
 def _repo_roots(cwd):
-    """This checkout's top folder, and the main checkout's (the folder that holds the shared .git)."""
+    """This checkout's top folder, and the main checkout's, kept only if their `.githooks/pre-commit` exists.
+
+    The main checkout is the folder holding the shared `.git`. A bare repository has none, so it adds nothing.
+    """
     roots = []
-    top = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=cwd, capture_output=True, text=True)
-    if top.returncode == 0 and top.stdout.strip():
-        roots.append(Path(top.stdout.strip()))
-    common = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
-                            cwd=cwd, capture_output=True, text=True)
-    if common.returncode == 0 and common.stdout.strip():
-        roots.append(Path(common.stdout.strip()).parent)
-    return tuple(roots)
+    top = _git_out(cwd, "rev-parse", "--show-toplevel")
+    if top:
+        roots.append(Path(top))
+    common = _git_out(cwd, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    if common and Path(common).name == ".git":
+        roots.append(Path(common).parent)
+    return tuple(r for r in roots if (r / HOOKS_PATH / "pre-commit").is_file())
 
 
 def _emit(decision):
