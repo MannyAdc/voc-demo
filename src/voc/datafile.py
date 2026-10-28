@@ -22,8 +22,9 @@ def load_pins(path):
 
 
 def find_export(folder):
-    """The one CSV file in the data folder."""
-    files = sorted(Path(folder).glob("*.csv"))
+    """The one CSV file in the data folder. Excel lock files (`~$name.csv`) and folders are ignored."""
+    files = sorted(p for p in Path(folder).iterdir()
+                   if p.is_file() and p.suffix.lower() == ".csv" and not p.name.startswith("~$"))
     if len(files) != 1:
         raise DataFileError(f"the data folder must hold exactly one CSV file, it holds {len(files)}")
     return files[0]
