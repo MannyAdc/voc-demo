@@ -1,0 +1,11 @@
+# TF-IDF baseline settings (B11). Fixed and recorded before the first run. The code has no defaults.
+# Word n-grams up to this length.
+ngram_max = 2
+# Ignore terms in fewer than this many training complaints.
+min_df = 2
+max_features = 50000
+sublinear_tf = true
+# Logistic regression: inverse regularisation strength and iteration limit.
+C = 4.0
+max_iter = 2000
+seed = 0
