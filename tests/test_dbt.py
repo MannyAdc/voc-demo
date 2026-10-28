@@ -66,16 +66,27 @@ def test_B14_dbt_build_passes_on_the_synthetic_fixture(repo, capfd):
     assert f"{MODEL}: 12 rows" in out
 
 
+# Changed in the review of #17: the same tests now also run on the staged source table. They run
+# first, and dbt skips the model when they fail, so the failing check named is the source test.
+
+
 def test_B14_dbt_a_missing_complaint_id_fails_the_build(repo, capfd):
     _add_row(repo, None)
     assert _build(repo) != 0
-    assert f"not_null_{MODEL}_complaint_id" in capfd.readouterr().out
+    assert "source_not_null_voc_staged_complaints_complaint_id" in capfd.readouterr().out
 
 
 def test_B14_dbt_a_repeated_complaint_id_fails_the_build(repo, capfd):
     _add_row(repo, "SYN-1")
     assert _build(repo) != 0
-    assert f"unique_{MODEL}_complaint_id" in capfd.readouterr().out
+    assert "source_unique_voc_staged_complaints_complaint_id" in capfd.readouterr().out
+
+
+def test_B14_the_model_keeps_its_own_complaint_id_tests():
+    schema = yaml.safe_load((REPO / "dbt" / "models" / "schema.yml").read_text(encoding="utf-8"))
+    model = next(m for m in schema["models"] if m["name"] == MODEL)
+    column = next(c for c in model["columns"] if c["name"] == "complaint_id")
+    assert set(column["data_tests"]) == {"not_null", "unique"}
 
 
 @pytest.mark.parametrize("product", ["Payday loan", None])
@@ -170,9 +181,10 @@ def test_B14_the_dbt_versions_are_pinned():
 
 
 def test_B14_dbt_docs_writes_the_lineage_files(repo, capfd):
+    # Changed in the review of #17: the files moved from dbt/target to data/dbt/target.
     assert cli.main(["dbt", "docs"], env={}, root=repo) == 0
-    assert (repo / "dbt" / "target" / "manifest.json").is_file()
-    assert (repo / "dbt" / "target" / "index.html").is_file()
+    assert (repo / "data" / "dbt" / "target" / "manifest.json").is_file()
+    assert "strip them before the lineage graph is published" in capfd.readouterr().out
 
 
 def test_B14_the_fixture_build_script_builds_the_committed_fixture(tmp_path, capfd):

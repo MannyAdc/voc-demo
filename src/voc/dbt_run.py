@@ -16,6 +16,10 @@ from voc.db import connect
 from voc.load import DB_PATH
 
 PROJECT = Path("dbt")
+# dbt's output can hold complaint text (run_results.json, dbt.log) and local paths (manifest.json),
+# so it goes in the git-ignored data folder, next to the DuckDB file, which the read guard protects.
+TARGET = DB_PATH.parent / "dbt" / "target"
+LOGS = DB_PATH.parent / "dbt" / "logs"
 MODELS = ("stg_complaints", "curated_complaints")
 CREDENTIAL_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN")
 QUIET = {
@@ -40,12 +44,12 @@ def dbt_env(base):
 
 def _run(root, action, labels):
     project = (Path(root) / PROJECT).resolve()
-    target = project / "target"
+    target = (Path(root) / TARGET).resolve()
     results = target / "run_results.json"
     results.unlink(missing_ok=True)
     args = [sys.executable, "-c", "from dbt.cli.main import cli; cli()", *COMMANDS[action],
             "--project-dir", str(project), "--profiles-dir", str(project),
-            "--target-path", str(target), "--log-path", str(project / "logs"),
+            "--target-path", str(target), "--log-path", str((Path(root) / LOGS).resolve()),
             "--vars", json.dumps({"labels": labels})]
     env = dbt_env(os.environ)
     env["VOC_DBT_DB"] = str((Path(root) / DB_PATH).resolve())
@@ -91,15 +95,17 @@ def build(root, labels):
              + ", ".join(f"{key} {value}" for key, value in tally.items())]
     lines += problems
     counts = _row_counts(root)
-    lines.append(", ".join(f"{name}: {n} rows" for name, n in counts.items()))
+    if counts:
+        lines.append(", ".join(f"{name}: {n} rows" for name, n in counts.items()))
     return lines, code == 0 and not problems
 
 
 def docs(root, labels):
     """Run `dbt docs generate`, which writes the lineage graph files."""
     code, _ = _run(root, "docs", labels)
-    target = Path(root) / PROJECT / "target"
+    target = Path(root) / TARGET
     written = [name for name in ("manifest.json", "catalog.json", "index.html") if (target / name).is_file()]
     if code != 0:
         raise DbtError(f"dbt docs exited with code {code}")
-    return [f"dbt docs: {', '.join(written)} written to {PROJECT.as_posix()}/target"]
+    return [f"dbt docs: {', '.join(written)} written to {TARGET.as_posix()}. "
+            "They hold local paths: strip them before the lineage graph is published."]
