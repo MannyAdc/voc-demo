@@ -4,6 +4,7 @@ Every test runs on a synthetic staged table with two Products and the mock backe
 network or calls a model.
 """
 import csv
+import io
 import json
 import shutil
 from pathlib import Path
@@ -78,8 +79,11 @@ def repo(tmp_path):
     return root
 
 
-def _answers(root, wrong=()):
-    """Mock answers for every development complaint: the right Product and its quote, unless listed in `wrong`."""
+def _answers(root, wrong=(), unquoted=()):
+    """Mock answers for every development complaint: the right Product and its quote.
+
+    A complaint in `wrong` gets the other Product. One in `unquoted` gets a quote that is not in its text.
+    """
     from voc.load import DB_PATH
     from voc.pipeline import _rows_by_id, definitions, load_prompt_version
     from voc.data import read_splits
@@ -94,7 +98,8 @@ def _answers(root, wrong=()):
             product = "Credit card" if product == "Mortgage" else "Mortgage"
         prompt = build_prompt(v1.instructions, names, row.narrative, complaint_id=row.complaint_id,
                               definitions=definitions(labels)).prompt
-        items.append({"prompt": prompt, "text": json.dumps({"label": product, "quote": QUOTES[row.product]})})
+        quote = "SYN words that appear in no complaint" if row.complaint_id in unquoted else QUOTES[row.product]
+        items.append({"prompt": prompt, "text": json.dumps({"label": product, "quote": quote})})
     path = root / "mock.json"
     path.write_text(json.dumps(items), encoding="utf-8")
     return {"LLM_BACKEND": "mock", "VOC_MOCK_FIXTURES": str(path)}
@@ -300,3 +305,157 @@ def test_B23_the_cost_per_1000_is_rounded_to_a_hundredth_of_a_cent(repo, capsys)
     cost = _summary(repo)["llm"]["cost_per_1000_usd"]
     assert re.fullmatch(r"\d+\.\d{4}", cost)
     assert f"LLM ${cost}," in out
+
+
+# Review of #27: the gaps it found
+
+
+def _dev(root):
+    from voc.data import read_splits
+
+    return sorted(read_splits(root / "splits")["dev"], key=lambda c: int(c.split("-")[1]))
+
+
+def test_B18_the_development_set_gives_no_per_category_figures(repo):
+    # docs/DATA.md, decision 2 (owner, 28 October, confirmed 29 October after the review of #27).
+    _labelled(repo)
+    assert _evaluate(repo) == 0
+    assert "per_product" not in _summary(repo)
+
+
+def test_B19_the_results_file_keeps_the_full_tfidf_confidence(repo):
+    from voc.baselines import fit_tfidf, load_tfidf_config, predict_tfidf
+    from voc.data import read_splits
+    from voc.load import DB_PATH
+    from voc.pipeline import _rows_by_id
+
+    _labelled(repo)
+    assert _evaluate(repo) == 0
+    lists = read_splits(repo / "splits")
+    train = _rows_by_id(repo / DB_PATH, "july_2026", set(lists["train"]))
+    dev = _rows_by_id(repo / DB_PATH, "july_2026", set(lists["dev"]))
+    train = sorted(train, key=lambda r: int(r.complaint_id.split("-")[1]))  # the command's order
+    model = fit_tfidf([(r.complaint_id, "train", r.narrative, r.product) for r in train],
+                      load_tfidf_config(repo / "config" / "tfidf.toml"))
+    expected = {r.complaint_id: c for r, (_, c) in zip(dev, predict_tfidf(model, [r.narrative for r in dev]))}
+    rows = list(csv.DictReader((repo / "results" / "eval" / "v1_dev.csv").read_text(encoding="utf-8")
+                               .splitlines()))
+    # The exact value, written so it reads back the same, not cut to a few decimals.
+    assert all(r["tfidf_confidence"] == repr(expected[r["complaint_id"]]) for r in rows)
+
+
+def test_B19_evaluate_refuses_a_run_of_another_prompt_version(repo, capsys):
+    _labelled(repo)
+    path = repo / "results" / "labels" / "v1_dev.json"
+    run = json.loads(path.read_text(encoding="utf-8"))
+    run["prompt_version"] = "v9"
+    path.write_text(json.dumps(run), encoding="utf-8")
+    capsys.readouterr()
+    assert _evaluate(repo) == 1
+    assert "prompt version" in capsys.readouterr().out
+
+
+def test_B10_evaluate_says_why_when_the_llm_accepted_nothing(repo, capsys):
+    env = _answers(repo, unquoted=set(_dev(repo)))
+    assert _voc(repo, env, "label", "dev") == 0
+    capsys.readouterr()
+    assert _evaluate(repo) == 1
+    assert "accepted nothing" in capsys.readouterr().out
+
+
+def test_B18_a_missing_pool_file_is_refused_with_its_name(repo, capsys):
+    _labelled(repo)
+    (repo / "config" / "pool.toml").unlink()
+    capsys.readouterr()
+    assert _evaluate(repo) == 1
+    assert "config/pool.toml" in capsys.readouterr().out
+
+
+def test_B18_the_test_counts_must_add_up_to_the_test_list(repo, capsys):
+    _labelled(repo)
+    path = repo / "config" / "pool.toml"
+    text = path.read_text(encoding="utf-8")
+    first = text.index("test = ")
+    end = text.index("\n", first)
+    count = int(text[first + 7:end])
+    text = text[:first] + f"test = {count + 1}" + text[end:]
+    pool = text.index("pool = ")
+    end = text.index("\n", pool)
+    text = text[:pool] + f"pool = {int(text[pool + 7:end]) + 1}" + text[end:]
+    path.write_text(text, encoding="utf-8")
+    capsys.readouterr()
+    assert _evaluate(repo) == 1
+    assert "add up to the test list" in capsys.readouterr().out
+
+
+def test_B15_the_row_holds_the_full_list_hash(repo):
+    from voc.data import _manifest
+
+    _labelled(repo)
+    assert _evaluate(repo) == 0
+    row = next(line for line in (repo / "EVAL_VERSIONS.md").read_text(encoding="utf-8").splitlines()
+               if line.startswith("| 20"))
+    assert f" {_manifest(repo / 'splits')['lists']['dev']['sha256']} |" in row
+
+
+def test_B11_the_figures_record_the_tfidf_settings(repo):
+    import hashlib
+
+    _labelled(repo)
+    assert _evaluate(repo) == 0
+    expected = hashlib.sha256((repo / "config" / "tfidf.toml").read_bytes()).hexdigest()
+    assert _summary(repo)["tfidf"]["settings_sha256"] == expected
+
+
+def test_B23_the_printout_says_what_each_time_and_cost_counts(repo, capsys):
+    _labelled(repo)
+    capsys.readouterr()
+    assert _evaluate(repo) == 0
+    out = capsys.readouterr().out
+    assert "labelling only, training left out" in out
+    assert "cost per 1,000 complaints in the run" in out
+
+
+def test_B10_matched_coverage_and_the_reweighted_score_below_full_coverage(repo):
+    from voc.data import _manifest
+    from voc.load import DB_PATH
+    from voc.pipeline import _rows_by_id
+
+    dev = _dev(repo)
+    wrong, unquoted = set(dev[:3]), set(dev[3:8])
+    assert _voc(repo, _answers(repo, wrong=wrong, unquoted=unquoted), "label", "dev") == 0
+    assert _evaluate(repo) == 0
+    summary = _summary(repo)
+    n = len(dev)
+    assert summary["llm"]["coverage"] == pytest.approx((n - 5) / n)
+    assert summary["tfidf"]["coverage"] == summary["llm"]["coverage"]
+    assert sum(summary["who_was_right"].values()) == n
+    # Re-weighted strict accuracy by hand: per Product, right and accepted over all, weighted by pool share.
+    import tomllib
+
+    pool = tomllib.loads((repo / "config" / "pool.toml").read_text(encoding="utf-8"))["products"]
+    total = sum(p["pool"] for p in pool.values())
+    rows = _rows_by_id(repo / DB_PATH, _manifest(repo / "splits")["month"], set(dev))
+    expected = 0.0
+    for product, entry in pool.items():
+        members = [r for r in rows if r.product == product]
+        right = [r for r in members if r.complaint_id not in wrong | unquoted]
+        expected += entry["pool"] / total * len(right) / len(members)
+    assert summary["llm"]["reweighted_accuracy"] == pytest.approx(expected)
+
+
+def test_B10_a_run_with_complaints_not_run_for_the_budget_gets_no_verdict(repo, capsys):
+    _labelled(repo)
+    path = repo / "results" / "labels" / "v1_dev.csv"
+    rows = list(csv.DictReader(path.read_text(encoding="utf-8").splitlines()))
+    rows[-1].update(decision="quarantined", reason="not_run_budget", accepted_label="", proposed_label="",
+                    quote_start="", quote_end="")
+    out = io.StringIO()
+    writer = csv.DictWriter(out, fieldnames=list(rows[0]), lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    path.write_text(out.getvalue(), encoding="utf-8")
+    capsys.readouterr()
+    assert _evaluate(repo) == 0
+    assert _summary(repo)["verdict"] is None
+    assert "verdict: none" in capsys.readouterr().out
