@@ -12,7 +12,7 @@ estimate and the recording key both see it.
 """
 import os
 
-from voc.replay import Answer, ModelError, SDK_MAX_RETRIES
+from voc.replay import Answer, ModelError, PermanentModelError, SDK_MAX_RETRIES, _stop_name
 
 ALLOWED = ("api", "mock")
 DEFAULT_MODEL = "claude-haiku-5-5"
@@ -21,6 +21,10 @@ API_VERSION = "2023-06-01"
 BASE_URL = "https://api.anthropic.com"
 # The SDK reads these itself. They could send the key elsewhere, change the API version or log prompts.
 REFUSED_VARIABLES = ("ANTHROPIC_BASE_URL", "ANTHROPIC_CUSTOM_HEADERS", "ANTHROPIC_LOG")
+# Failures a retry can fix: no connection, a timeout, a rate limit, an overloaded or failing server.
+# Any other failure (a refused key, no credit, a bad request, an unknown model) is never retried.
+RETRY_ERRORS = frozenset({"APIConnectionError", "APITimeoutError"})
+RETRY_STATUSES = frozenset({408, 409, 429})
 
 
 class BackendError(ValueError):
@@ -31,6 +35,18 @@ def run_settings(effort="low", thinking="adaptive", max_tokens=2048, model=DEFAU
     """The settings of a prompt version. They are recorded with each run (B12, B15)."""
     return {"model": model, "effort": effort, "thinking": thinking, "max_tokens": max_tokens,
             "api_version": API_VERSION}
+
+
+def _failure(err):
+    """Our own message for an SDK error: its type and HTTP status only, never its text (B21)."""
+    name = type(err).__name__
+    status = getattr(err, "status_code", None)
+    status = status if isinstance(status, int) and not isinstance(status, bool) else None
+    names = {cls.__name__ for cls in type(err).__mro__}
+    retry = bool(names & RETRY_ERRORS) or status in RETRY_STATUSES or (status is not None and status >= 500)
+    if retry:
+        return ModelError(f"the API call failed: {name}" + (f" (HTTP {status})" if status else ""))
+    return PermanentModelError(f"the API refused the call: {name}" + (f" (HTTP {status})" if status else ""))
 
 
 def _anthropic_client(**kwargs):
@@ -68,14 +84,14 @@ def _api(env, model, client_factory):
                 thinking={"type": settings["thinking"]},
             )
         except Exception as err:  # the SDK error holds the request, and so the key: keep only its type
-            failure = type(err).__name__
+            failure = _failure(err)
         if failure:
-            raise ModelError(f"the API call failed: {failure}")
+            raise failure
         usage = response.usage
         cached = (getattr(usage, "cache_read_input_tokens", 0) or 0) + (getattr(usage, "cache_creation_input_tokens", 0) or 0)
         text = "".join(block.text for block in response.content if getattr(block, "type", None) == "text")
         if not text.strip():
-            raise ModelError("the answer held no text")
+            raise PermanentModelError(f"the answer held no text, stop reason {_stop_name(response.stop_reason)}")
         return Answer(text=text, input_tokens=usage.input_tokens + cached, output_tokens=usage.output_tokens,
                       stop_reason=response.stop_reason)
     return backend

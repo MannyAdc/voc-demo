@@ -44,6 +44,10 @@ class ModelError(Exception):
     """The call failed, was refused or was cut off (quarantine reason `model_error`). The message is ours."""
 
 
+class PermanentModelError(ModelError):
+    """A failure a retry cannot fix, such as a refused key or an answer with no text. It is never retried."""
+
+
 class RecordingMissing(Exception):
     """Replay mode found no recording for this call. The message is ours."""
 
@@ -182,9 +186,11 @@ class Caller:
             rid = ledger.reserve(reservation)  # CapReached or Overrun stops here, before anything is sent
             try:
                 answer = self.backend(prompt, dict(self.settings))
-            except Exception as err:  # the type only, never the message
+            except Exception as err:  # our own ModelError message, or the type only, never another message
                 ledger.settle(rid, None)
-                failure = type(err).__name__
+                failure = str(err) if isinstance(err, ModelError) else type(err).__name__
+                if isinstance(err, PermanentModelError):
+                    raise ModelError(f"the model call failed, not retried: {failure}") from None
                 continue
             used = _usage(answer)
             ledger.settle(rid, used)

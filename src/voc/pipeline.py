@@ -29,9 +29,15 @@ from voc.prompt import build_prompt
 from voc.replay import ModelError, recording_key
 
 SETS = ("dev", "quick")
+# This many complaints in a row with a model error stop the run, so a broken setup cannot spend the cap.
+FAILED_IN_A_ROW = 3
 NOT_IN_LIST = "(not in list)"
 RESULT_FIELDS = ("complaint_id", "split", "prompt_version", "proposed_label", "quote_start", "quote_end",
                  "decision", "reason", "label", "cut", "recording_key", "source", "input_tokens", "output_tokens")
+
+
+class RunStopped(Exception):
+    """The run stopped early. The message is ours."""
 
 
 @dataclass(frozen=True)
@@ -88,7 +94,7 @@ def label_complaints(complaints, version, labels, call, backend_name):
     names = [label.name for label in labels]
     defined = definitions(labels)
     model = version.settings["model"]
-    outcomes, budget_stopped = [], False
+    outcomes, budget_stopped, failed_in_a_row = [], False, 0
     for complaint in sorted(complaints, key=lambda c: _id_number(c.complaint_id)):
         text, cut = cut_text(complaint.narrative)
         cid = complaint.complaint_id
@@ -110,7 +116,12 @@ def label_complaints(complaints, version, labels, call, backend_name):
         except ModelError as err:
             outcomes.append(Outcome(decide(cid, text, CallOutcome("failed"), names), cut, recording_key=key,
                                     prompt_bytes=size, error=str(err)))
+            failed_in_a_row += 1
+            if failed_in_a_row >= FAILED_IN_A_ROW:
+                raise RunStopped(f"{failed_in_a_row} complaints in a row failed, last error: {err}. "
+                                 "Stopped, so the cap is not spent on a setup that does not work") from None
             continue
+        failed_in_a_row = 0
         outcomes.append(Outcome(decide(cid, text, CallOutcome("ok", reply.text), names), cut, reply.source, key,
                                 size, reply.input_tokens, reply.output_tokens, reply.live_cost_tokens))
     return outcomes

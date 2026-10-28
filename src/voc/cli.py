@@ -21,6 +21,7 @@ from voc.env import settings
 from voc.labels import load_labels
 from voc.load import DB_PATH, load_month
 from voc.profile import format_profile, profile
+from voc.pipeline import RunStopped
 from voc.replay import RecordingCorrupt, RecordingMissing
 
 PIN = "july_2026"
@@ -216,7 +217,7 @@ def main(argv=None, env=None, root=None):
         command = (args.command, args.action) if args.command in ("ledger", "dbt") else args.command
         COMMANDS[command](config, root, args)
     except (DataFileError, BudgetError, DbtError, SampleMismatch, BackendError, RecordingMissing,
-            RecordingCorrupt) as err:
+            RecordingCorrupt, RunStopped) as err:
         print(f"error: {err}")
         return 1
     # B21: the type only, never the message. The spec also asks for the row number and the
