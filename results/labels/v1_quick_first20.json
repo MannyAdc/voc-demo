@@ -1,0 +1,130 @@
+{
+  "accepted": 20,
+  "accepted_by_label": {
+    "Checking or savings account": 3,
+    "Credit card": 2,
+    "Credit reporting or other personal consumer reports": 6,
+    "Debt collection": 3,
+    "Money transfer, virtual currency, or money service": 2,
+    "Mortgage": 2,
+    "Student loan": 2
+  },
+  "backend": "api",
+  "calls_by_source": {
+    "live": 20
+  },
+  "calls_without_answer": 0,
+  "complaints": 20,
+  "cost": {
+    "calls_without_usage": "0",
+    "input_tokens": "26793",
+    "live_cost_usd": "0.0045288",
+    "output_tokens": "3699",
+    "own_cost_usd": "0.0045288"
+  },
+  "cut": 1,
+  "input_tokens": 26793,
+  "largest_tokens_over_bytes": -1750,
+  "ledger_charged_tokens": 30492,
+  "limit": 20,
+  "list_sha256": "d816d03ebedeedfe3fb00902af470adecfdc26b954b6ca1b57cb4e4de7f2394f",
+  "live_cost_tokens": 30492,
+  "model": "claude-haiku-5-5",
+  "model_errors_by_cause": {},
+  "not_tried": 0,
+  "output_tokens": 3699,
+  "prompt_version": "v1",
+  "quarantine_reasons": {},
+  "quarantined": 0,
+  "set": "quick",
+  "settings": {
+    "api_version": "2023-06-01",
+    "effort": "low",
+    "max_tokens": 2048,
+    "model": "claude-haiku-5-5",
+    "thinking": "adaptive"
+  },
+  "stopped": null,
+  "token_pairs": [
+    [
+      2689,
+      939
+    ],
+    [
+      2755,
+      964
+    ],
+    [
+      2762,
+      973
+    ],
+    [
+      2794,
+      977
+    ],
+    [
+      2919,
+      1020
+    ],
+    [
+      3058,
+      1042
+    ],
+    [
+      3201,
+      1111
+    ],
+    [
+      3371,
+      1177
+    ],
+    [
+      3563,
+      1352
+    ],
+    [
+      3691,
+      1256
+    ],
+    [
+      3803,
+      1316
+    ],
+    [
+      3807,
+      1254
+    ],
+    [
+      4063,
+      1334
+    ],
+    [
+      4202,
+      1528
+    ],
+    [
+      4244,
+      1401
+    ],
+    [
+      4677,
+      1575
+    ],
+    [
+      4726,
+      1599
+    ],
+    [
+      5435,
+      1831
+    ],
+    [
+      6392,
+      2089
+    ],
+    [
+      6573,
+      2055
+    ]
+  ]
+}
