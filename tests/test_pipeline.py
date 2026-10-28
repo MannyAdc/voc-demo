@@ -217,9 +217,8 @@ def repo(tmp_path):
     shutil.copy(REPO / "config" / "labels.toml", root / "config" / "labels.toml")
     shutil.copy(REPO / "config" / "prices.toml", root / "config" / "prices.toml")
     shutil.copytree(REPO / "config" / "prompts", root / "config" / "prompts")
-    rows = [(f"SYN-{i}", "Mortgage", _text(i)) for i in range(60)]
-    rows.append(("SYN-60", "Mortgage", _text(60, HOSTILE)))
-    _staged(root / DB_PATH, rows)
+    # Every narrative holds the hostile sentence, so every development complaint carries it.
+    _staged(root / DB_PATH, [(f"SYN-{i}", "Mortgage", _text(i, HOSTILE)) for i in range(61)])
     build_samples(root / DB_PATH, "july_2026", seed=1, splits_dir=root / "splits", source_sha256="a" * 64)
     return root
 
@@ -345,3 +344,121 @@ def test_B8_token_pairs_hold_only_byte_and_token_counts_sorted():
     pairs = token_pairs(outcomes)
     assert pairs == sorted(pairs) and all(len(p) == 2 and all(isinstance(n, int) for n in p) for p in pairs)
     assert {p[1] for p in pairs} == {100}
+
+
+# Review of #20
+
+
+def test_B17_load_complaints_refuses_the_test_set_itself(repo):
+    from voc.data import SampleMismatch
+    from voc.load import DB_PATH
+    from voc.pipeline import load_complaints
+
+    with pytest.raises(SampleMismatch, match="final run"):
+        load_complaints(repo / DB_PATH, repo / "splits", "test")
+
+
+def test_B17_loading_development_complaints_never_reads_the_whole_month(repo, monkeypatch):
+    # The whole-month reader returns test rows too. The labeller must select only the IDs it needs.
+    import voc.data
+    import voc.pipeline
+    from voc.load import DB_PATH
+
+    def whole_month(*args, **kwargs):
+        raise AssertionError("the labeller read every row of the month, test rows included")
+
+    monkeypatch.setattr(voc.data, "_month_rows", whole_month)
+    monkeypatch.setattr(voc.pipeline, "_month_rows", whole_month, raising=False)
+    complaints = voc.pipeline.load_complaints(repo / DB_PATH, repo / "splits", "dev")
+    from voc.data import read_splits
+
+    assert {c.complaint_id for c in complaints} == set(read_splits(repo / "splits")["dev"])
+
+
+def test_B8_only_a_reached_cap_is_not_run_budget_any_other_ledger_problem_stops_the_run():
+    from voc.budget import BudgetError, Overrun
+
+    for error in (BudgetError("there is no ledger, so live calls are refused"),
+                  Overrun("a call used more than its reservation")):
+        def answer(prompt, error=error):
+            raise error
+
+        with pytest.raises(BudgetError):
+            _label(_complaints(_text(0)), FakeCall(answer))
+
+
+def test_B3_model_errors_are_counted_by_their_cause():
+    from voc.pipeline import summarise
+
+    def answer(prompt):
+        section = prompt.split("Complaint to label:")[1]
+        if "story alpha" in section:
+            raise ModelError("the model call ended with stop reason max_tokens")
+        if "story bravo" in section:
+            raise ModelError("the model call failed 3 times, last error APIConnectionError")
+        return _good(prompt)
+
+    outcomes = _label(_complaints(_text(0), _text(1), _text(2), _text(10)), FakeCall(answer))
+    summary = summarise(outcomes, "dev", _version(), "fake", "0" * 64)
+    assert summary["model_errors_by_cause"] == {"the model call ended with stop reason max_tokens": 1,
+                                                "the model call failed 3 times, last error APIConnectionError": 1}
+    assert summary["calls_without_answer"] == 2
+
+
+def test_B8_the_summary_never_claims_a_charge_it_cannot_know():
+    # A failed call is charged its full reservation in the ledger, but the pipeline never sees that charge.
+    from voc.pipeline import format_run, summarise
+
+    def answer(prompt):
+        raise ModelError("the API call failed: APIConnectionError")
+
+    summary = summarise(_label(_complaints(_text(0)), FakeCall(answer)), "dev", _version(), "fake", "0" * 64)
+    assert "charged_tokens" not in summary
+    assert "charged" not in format_run(summary, "results/labels/x.csv")
+
+
+def test_B19_a_limited_run_writes_its_own_files_and_never_replaces_the_full_run(repo):
+    assert _run(repo, _env(repo, _good("")), "dev") == 0
+    full = (repo / "results" / "labels" / "v1_dev.csv").read_bytes()
+    assert _run(repo, _env(repo, _good("")), "dev", "--limit", "3") == 0
+    assert (repo / "results" / "labels" / "v1_dev.csv").read_bytes() == full
+    limited = json.loads((repo / "results" / "labels" / "v1_dev_first3.json").read_text(encoding="utf-8"))
+    assert limited["limit"] == 3 and limited["complaints"] == 3
+    assert json.loads((repo / "results" / "labels" / "v1_dev.json").read_text(encoding="utf-8"))["limit"] is None
+
+
+def _record_all(root, answer, input_tokens=900, output_tokens=60):
+    """Store a recording for every development prompt, as a live api run would have."""
+    from voc.backends import run_settings
+    from voc.load import DB_PATH
+    from voc.pipeline import definitions, load_complaints, load_prompt_version
+    from voc.replay import Answer, Caller, _key_material, recording_key
+
+    labels = load_labels(root / "config" / "labels.toml")
+    v1 = load_prompt_version(root, "v1")
+    caller = Caller("api", v1.settings["model"], v1.settings, root=root)
+    for c in load_complaints(root / DB_PATH, root / "splits", "dev"):
+        prompt = build_prompt(v1.instructions, LABELS, c.narrative, complaint_id=c.complaint_id,
+                              definitions=definitions(labels)).prompt
+        key = recording_key("api", v1.settings["model"], v1.settings, prompt)
+        caller._store(key, _key_material("api", v1.settings["model"], v1.settings, prompt),
+                      Answer(answer, input_tokens, output_tokens, "end_turn"), input_tokens + output_tokens)
+    assert run_settings()["model"] == v1.settings["model"]
+
+
+def test_B13_a_replayed_api_run_costs_nothing_now_and_keeps_its_live_cost(repo, capsys):
+    from voc.data import read_splits
+
+    _record_all(repo, _good(""))
+    assert _run(repo, {"LLM_BACKEND": "api"}, "dev", "--replay") == 0
+    out = capsys.readouterr().out
+    summary = json.loads((repo / "results" / "labels" / "v1_dev.json").read_text(encoding="utf-8"))
+    count = len(read_splits(repo / "splits")["dev"])
+    assert summary["calls_by_source"] == {"replay": count} and summary["accepted"] == count
+    assert summary["cost"]["own_cost_usd"] == "0" and float(summary["cost"]["live_cost_usd"]) > 0
+    assert "SYNHOSTILE" not in out and "escrow" not in out
+
+
+def test_B7_a_replay_run_with_no_recordings_stops_with_our_message_and_needs_no_key(repo, capsys):
+    assert _run(repo, {"LLM_BACKEND": "api"}, "dev", "--replay") == 1
+    assert "replay mode never calls the model" in capsys.readouterr().out
