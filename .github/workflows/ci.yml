@@ -38,6 +38,16 @@ jobs:
               .venv/bin/python -m pytest -p no:cacheprovider -W error
           ' "$(id -un)" "$PATH" "$HOME" "$GITHUB_ACTIONS"
 
+      # dbt build with its data tests on the committed synthetic fixture (SYN- IDs),
+      # with usage stats off and in the same no-network namespace as the tests.
+      - name: dbt build on the synthetic fixture with no network
+        run: |
+          sudo unshare --net -- sh -c '
+            ip link set lo up &&
+            sudo -u "$0" env "PATH=$1" "HOME=$2" DO_NOT_TRACK=1 DBT_ENGINE_SEND_ANONYMOUS_USAGE_STATS=False \
+              .venv/bin/python scripts/dbt_fixture_build.py tests/fixtures/dbt/complaints.csv "$3"
+          ' "$(id -un)" "$PATH" "$HOME" "$RUNNER_TEMP/dbt-fixture"
+
   repo-checks:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

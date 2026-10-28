@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: voc
+    description: Tables written by `voc load` (B14).
+    schema: main
+    tables:
+      - name: staged_complaints
+        description: One row per complaint ID, from the pinned monthly exports, typed and checked on load.
+        columns:
+          - name: complaint_id
+            description: >
+              Tested here as well as on stg_complaints. The incremental model skips IDs it has
+              already built, so a repeat added after a first build only shows up in this table.
+            data_tests:
+              - not_null
+              - unique

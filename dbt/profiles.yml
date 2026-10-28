@@ -1,0 +1,12 @@
+# The DuckDB file is set by the wrapper (`voc dbt`), never written here.
+# DuckDB never installs or loads an extension by itself, as in voc.db.connect.
+voc:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: "{{ env_var('VOC_DBT_DB') }}"
+      threads: 1
+      settings:
+        autoinstall_known_extensions: false
+        autoload_known_extensions: false
