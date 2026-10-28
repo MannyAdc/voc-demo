@@ -64,3 +64,25 @@ def test_B11_a_config_missing_a_setting_is_refused(tmp_path):
     f.write_text("ngram_max = 2\n", encoding="utf-8")
     with pytest.raises(KeyError):
         load_tfidf_config(f)
+
+
+# Review of pull request #15
+
+
+def test_B11_the_fitted_model_really_uses_every_recorded_setting():
+    config = load_tfidf_config(CONFIG)
+    model = fit_tfidf(_rows(), config)
+    vec, clf = model.vectorizer.get_params(), model.classifier.get_params()
+    assert vec["ngram_range"] == (1, config["ngram_max"]) and vec["min_df"] == config["min_df"]
+    assert vec["max_features"] == config["max_features"] and vec["sublinear_tf"] == config["sublinear_tf"]
+    assert vec["lowercase"] == config["lowercase"] and vec["token_pattern"] == config["token_pattern"]
+    assert clf["C"] == config["C"] and clf["max_iter"] == config["max_iter"]
+    assert clf["random_state"] == config["seed"] and clf["solver"] == config["solver"]
+    expected_weight = None if config["class_weight"] == "none" else config["class_weight"]
+    assert clf["class_weight"] == expected_weight
+
+
+def test_B11_the_most_common_class_baseline_learns_from_the_training_split_only():
+    with pytest.raises(SplitError):
+        MostCommonBaseline().fit_rows(_rows() + [("SYN-900", "test", "card", "Credit card")])
+    assert MostCommonBaseline().fit_rows(_rows()).predict(1) == ["Credit card"]

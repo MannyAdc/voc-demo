@@ -177,3 +177,67 @@ def test_B10_the_injection_report_matches_a_hand_count():
         _item(62, "A", llm="A", synthetic=True, forced_label="B"),
     ]
     assert injection_report(items) == {"obeyed_and_accepted": 1, "obeyed_and_quarantined": 1, "not_obeyed": 1}
+
+
+# Review of pull request #15
+
+
+def _reference_difference(sample, shares):
+    """An independent hand implementation of B10, used to check every bootstrap resample."""
+    def reweighted(right):
+        by_product = {}
+        for item, ok in zip(sample, right):
+            total, hits = by_product.get(item.product, (0, 0))
+            by_product[item.product] = (total + 1, hits + ok)
+        return sum(shares[p] * hits / total for p, (total, hits) in by_product.items())
+
+    k = sum(i.llm_reason is None and i.llm_label is not None for i in sample)
+    order = sorted(range(len(sample)), key=lambda n: (-sample[n].tfidf_confidence,
+                                                       int(sample[n].complaint_id.split("-")[1]), n))
+    answered = set(order[:k])
+    llm = reweighted([i.llm_reason is None and i.llm_label == i.product for i in sample])
+    tfidf = reweighted([n in answered and i.tfidf_label == i.product for n, i in enumerate(sample)])
+    return llm - tfidf
+
+
+def test_B10_every_resample_recomputes_k_and_scores_both_methods_on_the_same_complaints():
+    # The accepted count varies between resamples here, so a fixed k or an unpaired draw would differ.
+    items = _set() + [_item(20 + i, "A" if i % 2 else "B", reason="quote_empty" if i % 3 == 0 else None,
+                            llm="A" if i % 2 else "B", conf=0.05 * i) for i in range(12)]
+    result = compare(items, SHARES, resamples=60, seed=5, keep_samples=True)
+    by_id = {i.complaint_id: i for i in items}
+    ks = set()
+    for picked, difference in result["samples"]:
+        sample = [by_id[cid] for cid in picked]
+        ks.add(sum(i.llm_reason is None for i in sample))
+        assert difference == pytest.approx(_reference_difference(sample, SHARES))
+    assert len(ks) > 1
+
+
+def test_B10_ties_at_the_cut_off_are_broken_by_complaint_id_as_a_number():
+    items = [_item(10, "A", conf=0.5), _item(9, "A", conf=0.5), _item(1, "A", conf=0.1)]
+    assert tfidf_answered(items, 1) == {"SYN-009"}
+    numbered = [Item("SYN-10", "A", None, "unparseable", "A", 0.5), Item("SYN-9", "A", None, "unparseable", "A", 0.5)]
+    assert tfidf_answered(numbered, 1) == {"SYN-9"}
+
+
+def test_B18_a_pool_product_missing_from_the_items_is_refused():
+    items = [_item(i, "A", llm="A") for i in range(5)]
+    with pytest.raises(ValueError, match="missing"):
+        compare(items, {"A": 0.5, "B": 0.5}, resamples=10, seed=1)
+
+
+def test_B3_an_item_with_neither_a_label_nor_a_reason_is_refused():
+    with pytest.raises(ValueError):
+        review_queue([_item(1, "A")])
+
+
+def test_B10_a_missing_or_nan_confidence_is_refused():
+    with pytest.raises(ValueError):
+        tfidf_answered([_item(1, "A", llm="A", conf=float("nan")), _item(2, "A", llm="A")], 1)
+
+
+def test_B10_precision_on_accepted_labels_is_reported_beside_the_deciding_figure():
+    result = compare(_set(), SHARES, resamples=20, seed=1)
+    assert result["llm_precision"] == pytest.approx(7 / 8)
+    assert result["tfidf_precision"] == pytest.approx(6 / 8)
