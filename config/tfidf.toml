@@ -1,11 +1,17 @@
-# TF-IDF baseline settings (B11). Fixed and recorded before the first run. The code has no defaults.
+# TF-IDF baseline settings (B11). Fixed and recorded before the first run.
+# Every setting that changes the model is written here and passed to scikit-learn 1.9.1.
 # Word n-grams up to this length.
 ngram_max = 2
 # Ignore terms in fewer than this many training complaints.
 min_df = 2
 max_features = 50000
 sublinear_tf = true
-# Logistic regression: inverse regularisation strength and iteration limit.
+lowercase = true
+# Words of two or more letters or digits (scikit-learn's usual pattern, written down here).
+token_pattern = '(?u)\b\w\w+\b'
+# Logistic regression: inverse regularisation strength, iteration limit, solver and class weighting.
 C = 4.0
 max_iter = 2000
+solver = "lbfgs"
+class_weight = "none"
 seed = 0

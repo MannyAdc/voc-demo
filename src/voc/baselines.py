@@ -11,7 +11,8 @@ from dataclasses import dataclass
 
 CUT_AT = 4_000
 TRAIN_SPLIT = "train"
-REQUIRED = ("ngram_max", "min_df", "max_features", "sublinear_tf", "C", "max_iter", "seed")
+REQUIRED = ("ngram_max", "min_df", "max_features", "sublinear_tf", "lowercase", "token_pattern",
+            "C", "max_iter", "solver", "class_weight", "seed")
 
 
 class SplitError(ValueError):
@@ -33,7 +34,17 @@ def load_tfidf_config(path):
     return {k: config[k] for k in REQUIRED}
 
 
+def _training_only(rows):
+    if any(split != TRAIN_SPLIT for _, split, _, _ in rows):
+        raise SplitError("baselines learn from the training split only")
+
+
 class MostCommonBaseline:
+    def fit_rows(self, rows):
+        """Fit on (complaint_id, split, text, label) rows. Every row must be from the training split."""
+        _training_only(rows)
+        return self.fit([label for _, _, _, label in rows])
+
     def fit(self, labels):
         counts = Counter(labels)
         top = max(counts.values())
@@ -56,13 +67,15 @@ def fit_tfidf(rows, config):
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.linear_model import LogisticRegression
 
-    if any(split != TRAIN_SPLIT for _, split, _, _ in rows):
-        raise SplitError("TF-IDF is fitted on the training split only")
+    _training_only(rows)
     texts = [cut_text(text)[0] for _, _, text, _ in rows]
     labels = [label for _, _, _, label in rows]
     vectorizer = TfidfVectorizer(ngram_range=(1, config["ngram_max"]), min_df=config["min_df"],
-                                 max_features=config["max_features"], sublinear_tf=config["sublinear_tf"])
-    classifier = LogisticRegression(C=config["C"], max_iter=config["max_iter"], random_state=config["seed"])
+                                 max_features=config["max_features"], sublinear_tf=config["sublinear_tf"],
+                                 lowercase=config["lowercase"], token_pattern=config["token_pattern"])
+    class_weight = None if config["class_weight"] == "none" else config["class_weight"]
+    classifier = LogisticRegression(C=config["C"], max_iter=config["max_iter"], solver=config["solver"],
+                                    class_weight=class_weight, random_state=config["seed"])
     classifier.fit(vectorizer.fit_transform(texts), labels)
     return TfidfModel(vectorizer, classifier, dict(config))
 

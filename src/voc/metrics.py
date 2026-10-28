@@ -9,6 +9,8 @@ the Product's share of the narrative pool. The interval of the difference
 comes from a paired bootstrap, resampled within each Product. Synthetic
 items never enter these figures. They are reported apart.
 """
+import math
+import re
 from collections import Counter
 from dataclasses import dataclass
 
@@ -40,6 +42,14 @@ class Item:
         return self.tfidf_label == self.product
 
 
+def _check(items):
+    for item in items:
+        if item.llm_label is None and item.llm_reason is None:
+            raise ValueError(f"{item.complaint_id} has neither an LLM label nor a quarantine reason")
+        if not isinstance(item.tfidf_confidence, (int, float)) or math.isnan(item.tfidf_confidence):
+            raise ValueError(f"{item.complaint_id} has no usable TF-IDF confidence")
+
+
 def _real(items):
     real = [i for i in items if not i.synthetic]
     if not real:
@@ -47,7 +57,14 @@ def _real(items):
     ids = [i.complaint_id for i in real]
     if len(ids) != len(set(ids)):
         raise ValueError("the items must describe distinct complaints")
+    _check(real)
     return real
+
+
+def _id_number(complaint_id):
+    """The complaint ID as a number, so SYN-9 comes before SYN-10, as in the profile (B9)."""
+    digits = re.search(r"(\d+)$", complaint_id)
+    return int(digits.group(1)) if digits else math.inf
 
 
 def strict_accuracy(items):
@@ -57,13 +74,17 @@ def strict_accuracy(items):
 
 def _top(items, k):
     """Indexes of the k most confident TF-IDF answers. Ties go to the lower complaint ID."""
-    order = sorted(range(len(items)), key=lambda n: (-items[n].tfidf_confidence, items[n].complaint_id, n))
+    order = sorted(range(len(items)), key=lambda n: (-items[n].tfidf_confidence, _id_number(items[n].complaint_id),
+                                                       items[n].complaint_id, n))
     return set(order[:k])
 
 
 def tfidf_answered(items, k):
     if k < 1:
         raise ValueError("the baseline must answer at least one complaint")
+    for item in items:
+        if not isinstance(item.tfidf_confidence, (int, float)) or math.isnan(item.tfidf_confidence):
+            raise ValueError(f"{item.complaint_id} has no usable TF-IDF confidence")
     return {items[n].complaint_id for n in _top(items, k)}
 
 
@@ -89,14 +110,18 @@ def compare(items, shares, resamples=2000, seed=0, keep_samples=False):
     import numpy as np
 
     real = _real(items)
+    missing = sorted(set(shares) - {i.product for i in real})
+    if missing:
+        raise ValueError(f"pool Products missing from the items: {len(missing)} of {len(shares)}")
     llm, tfidf, k = _difference(real, shares)
     if k == 0:
         raise ValueError("the LLM accepted nothing, so there is nothing to compare")
+    answered = _top(real, k)
     groups = {}
     for n, item in enumerate(real):
         groups.setdefault(item.product, []).append(n)
     rng = np.random.default_rng(seed)
-    differences, counts = [], []
+    differences, counts, samples = [], [], []
     for _ in range(resamples):
         picked = [n for members in groups.values() for n in rng.choice(members, size=len(members), replace=True)]
         sample = [real[n] for n in picked]
@@ -104,6 +129,7 @@ def compare(items, shares, resamples=2000, seed=0, keep_samples=False):
         differences.append(s_llm - s_tfidf)
         if keep_samples:
             counts.append(dict(Counter(i.product for i in sample)))
+            samples.append((tuple(i.complaint_id for i in sample), s_llm - s_tfidf))
     low, high = (float(v) for v in np.percentile(differences, [2.5, 97.5]))
     difference = llm - tfidf
     if any(i.llm_reason == NOT_RUN_BUDGET for i in real):
@@ -116,9 +142,12 @@ def compare(items, shares, resamples=2000, seed=0, keep_samples=False):
         verdict = "does_not_beat"
     result = {"llm_reweighted": llm, "tfidf_reweighted": tfidf, "difference": difference,
               "interval": (low, high), "verdict": verdict, "coverage": k / len(real),
-              "quarantine_rate": 1 - k / len(real), "resamples": resamples, "seed": seed}
+              "quarantine_rate": 1 - k / len(real), "resamples": resamples, "seed": seed,
+              "llm_precision": sum(i.llm_right for i in real) / k,
+              "tfidf_precision": sum(real[n].tfidf_right for n in answered) / k}
     if keep_samples:
         result["sample_counts"] = counts
+        result["samples"] = samples
     return result
 
 
