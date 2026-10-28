@@ -122,9 +122,10 @@ def _quote_lengths(rows):
 
 
 def _cost_per_1000(cost, complaints):
+    """Dollars per 1,000 complaints, to a hundredth of a cent."""
     if not cost:
         return None
-    return str(Decimal(cost) * 1000 / complaints)
+    return str((Decimal(cost) * 1000 / complaints).quantize(Decimal("0.0001")))
 
 
 def evaluate(root, set_name, version, note):
