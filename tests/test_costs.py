@@ -18,7 +18,8 @@ def _reply(source, tokens_in, tokens_out):
 
 def test_B13_tokens_convert_to_dollars_with_the_price_table():
     prices = load_prices(PRICES)
-    assert call_cost(prices, "claude-haiku-5-5", 1_000_000, 1_000_000) == Decimal("0.60")
+    # 50,000 input tokens is under the long-prompt threshold, so the normal prices apply.
+    assert call_cost(prices, "claude-haiku-5-5", 50_000, 10_000) == Decimal("0.010")
     assert call_cost(prices, "claude-haiku-5-5", 1_000, 200) == Decimal("0.0002")
 
 
