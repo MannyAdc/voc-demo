@@ -668,6 +668,13 @@ def test_the_hook_runner_turns_any_failure_into_exit_code_2():
     assert missing.returncode == 2
 
 
+@pytest.mark.parametrize("tool", ["Bash", "PowerShell"])
+@pytest.mark.parametrize("command", ["init", "raise", "release", "clear-overrun"])
+def test_B8_claude_must_ask_the_owner_before_changing_the_ledger(tool, command):
+    settings = json.loads((HOOKS.parent / "settings.json").read_text(encoding="utf-8"))
+    assert f"{tool}(*voc ledger {command}*)" in settings["permissions"]["ask"]
+
+
 def test_every_hook_is_wired_to_fail_closed():
     settings = json.loads((HOOKS.parent / "settings.json").read_text(encoding="utf-8"))
     wired = {}
