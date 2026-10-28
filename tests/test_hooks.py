@@ -285,12 +285,17 @@ def _commit(repo, env, *args):
         cwd=repo, capture_output=True, text=True, env=env)
 
 
+def _assert_committed(result):
+    # These tests have failed now and then inside the gate's own run. Show git's output when they do.
+    assert result.returncode == 0, f"commit failed:\n{result.stdout}\n{result.stderr}"
+
+
 def test_the_git_hook_blocks_a_failing_commit_and_allows_a_passing_one(hooked):
     repo, env = hooked
     _stage(repo, "src/mod.py", "def f():\n    return 2\n")
     assert _commit(repo, env, "-m", "break").returncode != 0
     _stage(repo, "src/mod.py", "def f():\n    return 1  # ok\n")
-    assert _commit(repo, env, "-m", "fine").returncode == 0
+    _assert_committed(_commit(repo, env, "-m", "fine"))
 
 
 def test_a_merge_commit_runs_the_same_gate(hooked):
@@ -301,7 +306,7 @@ def test_a_merge_commit_runs_the_same_gate(hooked):
     _git(repo, "checkout", "-q", "main")
     _write(repo, "notes.md", "x\n")
     _git(repo, "add", "notes.md")
-    assert _commit(repo, env, "-m", "main moves on").returncode == 0
+    _assert_committed(_commit(repo, env, "-m", "main moves on"))
     merge = subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid",
                             "merge", "--no-ff", "-q", "-m", "merge", "side"],
                            cwd=repo, capture_output=True, text=True, env=env)
@@ -320,7 +325,7 @@ def test_the_git_hook_checks_commit_a_and_commit_with_a_path(hooked):
     repo, env = hooked
     # First prove the hook runs and passes good work, so a failure below means a block.
     _write(repo, "src/mod.py", "def f():\n    return 1  # ok\n")
-    assert _commit(repo, env, "-a", "-m", "fine").returncode == 0
+    _assert_committed(_commit(repo, env, "-a", "-m", "fine"))
     _write(repo, "src/mod.py", "def f():\n    return 2\n")  # changed, not staged
     assert _commit(repo, env, "-a", "-m", "break").returncode != 0
     assert _commit(repo, env, "-m", "break", "--", "src/mod.py").returncode != 0
