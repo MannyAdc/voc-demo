@@ -285,9 +285,10 @@ def test_B21_voc_label_prints_counts_only_and_writes_results_with_no_text(repo, 
     for text in (results, summary):
         assert "SYNHOSTILE" not in text and "escrow" not in text and "SYN story" not in text
     rows = list(csv.DictReader(results.splitlines()))
-    assert rows and all(r["decision"] == "accepted" and r["label"] == "Mortgage" for r in rows)
+    # The column "label" was renamed "accepted_label" in the green commit after the review of #23 (finding 1).
+    assert rows and all(r["decision"] == "accepted" and r["accepted_label"] == "Mortgage" for r in rows)
     assert {"complaint_id", "split", "prompt_version", "proposed_label", "quote_start", "quote_end", "decision",
-            "reason", "label", "cut", "recording_key", "source"} <= set(rows[0])
+            "reason", "accepted_label", "cut", "recording_key", "source"} <= set(rows[0])
 
 
 def test_B21_a_proposed_label_outside_the_list_is_never_written_or_printed(repo, capsys):

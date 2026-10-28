@@ -7,8 +7,10 @@
 cap_tokens = 20000000
 
 # Added to the UTF-8 byte count of a prompt to make the worst-case input estimate.
-# It covers the tokens the API adds around the prompt. Still to be checked against
-# real token counts from the live smoke test (T014b).
+# It covers the tokens the API adds around the prompt. Checked on 29 October 2026
+# by the second smoke test (`voc label quick --limit 20`, results in
+# results/labels/v1_quick_first20.json): in all 20 calls the real input tokens were
+# below the byte count alone, the closest by 1,750 tokens.
 input_margin_tokens = 100
 
 # Until the margin is confirmed against real token counts, live calls may use at
@@ -22,4 +24,6 @@ input_margin_tokens = 100
 # call was charged its full worst-case reservation. No call returned an answer.
 # After merge, run `voc ledger raise --reason "..."` to apply this value.
 trial_cap_tokens = 200000
-margin_confirmed = false
+# Confirmed on 29 October 2026 (owner decision), after the check above. After merge,
+# run `voc ledger raise --reason "..."` to apply it.
+margin_confirmed = true

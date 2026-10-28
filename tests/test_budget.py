@@ -497,10 +497,12 @@ def test_B8_the_margin_is_confirmed_only_through_a_committed_config_and_the_even
     budget.Ledger().reserve(1_000)
 
 
-def test_B8_the_committed_config_has_the_trial_limit_until_the_margin_is_confirmed(budget):
+def test_B8_the_committed_config_confirms_the_margin_after_the_smoke_test(budget):
+    # Was "...has_the_trial_limit_until_the_margin_is_confirmed", asserting False. Changed in the green commit
+    # because the margin was confirmed on 29 October (owner decision), and a red commit cannot break a passing test.
     config = budget.load_config(Path(__file__).resolve().parents[1])
     assert config["trial_cap_tokens"] == 200_000  # raised from 100,000 on 29 October (owner decision)
-    assert config["margin_confirmed"] is False
+    assert config["margin_confirmed"] is True
 
 
 @pytest.mark.parametrize("flag", ["--skip-worktree", "--assume-unchanged"])

@@ -9,6 +9,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 from voc.budget import BudgetError, Ledger, clear_overrun, effective_cap, init_ledger, raise_cap, release
@@ -158,14 +159,16 @@ def _label(config, root, args):
             used_before = ledger.state()["used"]
         call = Caller("api", model, settings, backend=backend, mode=mode, root=root, ledger=ledger).call
     stopped = None
+    started = time.monotonic()
     try:
         outcomes = pipeline.label_complaints(complaints, version, labels, call, backend_name)
     except RunStopped as err:  # the outcomes so far are still written, with the stop recorded (B7, B19)
         stopped, outcomes = err, err.outcomes
+    run_seconds = round(time.monotonic() - started, 1)
     names = [label.name for label in labels]
     summary = pipeline.summarise(outcomes, args.set, version, backend_name,
                                  pipeline.list_sha256(root / "splits", args.set, complaints), limit=args.limit,
-                                 stopped=stopped)
+                                 stopped=stopped, run_seconds=run_seconds)
     if backend_name == "api":
         cost = run_cost(load_prices(root / "config" / "prices.toml"), model, [o for o in outcomes if o.source])
         summary["cost"] = {key: str(value) for key, value in cost.items()}

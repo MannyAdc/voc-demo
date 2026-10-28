@@ -33,7 +33,7 @@ SETS = ("dev", "quick")
 FAILED_IN_A_ROW = 3
 NOT_IN_LIST = "(not in list)"
 RESULT_FIELDS = ("complaint_id", "split", "prompt_version", "proposed_label", "quote_start", "quote_end",
-                 "decision", "reason", "label", "cut", "recording_key", "source", "input_tokens", "output_tokens")
+                 "decision", "reason", "accepted_label", "cut", "recording_key", "source", "input_tokens", "output_tokens")
 
 
 class RunStopped(Exception):
@@ -187,14 +187,17 @@ def results_csv(outcomes, set_name, version, names):
             "proposed_label": _proposed(d, names), "quote_start": "" if d.quote_start is None else d.quote_start,
             "quote_end": "" if d.quote_end is None else d.quote_end,
             "decision": "accepted" if d.accepted else "quarantined", "reason": d.reason or "",
-            "label": d.label or "", "cut": "yes" if o.cut else "no", "recording_key": o.recording_key or "",
+            "accepted_label": d.label or "", "cut": "yes" if o.cut else "no", "recording_key": o.recording_key or "",
             "source": o.source or "", "input_tokens": "" if o.input_tokens is None else o.input_tokens,
             "output_tokens": "" if o.output_tokens is None else o.output_tokens})
     return out.getvalue()
 
 
-def summarise(outcomes, set_name, version, backend_name, list_sha256, limit=None, stopped=None):
-    """Counts only (B21). A stopped run records its stop and how many complaints it never tried."""
+def summarise(outcomes, set_name, version, backend_name, list_sha256, limit=None, stopped=None, run_seconds=None):
+    """Counts only (B21). A stopped run records its stop and how many complaints it never tried.
+
+    `run_seconds` is the wall-clock time of the labelling loop, for the time per 1,000 complaints (B23, B25).
+    """
     reasons, accepted = {}, {}
     for o in outcomes:
         d = o.decision
@@ -223,7 +226,10 @@ def summarise(outcomes, set_name, version, backend_name, list_sha256, limit=None
             "model_errors_by_cause": dict(sorted(errors.items())), "calls_without_answer": sum(errors.values()),
             "live_cost_tokens": sum(o.live_cost_tokens for o in outcomes),
             "token_pairs": pairs,
-            "largest_tokens_over_bytes": max((t - b for b, t in pairs), default=None)}
+            "largest_tokens_over_bytes": max((t - b for b, t in pairs), default=None),
+            "run_seconds": run_seconds,
+            "seconds_per_1000_complaints": (round(run_seconds * 1000 / len(outcomes), 1)
+                                            if run_seconds is not None and outcomes else None)}
 
 
 def write_run(folder, outcomes, summary, version, names):
@@ -269,6 +275,10 @@ def format_run(summary, results_path):
                      f"{summary['calls_without_answer']} calls returned no answer")
     if summary["largest_tokens_over_bytes"] is not None:
         lines.append(f"largest (real input tokens minus prompt bytes): {summary['largest_tokens_over_bytes']}")
+    if summary.get("run_seconds") is not None:
+        per = summary["seconds_per_1000_complaints"]
+        lines.append(f"run time: {summary['run_seconds']} seconds"
+                     + (f", {per} seconds per 1,000 complaints" if per is not None else ""))
     if summary.get("stopped"):
         lines.append(f"stopped early, {summary['not_tried']} complaints not tried. This run cannot be scored")
     lines.append(f"results: {Path(results_path).as_posix()}")
