@@ -296,7 +296,7 @@ def test_B7_headers_and_keys_on_a_backend_answer_never_reach_the_recording(repla
 # Smoke test of 28 October: the cause was hidden, and failures that cannot pass were retried
 
 
-def test_B8_a_failure_a_retry_cannot_fix_is_tried_once_and_named(replay, repo, ledger):
+def test_B7_a_failure_a_retry_cannot_fix_is_tried_once_and_named(replay, repo, ledger):
     backend = FakeBackend(replay, fail=replay.PermanentModelError(
         "the API refused the call: AuthenticationError (HTTP 401)"))
     with pytest.raises(replay.ModelError) as err:
@@ -304,7 +304,7 @@ def test_B8_a_failure_a_retry_cannot_fix_is_tried_once_and_named(replay, repo, l
     assert backend.calls == 1 and "AuthenticationError (HTTP 401)" in str(err.value)
 
 
-def test_B8_the_last_error_keeps_our_own_message(replay, repo, ledger):
+def test_B7_the_last_error_keeps_our_own_message(replay, repo, ledger):
     backend = FakeBackend(replay, fail=replay.ModelError("the API call failed: RateLimitError (HTTP 429)"))
     with pytest.raises(replay.ModelError) as err:
         _caller(replay, repo, backend).call(PROMPT)

@@ -195,7 +195,7 @@ def _sdk_error(name, status=None):
 
 @pytest.mark.parametrize("name, status", [("AuthenticationError", 401), ("BadRequestError", 400),
                                           ("PermissionDeniedError", 403), ("NotFoundError", 404)])
-def test_B8_a_refused_call_is_marked_not_worth_retrying_and_names_its_type_and_status(name, status):
+def test_B7_a_refused_call_is_marked_not_worth_retrying_and_names_its_type_and_status(name, status):
     from voc.replay import PermanentModelError
 
     with pytest.raises(PermanentModelError) as err:
@@ -206,7 +206,7 @@ def test_B8_a_refused_call_is_marked_not_worth_retrying_and_names_its_type_and_s
 @pytest.mark.parametrize("name, status", [("APIConnectionError", None), ("APITimeoutError", None),
                                           ("RateLimitError", 429), ("InternalServerError", 500),
                                           ("OverloadedError", 529)])
-def test_B8_a_failure_a_retry_can_fix_stays_a_plain_model_error(name, status):
+def test_B7_a_failure_a_retry_can_fix_stays_a_plain_model_error(name, status):
     from voc.replay import PermanentModelError
 
     with pytest.raises(ModelError) as err:
@@ -215,7 +215,7 @@ def test_B8_a_failure_a_retry_can_fix_stays_a_plain_model_error(name, status):
     assert name in str(err.value) and "SYN detail" not in str(err.value)
 
 
-def test_B8_an_answer_with_no_text_is_not_worth_retrying_and_names_its_stop_reason():
+def test_B7_an_answer_with_no_text_is_not_worth_retrying_and_names_its_stop_reason():
     from voc.replay import PermanentModelError
 
     blocks = [SimpleNamespace(type="thinking", thinking="")]

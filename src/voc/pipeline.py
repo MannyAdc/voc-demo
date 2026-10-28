@@ -37,7 +37,12 @@ RESULT_FIELDS = ("complaint_id", "split", "prompt_version", "proposed_label", "q
 
 
 class RunStopped(Exception):
-    """The run stopped early. The message is ours."""
+    """The run stopped early. The message is ours. It carries the outcomes so far, so they are still written."""
+
+    def __init__(self, message, outcomes, not_tried):
+        super().__init__(message)
+        self.outcomes = outcomes
+        self.not_tried = not_tried
 
 
 @dataclass(frozen=True)
@@ -95,7 +100,8 @@ def label_complaints(complaints, version, labels, call, backend_name):
     defined = definitions(labels)
     model = version.settings["model"]
     outcomes, budget_stopped, failed_in_a_row = [], False, 0
-    for complaint in sorted(complaints, key=lambda c: _id_number(c.complaint_id)):
+    ordered = sorted(complaints, key=lambda c: _id_number(c.complaint_id))
+    for complaint in ordered:
         text, cut = cut_text(complaint.narrative)
         cid = complaint.complaint_id
         if before_call(text):
@@ -119,7 +125,8 @@ def label_complaints(complaints, version, labels, call, backend_name):
             failed_in_a_row += 1
             if failed_in_a_row >= FAILED_IN_A_ROW:
                 raise RunStopped(f"{failed_in_a_row} complaints in a row failed, last error: {err}. "
-                                 "Stopped, so the cap is not spent on a setup that does not work") from None
+                                 "Stopped, so the cap is not spent on a setup that does not work",
+                                 outcomes, len(ordered) - len(outcomes)) from None
             continue
         failed_in_a_row = 0
         outcomes.append(Outcome(decide(cid, text, CallOutcome("ok", reply.text), names), cut, reply.source, key,
@@ -186,8 +193,8 @@ def results_csv(outcomes, set_name, version, names):
     return out.getvalue()
 
 
-def summarise(outcomes, set_name, version, backend_name, list_sha256, limit=None):
-    """Counts only (B21)."""
+def summarise(outcomes, set_name, version, backend_name, list_sha256, limit=None, stopped=None):
+    """Counts only (B21). A stopped run records its stop and how many complaints it never tried."""
     reasons, accepted = {}, {}
     for o in outcomes:
         d = o.decision
@@ -204,7 +211,8 @@ def summarise(outcomes, set_name, version, backend_name, list_sha256, limit=None
         if o.error:
             errors[o.error] = errors.get(o.error, 0) + 1
     pairs = token_pairs(outcomes)
-    return {"set": set_name, "limit": limit, "prompt_version": version.name, "backend": backend_name,
+    return {"set": set_name, "limit": limit, "stopped": None if stopped is None else str(stopped),
+            "not_tried": 0 if stopped is None else stopped.not_tried, "prompt_version": version.name, "backend": backend_name,
             "model": version.settings["model"], "settings": version.settings, "list_sha256": list_sha256,
             "complaints": len(outcomes), "accepted": sum(accepted.values()),
             "quarantined": sum(reasons.values()), "accepted_by_label": dict(sorted(accepted.items())),
@@ -261,5 +269,7 @@ def format_run(summary, results_path):
                      f"{summary['calls_without_answer']} calls returned no answer")
     if summary["largest_tokens_over_bytes"] is not None:
         lines.append(f"largest (real input tokens minus prompt bytes): {summary['largest_tokens_over_bytes']}")
+    if summary.get("stopped"):
+        lines.append(f"stopped early, {summary['not_tried']} complaints not tried. This run cannot be scored")
     lines.append(f"results: {Path(results_path).as_posix()}")
     return "\n".join(lines)
