@@ -182,3 +182,97 @@ def test_B21_a_library_error_prints_only_its_type_never_the_row(tmp_path, capsys
     printed = capsys.readouterr()
     assert "SYNHOSTILE" not in printed.out + printed.err
     assert "error:" in printed.out
+
+
+# Review of pull request #8, and the owner's request to compare text rows with all rows
+
+
+def _row_with(i, product, narrative="", **fields):
+    row = dict(zip(CFPB_COLUMNS, _row(i, product, narrative)))
+    row.update(fields)
+    return [row[c] for c in CFPB_COLUMNS]
+
+
+def test_B21_a_late_broken_row_prints_only_the_error_type(tmp_path, capsys):
+    # DuckDB reads the header from the first rows, so the break must come late.
+    rows = [_row(i, "Mortgage", "a b c") for i in range(25_000)]
+    path = _write(tmp_path / "late.csv", rows)
+    with open(path, "a", encoding="utf-8", newline="") as f:
+        f.write('"unterminated ' + HOSTILE + "\n")
+    env = _setup(tmp_path, path)
+    assert cli.main(["profile"], env=env, root=tmp_path) != 0
+    printed = capsys.readouterr()
+    assert "SYNHOSTILE" not in printed.out + printed.err
+    assert printed.out.strip().startswith("error: ") and "Exception" in printed.out
+    assert "missing CFPB columns" not in printed.out
+
+
+def test_B21_the_printed_table_never_holds_hostile_text(tmp_path, capsys):
+    rows = [_row(i, "Mortgage", "a b c") for i in range(6)] + [_row(6, HOSTILE, "a b c")]
+    env = _setup(tmp_path, _write(tmp_path / "e.csv", rows))
+    assert cli.main(["profile"], env=env, root=tmp_path) == 0
+    assert "SYNHOSTILE" not in capsys.readouterr().out
+
+
+def test_B21_a_long_category_value_seen_often_is_never_printed(tmp_path):
+    long_value = "SYNLONG " + "y" * 200
+    rows = [_row(i, long_value, "a b c") for i in range(6)]
+    assert "SYNLONG" not in json.dumps(profile(_write(tmp_path / "e.csv", rows)))
+
+
+def test_B22_a_text_of_only_spaces_and_line_breaks_is_not_a_narrative(tmp_path):
+    rows = [_row(1, "Mortgage", "a b c"), _row(2, "Mortgage", "\n\t \r\n")]
+    assert profile(_write(tmp_path / "e.csv", rows))["narratives"] == 1
+
+
+def test_B22_copies_that_differ_only_in_case_and_spacing_are_found(tmp_path):
+    rows = [_row(1, "Mortgage", "abc def"), _row(2, "Mortgage", "\nABC  def "), _row(3, "Mortgage", "abc\tdef")]
+    assert profile(_write(tmp_path / "e.csv", rows))["narrative_exact_duplicates"] == 2
+
+
+def test_B22_unique_narratives_per_product_keep_the_lowest_complaint_id(tmp_path):
+    rows = [_row(1, "Mortgage", "same text"), _row(2, "Credit card", "same text"),
+            _row(3, "Credit card", "other text")] + [_row(10 + i, "Credit card", f"t {i}") for i in range(5)]
+    rows += [_row(20 + i, "Mortgage", f"m {i}") for i in range(5)]
+    products = profile(_write(tmp_path / "e.csv", rows))["products"]
+    assert products["Mortgage"]["unique_narratives"] == 6
+    assert products["Credit card"]["unique_narratives"] == 6
+
+
+def test_B22_redaction_marks_are_runs_of_capital_x_not_words_like_xxl(tmp_path):
+    rows = [_row(1, "Mortgage", "a size XXL shirt"), _row(2, "Mortgage", "on XX/XX/XXXX by XXXX"),
+            _row(3, "Mortgage", "{$XXXX.00} paid")]
+    assert profile(_write(tmp_path / "e.csv", rows))["narratives_with_redaction"] == 2
+
+
+def test_B22_blank_ids_duplicate_ids_and_unread_dates_are_counted(tmp_path):
+    rows = [_row(1, "Mortgage", "a b c"), _row(1, "Mortgage", "a b d"), _row(2, "Mortgage", "a b e", date="soon")]
+    blank = _row(3, "Mortgage", "a b f")
+    blank[CFPB_COLUMNS.index("Complaint ID")] = ""
+    facts = profile(_write(tmp_path / "e.csv", rows + [blank, list(blank)]))
+    assert facts["complaint_id_duplicates"] == 1
+    assert facts["missing_complaint_ids"] == 2
+    assert facts["unparsed_dates"] == 1
+
+
+def test_B22_percentiles_on_texts_of_different_lengths(tmp_path):
+    rows = [_row(i, "Mortgage", "a" * (i + 1)) for i in range(101)]
+    lengths = profile(_write(tmp_path / "e.csv", rows))["products"]["Mortgage"]["narrative_length"]
+    assert lengths == {"p10": 11, "p50": 51, "p90": 91, "p99": 100}
+
+
+def test_B22_missing_values_are_counted_for_every_column(tmp_path):
+    rows = [_row_with(1, "Mortgage", "a b c", State="CA"), _row_with(2, "Mortgage", "", State="")]
+    missing = profile(_write(tmp_path / "e.csv", rows))["missing_values"]
+    assert set(missing) == set(CFPB_COLUMNS)
+    assert missing["State"] == 1 and missing["Consumer complaint narrative"] == 1 and missing["Product"] == 0
+
+
+def test_B22_rows_with_text_are_compared_with_all_rows_for_each_product(tmp_path):
+    rows = [_row_with(i, "Mortgage", "a b c" if i < 5 else "", **{"Submitted via": "Web" if i < 8 else "Phone"})
+            for i in range(10)]
+    compared = profile(_write(tmp_path / "e.csv", rows))["text_vs_all"]["Mortgage"]["Submitted via"]
+    assert compared["values"]["Web"] == {"all": 8, "text": 5}
+    assert compared["difference"] == 0.2  # half the gap between the two shares, summed over values
+    assert set(profile(_write(tmp_path / "f.csv", rows))["text_vs_all"]["Mortgage"]) == {
+        "Submitted via", "Issue", "Company response to consumer", "Timely response?", "Tags", "State"}

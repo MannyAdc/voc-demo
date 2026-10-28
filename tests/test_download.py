@@ -72,6 +72,36 @@ def test_B16_a_data_folder_with_no_csv_or_several_is_an_error(tmp_path, count):
         find_export(tmp_path)
 
 
+def test_B16_an_excel_lock_file_and_a_folder_named_csv_are_ignored(tmp_path):
+    (tmp_path / "export.CSV").write_text("x", encoding="utf-8")
+    (tmp_path / "~$export.csv").write_text("x", encoding="utf-8")
+    (tmp_path / "old.csv").mkdir()
+    assert find_export(tmp_path).name == "export.CSV"
+
+
+def test_B16_a_failed_download_leaves_no_file_behind(tmp_path):
+    download = _download_module()
+
+    def broken(url):
+        yield b"part of the file"
+        raise OSError("connection reset")
+
+    with pytest.raises(OSError):
+        download.download("https://example.invalid/complaints.csv.zip", tmp_path, fetch=broken)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_B21_the_download_script_prints_only_the_error_type(tmp_path, capsys):
+    download = _download_module()
+
+    def hostile(url):
+        raise OSError("SYNHOSTILE text from a server")
+
+    assert download.main([str(tmp_path)], fetch=hostile) != 0
+    out = capsys.readouterr().out
+    assert "SYNHOSTILE" not in out and "error: OSError" in out
+
+
 def test_B16_the_committed_pin_file_has_the_july_export():
     pins = load_pins(Path(__file__).resolve().parent.parent / "config" / "data_files.toml")
     pin = pins["july_2026"]
