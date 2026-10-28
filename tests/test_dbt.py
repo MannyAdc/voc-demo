@@ -187,3 +187,66 @@ def test_B14_ci_runs_the_dbt_build_on_the_synthetic_fixture():
     workflow = yaml.safe_load((REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
     runs = [step.get("run", "") for job in workflow["jobs"].values() for step in job["steps"]]
     assert any("scripts/dbt_fixture_build.py" in run and "tests/fixtures/dbt/complaints.csv" in run for run in runs)
+
+
+# Review of pull request #17
+
+
+def _read_guard():
+    spec = importlib.util.spec_from_file_location("read_guard", REPO / ".claude" / "hooks" / "read_guard.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_B21_dbt_target_and_logs_are_written_inside_the_guarded_data_folder(repo, tmp_path):
+    # dbt can write complaint text into run_results.json and dbt.log, so Claude must not read them.
+    _add_row(repo, "SYN-99", product="Payday loan")
+    assert _build(repo) != 0
+    target, logs = repo / "data" / "dbt" / "target", repo / "data" / "dbt" / "logs"
+    assert (target / "run_results.json").is_file() and (logs / "dbt.log").is_file()
+    assert not (repo / "dbt" / "target").exists() and not (repo / "dbt" / "logs").exists()
+    guard = _read_guard()
+    for path in (target / "run_results.json", logs / "dbt.log"):
+        decision = guard.decide("Read", {"file_path": str(path)}, env={}, home=tmp_path / "home", root=repo)
+        assert decision and decision[0] == "deny"
+
+
+def test_B14_dbt_docs_writes_the_lineage_files_inside_the_data_folder(repo, capfd):
+    assert cli.main(["dbt", "docs"], env={}, root=repo) == 0
+    assert (repo / "data" / "dbt" / "target" / "manifest.json").is_file()
+    assert (repo / "data" / "dbt" / "target" / "index.html").is_file()
+
+
+def test_B14_dbt_output_is_git_ignored():
+    # The manifest holds absolute local paths, and the logs can hold complaint text.
+    from voc.dbt_run import LOGS, TARGET
+
+    lines = (REPO / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert "/data/" in lines
+    for path in (TARGET, LOGS):
+        assert path.parts[0] == "data"
+
+
+@pytest.mark.parametrize("complaint_id", ["SYN-1", None])
+def test_B14_a_bad_id_added_after_a_first_build_fails_the_second_build(repo, capfd, complaint_id):
+    assert _build(repo) == 0
+    _add_row(repo, complaint_id)
+    assert _build(repo) != 0
+    check = "source_unique" if complaint_id else "source_not_null"
+    assert f"{check}_voc_staged_complaints_complaint_id" in capfd.readouterr().out
+
+
+def test_B14_a_new_column_in_the_staged_table_fails_the_incremental_build(repo, capfd):
+    assert _build(repo) == 0
+    _sql(repo, f"ALTER TABLE {TABLE} ADD COLUMN extra VARCHAR")
+    _add_row(repo, "SYN-100")
+    assert _build(repo) != 0
+    assert f"error: model {MODEL}" in capfd.readouterr().out
+
+
+def test_B14_the_readme_says_what_the_incremental_load_does_not_cover():
+    readme = (REPO / "README.md").read_text(encoding="utf-8").lower()
+    assert "late or corrected records" in readme
+    assert "column" in readme and "incremental" in readme
+    assert "lineage graph" in readme and "local paths" in readme
