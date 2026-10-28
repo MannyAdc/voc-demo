@@ -78,19 +78,23 @@ def _similar(a, b):
 
 
 def _dedupe(rows):
-    """The kept rows, and the number removed as exact copies and as near-copies."""
+    """The kept rows, and the number removed as exact copies and as near-copies.
+
+    A text that repeats any earlier text exactly counts as an exact copy, even when that earlier text was
+    itself removed as a near-copy. Such a repeat is removed either way.
+    """
     kept, seen, by_opening, removed = [], set(), {}, {"exact": 0, "near": 0}
     for row in _by_id(rows):
         normal = _normal(row.narrative)
         if normal in seen:
             removed["exact"] += 1
             continue
+        seen.add(normal)
         grams = _grams(normal)
         group = by_opening.setdefault(opening_key(row.narrative), [])
         if any(_similar(grams, other) for other in group):
             removed["near"] += 1
             continue
-        seen.add(normal)
         group.append(grams)
         kept.append(row)
     return kept, removed
