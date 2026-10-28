@@ -284,3 +284,19 @@ def test_B15_evaluate_needs_a_note_of_what_changed(repo, capsys):
     with pytest.raises(SystemExit):
         _voc(repo, {}, "evaluate", "dev", "--prompt", "v1")
     assert "--note" in capsys.readouterr().err
+
+
+def test_B23_the_cost_per_1000_is_rounded_to_a_hundredth_of_a_cent(repo, capsys):
+    import re
+
+    _labelled(repo)
+    path = repo / "results" / "labels" / "v1_dev.json"
+    run = json.loads(path.read_text(encoding="utf-8"))
+    run["cost"] = {"live_cost_usd": "0.0862902", "own_cost_usd": "0.0718306"}
+    path.write_text(json.dumps(run), encoding="utf-8")
+    capsys.readouterr()
+    assert _evaluate(repo) == 0
+    out = capsys.readouterr().out
+    cost = _summary(repo)["llm"]["cost_per_1000_usd"]
+    assert re.fullmatch(r"\d+\.\d{4}", cost)
+    assert f"LLM ${cost}," in out
