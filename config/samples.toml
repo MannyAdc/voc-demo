@@ -1,0 +1,7 @@
+# Sample settings (B9, B25). Fixed before the samples are drawn. See docs/DATA.md and docs/HOW_WE_MEASURE.md.
+month = "july_2026"
+# Cochran margins of error, at 95 percent and p = 0.5, with the finite pool correction.
+dev_margin = 0.05
+test_margin = 0.02
+# The seed of the stratified draw. The date the samples were drawn.
+seed = 20261028

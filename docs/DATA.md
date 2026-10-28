@@ -110,36 +110,43 @@ As a rough reading guide (our own, not a standard): under 0.05 is very similar, 
 
 ## Sample sizes (B25)
 
-The pool is the text set without its exact copies: **9,379 complaints**. Near-copies are removed later (T012), so the final pool may be slightly smaller, and the sizes are recomputed then.
+The samples were drawn on 28 October with `uv run --native-tls voc sample` (about 5 seconds), from the July rows loaded with `uv run --native-tls voc load july_2026`. The settings are in `config/samples.toml` and the frozen lists in `splits/`.
+
+- **Copies removed: 699.** `voc sample` prints 623 exact copies and 76 near-copies. The 623 match the profile's count of exact copies.
+  - An exact copy has the same text as an earlier narrative, after ignoring case and spacing.
+  - A near-copy opens with the same six words as a kept narrative, and the two texts overlap closely. We split each text into its runs of five words in a row. We count the runs both texts share, and divide by the runs found in either text. A near-copy scores at least 0.9 (statisticians call this the Jaccard similarity of word 5-grams).
+  - The lowest complaint ID of each group is kept.
+- **This copy test is strict.** Two changed words far apart in a 100-word text give about 0.81, so both texts are kept. A few close copies may therefore sit in both the training and the test set. That can only help TF-IDF, which learns from the training set. It cannot help the LLM, which learns nothing. So it does not flatter the LLM.
+- **The pool: 9,303 complaints.**
 
 Cochran's formula, with the correction for a pool of this size (see [How we measure](HOW_WE_MEASURE.md)):
 
 | Set | Margin of error | Complaints |
 |---|---|---|
 | Development | 5 points at most | 370 |
-| Test | 2 points at most (about 1.5 at 84 percent accuracy) | 1,912 |
-| Training, for TF-IDF only | not sampled | the remaining 7,097 |
+| Test | 2 points at most (about 1.5 at 84 percent accuracy) | 1,909 |
+| Training, for TF-IDF only | not sampled | the remaining 7,024 |
 
 Split across categories in proportion to the pool:
 
 | Category | Pool | Development | Test | Training |
 |---|---|---|---|---|
-| Debt collection | 2,258 | 89 | 460 | 1,709 |
-| Checking or savings account | 2,025 | 80 | 413 | 1,532 |
-| Credit card | 1,812 | 71 | 369 | 1,372 |
-| Money transfer, virtual currency, or money service | 781 | 31 | 159 | 591 |
+| Debt collection | 2,204 | 88 | 452 | 1,664 |
+| Checking or savings account | 2,025 | 81 | 416 | 1,528 |
+| Credit card | 1,807 | 72 | 371 | 1,364 |
+| Money transfer, virtual currency, or money service | 780 | 31 | 160 | 589 |
 | Mortgage | 728 | 29 | 149 | 550 |
-| Vehicle loan or lease | 509 | 20 | 104 | 385 |
+| Vehicle loan or lease | 508 | 20 | 104 | 384 |
 | Payday loan, title loan, personal loan, or advance loan | 406 | 16 | 83 | 307 |
-| Credit reporting or other personal consumer reports | 325 | 13 | 66 | 246 |
-| Student loan | 310 | 12 | 63 | 235 |
-| Prepaid card | 134 | 5 | 27 | 102 |
+| Credit reporting or other personal consumer reports | 311 | 12 | 64 | 235 |
+| Student loan | 309 | 12 | 63 | 234 |
+| Prepaid card | 134 | 5 | 28 | 101 |
 | Debt or credit management | 91 | 4 | 19 | 68 |
-| **Total** | **9,379** | **370** | **1,912** | **7,097** |
+| **Total** | **9,303** | **370** | **1,909** | **7,024** |
 
 **Small categories.**
 
-- In the **test set**, two categories fall below 30: prepaid card (27) and debt or credit management (19). Their per-category scores are shown as "too few to judge". They still count in the overall score.
+- In the **test set**, two categories fall below 30: prepaid card (28) and debt or credit management (19). Their per-category scores are shown as "too few to judge". They still count in the overall score.
 - In the **development set**, 7 of 11 categories are below 30. The development set is used to find error patterns, not to score categories, so no per-category score is reported from it.
 
 ## Decisions (owner, 28 October)

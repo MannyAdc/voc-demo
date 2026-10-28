@@ -13,6 +13,7 @@ from pathlib import Path
 
 from voc.budget import BudgetError, Ledger, clear_overrun, effective_cap, init_ledger, raise_cap, release
 from voc import dbt_run
+from voc.data import SampleMismatch, build_samples, format_summary
 from voc.datafile import DataFileError, find_export, load_pins, sha256_of, verify
 from voc.dbt_run import DbtError
 from voc.env import settings
@@ -106,7 +107,20 @@ def _ledger_clear_overrun(config, root, args):
     print("overrun cleared, live calls may go on")
 
 
-COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt,
+def _sample(config, root, args):
+    import tomllib
+
+    with open(Path(root) / "config" / "samples.toml", "rb") as f:
+        chosen = tomllib.load(f)
+    month = chosen["month"]
+    summary = build_samples(Path(root) / DB_PATH, month, seed=chosen["seed"],
+                            splits_dir=Path(root) / "splits", source_sha256=_pin(root, month)["sha256"],
+                            dev_margin=chosen["dev_margin"], test_margin=chosen["test_margin"])
+    print(format_summary(summary))
+
+
+COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample,
+            ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt,
             ("ledger", "init"): _ledger_init, ("ledger", "raise"): _ledger_raise,
             ("ledger", "status"): _ledger_status, ("ledger", "release"): _ledger_release,
             ("ledger", "clear-overrun"): _ledger_clear_overrun}
@@ -119,6 +133,7 @@ def main(argv=None, env=None, root=None):
     dh.add_argument("month", nargs="?", default=PIN, choices=sorted(MONTHS), help="which month's folder to read")
     p = sub.add_parser("profile", help="print data facts as counts (B22)")
     p.add_argument("--write", help="also write the facts as JSON to this file")
+    sub.add_parser("sample", help="build and freeze the samples from the staged July rows (B9, B16, B25)")
     ld = sub.add_parser("load", help="load one pinned monthly export into the staged DuckDB table (B14)")
     ld.add_argument("month", choices=sorted(MONTHS), help="the month to load, as named in config/data_files.toml")
     dbt = sub.add_parser("dbt", help="run the dbt project, printing counts and check names only (B14, B21)")
@@ -142,7 +157,7 @@ def main(argv=None, env=None, root=None):
     try:
         command = (args.command, args.action) if args.command in ("ledger", "dbt") else args.command
         COMMANDS[command](config, root, args)
-    except (DataFileError, BudgetError, DbtError) as err:
+    except (DataFileError, BudgetError, DbtError, SampleMismatch) as err:
         print(f"error: {err}")
         return 1
     # B21: the type only, never the message. The spec also asks for the row number and the
