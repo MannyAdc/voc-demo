@@ -35,6 +35,10 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - "XXXX" in a quote matches "XXXX" in the text (reused)
 - a guess in place of "XXXX" does not match (reused)
 - a quote of only redaction marks is not evidence (reused)
+- the first match on word boundaries is the one reported (T005)
+- a quote may not start or end inside a word, also not across an apostrophe or hyphen, and a combining mark is part of its word (review of #10)
+- composed and decomposed letters, other apostrophes and dashes, soft hyphens, zero-width characters and non-breaking spaces are normalised the same on both sides (review of #10)
+- lookalike X characters are not real words, and redaction marks joined by a dash are redaction only (review of #10)
 
 ## Prompt and parsing (B4, B5), `tests/test_prompt.py`
 
