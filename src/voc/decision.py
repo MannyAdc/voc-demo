@@ -5,6 +5,10 @@ boundary tag is `boundary_in_text`, so neither is sent to the model. After the
 call, checks run in a fixed order: model call, parse, label, quote. The first
 failure names the one reason. A quarantined decision keeps the proposal for
 review but never has an accepted label. TF-IDF's label is never an input.
+
+A failed, refused or cut-off call is `model_error`. If its answer still parses,
+the proposal is kept for review (owner decision, 28 October: "if any" in B3
+covers it). It is still quarantined.
 """
 from dataclasses import dataclass
 
@@ -26,6 +30,7 @@ class CallOutcome:
 
 @dataclass(frozen=True)
 class Decision:
+    """Exactly one of `label` (accepted) or `reason` (quarantined) is set."""
     complaint_id: str
     label: str | None = None
     reason: str | None = None
@@ -34,13 +39,19 @@ class Decision:
     quote_start: int | None = None
     quote_end: int | None = None
 
+    def __post_init__(self):
+        if (self.label is None) == (self.reason is None):
+            raise ValueError("a decision has exactly one of an accepted label or a quarantine reason")
+
     @property
     def accepted(self):
-        return self.reason is None and self.label is not None
+        return self.reason is None
 
 
 def before_call(text):
     """The reason a complaint is not sent to the model at all, or None."""
+    if text is not None and not isinstance(text, str):
+        raise TypeError(f"complaint text must be a string or None, not {type(text).__name__}")
     if not text or not text.strip():
         return NO_NARRATIVE
     return boundary_reason(text)
@@ -49,15 +60,16 @@ def before_call(text):
 def decide(complaint_id, text, outcome, labels):
     if outcome.status not in CALL_STATUSES:
         raise ValueError(f"unknown call status {outcome.status!r}, expected one of {sorted(CALL_STATUSES)}")
+    parse_answer(None, labels)  # checks the label list first, whatever the call status
     early = before_call(text)
     if early:
         return Decision(complaint_id, reason=early)
     if outcome.status == NOT_RUN_BUDGET:
         return Decision(complaint_id, reason=NOT_RUN_BUDGET)
-    if outcome.status != "ok":
-        return Decision(complaint_id, reason=MODEL_ERROR)
     parsed = parse_answer(outcome.answer, labels)
     proposal = {"proposed_label": parsed.label, "proposed_quote": parsed.quote}
+    if outcome.status != "ok":
+        return Decision(complaint_id, reason=MODEL_ERROR, **proposal)
     if parsed.reason:
         return Decision(complaint_id, reason=parsed.reason, **proposal)
     evidence = check_quote(text, parsed.quote)
