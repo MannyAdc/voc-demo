@@ -32,8 +32,11 @@ def _load(name):
 
 
 @pytest.fixture
-def gate():
-    return _load("test_gate")
+def gate(tmp_path, monkeypatch):
+    module = _load("test_gate")
+    # Tests that call the gate directly keep its output apart from the output of the gate that runs them.
+    monkeypatch.setattr(module, "LOG_DIR", tmp_path / "gate-log")
+    return module
 
 
 @pytest.fixture
@@ -165,6 +168,15 @@ def test_the_gate_saves_the_full_pytest_output_and_names_the_folder(gate, projec
     assert "assert 2 == 1" in (tmp_path / "gate-log" / "staged.txt").read_text(encoding="utf-8")
     assert (tmp_path / "gate-log" / "staged.xml").is_file()
     assert any(str(tmp_path / "gate-log") in problem for problem in problems)
+
+
+def test_a_new_gate_run_removes_the_last_runs_output(gate, project, tmp_path):
+    folder = tmp_path / "gate-log"
+    folder.mkdir()
+    (folder / "head.txt").write_text("SYN stale output", encoding="utf-8")
+    _stage(project, "src/mod.py", "def f():\n    return 1  # same\n")
+    assert gate.check_staged(project) == []
+    assert not (folder / "head.txt").exists() and (folder / "staged.txt").is_file()
 
 
 def test_a_tests_only_commit_saves_the_output_of_both_runs(gate, project, tmp_path, monkeypatch):
