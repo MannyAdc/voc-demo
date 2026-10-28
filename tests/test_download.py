@@ -91,6 +91,14 @@ def test_B16_a_failed_download_leaves_no_file_behind(tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
+def test_B16_download_never_overwrites_a_partial_file_either(tmp_path):
+    download = _download_module()
+    (tmp_path / "complaints.csv.zip.part").write_bytes(b"left from before")
+    with pytest.raises(FileExistsError):
+        download.download("https://example.invalid/complaints.csv.zip", tmp_path, fetch=lambda url: b"new")
+    assert (tmp_path / "complaints.csv.zip.part").read_bytes() == b"left from before"
+
+
 def test_B21_the_download_script_prints_only_the_error_type(tmp_path, capsys):
     download = _download_module()
 

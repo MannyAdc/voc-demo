@@ -276,3 +276,20 @@ def test_B22_rows_with_text_are_compared_with_all_rows_for_each_product(tmp_path
     assert compared["difference"] == 0.2  # half the gap between the two shares, summed over values
     assert set(profile(_write(tmp_path / "f.csv", rows))["text_vs_all"]["Mortgage"]) == {
         "Submitted via", "Issue", "Company response to consumer", "Timely response?", "Tags", "State"}
+
+
+@pytest.mark.parametrize("field", ["Submitted via", "Issue", "Company response to consumer", "Timely response?",
+                                   "Tags", "State"])
+def test_B21_hostile_text_in_a_compared_field_is_never_printed(tmp_path, field):
+    rows = [_row_with(i, "Mortgage", "a b c", **{field: "Web"}) for i in range(6)]
+    rows.append(_row_with(6, "Mortgage", "a b c", **{field: HOSTILE}))
+    assert "SYNHOSTILE" not in json.dumps(profile(_write(tmp_path / "e.csv", rows)))
+
+
+def test_B22_the_kept_copy_is_the_lowest_complaint_id_by_number(tmp_path):
+    # As text, "SYN-10" sorts before "SYN-9". By number, 9 comes first.
+    rows = [_row(10, "Credit card", "same text"), _row(9, "Mortgage", "same text")]
+    rows += [_row(20 + i, "Credit card", f"c {i}") for i in range(5)] + [_row(30 + i, "Mortgage", f"m {i}") for i in range(5)]
+    products = profile(_write(tmp_path / "e.csv", rows))["products"]
+    assert products["Mortgage"]["unique_narratives"] == 6
+    assert products["Credit card"]["unique_narratives"] == 5
