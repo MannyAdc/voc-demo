@@ -491,3 +491,40 @@ def test_B8_an_answer_between_failures_starts_the_count_again():
     outcomes = _label(_complaints(*[_text(i) for i in range(6)]), FakeCall(answer))
     assert [o.decision.reason for o in outcomes] == ["model_error", "model_error", None,
                                                      "model_error", "model_error", None]
+
+
+# Review of #21
+
+
+def test_B7_a_stopped_run_hands_back_the_outcomes_so_far():
+    from voc.pipeline import RunStopped
+
+    def answer(prompt):
+        raise ModelError("the API refused the call: AuthenticationError (HTTP 401)")
+
+    with pytest.raises(RunStopped) as err:
+        _label(_complaints(*[_text(i) for i in range(6)]), FakeCall(answer))
+    assert [o.decision.reason for o in err.value.outcomes] == ["model_error"] * 3
+    assert err.value.not_tried == 3
+
+
+def test_B7_a_stopped_command_writes_the_results_so_far_and_records_the_stop(repo, capsys):
+    from voc.data import read_splits
+
+    (repo / "no_answers.json").write_text("[]", encoding="utf-8")
+    env = {"LLM_BACKEND": "mock", "VOC_MOCK_FIXTURES": str(repo / "no_answers.json")}
+    assert _run(repo, env, "dev") == 1
+    out = capsys.readouterr().out
+    assert "3 complaints in a row failed" in out and "SYNHOSTILE" not in out and "escrow" not in out
+    rows = list(csv.DictReader((repo / "results" / "labels" / "v1_dev.csv").read_text(encoding="utf-8")
+                               .splitlines()))
+    summary = json.loads((repo / "results" / "labels" / "v1_dev.json").read_text(encoding="utf-8"))
+    assert [r["reason"] for r in rows] == ["model_error"] * 3
+    assert "3 complaints in a row failed" in summary["stopped"]
+    assert summary["not_tried"] == len(read_splits(repo / "splits")["dev"]) - 3
+
+
+def test_B7_a_complete_run_records_no_stop(repo):
+    assert _run(repo, _env(repo, _good("")), "dev") == 0
+    summary = json.loads((repo / "results" / "labels" / "v1_dev.json").read_text(encoding="utf-8"))
+    assert summary["stopped"] is None and summary["not_tried"] == 0
