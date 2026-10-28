@@ -21,6 +21,7 @@ from voc.env import settings
 from voc.labels import load_labels
 from voc.load import DB_PATH, load_month
 from voc.profile import format_profile, profile
+from voc.pipeline import RunStopped
 from voc.replay import RecordingCorrupt, RecordingMissing
 
 PIN = "july_2026"
@@ -156,10 +157,15 @@ def _label(config, root, args):
             ledger = Ledger()
             used_before = ledger.state()["used"]
         call = Caller("api", model, settings, backend=backend, mode=mode, root=root, ledger=ledger).call
-    outcomes = pipeline.label_complaints(complaints, version, labels, call, backend_name)
+    stopped = None
+    try:
+        outcomes = pipeline.label_complaints(complaints, version, labels, call, backend_name)
+    except RunStopped as err:  # the outcomes so far are still written, with the stop recorded (B7, B19)
+        stopped, outcomes = err, err.outcomes
     names = [label.name for label in labels]
     summary = pipeline.summarise(outcomes, args.set, version, backend_name,
-                                 pipeline.list_sha256(root / "splits", args.set, complaints), limit=args.limit)
+                                 pipeline.list_sha256(root / "splits", args.set, complaints), limit=args.limit,
+                                 stopped=stopped)
     if backend_name == "api":
         cost = run_cost(load_prices(root / "config" / "prices.toml"), model, [o for o in outcomes if o.source])
         summary["cost"] = {key: str(value) for key, value in cost.items()}
@@ -170,6 +176,8 @@ def _label(config, root, args):
     if "ledger_charged_tokens" in summary:
         print(f"ledger: {summary['ledger_charged_tokens']} tokens charged while this run went on, failed calls "
               "included. Any other run at the same time is counted too")
+    if stopped is not None:
+        raise stopped
 
 
 COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample, "label": _label,
@@ -216,7 +224,7 @@ def main(argv=None, env=None, root=None):
         command = (args.command, args.action) if args.command in ("ledger", "dbt") else args.command
         COMMANDS[command](config, root, args)
     except (DataFileError, BudgetError, DbtError, SampleMismatch, BackendError, RecordingMissing,
-            RecordingCorrupt) as err:
+            RecordingCorrupt, RunStopped) as err:
         print(f"error: {err}")
         return 1
     # B21: the type only, never the message. The spec also asks for the row number and the

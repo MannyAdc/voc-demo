@@ -464,3 +464,67 @@ def test_B13_a_replayed_api_run_costs_nothing_now_and_keeps_its_live_cost(repo, 
 def test_B7_a_replay_run_with_no_recordings_stops_with_our_message_and_needs_no_key(repo, capsys):
     assert _run(repo, {"LLM_BACKEND": "api"}, "dev", "--replay") == 1
     assert "replay mode never calls the model" in capsys.readouterr().out
+
+
+# Smoke test of 28 October: the run went on after 5 complaints in a row failed
+
+
+def test_B8_three_complaints_in_a_row_with_a_model_error_stop_the_run():
+    from voc.pipeline import RunStopped
+
+    def answer(prompt):
+        raise ModelError("the model call failed, not retried: AuthenticationError (HTTP 401)")
+
+    call = FakeCall(answer)
+    with pytest.raises(RunStopped, match="AuthenticationError"):
+        _label(_complaints(*[_text(i) for i in range(6)]), call)
+    assert len(call.prompts) == 3
+
+
+def test_B8_an_answer_between_failures_starts_the_count_again():
+    def answer(prompt):
+        section = prompt.split("Complaint to label:")[1]
+        if "story charlie" in section or "story foxtrot" in section:
+            return _good(prompt)
+        raise ModelError("the model call failed 3 times, last error the API call failed: APIConnectionError")
+
+    outcomes = _label(_complaints(*[_text(i) for i in range(6)]), FakeCall(answer))
+    assert [o.decision.reason for o in outcomes] == ["model_error", "model_error", None,
+                                                     "model_error", "model_error", None]
+
+
+# Review of #21
+
+
+def test_B7_a_stopped_run_hands_back_the_outcomes_so_far():
+    from voc.pipeline import RunStopped
+
+    def answer(prompt):
+        raise ModelError("the API refused the call: AuthenticationError (HTTP 401)")
+
+    with pytest.raises(RunStopped) as err:
+        _label(_complaints(*[_text(i) for i in range(6)]), FakeCall(answer))
+    assert [o.decision.reason for o in err.value.outcomes] == ["model_error"] * 3
+    assert err.value.not_tried == 3
+
+
+def test_B7_a_stopped_command_writes_the_results_so_far_and_records_the_stop(repo, capsys):
+    from voc.data import read_splits
+
+    (repo / "no_answers.json").write_text("[]", encoding="utf-8")
+    env = {"LLM_BACKEND": "mock", "VOC_MOCK_FIXTURES": str(repo / "no_answers.json")}
+    assert _run(repo, env, "dev") == 1
+    out = capsys.readouterr().out
+    assert "3 complaints in a row failed" in out and "SYNHOSTILE" not in out and "escrow" not in out
+    rows = list(csv.DictReader((repo / "results" / "labels" / "v1_dev.csv").read_text(encoding="utf-8")
+                               .splitlines()))
+    summary = json.loads((repo / "results" / "labels" / "v1_dev.json").read_text(encoding="utf-8"))
+    assert [r["reason"] for r in rows] == ["model_error"] * 3
+    assert "3 complaints in a row failed" in summary["stopped"]
+    assert summary["not_tried"] == len(read_splits(repo / "splits")["dev"]) - 3
+
+
+def test_B7_a_complete_run_records_no_stop(repo):
+    assert _run(repo, _env(repo, _good("")), "dev") == 0
+    summary = json.loads((repo / "results" / "labels" / "v1_dev.json").read_text(encoding="utf-8"))
+    assert summary["stopped"] is None and summary["not_tried"] == 0
