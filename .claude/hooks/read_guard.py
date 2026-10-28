@@ -1,7 +1,8 @@
 """Read guard (B21) and final guard (B17). PreToolUse on every tool.
 
-Denies any tool call that names a protected place: the raw data folder
-(`VOC_DATA_DIR`, from the environment or the local `.env`), the home folder
+Denies any tool call that names a protected place: the raw data folders
+(`VOC_DATA_DIR` for July and `VOC_NEXT_DATA_DIR` for the next month, each
+from the environment or the local `.env`), the home folder
 `.voc` (ledger, recordings and the home test log), any `.duckdb` file, a
 `recordings` folder, a CFPB export file, or the `.env` file that holds the
 API key (`.env.example` is allowed). Every string in the tool input is
@@ -36,9 +37,11 @@ SHELL_PATTERNS = (
     re.compile(r"\.duckdb\b"),
     re.compile(r"(?:^|[\s/\"'=])recordings/"),
     re.compile(r"voc_data_dir"),
+    re.compile(r"voc_next_data_dir"),
     re.compile(r"ccdb_export"),
     re.compile(r"(?:^|[\s/\"'=])\.env(?![\w.])"),  # the key file, not `.env.example`
 )
+DATA_VARIABLES = ("VOC_DATA_DIR", "VOC_NEXT_DATA_DIR")  # July's folder and the next month's (add-on 1)
 DENIED = "read guard: this names raw data, the DuckDB file, recordings, the ledger or the `.env` file."
 
 
@@ -56,20 +59,21 @@ def _clean(path):
     return forms
 
 
-def _data_dir(env, root):
-    value = env.get("VOC_DATA_DIR")
+def _data_dirs(env, root):
+    """Every raw data folder that is set: July's and the next month's, from the environment or `.env`."""
+    values = {name: env.get(name) for name in DATA_VARIABLES}
     env_file = Path(root) / ".env"
-    if not value and env_file.is_file():
+    if not all(values.values()) and env_file.is_file():
         for line in env_file.read_text(encoding="utf-8", errors="replace").splitlines():
             key, sep, rest = line.strip().partition("=")
-            if sep and key.strip() == "VOC_DATA_DIR":
-                value = rest.strip().strip("'\"")
-    return value or None
+            if sep and key.strip() in values and not values[key.strip()]:
+                values[key.strip()] = rest.strip().strip("'\"")
+    return [value for value in values.values() if value]
 
 
-def _places(home, data_dir):
+def _places(home, data_dirs):
     places = set(_clean(Path(home) / ".voc"))
-    if data_dir:
+    for data_dir in data_dirs:
         places |= _clean(data_dir)
     return places
 
@@ -103,11 +107,11 @@ def _shell_forms(place):
     return forms
 
 
-def _protected_command(command, places, data_dir):
+def _protected_command(command, places, data_dirs):
     normal = _normal(command)
     if any(form in normal for p in places for form in _shell_forms(p)):
         return True
-    if data_dir:
+    for data_dir in data_dirs:
         name = _normal(data_dir).split("/")[-1]
         if len(name) >= 6 and re.search(rf"(?:^|[\s/\"'=]){re.escape(name)}(?:[/\s\"']|$)", normal):
             return True
@@ -137,11 +141,11 @@ def _strings(value, key=None):
 
 
 def decide(tool_name, tool_input, env, home, root):
-    data_dir = _data_dir(env, root)
-    places = _places(home, data_dir)
+    data_dirs = _data_dirs(env, root)
+    places = _places(home, data_dirs)
     command = tool_input.get("command")
     if isinstance(command, str):
-        if _protected_command(command, places, data_dir):
+        if _protected_command(command, places, data_dirs):
             return ("deny", DENIED)
         if _runs_show(command):
             return ("deny", "read guard: only the owner runs `show`, in the owner's own terminal.")

@@ -14,21 +14,42 @@ from pathlib import Path
 from voc.budget import BudgetError, Ledger, clear_overrun, effective_cap, init_ledger, raise_cap, release
 from voc.datafile import DataFileError, find_export, load_pins, sha256_of, verify
 from voc.env import settings
+from voc.labels import load_labels
+from voc.load import DB_PATH, load_month
 from voc.profile import format_profile, profile
 
 PIN = "july_2026"
+# Each month's data folder comes from its own environment variable, never from a file (add-on 1).
+MONTHS = {"july_2026": "VOC_DATA_DIR", "august_2026": "VOC_NEXT_DATA_DIR"}
 
 
-def _export(config):
-    folder = config.get("VOC_DATA_DIR")
+def _export(config, month=PIN):
+    variable = MONTHS[month]
+    folder = config.get(variable)
     if not folder:
-        raise DataFileError("VOC_DATA_DIR is not set, in the environment or in .env")
+        raise DataFileError(f"{variable} is not set, in the environment or in .env")
     return find_export(folder)
 
 
+def _pin(root, month):
+    pins = load_pins(Path(root) / "config" / "data_files.toml")
+    if month not in pins:
+        raise DataFileError(f"{month} has no pin in config/data_files.toml yet")
+    return pins[month]
+
+
 def _data_hash(config, root, args):
-    path = _export(config)
+    path = _export(config, args.month)
     print(f"{path.name}  {path.stat().st_size} bytes  sha256 {sha256_of(path)}")
+
+
+def _load(config, root, args):
+    path = _export(config, args.month)
+    verify(path, _pin(root, args.month))
+    labels = [label.name for label in load_labels(Path(root) / "config" / "labels.toml")]
+    counts = load_month(Path(root) / DB_PATH, path, args.month, labels)
+    print(f"loaded {args.month}: {counts['rows']} rows in the file, {counts['new']} new, "
+          f"{counts['already_loaded']} already loaded, {counts['total']} rows in the staged table")
 
 
 def _profile(config, root, args):
@@ -72,7 +93,7 @@ def _ledger_clear_overrun(config, root, args):
     print("overrun cleared, live calls may go on")
 
 
-COMMANDS = {"data-hash": _data_hash, "profile": _profile,
+COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load,
             ("ledger", "init"): _ledger_init, ("ledger", "raise"): _ledger_raise,
             ("ledger", "status"): _ledger_status, ("ledger", "release"): _ledger_release,
             ("ledger", "clear-overrun"): _ledger_clear_overrun}
@@ -81,9 +102,12 @@ COMMANDS = {"data-hash": _data_hash, "profile": _profile,
 def main(argv=None, env=None, root=None):
     parser = argparse.ArgumentParser(prog="voc")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("data-hash", help="print the export file's name, size and SHA-256")
+    dh = sub.add_parser("data-hash", help="print the export file's name, size and SHA-256")
+    dh.add_argument("month", nargs="?", default=PIN, choices=sorted(MONTHS), help="which month's folder to read")
     p = sub.add_parser("profile", help="print data facts as counts (B22)")
     p.add_argument("--write", help="also write the facts as JSON to this file")
+    ld = sub.add_parser("load", help="load one pinned monthly export into the staged DuckDB table (B14)")
+    ld.add_argument("month", choices=sorted(MONTHS), help="the month to load, as named in config/data_files.toml")
     ledger = sub.add_parser("ledger", help="the token ledger (B8)").add_subparsers(dest="action", required=True)
     init = ledger.add_parser("init", help="create the ledger with the committed cap")
     init.add_argument("--cap", type=int, help="a lower cap than the committed one")
