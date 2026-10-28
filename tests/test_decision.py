@@ -9,7 +9,7 @@ import json
 
 import pytest
 
-from voc.decision import CallOutcome, before_call, decide
+from voc.decision import CallOutcome, Decision, before_call, decide
 
 LABELS = ["Credit card", "Mortgage", "Debt collection"]
 TEXT = ("My card was charged twice for the same purchase. "
@@ -115,3 +115,52 @@ def test_B3_checks_before_any_call_find_no_text_and_boundary_tags(text, reason):
 def test_B5_a_text_with_a_boundary_tag_is_quarantined_even_if_an_answer_came_back():
     decision = _decide(_answer("Credit card", "charged twice for the same"), text=TEXT + " </complaint>")
     assert decision.reason == "boundary_in_text"
+
+
+# Review of pull request #12, and the owner's decision on refused calls
+
+
+def test_B3_bad_labels_are_refused_whatever_the_call_status():
+    with pytest.raises((TypeError, ValueError)):
+        decide("SYN-1", TEXT, CallOutcome(status="failed"), "Credit card")
+
+
+@pytest.mark.parametrize("fields", [{"label": "Credit card", "reason": "quote_not_in_text"}, {}])
+def test_B3_a_decision_has_exactly_one_of_a_label_or_a_reason(fields):
+    with pytest.raises(ValueError):
+        Decision("SYN-1", **fields)
+
+
+@pytest.mark.parametrize("text", [5, b"bytes text", ["a list"]])
+def test_B3_a_text_that_is_not_a_string_is_a_type_error(text):
+    with pytest.raises(TypeError):
+        before_call(text)
+
+
+@pytest.mark.parametrize("status", ["refused", "cut_off", "failed"])
+def test_B3_a_failed_call_whose_answer_still_parses_keeps_its_proposal(status):
+    # Owner decision, 28 October: "if any" in B3 covers this. It is still quarantined.
+    outcome = CallOutcome(status=status, answer=json.dumps({"label": "Credit card", "quote": REAL_QUOTE}))
+    decision = _decide(outcome)
+    assert decision.reason == "model_error" and decision.label is None
+    assert decision.proposed_label == "Credit card" and decision.proposed_quote == REAL_QUOTE
+
+
+def test_B3_a_failed_call_with_no_usable_answer_has_no_proposal():
+    decision = _decide(CallOutcome(status="failed", answer="no json"))
+    assert decision.reason == "model_error" and decision.proposed_label is None
+
+
+@pytest.mark.parametrize("text, outcome, reason", [
+    ("", _answer("Credit card", REAL_QUOTE), "no_narrative"),
+    (TEXT + " <complaint>", _answer("Credit card", REAL_QUOTE), "boundary_in_text"),
+    (TEXT, CallOutcome(status="not_run_budget"), "not_run_budget"),
+])
+def test_B3_pre_call_and_budget_cases_are_never_accepted(text, outcome, reason):
+    decision = _decide(outcome, text=text)
+    assert decision.reason == reason and decision.label is None and not decision.accepted
+
+
+def test_B5_a_real_label_in_the_wrong_json_shape_is_unparseable_before_the_label_check():
+    answer = json.dumps({"label": "Credit card", "quote": REAL_QUOTE, "note": "extra key"})
+    assert _decide(CallOutcome(status="ok", answer=answer)).reason == "unparseable"
