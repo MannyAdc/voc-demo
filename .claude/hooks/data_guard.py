@@ -96,7 +96,8 @@ def _emit(decision):
 
 def main():
     try:
-        event = json.loads(sys.stdin.read())
+        # Claude Code sends UTF-8. Read bytes, so the system code page (cp932 here) never decodes it.
+        event = json.loads(sys.stdin.buffer.read().decode("utf-8"))
         root = os.environ.get("CLAUDE_PROJECT_DIR") or event.get("cwd") or "."
         decision = decide(event.get("tool_name"), event.get("tool_input") or {}, root=root)
     except Exception as err:  # fail closed
