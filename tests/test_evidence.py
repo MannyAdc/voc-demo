@@ -51,8 +51,10 @@ def test_B6_redaction_marks_do_not_count_toward_the_3_words():
 
 def test_B1_dates_amounts_and_numbers_are_not_real_words():
     text = "Paid {$500.00} on XX/XX/XXXX and 2026 again on XX/XX/XXXX."
-    assert check_quote(text, "Paid {$500.00} on XX/XX/XXXX and 2026").reason == "quote_too_short"
-    assert check_quote(text, "Paid {$500.00} on XX/XX/XXXX and 2026 again").ok
+    # Only "Paid" and "on" are real words here, so it is too short.
+    assert check_quote(text, "Paid {$500.00} on XX/XX/XXXX 2026").reason == "quote_too_short"
+    # "and" makes the third real word.
+    assert check_quote(text, "Paid {$500.00} on XX/XX/XXXX and 2026").ok
 
 
 @pytest.mark.parametrize("quote", ["he bank charged me", "the bank charged m", "ank charged me a"])
