@@ -1,0 +1,15 @@
+version: 2
+
+models:
+  - name: stg_complaints
+    description: The staged complaints, incremental and keyed on complaint ID.
+    columns:
+      - name: complaint_id
+        description: The CFPB complaint ID. Must be present and appear once (B14).
+        data_tests:
+          - not_null
+          - unique
+      - name: product
+        description: The Product the consumer chose. Must be in config/labels.toml, see tests/product_in_label_list.sql.
+  - name: curated_complaints
+    description: The staged complaints that have a narrative.

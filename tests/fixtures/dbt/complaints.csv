@@ -1,0 +1,13 @@
+Date received,Product,Sub-product,Issue,Sub-issue,Consumer complaint narrative,Company public response,Company,State,ZIP code,Tags,Submitted via,Date sent to company,Company response to consumer,Timely response?,Complaint ID
+2026-07-01,Mortgage,Conventional home mortgage,Trouble during payment process,,Synthetic text: my payment was applied late.,,Synthetic Bank,CA,90XXX,,Web,2026-07-01,Closed with explanation,Yes,SYN-1
+2026-07-01,Mortgage,FHA mortgage,Applying for a mortgage,,,,Synthetic Bank,TX,,,Web,2026-07-02,Closed with explanation,Yes,SYN-2
+2026-07-02,Credit card,General-purpose credit card or charge card,Problem with a purchase shown on your statement,,Synthetic text: I was charged twice on XX/XX/XXXX.,,Synthetic Card Co,NY,10XXX,,Web,2026-07-02,Closed with monetary relief,Yes,SYN-3
+2026-07-02,Credit card,Store credit card,Fees or interest,,,,Synthetic Card Co,FL,,Older American,Phone,2026-07-03,Closed with explanation,No,SYN-4
+2026-07-03,Checking or savings account,Checking account,Managing an account,,Synthetic text: the bank closed my account.,,Synthetic Bank,WA,98XXX,,Web,2026-07-03,Closed with explanation,Yes,SYN-5
+2026-07-03,Debt collection,Medical debt,Attempts to collect debt not owed,,Synthetic text: this debt is not mine.,,Synthetic Collector,OH,,,Web,2026-07-04,Closed with explanation,Yes,SYN-6
+2026-07-04,Credit reporting or other personal consumer reports,Credit reporting,Incorrect information on your report,,,,Synthetic Bureau,GA,,,Web,2026-07-04,In progress,Yes,SYN-7
+2026-07-04,Student loan,Federal student loan,Dealing with your lender or servicer,,Synthetic text: my servicer lost my form.,,Synthetic Servicer,IL,60XXX,Servicemember,Web,2026-07-05,Closed with explanation,Yes,SYN-8
+2026-07-05,Vehicle loan or lease,Loan,Managing the loan or lease,,,,Synthetic Auto Finance,AZ,,,Referral,2026-07-05,Closed with explanation,Yes,SYN-9
+2026-07-05,Prepaid card,Gift card,Trouble using the card,,Synthetic text: the card did not work.,,Synthetic Prepaid,NV,,,Web,2026-07-06,Closed with explanation,Yes,SYN-10
+2026-07-06,"Money transfer, virtual currency, or money service",Virtual currency,Fraud or scam,,"Synthetic text: I sent money, then it was gone.",,Synthetic Exchange,CO,,,Web,2026-07-06,Closed with explanation,Yes,SYN-11
+2026-07-06,"Payday loan, title loan, personal loan, or advance loan",Installment loan,Charged fees or interest you didn't expect,,,,Synthetic Lender,MO,,,Web,2026-07-07,Closed with explanation,Yes,SYN-12

@@ -1,0 +1,16 @@
+# The dbt project on the staged DuckDB table (T011, B14).
+# Run it only through `voc dbt build` or `voc dbt docs`, which print counts and check names only (B21).
+name: voc
+version: "1.0.0"
+config-version: 2
+profile: voc
+
+model-paths: ["models"]
+test-paths: ["tests"]
+
+flags:
+  send_anonymous_usage_stats: false
+
+vars:
+  # The label set, passed by the wrapper from config/labels.toml (B24). Empty means every row fails.
+  labels: []

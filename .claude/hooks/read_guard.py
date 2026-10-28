@@ -1,7 +1,9 @@
 """Read guard (B21) and final guard (B17). PreToolUse on every tool.
 
-Denies any tool call that names a protected place: the raw data folder
-(`VOC_DATA_DIR`, from the environment or the local `.env`), the home folder
+Denies any tool call that names a protected place: the raw data folders
+(`VOC_DATA_DIR` for July and `VOC_NEXT_DATA_DIR` for the next month, each
+from the environment or the local `.env`), the repo's `data` folder (the
+DuckDB file, its write-ahead log and dbt's output), the home folder
 `.voc` (ledger, recordings and the home test log), any `.duckdb` file, a
 `recordings` folder, a CFPB export file, or the `.env` file that holds the
 API key (`.env.example` is allowed). Every string in the tool input is
@@ -36,9 +38,17 @@ SHELL_PATTERNS = (
     re.compile(r"\.duckdb\b"),
     re.compile(r"(?:^|[\s/\"'=])recordings/"),
     re.compile(r"voc_data_dir"),
+    re.compile(r"voc_next_data_dir"),
     re.compile(r"ccdb_export"),
     re.compile(r"(?:^|[\s/\"'=])\.env(?![\w.])"),  # the key file, not `.env.example`
+    # The repo's `data` folder (DuckDB file, write-ahead log, dbt output), named relative to the repo.
+    re.compile(r"(?:^|[\s\"'=(])(?:\./)?data/"),
+    re.compile(r"(?:^|[\s;&|(])(?:cd|ls|dir|gci|get-childitem|pushd|set-location|sl|tree|du|cat|type|gc|get-content"
+               r"|head|tail|less|more|strings|find|grep|rg|select-string)\s+[\"']?(?:\./)?data[\"']?(?=\s|$|[;&|)])"),
 )
+DATA_FOLDER = "data"
+DUCKDB_NAME = re.compile(r"\.duckdb(?:\.|$)")  # the DuckDB file and its `.wal` log
+DATA_VARIABLES = ("VOC_DATA_DIR", "VOC_NEXT_DATA_DIR")  # July's folder and the next month's (add-on 1)
 DENIED = "read guard: this names raw data, the DuckDB file, recordings, the ledger or the `.env` file."
 
 
@@ -56,40 +66,56 @@ def _clean(path):
     return forms
 
 
-def _data_dir(env, root):
-    value = env.get("VOC_DATA_DIR")
+def _data_dirs(env, root):
+    """Every raw data folder named for July or the next month, in the environment or in `.env`.
+
+    `voc.env.settings` lets the environment win and, inside `.env`, the last line win. The guard
+    protects every value it finds, so it covers the folder the command line reads whatever the order.
+    The file is read as `utf-8-sig`, as the command line reads it, so a byte order mark changes nothing.
+    """
+    values = [env.get(name) for name in DATA_VARIABLES]
     env_file = Path(root) / ".env"
-    if not value and env_file.is_file():
-        for line in env_file.read_text(encoding="utf-8", errors="replace").splitlines():
+    if env_file.is_file():
+        for line in env_file.read_text(encoding="utf-8-sig", errors="replace").splitlines():
             key, sep, rest = line.strip().partition("=")
-            if sep and key.strip() == "VOC_DATA_DIR":
-                value = rest.strip().strip("'\"")
-    return value or None
+            if sep and key.strip() in DATA_VARIABLES:
+                values.append(rest.strip().strip("'\""))
+    return [value for value in values if value]
 
 
-def _places(home, data_dir):
+def _places(home, data_dirs):
     places = set(_clean(Path(home) / ".voc"))
-    if data_dir:
+    for data_dir in data_dirs:
         places |= _clean(data_dir)
     return places
+
+
+def _inner_places(root):
+    """The repo's `data` folder, which holds the DuckDB file, its write-ahead log and dbt's output.
+
+    Reading in it is denied. Searching the repo is still allowed, because Grep and Glob skip
+    git-ignored folders such as this one.
+    """
+    return set(_clean(Path(root) / DATA_FOLDER))
 
 
 def _under(path, place):
     return path == place or path.startswith(place + "/")
 
 
-def _protected_path(value, home, root, places, search):
+def _protected_path(value, home, root, places, search, inner=frozenset()):
     text = str(value)
     if text.startswith("~"):
         text = str(home) + text[1:]
     path = Path(text) if Path(text).is_absolute() else Path(root) / text
     for normal in _clean(path):
-        if any(_under(normal, p) for p in places):
+        if any(_under(normal, p) for p in places | inner):
             return True
         if search and any(_under(p, normal) for p in places):
             return True  # the search would cover a protected place
         parts = normal.split("/")
-        if normal.endswith(".duckdb") or "recordings" in parts or "ccdb_export" in normal or parts[-1] == ".env":
+        if (DUCKDB_NAME.search(parts[-1]) or "recordings" in parts or "ccdb_export" in normal
+                or parts[-1] == ".env"):
             return True
     return False
 
@@ -103,11 +129,11 @@ def _shell_forms(place):
     return forms
 
 
-def _protected_command(command, places, data_dir):
+def _protected_command(command, places, data_dirs):
     normal = _normal(command)
     if any(form in normal for p in places for form in _shell_forms(p)):
         return True
-    if data_dir:
+    for data_dir in data_dirs:
         name = _normal(data_dir).split("/")[-1]
         if len(name) >= 6 and re.search(rf"(?:^|[\s/\"'=]){re.escape(name)}(?:[/\s\"']|$)", normal):
             return True
@@ -137,11 +163,12 @@ def _strings(value, key=None):
 
 
 def decide(tool_name, tool_input, env, home, root):
-    data_dir = _data_dir(env, root)
-    places = _places(home, data_dir)
+    data_dirs = _data_dirs(env, root)
+    places = _places(home, data_dirs)
+    inner = _inner_places(root)
     command = tool_input.get("command")
     if isinstance(command, str):
-        if _protected_command(command, places, data_dir):
+        if _protected_command(command, places | inner, data_dirs):
             return ("deny", DENIED)
         if _runs_show(command):
             return ("deny", "read guard: only the owner runs `show`, in the owner's own terminal.")
@@ -151,7 +178,7 @@ def decide(tool_name, tool_input, env, home, root):
     for key, value in _strings(tool_input):
         if key in NOT_PATHS or key == "command" or (key == "pattern" and tool_name != "Glob"):
             continue
-        if value and _protected_path(value, home, root, places, search):
+        if value and _protected_path(value, home, root, places, search, inner):
             return ("deny", DENIED)
     return None
 
