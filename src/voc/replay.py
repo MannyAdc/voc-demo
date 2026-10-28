@@ -54,7 +54,11 @@ class RecordingCorrupt(Exception):
 
 @dataclass(frozen=True)
 class Answer:
-    """What a backend returns. Token counts are None when the backend reports no usage."""
+    """What a backend returns. Token counts are None when the backend reports no usage.
+
+    `input_tokens` must include every input token the call used, cached ones
+    too (cache reads and cache writes), so the ledger charges the full use.
+    """
     text: str
     input_tokens: int | None
     output_tokens: int | None
