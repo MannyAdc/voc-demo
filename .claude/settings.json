@@ -23,6 +23,16 @@
       "PowerShell(git push * main *)",
       "PowerShell(git push * HEAD:main*)",
       "PowerShell(gh pr merge*)"
+    ],
+    "ask": [
+      "Bash(*voc ledger init*)",
+      "Bash(*voc ledger raise*)",
+      "Bash(*voc ledger release*)",
+      "Bash(*voc ledger clear-overrun*)",
+      "PowerShell(*voc ledger init*)",
+      "PowerShell(*voc ledger raise*)",
+      "PowerShell(*voc ledger release*)",
+      "PowerShell(*voc ledger clear-overrun*)"
     ]
   },
   "hooks": {
