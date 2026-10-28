@@ -285,9 +285,10 @@ def test_B21_voc_label_prints_counts_only_and_writes_results_with_no_text(repo, 
     for text in (results, summary):
         assert "SYNHOSTILE" not in text and "escrow" not in text and "SYN story" not in text
     rows = list(csv.DictReader(results.splitlines()))
-    assert rows and all(r["decision"] == "accepted" and r["label"] == "Mortgage" for r in rows)
+    # The column "label" was renamed "accepted_label" in the green commit after the review of #23 (finding 1).
+    assert rows and all(r["decision"] == "accepted" and r["accepted_label"] == "Mortgage" for r in rows)
     assert {"complaint_id", "split", "prompt_version", "proposed_label", "quote_start", "quote_end", "decision",
-            "reason", "label", "cut", "recording_key", "source"} <= set(rows[0])
+            "reason", "accepted_label", "cut", "recording_key", "source"} <= set(rows[0])
 
 
 def test_B21_a_proposed_label_outside_the_list_is_never_written_or_printed(repo, capsys):
@@ -528,3 +529,98 @@ def test_B7_a_complete_run_records_no_stop(repo):
     assert _run(repo, _env(repo, _good("")), "dev") == 0
     summary = json.loads((repo / "results" / "labels" / "v1_dev.json").read_text(encoding="utf-8"))
     assert summary["stopped"] is None and summary["not_tried"] == 0
+
+
+# B23, B25: the run time is measured, so the cost and time per 1,000 complaints can be reported
+
+def test_B23_the_run_summary_records_the_run_time_and_the_time_per_1000_complaints():
+    from voc.pipeline import format_run, summarise
+
+    outcomes = _label(_complaints(_text(0), _text(1), _text(2), _text(3)), FakeCall(_good))
+    summary = summarise(outcomes, "dev", _version(), "fake", "0" * 64, run_seconds=2.0)
+    assert summary["run_seconds"] == 2.0
+    assert summary["seconds_per_1000_complaints"] == 500.0
+    assert "run time: 2.0 seconds, 500.0 seconds per 1,000 complaints" in format_run(summary, "results/labels/x.csv")
+
+
+def test_B23_a_summary_with_no_complaints_has_no_time_per_1000():
+    from voc.pipeline import summarise
+
+    summary = summarise([], "dev", _version(), "fake", "0" * 64, run_seconds=0.5)
+    assert summary["run_seconds"] == 0.5 and summary["seconds_per_1000_complaints"] is None
+
+
+def test_B23_voc_label_writes_its_run_time(repo):
+    assert _run(repo, _env(repo, _good("")), "dev") == 0
+    summary = json.loads((repo / "results" / "labels" / "v1_dev.json").read_text(encoding="utf-8"))
+    assert isinstance(summary["run_seconds"], float) and summary["run_seconds"] >= 0
+    # Changed in the green commit after the review of #24: a mock run is not live, so it gets no time per 1,000.
+    assert summary["seconds_per_1000_complaints"] is None
+    assert summary["no_time_per_1000_because"] == "not every call was a live model call that returned an answer"
+
+
+def test_B19_the_results_file_names_its_accepted_label_column(repo):
+    assert _run(repo, _env(repo, _good("")), "dev") == 0
+    rows = list(csv.DictReader((repo / "results" / "labels" / "v1_dev.csv").read_text(encoding="utf-8")
+                               .splitlines()))
+    assert rows and all(r["accepted_label"] == "Mortgage" for r in rows)
+    assert "label" not in rows[0]
+
+
+def test_B23_voc_label_records_the_unrounded_run_time(repo, monkeypatch):
+    from voc import cli
+
+    ticks = iter([100.0, 100.04])
+    monkeypatch.setattr(cli.time, "monotonic", lambda: next(ticks, 100.04))
+    assert _run(repo, _env(repo, _good("")), "dev") == 0
+    summary = json.loads((repo / "results" / "labels" / "v1_dev.json").read_text(encoding="utf-8"))
+    assert summary["run_seconds"] == 0.04
+
+
+def test_B23_the_time_per_1000_counts_only_complaints_sent_to_the_model():
+    from dataclasses import replace
+
+    from voc.decision import NOT_RUN_BUDGET, Decision
+    from voc.pipeline import Outcome, summarise
+
+    outcomes = _label(_complaints(_text(0), _text(1), _text(2), _text(3)), FakeCall(_good))
+    budget = Outcome(Decision("SYN-9", reason=NOT_RUN_BUDGET), False, prompt_bytes=10)
+    summary = summarise(outcomes + [budget, replace(budget, decision=Decision("SYN-10", reason=NOT_RUN_BUDGET))],
+                        "dev", _version(), "fake", "0" * 64, run_seconds=2.0)
+    assert summary["seconds_per_1000_complaints"] == 500.0
+
+
+def test_B23_a_stopped_run_has_no_time_per_1000():
+    from voc.pipeline import RunStopped, format_run, summarise
+
+    outcomes = _label(_complaints(_text(0), _text(1)), FakeCall(_good))
+    summary = summarise(outcomes, "dev", _version(), "fake", "0" * 64, run_seconds=1.0,
+                        stopped=RunStopped("SYN stop", outcomes, 2))
+    assert summary["run_seconds"] == 1.0 and summary["seconds_per_1000_complaints"] is None
+    assert "No time per 1,000 complaints: the run stopped early" in format_run(summary, "results/labels/x.csv")
+
+
+def test_B23_a_run_with_a_call_that_was_not_live_has_no_time_per_1000():
+    from dataclasses import replace
+
+    from voc.pipeline import format_run, summarise
+
+    outcomes = _label(_complaints(_text(0), _text(1)), FakeCall(_good))
+    outcomes[1] = replace(outcomes[1], source="replay")
+    summary = summarise(outcomes, "dev", _version(), "fake", "0" * 64, run_seconds=1.0)
+    assert summary["seconds_per_1000_complaints"] is None
+    assert ("No time per 1,000 complaints: not every call was a live model call that returned an answer"
+            in format_run(summary, "results/labels/x.csv"))
+
+
+def test_B23_a_run_where_a_call_failed_has_no_time_per_1000():
+    from voc.pipeline import summarise
+
+    def answer(prompt):
+        if "alpha alpha" in prompt:
+            raise ModelError("the API call failed: APIConnectionError")
+        return _good(prompt)
+
+    outcomes = _label(_complaints(_text(0), _text(1)), FakeCall(answer))
+    summary = summarise(outcomes, "dev", _version(), "fake", "0" * 64, run_seconds=1.0)
+    assert summary["seconds_per_1000_complaints"] is None

@@ -7,19 +7,23 @@
 cap_tokens = 20000000
 
 # Added to the UTF-8 byte count of a prompt to make the worst-case input estimate.
-# It covers the tokens the API adds around the prompt. Still to be checked against
-# real token counts from the live smoke test (T014b).
+# It covers the tokens the API adds around the prompt. It was checked on
+# 29 October 2026 by the second smoke test, with LLM_BACKEND=api and
+# `voc label quick --limit 20`. The results are in
+# results/labels/v1_quick_first20.json. In all 20 calls the real input tokens were
+# below the byte count alone. The closest call was 1,750 tokens below. The check
+# covers one model, claude-haiku-5-5. A new model needs its own check.
 input_margin_tokens = 100
 
-# Until the margin is confirmed against real token counts, live calls may use at
-# most this many tokens in total. While margin_confirmed is false, the effective
-# cap is the smaller of cap_tokens and trial_cap_tokens. Set margin_confirmed to
-# true only in a commit on main, then run `voc ledger raise`, which writes the
-# event to the ledger.
-# Raised from 100,000 on 29 October 2026 (owner decision). The first smoke test
+# The trial cap applies only while margin_confirmed is false. Then the effective
+# cap is the smaller of cap_tokens and trial_cap_tokens. It was raised from 100,000
+# on 29 October 2026 (owner decision). The first smoke test
 # (`voc label quick --limit 20`, BUILD_LOG.md, 28 October 23:26) charged 99,469
 # tokens. 5 complaints were each tried 3 times, so 15 calls failed. Each failed
 # call was charged its full worst-case reservation. No call returned an answer.
-# After merge, run `voc ledger raise --reason "..."` to apply this value.
 trial_cap_tokens = 200000
-margin_confirmed = false
+
+# Set to true only in a commit on main. Then run `voc ledger raise --reason "..."`,
+# which writes the event to the ledger. The effective cap becomes cap_tokens.
+# Confirmed on 29 October 2026 (owner decision), after the check above.
+margin_confirmed = true
