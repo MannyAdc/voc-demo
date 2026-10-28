@@ -1,0 +1,230 @@
+{
+  "accepted": 50,
+  "accepted_by_label": {
+    "Checking or savings account": 9,
+    "Credit card": 8,
+    "Credit reporting or other personal consumer reports": 5,
+    "Debt collection": 11,
+    "Debt or credit management": 1,
+    "Money transfer, virtual currency, or money service": 5,
+    "Mortgage": 2,
+    "Payday loan, title loan, personal loan, or advance loan": 2,
+    "Prepaid card": 2,
+    "Student loan": 1,
+    "Vehicle loan or lease": 4
+  },
+  "backend": "api",
+  "calls_by_source": {
+    "live": 43,
+    "replay": 7
+  },
+  "calls_without_answer": 0,
+  "complaints": 50,
+  "cost": {
+    "calls_without_usage": "0",
+    "input_tokens": "67224",
+    "live_cost_usd": "0.0116989",
+    "output_tokens": "9953",
+    "own_cost_usd": "0.0099308"
+  },
+  "cut": 2,
+  "input_tokens": 67224,
+  "largest_tokens_over_bytes": -1718,
+  "ledger_charged_tokens": 65620,
+  "limit": 50,
+  "list_sha256": "6cea09d7c83080f40bf16a0675b3e0a7ea4cafd8a4e78cff46865bcb3e66e26f",
+  "live_cost_tokens": 77177,
+  "model": "claude-haiku-5-5",
+  "model_errors_by_cause": {},
+  "no_time_per_1000_because": "not every call was a live model call that returned an answer",
+  "not_tried": 0,
+  "output_tokens": 9953,
+  "prompt_version": "v1",
+  "quarantine_reasons": {},
+  "quarantined": 0,
+  "run_seconds": 89.244,
+  "seconds_per_1000_complaints": null,
+  "set": "dev",
+  "settings": {
+    "api_version": "2023-06-01",
+    "effort": "low",
+    "max_tokens": 2048,
+    "model": "claude-haiku-5-5",
+    "thinking": "adaptive"
+  },
+  "stopped": null,
+  "token_pairs": [
+    [
+      2663,
+      945
+    ],
+    [
+      2669,
+      935
+    ],
+    [
+      2774,
+      972
+    ],
+    [
+      2803,
+      1025
+    ],
+    [
+      2856,
+      1004
+    ],
+    [
+      2880,
+      1005
+    ],
+    [
+      2893,
+      1014
+    ],
+    [
+      3032,
+      1067
+    ],
+    [
+      3039,
+      1083
+    ],
+    [
+      3040,
+      1059
+    ],
+    [
+      3062,
+      1067
+    ],
+    [
+      3074,
+      1060
+    ],
+    [
+      3151,
+      1101
+    ],
+    [
+      3169,
+      1084
+    ],
+    [
+      3237,
+      1084
+    ],
+    [
+      3242,
+      1132
+    ],
+    [
+      3275,
+      1149
+    ],
+    [
+      3284,
+      1126
+    ],
+    [
+      3344,
+      1150
+    ],
+    [
+      3420,
+      1261
+    ],
+    [
+      3462,
+      1178
+    ],
+    [
+      3585,
+      1210
+    ],
+    [
+      3592,
+      1236
+    ],
+    [
+      3646,
+      1208
+    ],
+    [
+      3947,
+      1359
+    ],
+    [
+      4035,
+      1374
+    ],
+    [
+      4052,
+      1334
+    ],
+    [
+      4155,
+      1435
+    ],
+    [
+      4176,
+      1355
+    ],
+    [
+      4213,
+      1418
+    ],
+    [
+      4335,
+      1412
+    ],
+    [
+      4435,
+      1477
+    ],
+    [
+      4587,
+      1505
+    ],
+    [
+      4749,
+      1516
+    ],
+    [
+      4802,
+      1657
+    ],
+    [
+      4869,
+      1562
+    ],
+    [
+      4976,
+      1680
+    ],
+    [
+      5156,
+      1836
+    ],
+    [
+      5264,
+      1803
+    ],
+    [
+      5580,
+      1770
+    ],
+    [
+      6190,
+      2211
+    ],
+    [
+      6343,
+      2148
+    ],
+    [
+      6573,
+      2191
+    ]
+  ]
+}
