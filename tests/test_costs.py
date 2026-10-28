@@ -1,0 +1,52 @@
+"""B13: cost in dollars, from a price table that names its source and the date checked."""
+from decimal import Decimal
+from pathlib import Path
+
+import pytest
+
+from voc.costs import PriceError, call_cost, load_prices, run_cost
+from voc.replay import Reply
+
+PRICES = Path(__file__).resolve().parent.parent / "config" / "prices.toml"
+
+
+def _reply(source, tokens_in, tokens_out):
+    charged = 0 if source == "replay" else tokens_in + tokens_out
+    return Reply(text="x", source=source, input_tokens=tokens_in, output_tokens=tokens_out,
+                 charged_tokens=charged, live_cost_tokens=tokens_in + tokens_out, attempts=1)
+
+
+def test_B13_tokens_convert_to_dollars_with_the_price_table():
+    prices = load_prices(PRICES)
+    assert call_cost(prices, "claude-haiku-5-5", 1_000_000, 1_000_000) == Decimal("0.60")
+    assert call_cost(prices, "claude-haiku-5-5", 1_000, 200) == Decimal("0.0002")
+
+
+def test_B13_a_prompt_over_the_long_context_threshold_uses_the_higher_price():
+    prices = load_prices(PRICES)
+    assert call_cost(prices, "claude-haiku-5-5", 150_000, 0) == Decimal("0.075")
+
+
+def test_B13_the_price_table_names_its_source_and_the_date_checked():
+    for model, entry in load_prices(PRICES).items():
+        assert entry["source"].startswith("https://"), model
+        assert len(entry["checked"]) == 10, model
+
+
+def test_B13_a_model_missing_from_the_price_table_is_an_error_not_zero_cost():
+    with pytest.raises(PriceError):
+        call_cost(load_prices(PRICES), "claude-unknown-model", 10, 10)
+
+
+def test_B13_each_run_records_its_tokens_and_cost():
+    summary = run_cost(load_prices(PRICES), "claude-haiku-5-5",
+                       [_reply("live", 1_000, 200), _reply("live", 2_000, 300)])
+    assert summary["input_tokens"] == 3_000 and summary["output_tokens"] == 500
+    assert summary["own_cost_usd"] == summary["live_cost_usd"] == Decimal("0.00055")
+
+
+def test_B13_a_replayed_run_reports_zero_own_cost_and_the_original_live_cost():
+    summary = run_cost(load_prices(PRICES), "claude-haiku-5-5",
+                       [_reply("replay", 1_000, 200), _reply("live", 2_000, 300)])
+    assert summary["own_cost_usd"] == Decimal("0.00035")
+    assert summary["live_cost_usd"] == Decimal("0.00055")
