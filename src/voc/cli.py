@@ -13,6 +13,7 @@ from pathlib import Path
 
 from voc.budget import BudgetError, Ledger, clear_overrun, effective_cap, init_ledger, raise_cap, release
 from voc import dbt_run
+from voc.backends import ALLOWED, BackendError
 from voc.data import SampleMismatch, build_samples, format_summary
 from voc.datafile import DataFileError, find_export, load_pins, sha256_of, verify
 from voc.dbt_run import DbtError
@@ -20,6 +21,7 @@ from voc.env import settings
 from voc.labels import load_labels
 from voc.load import DB_PATH, load_month
 from voc.profile import format_profile, profile
+from voc.replay import RecordingCorrupt, RecordingMissing
 
 PIN = "july_2026"
 # Each month's data folder comes from its own environment variable, never from a file (add-on 1).
@@ -119,7 +121,58 @@ def _sample(config, root, args):
     print(format_summary(summary))
 
 
-COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample,
+def _label(config, root, args):
+    from voc import pipeline
+    from voc.backends import make_backend
+    from voc.budget import Ledger
+    from voc.costs import load_prices, run_cost
+    from voc.replay import Answer, Caller, Reply
+
+    backend_name = config.get("LLM_BACKEND", "")
+    if backend_name not in ALLOWED:
+        raise BackendError(f"unknown LLM_BACKEND {backend_name!r}, allowed values are {', '.join(ALLOWED)}")
+    root = Path(root)
+    version = pipeline.load_prompt_version(root, args.prompt)
+    labels = load_labels(root / "config" / "labels.toml")
+    complaints = pipeline.load_complaints(root / DB_PATH, root / "splits", args.set)
+    complaints = sorted(complaints, key=lambda c: pipeline._id_number(c.complaint_id))
+    if args.limit is not None:
+        complaints = complaints[:args.limit]
+    settings, model = version.settings, version.settings["model"]
+    ledger, used_before = None, None
+    if backend_name == "mock":
+        if not config.get("VOC_MOCK_FIXTURES"):
+            raise BackendError("the mock backend needs VOC_MOCK_FIXTURES, a JSON file of synthetic answers")
+        items = json.loads(Path(config["VOC_MOCK_FIXTURES"]).read_text(encoding="utf-8"))
+        backend = make_backend("mock", fixtures={item["prompt"]: Answer(item["text"], None, None, "end_turn")
+                                                 for item in items})
+
+        def call(prompt):
+            return Reply(backend(prompt, dict(settings)).text, "mock", None, None, 0, 0, 1)
+    else:
+        mode = "replay" if args.replay else "live"
+        backend = None if args.replay else make_backend("api", env=config, model=model)
+        if not args.replay:
+            ledger = Ledger()
+            used_before = ledger.state()["used"]
+        call = Caller("api", model, settings, backend=backend, mode=mode, root=root, ledger=ledger).call
+    outcomes = pipeline.label_complaints(complaints, version, labels, call, backend_name)
+    names = [label.name for label in labels]
+    summary = pipeline.summarise(outcomes, args.set, version, backend_name,
+                                 pipeline.list_sha256(root / "splits", args.set, complaints), limit=args.limit)
+    if backend_name == "api":
+        cost = run_cost(load_prices(root / "config" / "prices.toml"), model, [o for o in outcomes if o.source])
+        summary["cost"] = {key: str(value) for key, value in cost.items()}
+    if ledger is not None:
+        summary["ledger_charged_tokens"] = ledger.state()["used"] - used_before
+    results = pipeline.write_run(root / "results" / "labels", outcomes, summary, version, names)
+    print(pipeline.format_run(summary, results.relative_to(root)))
+    if "ledger_charged_tokens" in summary:
+        print(f"ledger: {summary['ledger_charged_tokens']} tokens charged while this run went on, failed calls "
+              "included. Any other run at the same time is counted too")
+
+
+COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample, "label": _label,
             ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt,
             ("ledger", "init"): _ledger_init, ("ledger", "raise"): _ledger_raise,
             ("ledger", "status"): _ledger_status, ("ledger", "release"): _ledger_release,
@@ -134,6 +187,11 @@ def main(argv=None, env=None, root=None):
     p = sub.add_parser("profile", help="print data facts as counts (B22)")
     p.add_argument("--write", help="also write the facts as JSON to this file")
     sub.add_parser("sample", help="build and freeze the samples from the staged July rows (B9, B16, B25)")
+    lb = sub.add_parser("label", help="label development complaints with the LLM, printing counts only (B3, B21)")
+    lb.add_argument("set", choices=("dev", "quick"), help="the development set, or its fixed 50-complaint part")
+    lb.add_argument("--limit", type=int, help="label only the first N complaints, in complaint ID order")
+    lb.add_argument("--prompt", default="v1", help="the prompt version, from config/prompts")
+    lb.add_argument("--replay", action="store_true", help="serve recorded answers only, never a live call")
     ld = sub.add_parser("load", help="load one pinned monthly export into the staged DuckDB table (B14)")
     ld.add_argument("month", choices=sorted(MONTHS), help="the month to load, as named in config/data_files.toml")
     dbt = sub.add_parser("dbt", help="run the dbt project, printing counts and check names only (B14, B21)")
@@ -157,7 +215,8 @@ def main(argv=None, env=None, root=None):
     try:
         command = (args.command, args.action) if args.command in ("ledger", "dbt") else args.command
         COMMANDS[command](config, root, args)
-    except (DataFileError, BudgetError, DbtError, SampleMismatch) as err:
+    except (DataFileError, BudgetError, DbtError, SampleMismatch, BackendError, RecordingMissing,
+            RecordingCorrupt) as err:
         print(f"error: {err}")
         return 1
     # B21: the type only, never the message. The spec also asks for the row number and the
