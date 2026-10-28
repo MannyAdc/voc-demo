@@ -180,3 +180,44 @@ def test_B12_an_answer_holds_only_text_tokens_and_the_stop_reason():
 
 def test_B12_each_run_records_the_model_too():
     assert run_settings(model="claude-haiku-5-5")["model"] == "claude-haiku-5-5"
+
+
+# Smoke test of 28 October: every call failed, the cause was hidden, and every failure was retried
+
+
+def _sdk_error(name, status=None):
+    """An exception shaped like an SDK error: its class name, and the HTTP status if it has one."""
+    err = type(name, (Exception,), {})("SYN detail that must never be echoed")
+    if status is not None:
+        err.status_code = status
+    return err
+
+
+@pytest.mark.parametrize("name, status", [("AuthenticationError", 401), ("BadRequestError", 400),
+                                          ("PermissionDeniedError", 403), ("NotFoundError", 404)])
+def test_B8_a_refused_call_is_marked_not_worth_retrying_and_names_its_type_and_status(name, status):
+    from voc.replay import PermanentModelError
+
+    with pytest.raises(PermanentModelError) as err:
+        _api(FakeClient(error=_sdk_error(name, status)))("prompt", run_settings())
+    assert name in str(err.value) and f"HTTP {status}" in str(err.value) and "SYN detail" not in str(err.value)
+
+
+@pytest.mark.parametrize("name, status", [("APIConnectionError", None), ("APITimeoutError", None),
+                                          ("RateLimitError", 429), ("InternalServerError", 500),
+                                          ("OverloadedError", 529)])
+def test_B8_a_failure_a_retry_can_fix_stays_a_plain_model_error(name, status):
+    from voc.replay import PermanentModelError
+
+    with pytest.raises(ModelError) as err:
+        _api(FakeClient(error=_sdk_error(name, status)))("prompt", run_settings())
+    assert not isinstance(err.value, PermanentModelError)
+    assert name in str(err.value) and "SYN detail" not in str(err.value)
+
+
+def test_B8_an_answer_with_no_text_is_not_worth_retrying_and_names_its_stop_reason():
+    from voc.replay import PermanentModelError
+
+    blocks = [SimpleNamespace(type="thinking", thinking="")]
+    with pytest.raises(PermanentModelError, match="max_tokens"):
+        _api(FakeClient(_response(blocks, stop_reason="max_tokens")))("prompt", run_settings())

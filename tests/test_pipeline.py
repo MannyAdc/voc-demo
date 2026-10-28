@@ -464,3 +464,30 @@ def test_B13_a_replayed_api_run_costs_nothing_now_and_keeps_its_live_cost(repo, 
 def test_B7_a_replay_run_with_no_recordings_stops_with_our_message_and_needs_no_key(repo, capsys):
     assert _run(repo, {"LLM_BACKEND": "api"}, "dev", "--replay") == 1
     assert "replay mode never calls the model" in capsys.readouterr().out
+
+
+# Smoke test of 28 October: the run went on after 5 complaints in a row failed
+
+
+def test_B8_three_complaints_in_a_row_with_a_model_error_stop_the_run():
+    from voc.pipeline import RunStopped
+
+    def answer(prompt):
+        raise ModelError("the model call failed, not retried: AuthenticationError (HTTP 401)")
+
+    call = FakeCall(answer)
+    with pytest.raises(RunStopped, match="AuthenticationError"):
+        _label(_complaints(*[_text(i) for i in range(6)]), call)
+    assert len(call.prompts) == 3
+
+
+def test_B8_an_answer_between_failures_starts_the_count_again():
+    def answer(prompt):
+        section = prompt.split("Complaint to label:")[1]
+        if "story charlie" in section or "story foxtrot" in section:
+            return _good(prompt)
+        raise ModelError("the model call failed 3 times, last error the API call failed: APIConnectionError")
+
+    outcomes = _label(_complaints(*[_text(i) for i in range(6)]), FakeCall(answer))
+    assert [o.decision.reason for o in outcomes] == ["model_error", "model_error", None,
+                                                     "model_error", "model_error", None]
