@@ -227,9 +227,30 @@ def summarise(outcomes, set_name, version, backend_name, list_sha256, limit=None
             "live_cost_tokens": sum(o.live_cost_tokens for o in outcomes),
             "token_pairs": pairs,
             "largest_tokens_over_bytes": max((t - b for b, t in pairs), default=None),
-            "run_seconds": run_seconds,
-            "seconds_per_1000_complaints": (round(run_seconds * 1000 / len(outcomes), 1)
-                                            if run_seconds is not None and outcomes else None)}
+            "run_seconds": None if run_seconds is None else round(run_seconds, 3),
+            **_time_per_1000(outcomes, run_seconds, stopped)}
+
+
+def _time_per_1000(outcomes, run_seconds, stopped):
+    """Seconds per 1,000 complaints sent to the model (B23), only for a finished run where every call was live.
+
+    A replayed, mock or failed call, or a stop, would make the time say nothing about the model, so it is
+    left empty with the reason.
+    """
+    sent = [o for o in outcomes if o.prompt_bytes is not None and o.decision.reason != NOT_RUN_BUDGET]
+    reason = None
+    if run_seconds is None:
+        reason = "no run time was measured"
+    elif stopped is not None:
+        reason = "the run stopped early"
+    elif not sent:
+        reason = "no complaint was sent to the model"
+    elif any(o.source != "live" for o in sent):
+        reason = "not every call was a live model call that returned an answer"
+    if reason:
+        return {"seconds_per_1000_complaints": None, "no_time_per_1000_because": reason}
+    return {"seconds_per_1000_complaints": round(run_seconds * 1000 / len(sent), 1),
+            "no_time_per_1000_because": None}
 
 
 def write_run(folder, outcomes, summary, version, names):
@@ -278,7 +299,8 @@ def format_run(summary, results_path):
     if summary.get("run_seconds") is not None:
         per = summary["seconds_per_1000_complaints"]
         lines.append(f"run time: {summary['run_seconds']} seconds"
-                     + (f", {per} seconds per 1,000 complaints" if per is not None else ""))
+                     + (f", {per} seconds per 1,000 complaints" if per is not None
+                        else f". No time per 1,000 complaints: {summary['no_time_per_1000_because']}"))
     if summary.get("stopped"):
         lines.append(f"stopped early, {summary['not_tried']} complaints not tried. This run cannot be scored")
     lines.append(f"results: {Path(results_path).as_posix()}")

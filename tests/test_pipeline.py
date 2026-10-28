@@ -554,7 +554,9 @@ def test_B23_voc_label_writes_its_run_time(repo):
     assert _run(repo, _env(repo, _good("")), "dev") == 0
     summary = json.loads((repo / "results" / "labels" / "v1_dev.json").read_text(encoding="utf-8"))
     assert isinstance(summary["run_seconds"], float) and summary["run_seconds"] >= 0
-    assert summary["seconds_per_1000_complaints"] is not None
+    # Changed in the green commit after the review of #24: a mock run is not live, so it gets no time per 1,000.
+    assert summary["seconds_per_1000_complaints"] is None
+    assert summary["no_time_per_1000_because"] == "not every call was a live model call that returned an answer"
 
 
 def test_B19_the_results_file_names_its_accepted_label_column(repo):

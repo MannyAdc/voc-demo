@@ -164,7 +164,7 @@ def _label(config, root, args):
         outcomes = pipeline.label_complaints(complaints, version, labels, call, backend_name)
     except RunStopped as err:  # the outcomes so far are still written, with the stop recorded (B7, B19)
         stopped, outcomes = err, err.outcomes
-    run_seconds = round(time.monotonic() - started, 1)
+    run_seconds = time.monotonic() - started
     names = [label.name for label in labels]
     summary = pipeline.summarise(outcomes, args.set, version, backend_name,
                                  pipeline.list_sha256(root / "splits", args.set, complaints), limit=args.limit,
