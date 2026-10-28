@@ -22,7 +22,7 @@ description: "Task list for the core labelling pipeline"
 - [x] T001 First commit on `main`: `CLAUDE.md`, `BUILD_LOG.md`, `.gitignore`, README stub, Spec Kit files
 - [x] T002 PR "project skeleton": `pyproject.toml` with uv, pytest config, `tests/conftest.py` that blocks sockets, one test that proves the block (B7)
 - [x] T004 [P] PR "hooks" moves here: it must exist before any task touches real data
-- [ ] T002b PR "download and profile": tests in `tests/test_download.py` and `tests/test_analysis.py` (B16 SHA-256 check, B22), then `scripts/download.py` (pinned export URL, date and SHA-256) and the `profile` command. Then, from its output (counts only), `docs/DATA.md`: the exploratory data analysis, the label set assessment (B24) and the sample size calculation (B25). From `docs/DATA.md`, the frozen label set in `config/labels.toml`. The owner reviews both before T012 draws any sample.
+- [ ] T002b PR "download and profile": tests in `tests/test_download.py` and `tests/test_analysis.py` (B16 SHA-256 check, B22), then `scripts/download.py` (pinned export URL, date and SHA-256) and the `profile` command. Then, from its output (counts only), `docs/DATA.md`: the exploratory data analysis, the label set assessment (B24) and the sample sizes from Cochran's formula (B25). From `docs/DATA.md`, the frozen label set in `config/labels.toml`. The owner reviews both before T012 draws any sample.
 - [x] T003 PR "CI": `.github/workflows/ci.yml` runs pytest with no network, gitleaks on the full history, the names check, the file size and raw data checks on every pull request. `dbt build` is added to CI in T011.
 
 ## Phase 2: Foundational
@@ -51,9 +51,9 @@ description: "Task list for the core labelling pipeline"
 
 ## Phase 4: User Story 3 - Load a new month safely (P3)
 
-- [ ] T010 [P] [US3] PR "staged load" (also owns: DuckDB extension auto-install and auto-load turned off on every connection, with a test): check DuckDB and dbt versions first, tests in `tests/test_load.py` (B14 re-runnable, schema check), then `scripts/load_month.py`
-- [ ] T011 [US3] PR "dbt curated and data tests": dbt project in `dbt/`, data tests for missing or repeated IDs and unknown Product, a test that a bad fixture fails the build. Lineage graph generated.
-- [ ] T012 [US3] PR "samples": tests in `tests/test_data.py` (B9, B16, B25), then `src/voc/data.py`, the `sample` command, and the committed ID lists in `splits/`. Uses the label set from `docs/DATA.md` (B24), after the owner has reviewed it. Draws the development set and freezes the ordered test pool (B25 steps 2 and 3). The test size itself is set after the pilot (T016).
+- [ ] T010 [P] [US3] PR "staged load" (also owns: DuckDB extension auto-install and auto-load turned off on every connection, with a test): check DuckDB and dbt versions first, tests in `tests/test_load.py` (B14 re-runnable, schema check), then `scripts/load_month.py`. Add-on 1 (owner, 28 October): the August file's folder comes from a second environment variable, `VOC_NEXT_DATA_DIR`, never written in a file. Its SHA-256 is pinned like July's. The read guard is extended to that folder, tests first, and the owner approves the hook edit.
+- [ ] T011 [US3] PR "dbt curated and data tests": dbt project in `dbt/`, data tests for missing or repeated IDs and unknown Product, a test that a bad fixture fails the build. Lineage graph generated. Add-on 1 (owner, 28 October): the staged complaints model is incremental, keyed on complaint ID, so a run adds only new rows. Shown with two real files, July then August. `BUILD_LOG.md` records the row count after July, after adding August, and after a re-run (must be unchanged), each with its command. A dbt test fails on any duplicated complaint ID. The README says what this does not cover yet: late or corrected records, and changes to the file's columns.
+- [ ] T012 [US3] PR "samples": tests in `tests/test_data.py` (B9, B16, B25), then `src/voc/data.py`, the `sample` command, and the committed ID lists in `splits/`. Uses the label set from `docs/DATA.md` (B24), after the owner has reviewed it. Draws the development set and the test set with the Cochran sizes (B25), and freezes both.
 
 ## Phase 5: User Story 2 and User Story 1 - Label, quarantine, score (P1, P2)
 
@@ -62,12 +62,14 @@ description: "Task list for the core labelling pipeline"
 - [ ] T014b Live smoke test: 20 development complaints through the tested `label` command and the real `api` backend, right after T014. It prints only counts. It checks real Product strings, the quote match rate and real token counts. The token count fixture keeps only (byte count, token count) pairs, with no text or IDs. Logged.
 - [ ] T014c PR "show command": tests (refuses test rows without `final`, blocked for Claude by the read guard), then the `show` command for the owner
 - [ ] T015 [US1] PR "eval skill": tests in `tests/test_evaluate.py` (B15, B17, B19), then the `evaluate` command, the test run log, the results file and `.claude/skills/eval/SKILL.md`
+- [ ] T015c PR "scheduled pipeline run" (add-on 1, owner, 28 October, Thursday): a GitHub Actions workflow that runs load, dbt build with tests, and evaluation in order, once a day and on manual trigger. It uses the `mock` backend and the committed synthetic fixtures, because the replay cache holds model answers on real complaints and stays outside the repo. No live LLM, no secret. Clear logs per step, and the run fails if any step or data test fails. README note: what it does today, and when to move to a full scheduler such as Airflow (many dependent pipelines, retries per step, backfills). Airflow is not installed.
 - [ ] T015b [US1] Synthetic injection set: about 10 synthetic complaints with injection attempts, labelled synthetic, added to the evaluation (B5 real-model check)
-- [ ] T016 [US1] First real run, which is also the B25 pilot: prompt v1 on 50 development complaints, then the full development set if it looks right. Row in `EVAL_VERSIONS.md`. It measures the share of split cases between the LLM and TF-IDF. The committed B25 rule then sets the test size, logged with its inputs.
+- [ ] T016 [US1] First real run: prompt v1 on 50 development complaints, then the full development set if it looks right. Row in `EVAL_VERSIONS.md`.
 
 ## Phase 6: Polish
 
 - [ ] T017 README "Why this stack" with checked facts, and the dbt lineage graph
+- [ ] T021 Optional Thursday stretch (add-on 1, owner, 28 October), only after every must-have is done, time box 1 hour: run the same dbt models on a Databricks Free Edition SQL warehouse with the dbt Databricks adapter. First read Databricks' Free Edition pages and limitations and the adapter's current docs, and report what they say about connecting dbt and about non-commercial use. The owner creates the account. The token lives only in an environment variable, never in the repo or printed. If it does not work within 1 hour, stop, log it and keep DuckDB as the only path. DuckDB stays the main path either way.
 - [ ] T018a PR "analyser": tests in `tests/test_analysis.py` (B21), then the `analyse` command with its fixed cause list
 - [ ] T018 Error analysis (B21) and prompt versions v2 onward (one cause per version)
 - [ ] T019 Final test run, once, with the chosen prompt version, only when the owner says "final" (B17)
@@ -115,10 +117,10 @@ Cut in this order, never cutting the quote check, quarantine, tests, CI, the spe
 6. The version-to-version interval (keep the interval against TF-IDF).
 7. Method comparison extras beyond the confusion matrices and the who-was-right table (owner to confirm).
 8. The analyser (owner to confirm). The fallback is that the owner reads examples with `show` and Claude sees only counts.
-9. The brief's own cut order after that: synthetic sales calls, Azure, the dbt lineage graph. (The agreement step was removed on 28 October by owner decision, with claim B.)
+9. The brief's own cut order after that: the Databricks stretch (T021, added on 28 October, cut first), synthetic sales calls, Azure, the dbt lineage graph. (The agreement step was removed on 28 October by owner decision, with claim B.)
 
 ### Cut decision, 28 October (owner)
 
 - Cut: items 1, 2, 3, 4 and 6. Item 2 and the rare commit forms in item 4 needed no work: the git pre-commit hook covers every commit form. The narrative-copy check from item 4 moves to Known limits.
 - Kept for now, looked at again at the Thursday 12:00 checkpoint: items 5, 7 and 8.
-- Added: the label set assessment and the sample size calculation (B24, B25), and the test set raised to about 3,000.
+- Added: the label set assessment and the sample size calculation (B24, B25), and the test set raised to about 3,000 (replaced later the same day by Cochran's formula, see B25).
