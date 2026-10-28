@@ -94,7 +94,7 @@ def test_B25_cochran_gives_the_textbook_sizes_for_a_huge_pool():
 
 
 def test_B25_the_finite_pool_correction_matches_the_data_page():
-    assert cochran_size(0.05, 9_379) == 370 and cochran_size(0.02, 9_379) == 1_912
+    assert cochran_size(0.05, 9_303) == 370 and cochran_size(0.02, 9_303) == 1_909
 
 
 def test_B25_the_split_follows_the_pool_shares_and_adds_up_exactly():
@@ -280,4 +280,127 @@ def test_B21_the_sample_summary_holds_counts_only(tmp_path):
     summary = build_samples(db, "july_2026", seed=1, splits_dir=tmp_path / "splits", source_sha256="a" * 64)
     text = json.dumps(summary) + format_summary(summary)
     assert "SYNHOSTILE" not in text
-    assert "too few to judge" in format_summary(summary) or summary["test_by_product"]["Mortgage"] >= 30
+
+
+def test_B25_a_category_with_fewer_than_30_test_complaints_is_marked_too_few_to_judge():
+    from voc.data import format_summary
+
+    counts = {"Small": {"dev": 2, "test": 29, "train": 50}, "Enough": {"dev": 5, "test": 30, "train": 90}}
+    summary = {"pool": 206, "duplicates_removed": 3, "exact_copies": 2, "near_copies": 1, "dev": 7,
+               "test": 59, "train": 140, "dev_target": 7, "test_target": 59, "by_product": counts}
+    lines = {line.split()[0]: line for line in format_summary(summary).splitlines() if line.startswith(("Small", "Enough"))}
+    assert lines["Small"].endswith("too few to judge") and "too few" not in lines["Enough"]
+
+
+# Review of #19
+
+
+def _long(n, change=None):
+    """n distinct words. `change` maps a word position to a replacement word."""
+    words = [f"{WORDS[j % 20]}{j}" for j in range(n)]
+    for position, word in (change or {}).items():
+        words[position] = word
+    return " ".join(words)
+
+
+def test_B9_a_near_copy_with_one_word_changed_is_a_duplicate():
+    # 196 five-word phrases each, 195 shared: Jaccard 195 / 197, about 0.99. Not an exact gram match.
+    a, b = Row("SYN-1", "A", _long(200)), Row("SYN-2", "A", _long(200, {199: "different"}))
+    kept, removed = dedupe([a, b])
+    assert [r.complaint_id for r in kept] == ["SYN-1"] and removed == 1
+
+
+def test_B9_two_changed_words_far_apart_in_100_words_keep_both():
+    # 96 phrases each, 10 changed in each: Jaccard 86 / 106, about 0.81, under the threshold.
+    a, b = Row("SYN-1", "A", _long(100)), Row("SYN-2", "A", _long(100, {30: "other", 70: "words"}))
+    kept, removed = dedupe([a, b])
+    assert len(kept) == 2 and removed == 0
+
+
+def test_B9_near_copies_are_compared_only_when_they_share_an_opening():
+    # Jaccard is about 0.99, but the first word differs, so the opening keys differ and both are kept.
+    a, b = Row("SYN-1", "A", _long(200)), Row("SYN-2", "A", _long(200, {0: "different"}))
+    assert opening_key(a.narrative) != opening_key(b.narrative)
+    kept, removed = dedupe([a, b])
+    assert len(kept) == 2 and removed == 0
+
+
+def test_B9_the_summary_and_the_manifest_count_exact_copies_and_near_copies_apart(tmp_path):
+    from voc.data import build_samples, format_summary
+
+    db = tmp_path / "voc.duckdb"
+    rows = _month_rows("july_2026", 0, 60)
+    rows += [("SYN-900", "Mortgage", _story(3).upper(), "july_2026"),
+             ("SYN-901", "Mortgage", _long(200), "july_2026"),
+             ("SYN-902", "Mortgage", _long(200, {199: "different"}), "july_2026")]
+    _staged(db, rows)
+    summary = build_samples(db, "july_2026", seed=1, splits_dir=tmp_path / "splits", source_sha256="a" * 64)
+    assert (summary["duplicates_removed"], summary["exact_copies"], summary["near_copies"]) == (2, 1, 1)
+    manifest = json.loads((tmp_path / "splits" / "manifest.json").read_text(encoding="utf-8"))
+    assert (manifest["exact_copies"], manifest["near_copies"]) == (1, 1)
+    assert "1 exact copies" in format_summary(summary) and "1 near-copies" in format_summary(summary)
+
+
+def test_B25_the_manifest_records_the_month_and_both_margins(tmp_path):
+    from voc.data import build_samples
+
+    db = tmp_path / "voc.duckdb"
+    _staged(db, _month_rows("july_2026", 0, 60))
+    build_samples(db, "july_2026", seed=1, splits_dir=tmp_path / "splits", source_sha256="a" * 64,
+                  dev_margin=0.06, test_margin=0.03)
+    manifest = json.loads((tmp_path / "splits" / "manifest.json").read_text(encoding="utf-8"))
+    assert (manifest["month"], manifest["dev_margin"], manifest["test_margin"]) == ("july_2026", 0.06, 0.03)
+
+
+@pytest.mark.parametrize("left_behind", ["dev.csv", "test.csv", "train.csv"])
+def test_B16_any_list_file_left_behind_stops_a_rebuild(tmp_path, left_behind):
+    from voc.data import build_samples
+
+    db = tmp_path / "voc.duckdb"
+    _staged(db, _month_rows("july_2026", 0, 60))
+    (tmp_path / "splits").mkdir()
+    (tmp_path / "splits" / left_behind).write_text("complaint_id,content_hash\n", encoding="utf-8")
+    with pytest.raises(SampleMismatch, match="already exist"):
+        build_samples(db, "july_2026", seed=1, splits_dir=tmp_path / "splits", source_sha256="a" * 64)
+    assert sorted(p.name for p in (tmp_path / "splits").iterdir()) == [left_behind]
+
+
+def test_B25_no_rows_for_the_month_gives_a_clear_error_and_writes_nothing(tmp_path):
+    from voc.data import build_samples
+
+    db = tmp_path / "voc.duckdb"
+    _staged(db, _month_rows("august_2026", 0, 10))
+    with pytest.raises(SampleMismatch, match="voc load july_2026"):
+        build_samples(db, "july_2026", seed=1, splits_dir=tmp_path / "splits", source_sha256="a" * 64)
+    assert not (tmp_path / "splits").exists()
+
+
+def _sample_repo(tmp_path, rows):
+    from voc.load import DB_PATH
+
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "samples.toml").write_text(
+        'month = "july_2026"\ndev_margin = 0.05\ntest_margin = 0.02\nseed = 7\n', encoding="utf-8")
+    (tmp_path / "config" / "data_files.toml").write_text(
+        f'[july_2026]\nfile_name = "x.csv"\nsize_bytes = 1\nsha256 = "{"b" * 64}"\n', encoding="utf-8")
+    (tmp_path / DB_PATH).parent.mkdir(parents=True)
+    _staged(tmp_path / DB_PATH, rows)
+
+
+def test_B21_voc_sample_prints_counts_only_and_freezes_the_lists(tmp_path, capsys):
+    from voc import cli
+
+    _sample_repo(tmp_path, _month_rows("july_2026", 0, 80) + [("SYN-700", "Mortgage", HOSTILE, "july_2026")])
+    assert cli.main(["sample"], env={}, root=tmp_path) == 0
+    out = capsys.readouterr().out
+    assert "SYNHOSTILE" not in out and "pool: 81" in out
+    manifest = json.loads((tmp_path / "splits" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["source_sha256"] == "b" * 64 and manifest["seed"] == 7
+
+
+def test_B21_voc_sample_with_no_rows_prints_our_message_and_fails(tmp_path, capsys):
+    from voc import cli
+
+    _sample_repo(tmp_path, [])
+    assert cli.main(["sample"], env={}, root=tmp_path) == 1
+    assert "voc load july_2026" in capsys.readouterr().out
