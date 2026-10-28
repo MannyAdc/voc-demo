@@ -12,7 +12,6 @@ narrative and Product together, and a manifest with each list's hash. Every
 command checks the IDs and hashes it is given against these lists.
 """
 import csv
-import difflib
 import hashlib
 import io
 import json
@@ -22,6 +21,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 DUPLICATE_THRESHOLD = 0.9
+DUPLICATE_MEASURE = "Jaccard similarity of word 5-grams, punctuation ignored"
+SHINGLE_WORDS = 5
 OPENING_WORDS = 6
 QUICK_CHECK_SIZE = 50
 LISTS = ("dev", "test", "train")
@@ -60,10 +61,20 @@ def opening_key(text):
     return " ".join(cleaned.split()[:OPENING_WORDS])
 
 
+def _grams(normal):
+    """Word 5-grams of a normalised text, punctuation ignored. A text under 5 words is one gram."""
+    words = re.findall(r"[a-z0-9]+", normal)
+    if len(words) < SHINGLE_WORDS:
+        return frozenset([tuple(words)])
+    return frozenset(tuple(words[i:i + SHINGLE_WORDS]) for i in range(len(words) - SHINGLE_WORDS + 1))
+
+
 def _similar(a, b):
-    matcher = difflib.SequenceMatcher(None, a, b, autojunk=False)
-    return (matcher.real_quick_ratio() >= DUPLICATE_THRESHOLD and matcher.quick_ratio() >= DUPLICATE_THRESHOLD
-            and matcher.ratio() >= DUPLICATE_THRESHOLD)
+    """Jaccard similarity of the two gram sets at or above the threshold. Linear in the text length."""
+    small, large = sorted((len(a), len(b)))
+    if not large or small / large < DUPLICATE_THRESHOLD:  # Jaccard can never exceed this ratio
+        return False
+    return len(a & b) / len(a | b) >= DUPLICATE_THRESHOLD
 
 
 def dedupe(rows):
@@ -73,11 +84,12 @@ def dedupe(rows):
         normal = _normal(row.narrative)
         if normal in seen:
             continue
+        grams = _grams(normal)
         group = by_opening.setdefault(opening_key(row.narrative), [])
-        if any(_similar(normal, other) for other in group):
+        if any(_similar(grams, other) for other in group):
             continue
         seen.add(normal)
-        group.append(normal)
+        group.append(grams)
         kept.append(row)
     return kept, len(rows) - len(kept)
 
@@ -137,7 +149,8 @@ def _list_bytes(rows):
 def write_splits(folder, sets, removed, source_sha256, seed):
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
-    manifest = {"seed": seed, "duplicate_threshold": DUPLICATE_THRESHOLD, "opening_words": OPENING_WORDS,
+    manifest = {"seed": seed, "duplicate_threshold": DUPLICATE_THRESHOLD, "duplicate_measure": DUPLICATE_MEASURE,
+                "opening_words": OPENING_WORDS,
                 "duplicates_removed": removed, "source_sha256": source_sha256, "lists": {}}
     for name in LISTS:
         data = _list_bytes(sets[name])
