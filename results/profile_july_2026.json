@@ -1,0 +1,238 @@
+{
+  "complaint_id_duplicates": 0,
+  "date_range": [
+    "2026-07-01",
+    "2026-07-31"
+  ],
+  "distinct_companies": 1789,
+  "narrative_exact_duplicates": 623,
+  "narratives": 10002,
+  "narratives_over_4000_chars": 497,
+  "narratives_with_redaction": 8301,
+  "products": {
+    "Checking or savings account": {
+      "narrative_length": {
+        "p10": 309,
+        "p50": 1133,
+        "p90": 3063,
+        "p99": 7792
+      },
+      "narratives": 2025,
+      "narratives_by_year": {
+        "2026": 2025
+      },
+      "rows": 7963,
+      "sub_products": {
+        "CD (Certificate of Deposit)": 27,
+        "Checking account": 1672,
+        "Other banking product or service": 171,
+        "Savings account": 155
+      }
+    },
+    "Credit card": {
+      "narrative_length": {
+        "p10": 348,
+        "p50": 1306,
+        "p90": 3238,
+        "p99": 7160
+      },
+      "narratives": 1822,
+      "narratives_by_year": {
+        "2026": 1822
+      },
+      "rows": 8027,
+      "sub_products": {
+        "General-purpose credit card or charge card": 1587,
+        "Store credit card": 235
+      }
+    },
+    "Credit reporting or other personal consumer reports": {
+      "narrative_length": {
+        "p10": 194,
+        "p50": 757,
+        "p90": 2621,
+        "p99": 6961
+      },
+      "narratives": 463,
+      "narratives_by_year": {
+        "2026": 463
+      },
+      "rows": 618208,
+      "sub_products": {
+        "Credit reporting": 456,
+        "Other personal consumer report": 7
+      }
+    },
+    "Debt collection": {
+      "narrative_length": {
+        "p10": 228,
+        "p50": 811,
+        "p90": 2327,
+        "p99": 5196
+      },
+      "narratives": 2727,
+      "narratives_by_year": {
+        "2026": 2727
+      },
+      "rows": 24649,
+      "sub_products": {
+        "Auto debt": 83,
+        "Credit card debt": 449,
+        "Federal student loan debt": 14,
+        "I do not know": 1032,
+        "Medical debt": 133,
+        "Mortgage debt": 14,
+        "Other debt": 557,
+        "Payday loan debt": 40,
+        "Private student loan debt": 18,
+        "Rental debt": 175,
+        "Telecommunications debt": 212
+      }
+    },
+    "Debt or credit management": {
+      "narrative_length": {
+        "p10": 202,
+        "p50": 711,
+        "p90": 2463,
+        "p99": 7877
+      },
+      "narratives": 93,
+      "narratives_by_year": {
+        "2026": 93
+      },
+      "rows": 381,
+      "sub_products": {
+        "(rare or long values)": 1,
+        "Credit repair services": 49,
+        "Debt settlement": 43
+      }
+    },
+    "Money transfer, virtual currency, or money service": {
+      "narrative_length": {
+        "p10": 308,
+        "p50": 1128,
+        "p90": 2906,
+        "p99": 7161
+      },
+      "narratives": 781,
+      "narratives_by_year": {
+        "2026": 781
+      },
+      "rows": 3474,
+      "sub_products": {
+        "(rare or long values)": 4,
+        "Check cashing service": 15,
+        "Domestic (US) money transfer": 169,
+        "International money transfer": 63,
+        "Mobile or digital wallet": 416,
+        "Money order, traveler's check or cashier's check": 21,
+        "Virtual currency": 93
+      }
+    },
+    "Mortgage": {
+      "narrative_length": {
+        "p10": 487,
+        "p50": 1640,
+        "p90": 4759,
+        "p99": 15352
+      },
+      "narratives": 728,
+      "narratives_by_year": {
+        "2026": 728
+      },
+      "rows": 3066,
+      "sub_products": {
+        "(rare or long values)": 3,
+        "Conventional home mortgage": 333,
+        "FHA mortgage": 218,
+        "Home equity loan or line of credit (HELOC)": 41,
+        "Manufactured home loan": 8,
+        "Other type of mortgage": 12,
+        "USDA mortgage": 15,
+        "VA mortgage": 98
+      }
+    },
+    "Payday loan, title loan, personal loan, or advance loan": {
+      "narrative_length": {
+        "p10": 227,
+        "p50": 1148,
+        "p90": 2905,
+        "p99": 8145
+      },
+      "narratives": 410,
+      "narratives_by_year": {
+        "2026": 410
+      },
+      "rows": 1793,
+      "sub_products": {
+        "(rare or long values)": 4,
+        "Installment loan": 254,
+        "Other advances of future income": 7,
+        "Payday loan": 75,
+        "Personal line of credit": 53,
+        "Title loan": 17
+      }
+    },
+    "Prepaid card": {
+      "narrative_length": {
+        "p10": 201,
+        "p50": 886,
+        "p90": 2594,
+        "p99": 4624
+      },
+      "narratives": 134,
+      "narratives_by_year": {
+        "2026": 134
+      },
+      "rows": 530,
+      "sub_products": {
+        "(rare or long values)": 1,
+        "General-purpose prepaid card": 74,
+        "Gift card": 10,
+        "Government benefit card": 41,
+        "Payroll card": 8
+      }
+    },
+    "Student loan": {
+      "narrative_length": {
+        "p10": 379,
+        "p50": 1198,
+        "p90": 3169,
+        "p99": 7614
+      },
+      "narratives": 310,
+      "narratives_by_year": {
+        "2026": 310
+      },
+      "rows": 1787,
+      "sub_products": {
+        "Federal student loan servicing": 235,
+        "Private student loan": 75
+      }
+    },
+    "Vehicle loan or lease": {
+      "narrative_length": {
+        "p10": 376,
+        "p50": 1236,
+        "p90": 3389,
+        "p99": 7885
+      },
+      "narratives": 509,
+      "narratives_by_year": {
+        "2026": 509
+      },
+      "rows": 2158,
+      "sub_products": {
+        "Lease": 74,
+        "Loan": 435
+      }
+    }
+  },
+  "rows": 672036,
+  "rules": {
+    "long_text_over": 4000,
+    "longest_value_shown": 120,
+    "rare_value_below": 5
+  },
+  "unparsed_dates": 0
+}

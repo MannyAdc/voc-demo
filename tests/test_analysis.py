@@ -40,7 +40,7 @@ def export(tmp_path):
         rows.append(_row(i, "Credit card", narrative=f"My card was charged twice, case {i}.",
                          sub_product="General-purpose credit card", date="2025-03-01", company=f"Co {i % 3}"))
     for i in range(10, 16):
-        rows.append(_row(i, "Mortgage", narrative="XXXX sent me a letter on XX/XX/XXXX.\nIt was wrong.",
+        rows.append(_row(i, "Mortgage", narrative=f"XXXX sent me a letter on XX/XX/XXXX.\nIt was wrong, {i}.",
                          sub_product="Conventional home mortgage", date="2026-06-30", company="Co 0"))
     for i in range(16, 20):
         rows.append(_row(i, "Mortgage", narrative="", date="2026-07-02"))
@@ -76,7 +76,7 @@ def test_B22_sub_product_counts_per_product(export):
 
 def test_B22_length_percentiles_are_given_in_characters(export):
     lengths = profile(export)["products"]["Mortgage"]["narrative_length"]
-    expected = len("XXXX sent me a letter on XX/XX/XXXX.\nIt was wrong.")
+    expected = len("XXXX sent me a letter on XX/XX/XXXX.\nIt was wrong, 10.")  # i is 10 to 15, same length
     assert lengths == {"p10": expected, "p50": expected, "p90": expected, "p99": expected}
 
 

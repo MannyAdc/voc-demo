@@ -42,3 +42,6 @@ web/dist/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Personal editor settings
+.vscode/

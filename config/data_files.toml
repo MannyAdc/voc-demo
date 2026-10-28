@@ -1,0 +1,13 @@
+# Pinned data files (B16). Every command checks the local file against its pin.
+#
+# The CFPB serves only its current export, updated about daily, so these files
+# cannot be downloaded again. Keep a backup copy outside the repo.
+# The folder of each file is given by an environment variable, never written here.
+
+[july_2026]
+# Folder: VOC_DATA_DIR. Used for labelling and evaluation.
+# The file name says 20 July 2026. No other download date is recorded.
+file_name = "CCDB_Export_20_July_2026.csv"
+size_bytes = 216250982
+sha256 = "beb05a0a61e1ccfe186ad1f7c6ab062bc7a089f7bda28adfe7e6c4c9ccefa57c"
+pinned_on = "2026-10-28"
