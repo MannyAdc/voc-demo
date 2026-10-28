@@ -42,3 +42,9 @@ web/dist/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Personal editor settings
+.vscode/
+
+# Worktrees made for parallel agents
+.claude/worktrees/

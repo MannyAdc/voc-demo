@@ -1,0 +1,3826 @@
+{
+  "complaint_id_duplicates": 0,
+  "date_range": [
+    "2026-07-01",
+    "2026-07-31"
+  ],
+  "distinct_companies": 1789,
+  "missing_complaint_ids": 0,
+  "missing_values": {
+    "Company": 0,
+    "Company public response": 346761,
+    "Company response to consumer": 0,
+    "Complaint ID": 0,
+    "Consumer complaint narrative": 662034,
+    "Date received": 0,
+    "Date sent to company": 0,
+    "Issue": 0,
+    "Product": 0,
+    "State": 619,
+    "Sub-issue": 7198,
+    "Sub-product": 0,
+    "Submitted via": 0,
+    "Tags": 657955,
+    "Timely response?": 0,
+    "ZIP code": 705
+  },
+  "narrative_exact_duplicates": 623,
+  "narratives": 10002,
+  "narratives_over_4000_chars": 497,
+  "narratives_with_redaction": 8297,
+  "products": {
+    "Checking or savings account": {
+      "narrative_length": {
+        "p10": 309,
+        "p50": 1133,
+        "p90": 3063,
+        "p99": 7792
+      },
+      "narratives": 2025,
+      "narratives_by_year": {
+        "2026": 2025
+      },
+      "rows": 7963,
+      "sub_products": {
+        "CD (Certificate of Deposit)": 27,
+        "Checking account": 1672,
+        "Other banking product or service": 171,
+        "Savings account": 155
+      },
+      "unique_narratives": 2025
+    },
+    "Credit card": {
+      "narrative_length": {
+        "p10": 348,
+        "p50": 1306,
+        "p90": 3238,
+        "p99": 7160
+      },
+      "narratives": 1822,
+      "narratives_by_year": {
+        "2026": 1822
+      },
+      "rows": 8027,
+      "sub_products": {
+        "General-purpose credit card or charge card": 1587,
+        "Store credit card": 235
+      },
+      "unique_narratives": 1812
+    },
+    "Credit reporting or other personal consumer reports": {
+      "narrative_length": {
+        "p10": 194,
+        "p50": 757,
+        "p90": 2621,
+        "p99": 6961
+      },
+      "narratives": 463,
+      "narratives_by_year": {
+        "2026": 463
+      },
+      "rows": 618208,
+      "sub_products": {
+        "Credit reporting": 456,
+        "Other personal consumer report": 7
+      },
+      "unique_narratives": 325
+    },
+    "Debt collection": {
+      "narrative_length": {
+        "p10": 228,
+        "p50": 811,
+        "p90": 2327,
+        "p99": 5196
+      },
+      "narratives": 2727,
+      "narratives_by_year": {
+        "2026": 2727
+      },
+      "rows": 24649,
+      "sub_products": {
+        "Auto debt": 83,
+        "Credit card debt": 449,
+        "Federal student loan debt": 14,
+        "I do not know": 1032,
+        "Medical debt": 133,
+        "Mortgage debt": 14,
+        "Other debt": 557,
+        "Payday loan debt": 40,
+        "Private student loan debt": 18,
+        "Rental debt": 175,
+        "Telecommunications debt": 212
+      },
+      "unique_narratives": 2258
+    },
+    "Debt or credit management": {
+      "narrative_length": {
+        "p10": 202,
+        "p50": 711,
+        "p90": 2463,
+        "p99": 7877
+      },
+      "narratives": 93,
+      "narratives_by_year": {
+        "2026": 93
+      },
+      "rows": 381,
+      "sub_products": {
+        "(rare or long values)": 1,
+        "Credit repair services": 49,
+        "Debt settlement": 43
+      },
+      "unique_narratives": 91
+    },
+    "Money transfer, virtual currency, or money service": {
+      "narrative_length": {
+        "p10": 308,
+        "p50": 1128,
+        "p90": 2906,
+        "p99": 7161
+      },
+      "narratives": 781,
+      "narratives_by_year": {
+        "2026": 781
+      },
+      "rows": 3474,
+      "sub_products": {
+        "(rare or long values)": 4,
+        "Check cashing service": 15,
+        "Domestic (US) money transfer": 169,
+        "International money transfer": 63,
+        "Mobile or digital wallet": 416,
+        "Money order, traveler's check or cashier's check": 21,
+        "Virtual currency": 93
+      },
+      "unique_narratives": 781
+    },
+    "Mortgage": {
+      "narrative_length": {
+        "p10": 487,
+        "p50": 1640,
+        "p90": 4759,
+        "p99": 15352
+      },
+      "narratives": 728,
+      "narratives_by_year": {
+        "2026": 728
+      },
+      "rows": 3066,
+      "sub_products": {
+        "(rare or long values)": 3,
+        "Conventional home mortgage": 333,
+        "FHA mortgage": 218,
+        "Home equity loan or line of credit (HELOC)": 41,
+        "Manufactured home loan": 8,
+        "Other type of mortgage": 12,
+        "USDA mortgage": 15,
+        "VA mortgage": 98
+      },
+      "unique_narratives": 728
+    },
+    "Payday loan, title loan, personal loan, or advance loan": {
+      "narrative_length": {
+        "p10": 227,
+        "p50": 1148,
+        "p90": 2905,
+        "p99": 8145
+      },
+      "narratives": 410,
+      "narratives_by_year": {
+        "2026": 410
+      },
+      "rows": 1793,
+      "sub_products": {
+        "(rare or long values)": 4,
+        "Installment loan": 254,
+        "Other advances of future income": 7,
+        "Payday loan": 75,
+        "Personal line of credit": 53,
+        "Title loan": 17
+      },
+      "unique_narratives": 406
+    },
+    "Prepaid card": {
+      "narrative_length": {
+        "p10": 201,
+        "p50": 886,
+        "p90": 2594,
+        "p99": 4624
+      },
+      "narratives": 134,
+      "narratives_by_year": {
+        "2026": 134
+      },
+      "rows": 530,
+      "sub_products": {
+        "(rare or long values)": 1,
+        "General-purpose prepaid card": 74,
+        "Gift card": 10,
+        "Government benefit card": 41,
+        "Payroll card": 8
+      },
+      "unique_narratives": 134
+    },
+    "Student loan": {
+      "narrative_length": {
+        "p10": 379,
+        "p50": 1198,
+        "p90": 3169,
+        "p99": 7614
+      },
+      "narratives": 310,
+      "narratives_by_year": {
+        "2026": 310
+      },
+      "rows": 1787,
+      "sub_products": {
+        "Federal student loan servicing": 235,
+        "Private student loan": 75
+      },
+      "unique_narratives": 310
+    },
+    "Vehicle loan or lease": {
+      "narrative_length": {
+        "p10": 376,
+        "p50": 1236,
+        "p90": 3389,
+        "p99": 7885
+      },
+      "narratives": 509,
+      "narratives_by_year": {
+        "2026": 509
+      },
+      "rows": 2158,
+      "sub_products": {
+        "Lease": 74,
+        "Loan": 435
+      },
+      "unique_narratives": 509
+    }
+  },
+  "rows": 672036,
+  "rules": {
+    "long_text_over": 4000,
+    "longest_value_shown": 120,
+    "rare_value_below": 5
+  },
+  "text_vs_all": {
+    "Checking or savings account": {
+      "Company response to consumer": {
+        "difference": 0.106,
+        "values": {
+          "Closed with explanation": {
+            "all": 5763,
+            "text": 1596
+          },
+          "Closed with monetary relief": {
+            "all": 950,
+            "text": 301
+          },
+          "Closed with non-monetary relief": {
+            "all": 378,
+            "text": 120
+          },
+          "In progress": {
+            "all": 848,
+            "text": 1
+          },
+          "Untimely response": {
+            "all": 24,
+            "text": 7
+          }
+        }
+      },
+      "Issue": {
+        "difference": 0.038,
+        "values": {
+          "(rare or long values)": {
+            "all": 9,
+            "text": 0
+          },
+          "Closing an account": {
+            "all": 1105,
+            "text": 299
+          },
+          "Credit monitoring or identity theft protection services": {
+            "all": 5,
+            "text": 2
+          },
+          "Incorrect information on your report": {
+            "all": 21,
+            "text": 2
+          },
+          "Managing an account": {
+            "all": 4580,
+            "text": 1103
+          },
+          "Opening an account": {
+            "all": 639,
+            "text": 154
+          },
+          "Problem caused by your funds being low": {
+            "all": 435,
+            "text": 147
+          },
+          "Problem with a company's investigation into an existing problem": {
+            "all": 23,
+            "text": 5
+          },
+          "Problem with a lender or other company charging your account": {
+            "all": 1146,
+            "text": 313
+          }
+        }
+      },
+      "State": {
+        "difference": 0.06,
+        "values": {
+          "(none)": {
+            "all": 87,
+            "text": 19
+          },
+          "(rare or long values)": {
+            "all": 6,
+            "text": 1
+          },
+          "AK": {
+            "all": 7,
+            "text": 1
+          },
+          "AL": {
+            "all": 99,
+            "text": 28
+          },
+          "AR": {
+            "all": 51,
+            "text": 18
+          },
+          "AZ": {
+            "all": 178,
+            "text": 45
+          },
+          "CA": {
+            "all": 1107,
+            "text": 295
+          },
+          "CO": {
+            "all": 131,
+            "text": 37
+          },
+          "CT": {
+            "all": 81,
+            "text": 11
+          },
+          "DC": {
+            "all": 37,
+            "text": 14
+          },
+          "DE": {
+            "all": 45,
+            "text": 9
+          },
+          "FL": {
+            "all": 821,
+            "text": 202
+          },
+          "GA": {
+            "all": 386,
+            "text": 117
+          },
+          "HI": {
+            "all": 16,
+            "text": 4
+          },
+          "IA": {
+            "all": 26,
+            "text": 9
+          },
+          "ID": {
+            "all": 23,
+            "text": 3
+          },
+          "IL": {
+            "all": 269,
+            "text": 54
+          },
+          "IN": {
+            "all": 95,
+            "text": 16
+          },
+          "KS": {
+            "all": 30,
+            "text": 10
+          },
+          "KY": {
+            "all": 66,
+            "text": 21
+          },
+          "LA": {
+            "all": 85,
+            "text": 19
+          },
+          "MA": {
+            "all": 135,
+            "text": 31
+          },
+          "MD": {
+            "all": 185,
+            "text": 45
+          },
+          "ME": {
+            "all": 17,
+            "text": 5
+          },
+          "MI": {
+            "all": 198,
+            "text": 48
+          },
+          "MN": {
+            "all": 76,
+            "text": 19
+          },
+          "MO": {
+            "all": 105,
+            "text": 34
+          },
+          "MS": {
+            "all": 54,
+            "text": 14
+          },
+          "MT": {
+            "all": 11,
+            "text": 4
+          },
+          "NC": {
+            "all": 286,
+            "text": 82
+          },
+          "ND": {
+            "all": 7,
+            "text": 1
+          },
+          "NE": {
+            "all": 18,
+            "text": 6
+          },
+          "NH": {
+            "all": 16,
+            "text": 3
+          },
+          "NJ": {
+            "all": 291,
+            "text": 70
+          },
+          "NM": {
+            "all": 27,
+            "text": 9
+          },
+          "NV": {
+            "all": 127,
+            "text": 38
+          },
+          "NY": {
+            "all": 597,
+            "text": 137
+          },
+          "OH": {
+            "all": 204,
+            "text": 49
+          },
+          "OK": {
+            "all": 45,
+            "text": 14
+          },
+          "OR": {
+            "all": 62,
+            "text": 22
+          },
+          "PA": {
+            "all": 286,
+            "text": 71
+          },
+          "PR": {
+            "all": 12,
+            "text": 4
+          },
+          "RI": {
+            "all": 21,
+            "text": 5
+          },
+          "SC": {
+            "all": 122,
+            "text": 36
+          },
+          "SD": {
+            "all": 14,
+            "text": 3
+          },
+          "TN": {
+            "all": 133,
+            "text": 29
+          },
+          "TX": {
+            "all": 745,
+            "text": 169
+          },
+          "UT": {
+            "all": 50,
+            "text": 19
+          },
+          "VA": {
+            "all": 205,
+            "text": 61
+          },
+          "VT": {
+            "all": 6,
+            "text": 2
+          },
+          "WA": {
+            "all": 159,
+            "text": 34
+          },
+          "WI": {
+            "all": 65,
+            "text": 20
+          },
+          "WV": {
+            "all": 25,
+            "text": 3
+          },
+          "WY": {
+            "all": 13,
+            "text": 5
+          }
+        }
+      },
+      "Submitted via": {
+        "difference": 0.101,
+        "values": {
+          "Phone": {
+            "all": 356,
+            "text": 0
+          },
+          "Postal mail": {
+            "all": 74,
+            "text": 0
+          },
+          "Referral": {
+            "all": 378,
+            "text": 0
+          },
+          "Web": {
+            "all": 7155,
+            "text": 2025
+          }
+        }
+      },
+      "Tags": {
+        "difference": 0.027,
+        "values": {
+          "(none)": {
+            "all": 6621,
+            "text": 1646
+          },
+          "Older American": {
+            "all": 605,
+            "text": 137
+          },
+          "Older American, Servicemember": {
+            "all": 115,
+            "text": 38
+          },
+          "Servicemember": {
+            "all": 622,
+            "text": 204
+          }
+        }
+      },
+      "Timely response?": {
+        "difference": 0.001,
+        "values": {
+          "No": {
+            "all": 46,
+            "text": 13
+          },
+          "Yes": {
+            "all": 7917,
+            "text": 2012
+          }
+        }
+      }
+    },
+    "Credit card": {
+      "Company response to consumer": {
+        "difference": 0.095,
+        "values": {
+          "Closed with explanation": {
+            "all": 5364,
+            "text": 1325
+          },
+          "Closed with monetary relief": {
+            "all": 1197,
+            "text": 336
+          },
+          "Closed with non-monetary relief": {
+            "all": 708,
+            "text": 154
+          },
+          "In progress": {
+            "all": 734,
+            "text": 0
+          },
+          "Untimely response": {
+            "all": 24,
+            "text": 7
+          }
+        }
+      },
+      "Issue": {
+        "difference": 0.059,
+        "values": {
+          "Advertising and marketing, including promotional offers": {
+            "all": 418,
+            "text": 110
+          },
+          "Closing your account": {
+            "all": 555,
+            "text": 139
+          },
+          "Credit monitoring or identity theft protection services": {
+            "all": 15,
+            "text": 4
+          },
+          "Fees or interest": {
+            "all": 893,
+            "text": 226
+          },
+          "Getting a credit card": {
+            "all": 943,
+            "text": 188
+          },
+          "Improper use of your report": {
+            "all": 53,
+            "text": 13
+          },
+          "Incorrect information on your report": {
+            "all": 413,
+            "text": 47
+          },
+          "Other features, terms, or problems": {
+            "all": 951,
+            "text": 232
+          },
+          "Problem when making payments": {
+            "all": 404,
+            "text": 111
+          },
+          "Problem with a company's investigation into an existing problem": {
+            "all": 242,
+            "text": 45
+          },
+          "Problem with a purchase shown on your statement": {
+            "all": 2662,
+            "text": 585
+          },
+          "Problem with fraud alerts or security freezes": {
+            "all": 9,
+            "text": 2
+          },
+          "Struggling to pay your bill": {
+            "all": 111,
+            "text": 20
+          },
+          "Trouble using your card": {
+            "all": 352,
+            "text": 99
+          },
+          "Unable to get your credit report or credit score": {
+            "all": 6,
+            "text": 1
+          }
+        }
+      },
+      "State": {
+        "difference": 0.048,
+        "values": {
+          "(none)": {
+            "all": 40,
+            "text": 8
+          },
+          "(rare or long values)": {
+            "all": 3,
+            "text": 1
+          },
+          "AE": {
+            "all": 5,
+            "text": 2
+          },
+          "AK": {
+            "all": 10,
+            "text": 2
+          },
+          "AL": {
+            "all": 81,
+            "text": 20
+          },
+          "AR": {
+            "all": 37,
+            "text": 7
+          },
+          "AZ": {
+            "all": 178,
+            "text": 47
+          },
+          "CA": {
+            "all": 1221,
+            "text": 275
+          },
+          "CO": {
+            "all": 146,
+            "text": 33
+          },
+          "CT": {
+            "all": 109,
+            "text": 18
+          },
+          "DC": {
+            "all": 27,
+            "text": 9
+          },
+          "DE": {
+            "all": 44,
+            "text": 9
+          },
+          "FL": {
+            "all": 871,
+            "text": 203
+          },
+          "GA": {
+            "all": 303,
+            "text": 81
+          },
+          "HI": {
+            "all": 32,
+            "text": 8
+          },
+          "IA": {
+            "all": 35,
+            "text": 15
+          },
+          "ID": {
+            "all": 30,
+            "text": 5
+          },
+          "IL": {
+            "all": 299,
+            "text": 65
+          },
+          "IN": {
+            "all": 84,
+            "text": 18
+          },
+          "KS": {
+            "all": 36,
+            "text": 12
+          },
+          "KY": {
+            "all": 45,
+            "text": 11
+          },
+          "LA": {
+            "all": 71,
+            "text": 10
+          },
+          "MA": {
+            "all": 147,
+            "text": 27
+          },
+          "MD": {
+            "all": 156,
+            "text": 25
+          },
+          "ME": {
+            "all": 21,
+            "text": 4
+          },
+          "MI": {
+            "all": 186,
+            "text": 37
+          },
+          "MN": {
+            "all": 79,
+            "text": 16
+          },
+          "MO": {
+            "all": 84,
+            "text": 15
+          },
+          "MS": {
+            "all": 58,
+            "text": 7
+          },
+          "MT": {
+            "all": 17,
+            "text": 2
+          },
+          "NC": {
+            "all": 247,
+            "text": 61
+          },
+          "ND": {
+            "all": 5,
+            "text": 1
+          },
+          "NE": {
+            "all": 31,
+            "text": 7
+          },
+          "NH": {
+            "all": 36,
+            "text": 11
+          },
+          "NJ": {
+            "all": 315,
+            "text": 64
+          },
+          "NM": {
+            "all": 24,
+            "text": 6
+          },
+          "NV": {
+            "all": 109,
+            "text": 27
+          },
+          "NY": {
+            "all": 646,
+            "text": 146
+          },
+          "OH": {
+            "all": 191,
+            "text": 45
+          },
+          "OK": {
+            "all": 46,
+            "text": 12
+          },
+          "OR": {
+            "all": 73,
+            "text": 17
+          },
+          "PA": {
+            "all": 287,
+            "text": 71
+          },
+          "PR": {
+            "all": 30,
+            "text": 7
+          },
+          "RI": {
+            "all": 23,
+            "text": 5
+          },
+          "SC": {
+            "all": 92,
+            "text": 25
+          },
+          "SD": {
+            "all": 12,
+            "text": 2
+          },
+          "TN": {
+            "all": 112,
+            "text": 29
+          },
+          "TX": {
+            "all": 687,
+            "text": 146
+          },
+          "UT": {
+            "all": 60,
+            "text": 14
+          },
+          "VA": {
+            "all": 217,
+            "text": 45
+          },
+          "VT": {
+            "all": 12,
+            "text": 4
+          },
+          "WA": {
+            "all": 203,
+            "text": 59
+          },
+          "WI": {
+            "all": 91,
+            "text": 23
+          },
+          "WV": {
+            "all": 16,
+            "text": 1
+          },
+          "WY": {
+            "all": 7,
+            "text": 2
+          }
+        }
+      },
+      "Submitted via": {
+        "difference": 0.086,
+        "values": {
+          "Phone": {
+            "all": 259,
+            "text": 0
+          },
+          "Postal mail": {
+            "all": 106,
+            "text": 0
+          },
+          "Referral": {
+            "all": 327,
+            "text": 0
+          },
+          "Web": {
+            "all": 7335,
+            "text": 1822
+          }
+        }
+      },
+      "Tags": {
+        "difference": 0.046,
+        "values": {
+          "(none)": {
+            "all": 6547,
+            "text": 1402
+          },
+          "Older American": {
+            "all": 711,
+            "text": 199
+          },
+          "Older American, Servicemember": {
+            "all": 151,
+            "text": 46
+          },
+          "Servicemember": {
+            "all": 618,
+            "text": 175
+          }
+        }
+      },
+      "Timely response?": {
+        "difference": 0.001,
+        "values": {
+          "No": {
+            "all": 42,
+            "text": 11
+          },
+          "Yes": {
+            "all": 7985,
+            "text": 1811
+          }
+        }
+      }
+    },
+    "Credit reporting or other personal consumer reports": {
+      "Company response to consumer": {
+        "difference": 0.164,
+        "values": {
+          "Closed with explanation": {
+            "all": 326818,
+            "text": 271
+          },
+          "Closed with monetary relief": {
+            "all": 52,
+            "text": 0
+          },
+          "Closed with non-monetary relief": {
+            "all": 189759,
+            "text": 191
+          },
+          "In progress": {
+            "all": 101231,
+            "text": 0
+          },
+          "Untimely response": {
+            "all": 348,
+            "text": 1
+          }
+        }
+      },
+      "Issue": {
+        "difference": 0.072,
+        "values": {
+          "Credit monitoring or identity theft protection services": {
+            "all": 547,
+            "text": 5
+          },
+          "Identity theft protection or other monitoring services": {
+            "all": 42,
+            "text": 0
+          },
+          "Improper use of your report": {
+            "all": 118852,
+            "text": 109
+          },
+          "Incorrect information on your report": {
+            "all": 366233,
+            "text": 241
+          },
+          "Problem with a company's investigation into an existing issue": {
+            "all": 476,
+            "text": 2
+          },
+          "Problem with a company's investigation into an existing problem": {
+            "all": 128502,
+            "text": 98
+          },
+          "Problem with fraud alerts or security freezes": {
+            "all": 1637,
+            "text": 6
+          },
+          "Unable to get your credit report or credit score": {
+            "all": 1919,
+            "text": 2
+          }
+        }
+      },
+      "State": {
+        "difference": 0.186,
+        "values": {
+          "(none)": {
+            "all": 343,
+            "text": 0
+          },
+          "(rare or long values)": {
+            "all": 3,
+            "text": 0
+          },
+          "AE": {
+            "all": 28,
+            "text": 0
+          },
+          "AK": {
+            "all": 216,
+            "text": 0
+          },
+          "AL": {
+            "all": 21946,
+            "text": 21
+          },
+          "AP": {
+            "all": 18,
+            "text": 0
+          },
+          "AR": {
+            "all": 4470,
+            "text": 3
+          },
+          "AS": {
+            "all": 19,
+            "text": 0
+          },
+          "AZ": {
+            "all": 10157,
+            "text": 4
+          },
+          "CA": {
+            "all": 54816,
+            "text": 30
+          },
+          "CO": {
+            "all": 3176,
+            "text": 4
+          },
+          "CT": {
+            "all": 3542,
+            "text": 0
+          },
+          "DC": {
+            "all": 1518,
+            "text": 0
+          },
+          "DE": {
+            "all": 1856,
+            "text": 1
+          },
+          "FL": {
+            "all": 90195,
+            "text": 48
+          },
+          "GA": {
+            "all": 44416,
+            "text": 37
+          },
+          "GU": {
+            "all": 19,
+            "text": 0
+          },
+          "HI": {
+            "all": 1181,
+            "text": 1
+          },
+          "IA": {
+            "all": 954,
+            "text": 0
+          },
+          "ID": {
+            "all": 427,
+            "text": 0
+          },
+          "IL": {
+            "all": 25231,
+            "text": 10
+          },
+          "IN": {
+            "all": 5662,
+            "text": 5
+          },
+          "KS": {
+            "all": 1303,
+            "text": 1
+          },
+          "KY": {
+            "all": 2296,
+            "text": 0
+          },
+          "LA": {
+            "all": 15737,
+            "text": 9
+          },
+          "MA": {
+            "all": 7178,
+            "text": 8
+          },
+          "MD": {
+            "all": 12620,
+            "text": 7
+          },
+          "ME": {
+            "all": 222,
+            "text": 0
+          },
+          "MI": {
+            "all": 11194,
+            "text": 6
+          },
+          "MN": {
+            "all": 1949,
+            "text": 2
+          },
+          "MO": {
+            "all": 5860,
+            "text": 8
+          },
+          "MS": {
+            "all": 20034,
+            "text": 2
+          },
+          "MT": {
+            "all": 232,
+            "text": 0
+          },
+          "NC": {
+            "all": 21911,
+            "text": 16
+          },
+          "ND": {
+            "all": 326,
+            "text": 0
+          },
+          "NE": {
+            "all": 813,
+            "text": 0
+          },
+          "NH": {
+            "all": 398,
+            "text": 0
+          },
+          "NJ": {
+            "all": 17417,
+            "text": 12
+          },
+          "NM": {
+            "all": 1045,
+            "text": 1
+          },
+          "NV": {
+            "all": 7041,
+            "text": 2
+          },
+          "NY": {
+            "all": 30781,
+            "text": 23
+          },
+          "OH": {
+            "all": 10482,
+            "text": 14
+          },
+          "OK": {
+            "all": 2587,
+            "text": 1
+          },
+          "OR": {
+            "all": 1210,
+            "text": 0
+          },
+          "PA": {
+            "all": 19537,
+            "text": 16
+          },
+          "PR": {
+            "all": 3527,
+            "text": 0
+          },
+          "RI": {
+            "all": 1377,
+            "text": 1
+          },
+          "SC": {
+            "all": 15191,
+            "text": 12
+          },
+          "SD": {
+            "all": 183,
+            "text": 0
+          },
+          "TN": {
+            "all": 8304,
+            "text": 11
+          },
+          "TX": {
+            "all": 104304,
+            "text": 125
+          },
+          "UNITED STATES MINOR OUTLYING ISLANDS": {
+            "all": 108,
+            "text": 0
+          },
+          "UT": {
+            "all": 1437,
+            "text": 0
+          },
+          "VA": {
+            "all": 9755,
+            "text": 12
+          },
+          "VI": {
+            "all": 235,
+            "text": 0
+          },
+          "VT": {
+            "all": 79,
+            "text": 0
+          },
+          "WA": {
+            "all": 5630,
+            "text": 8
+          },
+          "WI": {
+            "all": 5107,
+            "text": 2
+          },
+          "WV": {
+            "all": 507,
+            "text": 0
+          },
+          "WY": {
+            "all": 98,
+            "text": 0
+          }
+        }
+      },
+      "Submitted via": {
+        "difference": 0.001,
+        "values": {
+          "Phone": {
+            "all": 335,
+            "text": 0
+          },
+          "Postal mail": {
+            "all": 148,
+            "text": 0
+          },
+          "Referral": {
+            "all": 275,
+            "text": 0
+          },
+          "Web": {
+            "all": 617450,
+            "text": 463
+          }
+        }
+      },
+      "Tags": {
+        "difference": 0.017,
+        "values": {
+          "(none)": {
+            "all": 610668,
+            "text": 451
+          },
+          "Older American": {
+            "all": 2071,
+            "text": 0
+          },
+          "Older American, Servicemember": {
+            "all": 215,
+            "text": 1
+          },
+          "Servicemember": {
+            "all": 5254,
+            "text": 11
+          }
+        }
+      },
+      "Timely response?": {
+        "difference": 0.001,
+        "values": {
+          "No": {
+            "all": 457,
+            "text": 1
+          },
+          "Yes": {
+            "all": 617751,
+            "text": 462
+          }
+        }
+      }
+    },
+    "Debt collection": {
+      "Company response to consumer": {
+        "difference": 0.067,
+        "values": {
+          "Closed with explanation": {
+            "all": 16134,
+            "text": 1959
+          },
+          "Closed with monetary relief": {
+            "all": 30,
+            "text": 11
+          },
+          "Closed with non-monetary relief": {
+            "all": 6526,
+            "text": 708
+          },
+          "In progress": {
+            "all": 1303,
+            "text": 1
+          },
+          "Untimely response": {
+            "all": 656,
+            "text": 48
+          }
+        }
+      },
+      "Issue": {
+        "difference": 0.154,
+        "values": {
+          "Attempts to collect debt not owed": {
+            "all": 11273,
+            "text": 1250
+          },
+          "Communication tactics": {
+            "all": 711,
+            "text": 137
+          },
+          "Electronic communications": {
+            "all": 434,
+            "text": 72
+          },
+          "False statements or representation": {
+            "all": 2257,
+            "text": 359
+          },
+          "Threatened to contact someone or share information improperly": {
+            "all": 249,
+            "text": 35
+          },
+          "Took or threatened to take negative or legal action": {
+            "all": 5532,
+            "text": 193
+          },
+          "Written notification about debt": {
+            "all": 4193,
+            "text": 681
+          }
+        }
+      },
+      "State": {
+        "difference": 0.11,
+        "values": {
+          "(none)": {
+            "all": 28,
+            "text": 3
+          },
+          "(rare or long values)": {
+            "all": 6,
+            "text": 1
+          },
+          "AK": {
+            "all": 15,
+            "text": 5
+          },
+          "AL": {
+            "all": 761,
+            "text": 82
+          },
+          "AR": {
+            "all": 195,
+            "text": 29
+          },
+          "AZ": {
+            "all": 867,
+            "text": 42
+          },
+          "CA": {
+            "all": 1851,
+            "text": 207
+          },
+          "CO": {
+            "all": 209,
+            "text": 43
+          },
+          "CT": {
+            "all": 131,
+            "text": 15
+          },
+          "DC": {
+            "all": 46,
+            "text": 7
+          },
+          "DE": {
+            "all": 86,
+            "text": 7
+          },
+          "FL": {
+            "all": 2516,
+            "text": 261
+          },
+          "GA": {
+            "all": 1823,
+            "text": 201
+          },
+          "HI": {
+            "all": 29,
+            "text": 4
+          },
+          "IA": {
+            "all": 51,
+            "text": 9
+          },
+          "ID": {
+            "all": 63,
+            "text": 7
+          },
+          "IL": {
+            "all": 924,
+            "text": 106
+          },
+          "IN": {
+            "all": 277,
+            "text": 42
+          },
+          "KS": {
+            "all": 78,
+            "text": 9
+          },
+          "KY": {
+            "all": 94,
+            "text": 17
+          },
+          "LA": {
+            "all": 705,
+            "text": 99
+          },
+          "MA": {
+            "all": 256,
+            "text": 16
+          },
+          "MD": {
+            "all": 478,
+            "text": 80
+          },
+          "ME": {
+            "all": 10,
+            "text": 0
+          },
+          "MI": {
+            "all": 518,
+            "text": 72
+          },
+          "MN": {
+            "all": 106,
+            "text": 22
+          },
+          "MO": {
+            "all": 326,
+            "text": 44
+          },
+          "MS": {
+            "all": 520,
+            "text": 28
+          },
+          "MT": {
+            "all": 26,
+            "text": 3
+          },
+          "NC": {
+            "all": 1080,
+            "text": 127
+          },
+          "ND": {
+            "all": 17,
+            "text": 0
+          },
+          "NE": {
+            "all": 38,
+            "text": 6
+          },
+          "NH": {
+            "all": 22,
+            "text": 1
+          },
+          "NJ": {
+            "all": 599,
+            "text": 98
+          },
+          "NM": {
+            "all": 76,
+            "text": 10
+          },
+          "NV": {
+            "all": 295,
+            "text": 29
+          },
+          "NY": {
+            "all": 948,
+            "text": 88
+          },
+          "OH": {
+            "all": 554,
+            "text": 97
+          },
+          "OK": {
+            "all": 171,
+            "text": 29
+          },
+          "OR": {
+            "all": 117,
+            "text": 23
+          },
+          "PA": {
+            "all": 824,
+            "text": 104
+          },
+          "PR": {
+            "all": 22,
+            "text": 1
+          },
+          "RI": {
+            "all": 68,
+            "text": 6
+          },
+          "SC": {
+            "all": 745,
+            "text": 65
+          },
+          "SD": {
+            "all": 13,
+            "text": 0
+          },
+          "TN": {
+            "all": 375,
+            "text": 41
+          },
+          "TX": {
+            "all": 4539,
+            "text": 373
+          },
+          "UNITED STATES MINOR OUTLYING ISLANDS": {
+            "all": 6,
+            "text": 0
+          },
+          "UT": {
+            "all": 91,
+            "text": 12
+          },
+          "VA": {
+            "all": 457,
+            "text": 55
+          },
+          "VT": {
+            "all": 10,
+            "text": 0
+          },
+          "WA": {
+            "all": 387,
+            "text": 77
+          },
+          "WI": {
+            "all": 164,
+            "text": 23
+          },
+          "WV": {
+            "all": 29,
+            "text": 1
+          },
+          "WY": {
+            "all": 7,
+            "text": 0
+          }
+        }
+      },
+      "Submitted via": {
+        "difference": 0.008,
+        "values": {
+          "Phone": {
+            "all": 102,
+            "text": 0
+          },
+          "Postal mail": {
+            "all": 61,
+            "text": 0
+          },
+          "Referral": {
+            "all": 42,
+            "text": 0
+          },
+          "Web": {
+            "all": 24444,
+            "text": 2727
+          }
+        }
+      },
+      "Tags": {
+        "difference": 0.053,
+        "values": {
+          "(none)": {
+            "all": 23357,
+            "text": 2439
+          },
+          "Older American": {
+            "all": 275,
+            "text": 67
+          },
+          "Older American, Servicemember": {
+            "all": 72,
+            "text": 23
+          },
+          "Servicemember": {
+            "all": 945,
+            "text": 198
+          }
+        }
+      },
+      "Timely response?": {
+        "difference": 0.006,
+        "values": {
+          "No": {
+            "all": 816,
+            "text": 73
+          },
+          "Yes": {
+            "all": 23833,
+            "text": 2654
+          }
+        }
+      }
+    },
+    "Debt or credit management": {
+      "Company response to consumer": {
+        "difference": 0.126,
+        "values": {
+          "Closed with explanation": {
+            "all": 257,
+            "text": 65
+          },
+          "Closed with monetary relief": {
+            "all": 9,
+            "text": 4
+          },
+          "Closed with non-monetary relief": {
+            "all": 56,
+            "text": 20
+          },
+          "In progress": {
+            "all": 48,
+            "text": 0
+          },
+          "Untimely response": {
+            "all": 11,
+            "text": 4
+          }
+        }
+      },
+      "Issue": {
+        "difference": 0.112,
+        "values": {
+          "Charged upfront or unexpected fees": {
+            "all": 52,
+            "text": 11
+          },
+          "Confusing or misleading advertising or marketing": {
+            "all": 45,
+            "text": 11
+          },
+          "Confusing or missing disclosures": {
+            "all": 106,
+            "text": 33
+          },
+          "Didn't provide services promised": {
+            "all": 81,
+            "text": 23
+          },
+          "Problem with customer service": {
+            "all": 49,
+            "text": 12
+          },
+          "Unauthorized withdrawals or charges": {
+            "all": 48,
+            "text": 3
+          }
+        }
+      },
+      "State": {
+        "difference": 0.152,
+        "values": {
+          "(none)": {
+            "all": 1,
+            "text": 0
+          },
+          "(rare or long values)": {
+            "all": 37,
+            "text": 9
+          },
+          "AZ": {
+            "all": 9,
+            "text": 2
+          },
+          "CA": {
+            "all": 38,
+            "text": 9
+          },
+          "CT": {
+            "all": 6,
+            "text": 2
+          },
+          "FL": {
+            "all": 70,
+            "text": 12
+          },
+          "GA": {
+            "all": 19,
+            "text": 6
+          },
+          "IL": {
+            "all": 12,
+            "text": 3
+          },
+          "IN": {
+            "all": 5,
+            "text": 2
+          },
+          "LA": {
+            "all": 10,
+            "text": 0
+          },
+          "MA": {
+            "all": 6,
+            "text": 1
+          },
+          "MI": {
+            "all": 15,
+            "text": 1
+          },
+          "MO": {
+            "all": 12,
+            "text": 3
+          },
+          "NC": {
+            "all": 22,
+            "text": 8
+          },
+          "NJ": {
+            "all": 10,
+            "text": 4
+          },
+          "NV": {
+            "all": 7,
+            "text": 2
+          },
+          "NY": {
+            "all": 9,
+            "text": 1
+          },
+          "OH": {
+            "all": 10,
+            "text": 2
+          },
+          "PA": {
+            "all": 13,
+            "text": 3
+          },
+          "SC": {
+            "all": 7,
+            "text": 5
+          },
+          "TN": {
+            "all": 6,
+            "text": 4
+          },
+          "TX": {
+            "all": 41,
+            "text": 11
+          },
+          "VA": {
+            "all": 10,
+            "text": 2
+          },
+          "WI": {
+            "all": 6,
+            "text": 1
+          }
+        }
+      },
+      "Submitted via": {
+        "difference": 0.029,
+        "values": {
+          "(rare or long values)": {
+            "all": 3,
+            "text": 0
+          },
+          "Phone": {
+            "all": 8,
+            "text": 0
+          },
+          "Web": {
+            "all": 370,
+            "text": 93
+          }
+        }
+      },
+      "Tags": {
+        "difference": 0.027,
+        "values": {
+          "(none)": {
+            "all": 315,
+            "text": 76
+          },
+          "Older American": {
+            "all": 27,
+            "text": 5
+          },
+          "Older American, Servicemember": {
+            "all": 6,
+            "text": 4
+          },
+          "Servicemember": {
+            "all": 33,
+            "text": 8
+          }
+        }
+      },
+      "Timely response?": {
+        "difference": 0.033,
+        "values": {
+          "No": {
+            "all": 16,
+            "text": 7
+          },
+          "Yes": {
+            "all": 365,
+            "text": 86
+          }
+        }
+      }
+    },
+    "Money transfer, virtual currency, or money service": {
+      "Company response to consumer": {
+        "difference": 0.065,
+        "values": {
+          "Closed with explanation": {
+            "all": 2709,
+            "text": 660
+          },
+          "Closed with monetary relief": {
+            "all": 259,
+            "text": 58
+          },
+          "Closed with non-monetary relief": {
+            "all": 287,
+            "text": 61
+          },
+          "In progress": {
+            "all": 206,
+            "text": 0
+          },
+          "Untimely response": {
+            "all": 13,
+            "text": 2
+          }
+        }
+      },
+      "Issue": {
+        "difference": 0.049,
+        "values": {
+          "Confusing or misleading advertising or marketing": {
+            "all": 22,
+            "text": 6
+          },
+          "Confusing or missing disclosures": {
+            "all": 87,
+            "text": 17
+          },
+          "Fraud or scam": {
+            "all": 1036,
+            "text": 247
+          },
+          "Lost or stolen money order": {
+            "all": 30,
+            "text": 5
+          },
+          "Managing, opening, or closing your mobile wallet account": {
+            "all": 262,
+            "text": 50
+          },
+          "Money was not available when promised": {
+            "all": 249,
+            "text": 56
+          },
+          "Other service problem": {
+            "all": 78,
+            "text": 25
+          },
+          "Other transaction problem": {
+            "all": 511,
+            "text": 111
+          },
+          "Overdraft, savings, or rewards features": {
+            "all": 13,
+            "text": 3
+          },
+          "Problem adding money": {
+            "all": 13,
+            "text": 2
+          },
+          "Problem with customer service": {
+            "all": 57,
+            "text": 17
+          },
+          "Trouble accessing funds in your mobile or digital wallet": {
+            "all": 400,
+            "text": 95
+          },
+          "Unauthorized transactions or other transaction problem": {
+            "all": 649,
+            "text": 126
+          },
+          "Unexpected or other fees": {
+            "all": 38,
+            "text": 11
+          },
+          "Wrong amount charged or received": {
+            "all": 29,
+            "text": 10
+          }
+        }
+      },
+      "State": {
+        "difference": 0.084,
+        "values": {
+          "(none)": {
+            "all": 101,
+            "text": 28
+          },
+          "(rare or long values)": {
+            "all": 9,
+            "text": 2
+          },
+          "AK": {
+            "all": 9,
+            "text": 1
+          },
+          "AL": {
+            "all": 56,
+            "text": 7
+          },
+          "AR": {
+            "all": 24,
+            "text": 4
+          },
+          "AZ": {
+            "all": 57,
+            "text": 15
+          },
+          "CA": {
+            "all": 434,
+            "text": 86
+          },
+          "CO": {
+            "all": 56,
+            "text": 7
+          },
+          "CT": {
+            "all": 35,
+            "text": 9
+          },
+          "DC": {
+            "all": 18,
+            "text": 3
+          },
+          "DE": {
+            "all": 11,
+            "text": 2
+          },
+          "FL": {
+            "all": 302,
+            "text": 72
+          },
+          "GA": {
+            "all": 144,
+            "text": 41
+          },
+          "HI": {
+            "all": 12,
+            "text": 3
+          },
+          "IA": {
+            "all": 19,
+            "text": 6
+          },
+          "ID": {
+            "all": 16,
+            "text": 5
+          },
+          "IL": {
+            "all": 119,
+            "text": 34
+          },
+          "IN": {
+            "all": 52,
+            "text": 10
+          },
+          "KS": {
+            "all": 21,
+            "text": 6
+          },
+          "KY": {
+            "all": 30,
+            "text": 9
+          },
+          "LA": {
+            "all": 33,
+            "text": 9
+          },
+          "MA": {
+            "all": 56,
+            "text": 14
+          },
+          "MD": {
+            "all": 71,
+            "text": 15
+          },
+          "ME": {
+            "all": 6,
+            "text": 0
+          },
+          "MI": {
+            "all": 81,
+            "text": 15
+          },
+          "MN": {
+            "all": 37,
+            "text": 10
+          },
+          "MO": {
+            "all": 54,
+            "text": 13
+          },
+          "MS": {
+            "all": 34,
+            "text": 8
+          },
+          "NC": {
+            "all": 146,
+            "text": 35
+          },
+          "NE": {
+            "all": 12,
+            "text": 4
+          },
+          "NH": {
+            "all": 9,
+            "text": 2
+          },
+          "NJ": {
+            "all": 108,
+            "text": 21
+          },
+          "NM": {
+            "all": 16,
+            "text": 3
+          },
+          "NV": {
+            "all": 40,
+            "text": 10
+          },
+          "NY": {
+            "all": 224,
+            "text": 44
+          },
+          "OH": {
+            "all": 96,
+            "text": 21
+          },
+          "OK": {
+            "all": 32,
+            "text": 8
+          },
+          "OR": {
+            "all": 42,
+            "text": 5
+          },
+          "PA": {
+            "all": 125,
+            "text": 27
+          },
+          "PR": {
+            "all": 8,
+            "text": 3
+          },
+          "SC": {
+            "all": 65,
+            "text": 21
+          },
+          "SD": {
+            "all": 9,
+            "text": 2
+          },
+          "TN": {
+            "all": 72,
+            "text": 16
+          },
+          "TX": {
+            "all": 350,
+            "text": 85
+          },
+          "UT": {
+            "all": 21,
+            "text": 3
+          },
+          "VA": {
+            "all": 74,
+            "text": 9
+          },
+          "VT": {
+            "all": 8,
+            "text": 5
+          },
+          "WA": {
+            "all": 72,
+            "text": 13
+          },
+          "WI": {
+            "all": 30,
+            "text": 4
+          },
+          "WV": {
+            "all": 9,
+            "text": 3
+          },
+          "WY": {
+            "all": 9,
+            "text": 3
+          }
+        }
+      },
+      "Submitted via": {
+        "difference": 0.042,
+        "values": {
+          "Phone": {
+            "all": 107,
+            "text": 0
+          },
+          "Postal mail": {
+            "all": 17,
+            "text": 0
+          },
+          "Referral": {
+            "all": 22,
+            "text": 0
+          },
+          "Web": {
+            "all": 3328,
+            "text": 781
+          }
+        }
+      },
+      "Tags": {
+        "difference": 0.028,
+        "values": {
+          "(none)": {
+            "all": 2930,
+            "text": 637
+          },
+          "Older American": {
+            "all": 252,
+            "text": 65
+          },
+          "Older American, Servicemember": {
+            "all": 55,
+            "text": 18
+          },
+          "Servicemember": {
+            "all": 237,
+            "text": 61
+          }
+        }
+      },
+      "Timely response?": {
+        "difference": 0.001,
+        "values": {
+          "No": {
+            "all": 42,
+            "text": 10
+          },
+          "Yes": {
+            "all": 3432,
+            "text": 771
+          }
+        }
+      }
+    },
+    "Mortgage": {
+      "Company response to consumer": {
+        "difference": 0.127,
+        "values": {
+          "Closed with explanation": {
+            "all": 2440,
+            "text": 656
+          },
+          "Closed with monetary relief": {
+            "all": 47,
+            "text": 15
+          },
+          "Closed with non-monetary relief": {
+            "all": 102,
+            "text": 32
+          },
+          "In progress": {
+            "all": 393,
+            "text": 1
+          },
+          "Untimely response": {
+            "all": 84,
+            "text": 24
+          }
+        }
+      },
+      "Issue": {
+        "difference": 0.036,
+        "values": {
+          "(rare or long values)": {
+            "all": 6,
+            "text": 3
+          },
+          "Applying for a mortgage or refinancing an existing mortgage": {
+            "all": 255,
+            "text": 56
+          },
+          "Closing on a mortgage": {
+            "all": 244,
+            "text": 59
+          },
+          "Improper use of your report": {
+            "all": 11,
+            "text": 2
+          },
+          "Incorrect information on your report": {
+            "all": 91,
+            "text": 18
+          },
+          "Problem with a company's investigation into an existing problem": {
+            "all": 51,
+            "text": 15
+          },
+          "Struggling to pay mortgage": {
+            "all": 937,
+            "text": 205
+          },
+          "Trouble during payment process": {
+            "all": 1471,
+            "text": 370
+          }
+        }
+      },
+      "State": {
+        "difference": 0.081,
+        "values": {
+          "(none)": {
+            "all": 2,
+            "text": 1
+          },
+          "(rare or long values)": {
+            "all": 7,
+            "text": 5
+          },
+          "AL": {
+            "all": 43,
+            "text": 10
+          },
+          "AR": {
+            "all": 28,
+            "text": 9
+          },
+          "AZ": {
+            "all": 69,
+            "text": 15
+          },
+          "CA": {
+            "all": 383,
+            "text": 72
+          },
+          "CO": {
+            "all": 74,
+            "text": 19
+          },
+          "CT": {
+            "all": 30,
+            "text": 5
+          },
+          "DC": {
+            "all": 9,
+            "text": 2
+          },
+          "DE": {
+            "all": 11,
+            "text": 3
+          },
+          "FL": {
+            "all": 310,
+            "text": 71
+          },
+          "GA": {
+            "all": 187,
+            "text": 49
+          },
+          "HI": {
+            "all": 9,
+            "text": 2
+          },
+          "IA": {
+            "all": 13,
+            "text": 1
+          },
+          "ID": {
+            "all": 13,
+            "text": 3
+          },
+          "IL": {
+            "all": 101,
+            "text": 20
+          },
+          "IN": {
+            "all": 61,
+            "text": 10
+          },
+          "KS": {
+            "all": 22,
+            "text": 4
+          },
+          "KY": {
+            "all": 19,
+            "text": 3
+          },
+          "LA": {
+            "all": 49,
+            "text": 11
+          },
+          "MA": {
+            "all": 49,
+            "text": 7
+          },
+          "MD": {
+            "all": 99,
+            "text": 24
+          },
+          "ME": {
+            "all": 10,
+            "text": 3
+          },
+          "MI": {
+            "all": 67,
+            "text": 16
+          },
+          "MN": {
+            "all": 37,
+            "text": 6
+          },
+          "MO": {
+            "all": 50,
+            "text": 13
+          },
+          "MS": {
+            "all": 20,
+            "text": 5
+          },
+          "MT": {
+            "all": 7,
+            "text": 3
+          },
+          "NC": {
+            "all": 91,
+            "text": 28
+          },
+          "NE": {
+            "all": 8,
+            "text": 3
+          },
+          "NH": {
+            "all": 7,
+            "text": 1
+          },
+          "NJ": {
+            "all": 86,
+            "text": 19
+          },
+          "NM": {
+            "all": 15,
+            "text": 3
+          },
+          "NV": {
+            "all": 28,
+            "text": 3
+          },
+          "NY": {
+            "all": 106,
+            "text": 24
+          },
+          "OH": {
+            "all": 94,
+            "text": 27
+          },
+          "OK": {
+            "all": 34,
+            "text": 9
+          },
+          "OR": {
+            "all": 27,
+            "text": 7
+          },
+          "PA": {
+            "all": 112,
+            "text": 32
+          },
+          "PR": {
+            "all": 7,
+            "text": 1
+          },
+          "RI": {
+            "all": 13,
+            "text": 6
+          },
+          "SC": {
+            "all": 57,
+            "text": 13
+          },
+          "SD": {
+            "all": 5,
+            "text": 0
+          },
+          "TN": {
+            "all": 60,
+            "text": 12
+          },
+          "TX": {
+            "all": 312,
+            "text": 75
+          },
+          "UT": {
+            "all": 26,
+            "text": 8
+          },
+          "VA": {
+            "all": 106,
+            "text": 35
+          },
+          "WA": {
+            "all": 65,
+            "text": 22
+          },
+          "WI": {
+            "all": 23,
+            "text": 7
+          },
+          "WV": {
+            "all": 5,
+            "text": 1
+          }
+        }
+      },
+      "Submitted via": {
+        "difference": 0.096,
+        "values": {
+          "Phone": {
+            "all": 151,
+            "text": 0
+          },
+          "Postal mail": {
+            "all": 51,
+            "text": 0
+          },
+          "Referral": {
+            "all": 91,
+            "text": 0
+          },
+          "Web": {
+            "all": 2773,
+            "text": 728
+          }
+        }
+      },
+      "Tags": {
+        "difference": 0.055,
+        "values": {
+          "(none)": {
+            "all": 2217,
+            "text": 492
+          },
+          "Older American": {
+            "all": 279,
+            "text": 61
+          },
+          "Older American, Servicemember": {
+            "all": 110,
+            "text": 26
+          },
+          "Servicemember": {
+            "all": 460,
+            "text": 149
+          }
+        }
+      },
+      "Timely response?": {
+        "difference": 0.01,
+        "values": {
+          "No": {
+            "all": 118,
+            "text": 35
+          },
+          "Yes": {
+            "all": 2948,
+            "text": 693
+          }
+        }
+      }
+    },
+    "Payday loan, title loan, personal loan, or advance loan": {
+      "Company response to consumer": {
+        "difference": 0.064,
+        "values": {
+          "Closed with explanation": {
+            "all": 1561,
+            "text": 368
+          },
+          "Closed with monetary relief": {
+            "all": 37,
+            "text": 16
+          },
+          "Closed with non-monetary relief": {
+            "all": 51,
+            "text": 17
+          },
+          "In progress": {
+            "all": 114,
+            "text": 0
+          },
+          "Untimely response": {
+            "all": 30,
+            "text": 9
+          }
+        }
+      },
+      "Issue": {
+        "difference": 0.086,
+        "values": {
+          "(rare or long values)": {
+            "all": 5,
+            "text": 1
+          },
+          "Can't contact lender or servicer": {
+            "all": 25,
+            "text": 8
+          },
+          "Can't stop withdrawals from your bank account": {
+            "all": 39,
+            "text": 9
+          },
+          "Charged fees or interest you didn't expect": {
+            "all": 419,
+            "text": 109
+          },
+          "Confusing or misleading advertising or marketing": {
+            "all": 8,
+            "text": 3
+          },
+          "Confusing or missing disclosures": {
+            "all": 7,
+            "text": 1
+          },
+          "Credit limit changed": {
+            "all": 6,
+            "text": 1
+          },
+          "Credit monitoring or identity theft protection services": {
+            "all": 10,
+            "text": 2
+          },
+          "Getting a line of credit": {
+            "all": 43,
+            "text": 6
+          },
+          "Getting the loan": {
+            "all": 168,
+            "text": 37
+          },
+          "Improper use of your report": {
+            "all": 11,
+            "text": 1
+          },
+          "Incorrect information on your report": {
+            "all": 103,
+            "text": 10
+          },
+          "Issues with repayment": {
+            "all": 15,
+            "text": 3
+          },
+          "Loan payment wasn't credited to your account": {
+            "all": 11,
+            "text": 3
+          },
+          "Money was taken from your bank account on the wrong day or for the wrong amount": {
+            "all": 15,
+            "text": 3
+          },
+          "Problem when making payments": {
+            "all": 307,
+            "text": 77
+          },
+          "Problem with a company's investigation into an existing problem": {
+            "all": 35,
+            "text": 9
+          },
+          "Problem with additional add-on products or services": {
+            "all": 156,
+            "text": 36
+          },
+          "Problem with cash advance": {
+            "all": 11,
+            "text": 0
+          },
+          "Problem with fraud alerts or security freezes": {
+            "all": 5,
+            "text": 2
+          },
+          "Problem with the payoff process at the end of the loan": {
+            "all": 110,
+            "text": 30
+          },
+          "Problems receiving the advance": {
+            "all": 7,
+            "text": 1
+          },
+          "Received a loan you didn't apply for": {
+            "all": 20,
+            "text": 8
+          },
+          "Struggling to pay your loan": {
+            "all": 206,
+            "text": 43
+          },
+          "Unable to get your credit report or credit score": {
+            "all": 9,
+            "text": 0
+          },
+          "Unexpected fees": {
+            "all": 11,
+            "text": 2
+          },
+          "Vehicle was repossessed or sold the vehicle": {
+            "all": 17,
+            "text": 1
+          },
+          "Was approved for a loan, but didn't receive the money": {
+            "all": 14,
+            "text": 4
+          }
+        }
+      },
+      "State": {
+        "difference": 0.106,
+        "values": {
+          "(none)": {
+            "all": 3,
+            "text": 0
+          },
+          "(rare or long values)": {
+            "all": 35,
+            "text": 8
+          },
+          "AL": {
+            "all": 24,
+            "text": 7
+          },
+          "AR": {
+            "all": 15,
+            "text": 4
+          },
+          "AZ": {
+            "all": 56,
+            "text": 10
+          },
+          "CA": {
+            "all": 223,
+            "text": 54
+          },
+          "CO": {
+            "all": 25,
+            "text": 3
+          },
+          "CT": {
+            "all": 15,
+            "text": 4
+          },
+          "DE": {
+            "all": 9,
+            "text": 0
+          },
+          "FL": {
+            "all": 184,
+            "text": 45
+          },
+          "GA": {
+            "all": 79,
+            "text": 10
+          },
+          "HI": {
+            "all": 8,
+            "text": 0
+          },
+          "IA": {
+            "all": 10,
+            "text": 2
+          },
+          "ID": {
+            "all": 6,
+            "text": 1
+          },
+          "IL": {
+            "all": 56,
+            "text": 17
+          },
+          "IN": {
+            "all": 29,
+            "text": 9
+          },
+          "KS": {
+            "all": 12,
+            "text": 4
+          },
+          "KY": {
+            "all": 27,
+            "text": 5
+          },
+          "LA": {
+            "all": 34,
+            "text": 6
+          },
+          "MA": {
+            "all": 14,
+            "text": 5
+          },
+          "MD": {
+            "all": 35,
+            "text": 8
+          },
+          "MI": {
+            "all": 45,
+            "text": 10
+          },
+          "MN": {
+            "all": 13,
+            "text": 4
+          },
+          "MO": {
+            "all": 22,
+            "text": 9
+          },
+          "MS": {
+            "all": 17,
+            "text": 4
+          },
+          "NC": {
+            "all": 59,
+            "text": 11
+          },
+          "NJ": {
+            "all": 52,
+            "text": 16
+          },
+          "NM": {
+            "all": 9,
+            "text": 5
+          },
+          "NV": {
+            "all": 23,
+            "text": 3
+          },
+          "NY": {
+            "all": 65,
+            "text": 19
+          },
+          "OH": {
+            "all": 66,
+            "text": 13
+          },
+          "OK": {
+            "all": 30,
+            "text": 6
+          },
+          "OR": {
+            "all": 29,
+            "text": 4
+          },
+          "PA": {
+            "all": 57,
+            "text": 9
+          },
+          "PR": {
+            "all": 5,
+            "text": 0
+          },
+          "RI": {
+            "all": 6,
+            "text": 1
+          },
+          "SC": {
+            "all": 43,
+            "text": 9
+          },
+          "TN": {
+            "all": 39,
+            "text": 7
+          },
+          "TX": {
+            "all": 223,
+            "text": 57
+          },
+          "UT": {
+            "all": 10,
+            "text": 1
+          },
+          "VA": {
+            "all": 36,
+            "text": 9
+          },
+          "WA": {
+            "all": 29,
+            "text": 9
+          },
+          "WI": {
+            "all": 16,
+            "text": 2
+          }
+        }
+      },
+      "Submitted via": {
+        "difference": 0.055,
+        "values": {
+          "Phone": {
+            "all": 65,
+            "text": 0
+          },
+          "Postal mail": {
+            "all": 8,
+            "text": 0
+          },
+          "Referral": {
+            "all": 25,
+            "text": 0
+          },
+          "Web": {
+            "all": 1695,
+            "text": 410
+          }
+        }
+      },
+      "Tags": {
+        "difference": 0.044,
+        "values": {
+          "(none)": {
+            "all": 1461,
+            "text": 316
+          },
+          "Older American": {
+            "all": 127,
+            "text": 29
+          },
+          "Older American, Servicemember": {
+            "all": 38,
+            "text": 11
+          },
+          "Servicemember": {
+            "all": 167,
+            "text": 54
+          }
+        }
+      },
+      "Timely response?": {
+        "difference": 0.011,
+        "values": {
+          "No": {
+            "all": 64,
+            "text": 19
+          },
+          "Yes": {
+            "all": 1729,
+            "text": 391
+          }
+        }
+      }
+    },
+    "Prepaid card": {
+      "Company response to consumer": {
+        "difference": 0.117,
+        "values": {
+          "Closed with explanation": {
+            "all": 401,
+            "text": 117
+          },
+          "Closed with monetary relief": {
+            "all": 40,
+            "text": 6
+          },
+          "Closed with non-monetary relief": {
+            "all": 41,
+            "text": 10
+          },
+          "In progress": {
+            "all": 13,
+            "text": 0
+          },
+          "Untimely response": {
+            "all": 35,
+            "text": 1
+          }
+        }
+      },
+      "Issue": {
+        "difference": 0.09,
+        "values": {
+          "(rare or long values)": {
+            "all": 2,
+            "text": 1
+          },
+          "Advertising": {
+            "all": 7,
+            "text": 1
+          },
+          "Problem getting a card or closing an account": {
+            "all": 93,
+            "text": 26
+          },
+          "Problem with a purchase or transfer": {
+            "all": 207,
+            "text": 41
+          },
+          "Trouble using the card": {
+            "all": 162,
+            "text": 47
+          },
+          "Unexpected or other fees": {
+            "all": 59,
+            "text": 18
+          }
+        }
+      },
+      "State": {
+        "difference": 0.159,
+        "values": {
+          "(none)": {
+            "all": 1,
+            "text": 1
+          },
+          "(rare or long values)": {
+            "all": 46,
+            "text": 13
+          },
+          "AL": {
+            "all": 21,
+            "text": 0
+          },
+          "AZ": {
+            "all": 13,
+            "text": 1
+          },
+          "CA": {
+            "all": 91,
+            "text": 22
+          },
+          "CO": {
+            "all": 10,
+            "text": 4
+          },
+          "CT": {
+            "all": 5,
+            "text": 1
+          },
+          "FL": {
+            "all": 24,
+            "text": 6
+          },
+          "GA": {
+            "all": 21,
+            "text": 4
+          },
+          "IL": {
+            "all": 20,
+            "text": 9
+          },
+          "IN": {
+            "all": 8,
+            "text": 2
+          },
+          "LA": {
+            "all": 9,
+            "text": 4
+          },
+          "MA": {
+            "all": 7,
+            "text": 1
+          },
+          "MD": {
+            "all": 12,
+            "text": 4
+          },
+          "MI": {
+            "all": 19,
+            "text": 4
+          },
+          "MO": {
+            "all": 15,
+            "text": 4
+          },
+          "MS": {
+            "all": 7,
+            "text": 0
+          },
+          "NC": {
+            "all": 6,
+            "text": 5
+          },
+          "NJ": {
+            "all": 25,
+            "text": 7
+          },
+          "NV": {
+            "all": 7,
+            "text": 1
+          },
+          "NY": {
+            "all": 44,
+            "text": 13
+          },
+          "OH": {
+            "all": 9,
+            "text": 4
+          },
+          "PA": {
+            "all": 21,
+            "text": 5
+          },
+          "SC": {
+            "all": 9,
+            "text": 4
+          },
+          "TN": {
+            "all": 17,
+            "text": 5
+          },
+          "TX": {
+            "all": 37,
+            "text": 7
+          },
+          "VA": {
+            "all": 12,
+            "text": 1
+          },
+          "WA": {
+            "all": 9,
+            "text": 0
+          },
+          "WI": {
+            "all": 5,
+            "text": 2
+          }
+        }
+      },
+      "Submitted via": {
+        "difference": 0.142,
+        "values": {
+          "Phone": {
+            "all": 63,
+            "text": 0
+          },
+          "Postal mail": {
+            "all": 7,
+            "text": 0
+          },
+          "Referral": {
+            "all": 5,
+            "text": 0
+          },
+          "Web": {
+            "all": 455,
+            "text": 134
+          }
+        }
+      },
+      "Tags": {
+        "difference": 0.042,
+        "values": {
+          "(none)": {
+            "all": 459,
+            "text": 115
+          },
+          "Older American": {
+            "all": 31,
+            "text": 4
+          },
+          "Older American, Servicemember": {
+            "all": 15,
+            "text": 3
+          },
+          "Servicemember": {
+            "all": 25,
+            "text": 12
+          }
+        }
+      },
+      "Timely response?": {
+        "difference": 0.042,
+        "values": {
+          "No": {
+            "all": 42,
+            "text": 5
+          },
+          "Yes": {
+            "all": 488,
+            "text": 129
+          }
+        }
+      }
+    },
+    "Student loan": {
+      "Company response to consumer": {
+        "difference": 0.18,
+        "values": {
+          "Closed with explanation": {
+            "all": 1059,
+            "text": 186
+          },
+          "Closed with monetary relief": {
+            "all": 7,
+            "text": 2
+          },
+          "Closed with non-monetary relief": {
+            "all": 25,
+            "text": 1
+          },
+          "In progress": {
+            "all": 314,
+            "text": 2
+          },
+          "Untimely response": {
+            "all": 382,
+            "text": 119
+          }
+        }
+      },
+      "Issue": {
+        "difference": 0.084,
+        "values": {
+          "(rare or long values)": {
+            "all": 4,
+            "text": 1
+          },
+          "Credit monitoring or identity theft protection services": {
+            "all": 8,
+            "text": 2
+          },
+          "Dealing with your lender or servicer": {
+            "all": 1116,
+            "text": 211
+          },
+          "Getting a loan": {
+            "all": 30,
+            "text": 6
+          },
+          "Improper use of your report": {
+            "all": 18,
+            "text": 2
+          },
+          "Incorrect information on your report": {
+            "all": 205,
+            "text": 15
+          },
+          "Issue with income share agreement": {
+            "all": 8,
+            "text": 1
+          },
+          "Problem with a company's investigation into an existing problem": {
+            "all": 63,
+            "text": 7
+          },
+          "Problem with fraud alerts or security freezes": {
+            "all": 5,
+            "text": 1
+          },
+          "Struggling to repay your loan": {
+            "all": 330,
+            "text": 64
+          }
+        }
+      },
+      "State": {
+        "difference": 0.129,
+        "values": {
+          "(none)": {
+            "all": 10,
+            "text": 1
+          },
+          "(rare or long values)": {
+            "all": 22,
+            "text": 3
+          },
+          "AL": {
+            "all": 50,
+            "text": 8
+          },
+          "AR": {
+            "all": 15,
+            "text": 1
+          },
+          "AZ": {
+            "all": 28,
+            "text": 5
+          },
+          "CA": {
+            "all": 162,
+            "text": 30
+          },
+          "CO": {
+            "all": 26,
+            "text": 9
+          },
+          "CT": {
+            "all": 23,
+            "text": 5
+          },
+          "DC": {
+            "all": 11,
+            "text": 0
+          },
+          "DE": {
+            "all": 10,
+            "text": 0
+          },
+          "FL": {
+            "all": 116,
+            "text": 23
+          },
+          "GA": {
+            "all": 104,
+            "text": 11
+          },
+          "HI": {
+            "all": 13,
+            "text": 0
+          },
+          "IA": {
+            "all": 9,
+            "text": 1
+          },
+          "IL": {
+            "all": 91,
+            "text": 12
+          },
+          "IN": {
+            "all": 41,
+            "text": 11
+          },
+          "KS": {
+            "all": 10,
+            "text": 1
+          },
+          "KY": {
+            "all": 14,
+            "text": 6
+          },
+          "LA": {
+            "all": 34,
+            "text": 4
+          },
+          "MA": {
+            "all": 37,
+            "text": 8
+          },
+          "MD": {
+            "all": 37,
+            "text": 5
+          },
+          "ME": {
+            "all": 7,
+            "text": 1
+          },
+          "MI": {
+            "all": 57,
+            "text": 4
+          },
+          "MN": {
+            "all": 38,
+            "text": 7
+          },
+          "MO": {
+            "all": 25,
+            "text": 6
+          },
+          "MS": {
+            "all": 14,
+            "text": 2
+          },
+          "MT": {
+            "all": 5,
+            "text": 0
+          },
+          "NC": {
+            "all": 64,
+            "text": 10
+          },
+          "NE": {
+            "all": 5,
+            "text": 1
+          },
+          "NJ": {
+            "all": 57,
+            "text": 11
+          },
+          "NM": {
+            "all": 6,
+            "text": 0
+          },
+          "NV": {
+            "all": 25,
+            "text": 7
+          },
+          "NY": {
+            "all": 104,
+            "text": 22
+          },
+          "OH": {
+            "all": 54,
+            "text": 12
+          },
+          "OK": {
+            "all": 22,
+            "text": 6
+          },
+          "OR": {
+            "all": 16,
+            "text": 5
+          },
+          "PA": {
+            "all": 78,
+            "text": 12
+          },
+          "RI": {
+            "all": 6,
+            "text": 1
+          },
+          "SC": {
+            "all": 39,
+            "text": 6
+          },
+          "TN": {
+            "all": 24,
+            "text": 3
+          },
+          "TX": {
+            "all": 139,
+            "text": 24
+          },
+          "UT": {
+            "all": 14,
+            "text": 3
+          },
+          "VA": {
+            "all": 47,
+            "text": 11
+          },
+          "WA": {
+            "all": 37,
+            "text": 6
+          },
+          "WI": {
+            "all": 23,
+            "text": 3
+          },
+          "WV": {
+            "all": 13,
+            "text": 2
+          },
+          "WY": {
+            "all": 5,
+            "text": 1
+          }
+        }
+      },
+      "Submitted via": {
+        "difference": 0.022,
+        "values": {
+          "Phone": {
+            "all": 18,
+            "text": 0
+          },
+          "Postal mail": {
+            "all": 11,
+            "text": 0
+          },
+          "Referral": {
+            "all": 10,
+            "text": 0
+          },
+          "Web": {
+            "all": 1748,
+            "text": 310
+          }
+        }
+      },
+      "Tags": {
+        "difference": 0.047,
+        "values": {
+          "(none)": {
+            "all": 1576,
+            "text": 261
+          },
+          "Older American": {
+            "all": 42,
+            "text": 5
+          },
+          "Older American, Servicemember": {
+            "all": 8,
+            "text": 2
+          },
+          "Servicemember": {
+            "all": 161,
+            "text": 42
+          }
+        }
+      },
+      "Timely response?": {
+        "difference": 0.182,
+        "values": {
+          "No": {
+            "all": 389,
+            "text": 124
+          },
+          "Yes": {
+            "all": 1398,
+            "text": 186
+          }
+        }
+      }
+    },
+    "Vehicle loan or lease": {
+      "Company response to consumer": {
+        "difference": 0.075,
+        "values": {
+          "Closed with explanation": {
+            "all": 1846,
+            "text": 471
+          },
+          "Closed with monetary relief": {
+            "all": 28,
+            "text": 9
+          },
+          "Closed with non-monetary relief": {
+            "all": 140,
+            "text": 24
+          },
+          "In progress": {
+            "all": 123,
+            "text": 0
+          },
+          "Untimely response": {
+            "all": 21,
+            "text": 5
+          }
+        }
+      },
+      "Issue": {
+        "difference": 0.081,
+        "values": {
+          "(rare or long values)": {
+            "all": 6,
+            "text": 2
+          },
+          "Getting a loan or lease": {
+            "all": 211,
+            "text": 50
+          },
+          "Improper use of your report": {
+            "all": 17,
+            "text": 5
+          },
+          "Incorrect information on your report": {
+            "all": 184,
+            "text": 24
+          },
+          "Managing the loan or lease": {
+            "all": 613,
+            "text": 142
+          },
+          "Problem with a company's investigation into an existing problem": {
+            "all": 72,
+            "text": 7
+          },
+          "Problems at the end of the loan or lease": {
+            "all": 384,
+            "text": 122
+          },
+          "Repossession": {
+            "all": 565,
+            "text": 124
+          },
+          "Struggling to pay your loan": {
+            "all": 101,
+            "text": 32
+          },
+          "Unable to get your credit report or credit score": {
+            "all": 5,
+            "text": 1
+          }
+        }
+      },
+      "State": {
+        "difference": 0.099,
+        "values": {
+          "(none)": {
+            "all": 3,
+            "text": 0
+          },
+          "(rare or long values)": {
+            "all": 14,
+            "text": 1
+          },
+          "AL": {
+            "all": 26,
+            "text": 9
+          },
+          "AR": {
+            "all": 28,
+            "text": 5
+          },
+          "AZ": {
+            "all": 43,
+            "text": 6
+          },
+          "CA": {
+            "all": 199,
+            "text": 45
+          },
+          "CO": {
+            "all": 39,
+            "text": 8
+          },
+          "CT": {
+            "all": 14,
+            "text": 1
+          },
+          "DC": {
+            "all": 8,
+            "text": 3
+          },
+          "DE": {
+            "all": 8,
+            "text": 1
+          },
+          "FL": {
+            "all": 262,
+            "text": 55
+          },
+          "GA": {
+            "all": 130,
+            "text": 39
+          },
+          "HI": {
+            "all": 6,
+            "text": 2
+          },
+          "IA": {
+            "all": 13,
+            "text": 4
+          },
+          "IL": {
+            "all": 89,
+            "text": 24
+          },
+          "IN": {
+            "all": 28,
+            "text": 7
+          },
+          "KS": {
+            "all": 9,
+            "text": 3
+          },
+          "KY": {
+            "all": 23,
+            "text": 6
+          },
+          "LA": {
+            "all": 44,
+            "text": 13
+          },
+          "MA": {
+            "all": 38,
+            "text": 15
+          },
+          "MD": {
+            "all": 61,
+            "text": 7
+          },
+          "MI": {
+            "all": 51,
+            "text": 15
+          },
+          "MN": {
+            "all": 13,
+            "text": 2
+          },
+          "MO": {
+            "all": 18,
+            "text": 4
+          },
+          "MS": {
+            "all": 29,
+            "text": 7
+          },
+          "MT": {
+            "all": 6,
+            "text": 2
+          },
+          "NC": {
+            "all": 103,
+            "text": 16
+          },
+          "ND": {
+            "all": 5,
+            "text": 2
+          },
+          "NE": {
+            "all": 8,
+            "text": 2
+          },
+          "NJ": {
+            "all": 59,
+            "text": 14
+          },
+          "NM": {
+            "all": 15,
+            "text": 3
+          },
+          "NV": {
+            "all": 35,
+            "text": 10
+          },
+          "NY": {
+            "all": 96,
+            "text": 21
+          },
+          "OH": {
+            "all": 86,
+            "text": 20
+          },
+          "OK": {
+            "all": 20,
+            "text": 7
+          },
+          "OR": {
+            "all": 17,
+            "text": 6
+          },
+          "PA": {
+            "all": 85,
+            "text": 22
+          },
+          "RI": {
+            "all": 8,
+            "text": 3
+          },
+          "SC": {
+            "all": 41,
+            "text": 14
+          },
+          "TN": {
+            "all": 36,
+            "text": 8
+          },
+          "TX": {
+            "all": 214,
+            "text": 45
+          },
+          "UT": {
+            "all": 11,
+            "text": 1
+          },
+          "VA": {
+            "all": 53,
+            "text": 16
+          },
+          "VT": {
+            "all": 6,
+            "text": 1
+          },
+          "WA": {
+            "all": 30,
+            "text": 7
+          },
+          "WI": {
+            "all": 20,
+            "text": 6
+          },
+          "WV": {
+            "all": 8,
+            "text": 1
+          }
+        }
+      },
+      "Submitted via": {
+        "difference": 0.062,
+        "values": {
+          "Phone": {
+            "all": 70,
+            "text": 0
+          },
+          "Postal mail": {
+            "all": 17,
+            "text": 0
+          },
+          "Referral": {
+            "all": 46,
+            "text": 0
+          },
+          "Web": {
+            "all": 2025,
+            "text": 509
+          }
+        }
+      },
+      "Tags": {
+        "difference": 0.018,
+        "values": {
+          "(none)": {
+            "all": 1804,
+            "text": 417
+          },
+          "Older American": {
+            "all": 94,
+            "text": 22
+          },
+          "Older American, Servicemember": {
+            "all": 37,
+            "text": 8
+          },
+          "Servicemember": {
+            "all": 223,
+            "text": 62
+          }
+        }
+      },
+      "Timely response?": {
+        "difference": 0.001,
+        "values": {
+          "No": {
+            "all": 37,
+            "text": 8
+          },
+          "Yes": {
+            "all": 2121,
+            "text": 501
+          }
+        }
+      }
+    }
+  },
+  "unparsed_dates": 0
+}
