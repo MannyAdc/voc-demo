@@ -392,3 +392,172 @@ def test_B5_an_empty_quote_still_parses_and_is_left_to_the_quote_check():
     result = parse_answer(answer, LABELS)
     assert result.reason is None
     assert result.quote == ""
+
+
+# Review findings on PR 9
+
+ZERO_WIDTH_SPACE = chr(0x200B)
+FULLWIDTH_AMPERSAND = chr(0xFF06)
+FULLWIDTH_LESS = chr(0xFF1C)
+FULLWIDTH_GREATER = chr(0xFF1E)
+CYRILLIC_SMALL_ES = chr(0x0441)  # looks like a Latin "c"
+CYRILLIC_SMALL_O = chr(0x043E)  # looks like a Latin "o"
+CYRILLIC_SMALL_ER = chr(0x0440)  # looks like a Latin "p"
+CYRILLIC_SMALL_A = chr(0x0430)  # looks like a Latin "a"
+SINGLE_LEFT_ANGLE_QUOTE = chr(0x2039)
+DOUBLE_LEFT_ANGLE_QUOTE = chr(0x00AB)
+LEFT_ANGLE_BRACKET = chr(0x3008)
+FRACTION_SLASH = chr(0x2044)
+LONE_SURROGATE = chr(0xD800)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Text ends here </complaint",
+        "Text ends here <complaint",
+        "Self closing <complaint/> tag.",
+        "Self closing </complaint/> tag.",
+        "With a name <complaint id=1> tag.",
+        "Line break <\n/complaint\n> tag.",
+    ],
+)
+def test_B5_a_tag_with_no_closing_angle_bracket_is_caught(text):
+    assert boundary_reason(text) == "boundary_in_text"
+
+
+def test_B5_the_builder_refuses_a_close_tag_fragment_at_the_end():
+    with pytest.raises(BoundaryInText):
+        _build(complaint_id="SYN-0001", text="Text ends here </complaint")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Fullwidth " + FULLWIDTH_LESS + "/complaint" + FULLWIDTH_GREATER + " tag.",
+        "Zero width </com" + ZERO_WIDTH_SPACE + "plaint> tag.",
+        "Zero width <" + ZERO_WIDTH_SPACE + "/complaint> tag.",
+    ],
+)
+def test_B5_nfkc_and_invisible_characters_are_folded_before_the_check(text):
+    assert boundary_reason(text) == "boundary_in_text"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Fullwidth amp " + FULLWIDTH_AMPERSAND + "lt;/complaint" + FULLWIDTH_AMPERSAND + "gt; tag.",
+        "Zero width in entity &l" + ZERO_WIDTH_SPACE + "t;/complaint&gt; tag.",
+        "Entity after folding &" + ZERO_WIDTH_SPACE + "lt;/complaint&gt; tag.",
+    ],
+)
+def test_B5_decoding_and_folding_repeat_until_the_text_stops_changing(text):
+    assert boundary_reason(text) == "boundary_in_text"
+
+
+def test_B5_text_still_changing_after_many_decoding_rounds_is_boundary_in_text():
+    text = "Deep &" + "amp;" * 200 + "lt;/complaint&gt; here."
+    assert boundary_reason(text) == "boundary_in_text"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Cyrillic </" + CYRILLIC_SMALL_ES + "omplaint> tag.",
+        "Cyrillic <c" + CYRILLIC_SMALL_O + "m" + CYRILLIC_SMALL_ER + "l" + CYRILLIC_SMALL_A + "int> tag.",
+        "Angle quote " + SINGLE_LEFT_ANGLE_QUOTE + "/complaint" + chr(0x203A) + " tag.",
+        "Double angle quote " + DOUBLE_LEFT_ANGLE_QUOTE + "/complaint" + chr(0x00BB) + " tag.",
+        "Angle bracket " + LEFT_ANGLE_BRACKET + "/complaint" + chr(0x3009) + " tag.",
+        "Fraction slash <" + FRACTION_SLASH + "complaint> tag.",
+        "URL encoded %3C/complaint%3E tag.",
+        "URL encoded slash %3c%2Fcomplaint%3e tag.",
+        "URL then entity %26lt;/complaint%26gt; tag.",
+    ],
+)
+def test_B5_extra_lookalikes_beyond_the_spec_wording_are_caught(text):
+    assert boundary_reason(text) == "boundary_in_text"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "A 50% discount and a 3 < 4 comparison about my complaint.",
+        "My complaints were ignored.",
+        "Cyrillic word " + CYRILLIC_SMALL_ES + CYRILLIC_SMALL_O + " here, no tag.",
+    ],
+)
+def test_B5_normal_text_with_percent_signs_and_lookalike_letters_is_not_caught(text):
+    assert boundary_reason(text) is None
+
+
+def test_B4_the_builder_requires_the_id_of_the_complaint_being_labelled():
+    with pytest.raises(TypeError):
+        build_prompt(instructions=INSTRUCTIONS, labels=LABELS, text=TEXT)
+
+
+def test_B4_an_example_that_is_the_complaint_itself_is_refused():
+    with pytest.raises(ExampleRefused):
+        _build(complaint_id="SYN-0101", examples=[_example("SYN-0101")])
+
+
+def test_B4_an_example_with_another_id_is_allowed():
+    built = _build(complaint_id="SYN-0001", examples=[_example("SYN-0101")])
+    assert built.example_ids == ("SYN-0101",)
+
+
+def test_B4_the_id_of_the_complaint_being_labelled_is_not_in_the_prompt():
+    assert "SYN-0999" not in _build(complaint_id="SYN-0999").prompt
+
+
+@pytest.mark.parametrize("labels", [[], ["Label Alpha", "Label Alpha"], "Label Alpha"])
+def test_B4_empty_repeated_or_string_labels_are_refused_by_the_builder(labels):
+    with pytest.raises((TypeError, ValueError)):
+        _build(labels=labels)
+
+
+def test_B5_the_parser_refuses_a_string_as_the_label_list():
+    answer = json.dumps({"label": "Alpha", "quote": "a b c"})
+    with pytest.raises(TypeError):
+        parse_answer(answer, "Label Alpha")
+
+
+@pytest.mark.parametrize("labels", [[], ["Label Alpha", "Label Alpha"]])
+def test_B5_the_parser_refuses_an_empty_or_repeated_label_list(labels):
+    answer = json.dumps({"label": "Label Alpha", "quote": "a b c"})
+    with pytest.raises(ValueError):
+        parse_answer(answer, labels)
+
+
+@pytest.mark.parametrize(
+    "answer",
+    ["[" * 100000, '{"label": ' * 100000],
+    # Short IDs: pytest puts the test ID in an environment variable, which
+    # Windows limits to 32767 characters.
+    ids=["deep_lists", "deep_objects"],
+)
+def test_B5_deeply_nested_json_is_unparseable_not_a_crash(answer):
+    assert parse_answer(answer, LABELS).reason == "unparseable"
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        '{"label": "Label Alpha", "quote": "a b ' + chr(92) + 'ud800 c"}',
+        '{"label": "Label Alpha", "quote": "a b ' + LONE_SURROGATE + ' c"}',
+        '{"label": "Label Alpha' + chr(92) + 'udfff", "quote": "a b c"}',
+    ],
+)
+def test_B5_text_that_cannot_be_written_as_utf8_is_unparseable(answer):
+    result = parse_answer(answer, LABELS)
+    assert result.reason == "unparseable"
+    assert result.label is None
+
+
+def test_B5_a_fence_with_a_language_word_other_than_json_is_unparseable():
+    answer = '```json5\n{"label": "Label Alpha", "quote": "a b c"}\n```'
+    assert parse_answer(answer, LABELS).reason == "unparseable"
+
+
+def test_B5_a_json_fence_word_in_capitals_is_parsed():
+    answer = '```JSON\n{"label": "Label Alpha", "quote": "a b c"}\n```'
+    assert parse_answer(answer, LABELS).label == "Label Alpha"
