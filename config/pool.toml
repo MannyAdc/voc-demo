@@ -1,0 +1,71 @@
+# B18: each category's count in the July 2026 pool and in each set, for the re-weighted score.
+# Source: the output of `voc sample` on 28 October 2026, recorded in docs/DATA.md ("Split across categories
+# in proportion to the pool"). `voc evaluate` checks the dev and train counts against the committed lists and
+# the recorded Products, and checks that the test counts add up to the test list. The test counts per
+# category cannot be checked before the final run (B17).
+
+[products."Debt collection"]
+pool = 2204
+dev = 88
+test = 452
+train = 1664
+
+[products."Checking or savings account"]
+pool = 2025
+dev = 81
+test = 416
+train = 1528
+
+[products."Credit card"]
+pool = 1807
+dev = 72
+test = 371
+train = 1364
+
+[products."Money transfer, virtual currency, or money service"]
+pool = 780
+dev = 31
+test = 160
+train = 589
+
+[products."Mortgage"]
+pool = 728
+dev = 29
+test = 149
+train = 550
+
+[products."Vehicle loan or lease"]
+pool = 508
+dev = 20
+test = 104
+train = 384
+
+[products."Payday loan, title loan, personal loan, or advance loan"]
+pool = 406
+dev = 16
+test = 83
+train = 307
+
+[products."Credit reporting or other personal consumer reports"]
+pool = 311
+dev = 12
+test = 64
+train = 235
+
+[products."Student loan"]
+pool = 309
+dev = 12
+test = 63
+train = 234
+
+[products."Prepaid card"]
+pool = 134
+dev = 5
+test = 28
+train = 101
+
+[products."Debt or credit management"]
+pool = 91
+dev = 4
+test = 19
+train = 68
