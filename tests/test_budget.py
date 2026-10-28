@@ -44,9 +44,14 @@ def replay():
 
 def _git(repo, *args):
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-    subprocess.run(["git", "-c", "user.name=synthetic", "-c", "user.email=synthetic@example.invalid",
-                    "-c", "commit.gpgsign=false", *args],
-                   cwd=repo, env=env, check=True, capture_output=True)
+    return subprocess.run(["git", "-c", "user.name=synthetic", "-c", "user.email=synthetic@example.invalid",
+                           "-c", "commit.gpgsign=false", *args],
+                          cwd=repo, env=env, check=True, capture_output=True, text=True).stdout.strip()
+
+
+def _sync_origin(repo):
+    """Stand in for a push: origin/main points at the local main."""
+    _git(repo, "update-ref", "refs/remotes/origin/main", "refs/heads/main")
 
 
 def _config(cap, margin=MARGIN):
@@ -57,6 +62,7 @@ def _write_config(repo, cap, commit):
     (repo / "config" / "budget.toml").write_text(_config(cap), encoding="utf-8")
     if commit:
         _git(repo, "commit", "-q", "-am", f"Set cap to {cap}")
+        _sync_origin(repo)
 
 
 @pytest.fixture
@@ -68,6 +74,7 @@ def repo(tmp_path):
     _git(repo, "init", "-q", "-b", "main")
     _git(repo, "add", ".")
     _git(repo, "commit", "-q", "-m", "Start")
+    _sync_origin(repo)
     return repo
 
 
@@ -378,6 +385,7 @@ def _write_full_config(repo, cap, trial, confirmed, commit=True):
     (repo / "config" / "budget.toml").write_text(text, encoding="utf-8")
     if commit:
         _git(repo, "commit", "-q", "-am", "Change the budget config")
+        _sync_origin(repo)
 
 
 def _throwaway_repo(tmp_path, cap):
@@ -481,6 +489,7 @@ def test_B8_the_margin_is_confirmed_only_through_a_committed_config_and_the_even
         budget.raise_cap(repo, reason="SYN margin checked")
     assert budget.Ledger().state()["margin_confirmed"] is False
     _git(repo, "commit", "-q", "-am", "Confirm the margin")
+    _sync_origin(repo)
     budget.raise_cap(repo, reason="SYN margin checked")
     state = budget.Ledger().state()
     assert state["margin_confirmed"] is True
@@ -594,3 +603,145 @@ def test_B8_a_call_with_partial_usage_is_charged_the_full_reservation(budget, re
     state = budget.Ledger().state()
     assert state["used"] == _worst_case(prompt)
     assert state["reserved"] == 0
+
+
+# Review round 2 on PR #13
+
+HUGE = 10 ** 12
+
+
+def _side_commit(repo):
+    """A commit on a side branch with a huge cap and a confirmed margin. HEAD goes back to main."""
+    _git(repo, "checkout", "-q", "-b", "side")
+    _write_full_config(repo, HUGE, 300, True, commit=False)
+    _git(repo, "commit", "-q", "-am", "Side")
+    sha = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "checkout", "-q", "main")
+    return sha
+
+
+def _assert_unchanged(budget):
+    state = budget.Ledger().state()
+    assert state["cap"] == CAP
+    assert state["margin_confirmed"] is False
+
+
+def _log(repo):
+    return (repo / "BUILD_LOG.md").read_text(encoding="utf-8")
+
+
+def test_B8_a_tag_named_main_cannot_raise_the_cap_or_confirm_the_margin(budget, ledger, repo):
+    _git(repo, "tag", "main", _side_commit(repo))
+    with pytest.raises(budget.BudgetError):
+        budget.raise_cap(repo, reason="SYN tag try")
+    _assert_unchanged(budget)
+
+
+def test_B8_a_main_file_in_the_git_folder_cannot_raise_the_cap(budget, ledger, repo):
+    (repo / ".git" / "main").write_text(_side_commit(repo) + "\n", encoding="utf-8")
+    with pytest.raises(budget.BudgetError):
+        budget.raise_cap(repo, reason="SYN file try")
+    _assert_unchanged(budget)
+
+
+def test_B8_a_replaced_config_blob_cannot_raise_the_cap(budget, ledger, repo, tmp_path):
+    fake = tmp_path / "fake.toml"
+    fake.write_text(f"cap_tokens = {HUGE}\ninput_margin_tokens = {MARGIN}\nmargin_confirmed = true\n",
+                    encoding="utf-8")
+    fake_blob = _git(repo, "hash-object", "-w", str(fake))
+    real_blob = _git(repo, "rev-parse", "main:config/budget.toml")
+    _git(repo, "replace", real_blob, fake_blob)
+    with pytest.raises(budget.BudgetError):
+        budget.raise_cap(repo, reason="SYN replace try")
+    _assert_unchanged(budget)
+
+
+def test_B8_a_moved_local_main_cannot_raise_the_cap(budget, ledger, repo):
+    _git(repo, "checkout", "-q", "-b", "feature")
+    _write_full_config(repo, HUGE, 300, True, commit=False)
+    _git(repo, "commit", "-q", "-am", "Feature")
+    _git(repo, "update-ref", "refs/heads/main", "refs/heads/feature")
+    with pytest.raises(budget.BudgetError):
+        budget.raise_cap(repo, reason="SYN moved main")
+    _assert_unchanged(budget)
+
+
+def test_B8_raise_is_refused_when_origin_main_is_missing(budget, ledger, repo):
+    _write_config(repo, 5_000, commit=True)
+    _git(repo, "update-ref", "-d", "refs/remotes/origin/main")
+    with pytest.raises(budget.BudgetError):
+        budget.raise_cap(repo, reason="SYN no origin")
+    _assert_unchanged(budget)
+
+
+def test_B8_init_writes_a_build_log_line_so_a_reset_shows_in_the_history(budget, ledger, repo):
+    log = _log(repo)
+    assert "voc ledger init" in log
+    assert "1,000" in log
+
+
+def test_B8_a_late_settle_of_a_released_reservation_charges_the_real_use_and_records_the_overrun(
+        budget, replay, repo, ledger):
+    prompt = "SYN-a"
+    assert _worst_case(prompt) == 155
+
+    def backend(p, settings):
+        [rid] = budget.Ledger().state()["open"]
+        budget.release(rid, reason="SYN looked stuck")
+        return _answer(replay, input_tokens=300, output_tokens=7)
+
+    _caller(replay, repo, backend).call(prompt)
+    state = budget.Ledger().state()
+    assert state["used"] == 307
+    assert state["reserved"] == 0
+    assert state["overrun"] is not None
+    assert state["overrun"]["real"] == 307
+
+
+def test_B8_release_writes_a_build_log_line_with_the_reason(budget, ledger, repo):
+    budget.release(ledger.reserve(100), reason="SYN crash note")
+    assert "SYN crash note" in _log(repo)
+
+
+def test_B8_clear_overrun_writes_a_build_log_line_with_the_reason(budget, ledger, repo):
+    ledger.settle(ledger.reserve(10), 11)
+    budget.clear_overrun(reason="SYN estimate checked by the owner")
+    assert "SYN estimate checked by the owner" in _log(repo)
+
+
+def test_B8_a_local_clean_filter_cannot_hide_a_change(budget, repo):
+    _git(repo, "config", "filter.synthetic.clean", "git show HEAD:config/budget.toml")
+    (repo / ".git" / "info").mkdir(exist_ok=True)
+    (repo / ".git" / "info" / "attributes").write_text("config/budget.toml filter=synthetic\n", encoding="utf-8")
+    _write_config(repo, 5_000, commit=False)
+    with pytest.raises(budget.BudgetError):
+        budget.require_clean_config(repo)
+
+
+def test_B8_a_failed_ledger_write_after_the_log_line_is_logged_as_failed(budget, ledger, repo, monkeypatch):
+    _write_config(repo, 5_000, commit=True)
+
+    def broken(path, text):
+        raise OSError("synthetic disk full")
+
+    monkeypatch.setattr(budget, "atomic_write", broken)
+    with pytest.raises(budget.BudgetError):
+        budget.raise_cap(repo, reason="SYN more runs")
+    assert budget.Ledger().state()["cap"] == CAP
+    lines = _log(repo).rstrip().splitlines()
+    assert "SYN more runs" in lines[-2]
+    assert "failed" in lines[-1]
+
+
+def test_B8_a_git_call_that_runs_and_exits_non_zero_is_refused(budget, ledger, repo, monkeypatch):
+    real = subprocess.run
+
+    def failing(args, *rest, **kwargs):
+        return real(["git", "synthetic-no-such-command"], *rest, **kwargs)
+
+    monkeypatch.setattr(budget.subprocess, "run", failing)
+    checks = (lambda: budget.require_clean_config(repo), lambda: budget.committed_config(repo),
+              lambda: budget.raise_cap(repo, reason="SYN git fails"))
+    for check in checks:
+        with pytest.raises(budget.BudgetError):
+            check()

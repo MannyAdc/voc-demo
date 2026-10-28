@@ -54,6 +54,7 @@ def _make_repo(path):
     _git(path, "init", "-q", "-b", "main")
     _git(path, "add", ".")
     _git(path, "commit", "-q", "-m", "Start")
+    _git(path, "update-ref", "refs/remotes/origin/main", "refs/heads/main")
     return path
 
 
