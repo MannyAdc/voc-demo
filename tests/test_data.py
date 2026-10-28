@@ -58,6 +58,26 @@ def test_B9_the_kept_copy_is_the_lowest_complaint_id_as_a_number():
     assert [r.complaint_id for r in dedupe(rows)[0]] == ["SYN-9"]
 
 
+def test_B9_dedupe_stays_fast_when_many_long_narratives_share_an_opening():
+    # Real data has large groups that open with the same stock phrase. 200 such texts of about 3,000
+    # characters must take seconds, not minutes.
+    import time
+
+    opening = "I am writing to file a complaint about my account "
+    rows = [Row(f"SYN-{i}", "A", opening + " ".join(f"{WORDS[(i * 7 + j) % 20]}{j % 9}" for j in range(400)))
+            for i in range(200)]
+    start = time.perf_counter()
+    dedupe(rows)
+    assert time.perf_counter() - start < 20
+
+
+def test_B9_the_similarity_measure_is_recorded(tmp_path):
+    sets = split(_rows("A", 40), dev_size=4, test_size=8, seed=1)
+    write_splits(tmp_path, sets, removed=0, source_sha256="0" * 64, seed=1)
+    manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["duplicate_measure"] == "Jaccard similarity of word 5-grams, punctuation ignored"
+
+
 def test_B9_the_similarity_threshold_is_fixed_and_recorded(tmp_path):
     assert 0.8 <= DUPLICATE_THRESHOLD < 1.0
     sets = split(_rows("A", 40), dev_size=4, test_size=8, seed=1)
