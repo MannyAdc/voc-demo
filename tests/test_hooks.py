@@ -629,6 +629,83 @@ def test_B21_searching_a_folder_that_holds_the_next_month_folder_is_blocked(read
         assert decision and decision[0] == "deny"
 
 
+# Review of pull request #16
+
+
+@pytest.mark.parametrize("variable", ["VOC_DATA_DIR", "VOC_NEXT_DATA_DIR"])
+def test_B21_a_key_repeated_in_the_env_file_protects_the_folder_the_cli_reads(read_guard, places, tmp_path, variable):
+    # voc.env.settings lets the last line win, so the guard must protect that folder too.
+    first, last = tmp_path / "first_folder", tmp_path / "last_folder"
+    first.mkdir()
+    last.mkdir()
+    places["root"].mkdir()
+    (places["root"] / ".env").write_text(f"{variable}={first}\n{variable}={last}\n", encoding="utf-8")
+    for folder in (first, last):
+        decision = _read_decision(read_guard, places, "Read", {"file_path": str(folder / "x.csv")}, env={})
+        assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("variable", ["VOC_DATA_DIR", "VOC_NEXT_DATA_DIR"])
+def test_B21_an_env_file_with_a_byte_order_mark_is_read_like_the_cli_reads_it(read_guard, places, tmp_path, variable):
+    folder = tmp_path / "bom_folder"
+    folder.mkdir()
+    places["root"].mkdir()
+    (places["root"] / ".env").write_text(f"{variable}={folder}\n", encoding="utf-8-sig")
+    decision = _read_decision(read_guard, places, "Read", {"file_path": str(folder / "x.csv")}, env={})
+    assert decision and decision[0] == "deny"
+
+
+def test_B21_july_from_the_environment_and_august_from_the_env_file_are_both_protected(read_guard, next_places):
+    next_places["root"].mkdir()
+    (next_places["root"] / ".env").write_text(f"VOC_NEXT_DATA_DIR={next_places['next']}\n", encoding="utf-8")
+    env = {"VOC_DATA_DIR": str(next_places["data"])}
+    for folder in (next_places["data"], next_places["next"]):
+        decision = _read_decision(read_guard, next_places, "Read", {"file_path": str(folder / "x.csv")}, env=env)
+        assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("tool, tool_input", [
+    ("Read", {"file_path": "data/voc.duckdb.wal"}),
+    ("Read", {"file_path": "data/notes.txt"}),
+    ("Grep", {"pattern": "x", "path": "data"}),
+    ("Glob", {"pattern": "data/*"}),
+    ("Glob", {"pattern": "*", "path": "data"}),
+    ("Read", {"file_path": "elsewhere/voc.duckdb.wal"}),
+])
+def test_B21_the_folder_that_holds_the_duckdb_file_is_protected(read_guard, places, tool, tool_input):
+    decision = _read_decision(read_guard, places, tool, tool_input)
+    assert decision and decision[0] == "deny"
+
+
+def test_B21_the_duckdb_folder_is_protected_by_its_full_path(read_guard, places):
+    tool_input = {"file_path": str(places["root"] / "data" / "dbt" / "run_results.json")}
+    decision = _read_decision(read_guard, places, "Read", tool_input)
+    assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("command", [
+    "strings data/*",
+    "cat ./data/voc.duckdb.wal",
+    "head data\\dbt\\logs\\dbt.log",
+    "cd data && cat *",
+    "ls data",
+    "Get-ChildItem data",
+])
+def test_B21_a_shell_command_naming_the_duckdb_folder_is_blocked(read_guard, places, command):
+    decision = _read_decision(read_guard, places, "Bash", {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("command", [
+    "uv run voc data-hash august_2026",
+    'git commit -m "Protect the data folder"',
+    "uv run pytest tests/test_data.py",
+    "ls src/voc/data.py metadata/",
+])
+def test_B21_commands_that_only_mention_the_word_data_are_allowed(read_guard, places, command):
+    assert _read_decision(read_guard, places, "Bash", {"command": command}) is None
+
+
 # Each hook script fails closed
 
 
@@ -725,6 +802,21 @@ def test_the_hook_runner_turns_any_failure_into_exit_code_2():
     missing = subprocess.run(["sh", str(HOOKS / "run.sh"), "no_such_hook.py"], input="{}",
                              capture_output=True, text=True)
     assert missing.returncode == 2
+
+
+@pytest.mark.parametrize("tool", ["Bash", "PowerShell"])
+@pytest.mark.parametrize("command", ["init", "raise", "release", "clear-overrun"])
+def test_B8_claude_must_ask_the_owner_before_changing_the_ledger(tool, command):
+    settings = json.loads((HOOKS.parent / "settings.json").read_text(encoding="utf-8"))
+    assert f"{tool}(*voc ledger {command}*)" in settings["permissions"]["ask"]
+
+
+@pytest.mark.parametrize("tool", ["Bash", "PowerShell"])
+@pytest.mark.parametrize("command", ["init", "raise", "release", "clear-overrun"])
+def test_B8_the_ask_rule_also_covers_the_voc_exe_form(tool, command):
+    # Best effort: rules match command text, so other forms (for example python -c) can still slip past.
+    settings = json.loads((HOOKS.parent / "settings.json").read_text(encoding="utf-8"))
+    assert f"{tool}(*voc.exe ledger {command}*)" in settings["permissions"]["ask"]
 
 
 def test_every_hook_is_wired_to_fail_closed():

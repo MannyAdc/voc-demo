@@ -145,7 +145,10 @@ def main(argv=None, env=None, root=None):
     except (DataFileError, BudgetError, DbtError) as err:
         print(f"error: {err}")
         return 1
-    except Exception as err:  # B21: the type only, never the message
+    # B21: the type only, never the message. The spec also asks for the row number and the
+    # complaint ID. Bulk loads have neither for a library error, so they come with the
+    # row-by-row pipeline (T014).
+    except Exception as err:
         print(f"error: {type(err).__name__}")
         return 1
     return 0

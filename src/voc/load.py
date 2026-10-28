@@ -99,6 +99,10 @@ def _check_keys(con, labels):
     missing = con.execute(f"SELECT count(*) FROM raw WHERE {_blank(cid)}").fetchone()[0]
     if missing:
         raise DataFileError(f"{missing} rows have a missing complaint ID")
+    # `SYN-1` and `SYN-1 ` would load as two complaints, so spaces around an ID are refused.
+    padded = con.execute(rf"SELECT count(*) FROM raw WHERE regexp_matches({cid}, '^\s|\s$')").fetchone()[0]
+    if padded:
+        raise DataFileError(f"{padded} rows have a complaint ID with spaces at either end")
     repeated = con.execute(f"SELECT count(*) - count(DISTINCT {cid}) FROM raw").fetchone()[0]
     if repeated:
         raise DataFileError(f"{repeated} rows have a repeated complaint ID")
@@ -126,14 +130,18 @@ def load_month(db_path, path, month, labels):
         _check_keys(con, labels)
         typed = ", ".join(f"{_typed(_quote(name), kind)} AS {column}" for name, (column, kind) in COLUMNS.items())
         con.execute("BEGIN TRANSACTION")
-        _create_table(con)
-        before = con.execute(f"SELECT count(*) FROM {TABLE}").fetchone()[0]
-        con.execute(f"""
-            INSERT INTO {TABLE}
-            SELECT {typed}, ? AS source FROM raw
-            WHERE NOT EXISTS (SELECT 1 FROM {TABLE} t WHERE t.complaint_id = raw."Complaint ID")""", [month])
-        after = con.execute(f"SELECT count(*) FROM {TABLE}").fetchone()[0]
-        con.execute("COMMIT")
+        try:
+            _create_table(con)
+            before = con.execute(f"SELECT count(*) FROM {TABLE}").fetchone()[0]
+            con.execute(f"""
+                INSERT INTO {TABLE}
+                SELECT {typed}, ? AS source FROM raw
+                WHERE NOT EXISTS (SELECT 1 FROM {TABLE} t WHERE t.complaint_id = raw."Complaint ID")""", [month])
+            after = con.execute(f"SELECT count(*) FROM {TABLE}").fetchone()[0]
+            con.execute("COMMIT")
+        except BaseException:
+            con.execute("ROLLBACK")  # nothing from a failed load is kept, not even a new empty table
+            raise
         rows = con.execute("SELECT count(*) FROM raw").fetchone()[0]
         return {"rows": rows, "new": after - before, "already_loaded": rows - (after - before), "total": after}
     finally:

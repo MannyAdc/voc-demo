@@ -318,3 +318,40 @@ def test_B21_hostile_text_in_a_column_name_is_never_printed(repo, capsys):
     _july(repo, [_row(1)], columns=[*CFPB_COLUMNS, HOSTILE])
     assert _load(repo) != 0
     assert "SYNHOSTILE" not in capsys.readouterr().out
+
+
+# Review of pull request #16
+
+
+@pytest.mark.parametrize("complaint_id", ["SYN-2 ", " SYN-2", "SYN-2\t"])
+def test_B14_a_complaint_id_with_spaces_at_either_end_is_refused(repo, capsys, complaint_id):
+    _july(repo, [_row(1), _row(2, **{"Complaint ID": complaint_id})])
+    assert _load(repo) != 0
+    assert "spaces at either end" in capsys.readouterr().out
+    assert not _table_exists(repo)
+
+
+@pytest.mark.parametrize("first_load", [True, False])
+def test_B14_an_insert_that_fails_inside_the_transaction_writes_nothing(repo, capsys, monkeypatch, first_load):
+    from voc import load
+
+    _july(repo)
+    _august(repo, [_row(i, date="2026-08-02") for i in range(10, 15)])
+    if not first_load:
+        assert _load(repo, "july_2026") == 0
+    real = load._typed
+
+    def failing(raw, kind):
+        # Fails at run time on one row, part way through the insert.
+        if raw == '"Complaint ID"':
+            return f"CASE WHEN {raw} = 'SYN-12' THEN error('SYNHOSTILE insert broke') ELSE {raw} END"
+        return real(raw, kind)
+
+    monkeypatch.setattr(load, "_typed", failing)
+    assert _load(repo, "august_2026") != 0
+    printed = capsys.readouterr()
+    assert "SYNHOSTILE" not in printed.out + printed.err
+    if first_load:
+        assert not _table_exists(repo)
+    else:
+        assert _count(repo) == 5
