@@ -12,3 +12,13 @@ file_name = "CCDB_Export_20_July_2026.csv"
 size_bytes = 216250982
 sha256 = "beb05a0a61e1ccfe186ad1f7c6ab062bc7a089f7bda28adfe7e6c4c9ccefa57c"
 pinned_on = "2026-10-28"
+
+[august_2026]
+# Folder: VOC_NEXT_DATA_DIR. Used only to show that a second month loads (T010, T011 add-on 1).
+# Never used for samples, the pool size or the re-weighting, which use July rows only.
+# Name, size and SHA-256 printed by `voc data-hash august_2026` on 28 October 2026.
+# No download date is recorded, and the file's date range was not checked.
+file_name = "CCDB_Export_21_August_2026.csv"
+size_bytes = 177212547
+sha256 = "24b9fe7913c3405aebdc29f4ce23962e20071b5094b14c7a047434e2552f12d6"
+pinned_on = "2026-10-28"
