@@ -581,6 +581,82 @@ def test_a_hook_given_bad_input_blocks_with_exit_code_2(name):
     assert "hook failed" in result.stderr  # our own message, not Python failing to start
 
 
+@pytest.mark.parametrize("name", ["test_gate", "data_guard", "read_guard"])
+@pytest.mark.parametrize("text", [
+    "He said " + chr(0x201C) + "fine" + chr(0x201D) + " and left",
+    # Regression cases only: on the old code these two did not fail (the first is plain ASCII,
+    # the second decodes in cp932 into other characters). The test below checks the exact text.
+    'PLAIN = {"' + "\\" + 'u201c": 1}',
+    "Japanese text " + chr(0x8868) + chr(0x793A),
+])
+def test_each_hook_reads_its_input_as_utf8_whatever_the_system_encoding(name, text, tmp_path):
+    # Claude Code sends UTF-8. On a Japanese Windows system Python would read it as cp932.
+    event = {"tool_name": "Edit", "cwd": str(tmp_path),
+             "tool_input": {"file_path": str(tmp_path / "a.py"), "old_string": "a", "new_string": text}}
+    env = dict(os.environ, PYTHONIOENCODING="cp932", PYTHONUTF8="0")
+    result = subprocess.run([sys.executable, str(HOOKS / f"{name}.py")],
+                            input=json.dumps(event, ensure_ascii=False).encode("utf-8"),
+                            capture_output=True, env=env)
+    assert result.returncode == 0, result.stderr.decode("utf-8", "replace")
+    assert b"hook failed" not in result.stderr
+
+
+def test_the_read_guard_sees_a_non_ascii_path_exactly_as_sent(tmp_path):
+    # The curly-quote case above shows the decode error. This shows the quieter failure:
+    # read as cp932, a Japanese folder name turns into other characters and the guard misses it.
+    data = tmp_path / (chr(0x30C7) + chr(0x30FC) + chr(0x30BF))
+    data.mkdir()
+    event = {"tool_name": "Read", "cwd": str(tmp_path), "tool_input": {"file_path": str(data / "a.csv")}}
+    env = dict(os.environ, PYTHONIOENCODING="cp932", PYTHONUTF8="0", VOC_DATA_DIR=str(data))
+    result = subprocess.run([sys.executable, str(HOOKS / "read_guard.py")],
+                            input=json.dumps(event, ensure_ascii=False).encode("utf-8"),
+                            capture_output=True, env=env)
+    assert b'"permissionDecision": "deny"' in result.stdout
+
+
+def _hooked_worktree(tmp_path):
+    main_checkout = tmp_path / "main"
+    main_checkout.mkdir()
+    _git(main_checkout, "init", "-q", "-b", "main")
+    _write(main_checkout, ".githooks/pre-commit", "#!/bin/sh\nexit 0\n")
+    _git(main_checkout, "add", "-A")
+    _git(main_checkout, "commit", "-q", "-m", "first")
+    worktree = tmp_path / "wt"
+    _git(main_checkout, "worktree", "add", "-q", str(worktree), "-b", "side")
+    return main_checkout, worktree
+
+
+def _gate_says(cwd, hooks_value):
+    _git(cwd, "config", "core.hooksPath", hooks_value)
+    event = {"tool_name": "Bash", "cwd": str(cwd), "tool_input": {"command": "git commit -m x"}}
+    result = subprocess.run([sys.executable, str(HOOKS / "test_gate.py")],
+                            input=json.dumps(event).encode("utf-8"), capture_output=True)
+    assert result.returncode == 0, result.stderr
+    return result.stdout.decode("utf-8")
+
+
+def test_a_real_worktree_with_the_full_hook_path_may_commit(tmp_path):
+    main_checkout, worktree = _hooked_worktree(tmp_path)
+    assert _gate_says(worktree, str(main_checkout / ".githooks")) == ""
+    assert "deny" in _gate_says(worktree, str(tmp_path / "elsewhere" / ".githooks"))
+
+
+def test_a_full_hook_path_without_a_pre_commit_hook_is_not_installed(tmp_path):
+    main_checkout, worktree = _hooked_worktree(tmp_path)
+    (main_checkout / ".githooks" / "pre-commit").unlink()
+    assert "deny" in _gate_says(worktree, str(main_checkout / ".githooks"))
+
+
+def test_the_git_hook_may_be_set_by_its_full_path(gate, tmp_path):
+    repo, main_checkout = tmp_path / "worktree", tmp_path / "main"
+    command = {"command": "git commit -m x"}
+    for hooks in (repo / ".githooks", main_checkout / ".githooks"):
+        assert gate.decide("Bash", command, hooks_path=str(hooks), roots=(repo, main_checkout)) is None
+    decision = gate.decide("Bash", command, hooks_path=str(tmp_path / "elsewhere" / ".githooks"),
+                           roots=(repo, main_checkout))
+    assert decision and decision[0] == "deny"
+
+
 @pytest.mark.skipif(shutil.which("sh") is None, reason="no sh on this PATH (CI has one)")
 def test_the_hook_runner_turns_any_failure_into_exit_code_2():
     result = subprocess.run(["sh", str(HOOKS / "run.sh"), "read_guard.py"], input="not json",

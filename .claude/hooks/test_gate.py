@@ -73,7 +73,21 @@ def _skips_hooks(segment):
     return False
 
 
-def decide(tool_name, tool_input, hooks_path):
+def _installed(hooks_path, roots):
+    """The hook setting is `.githooks`, or the full path to `.githooks` in this checkout or the main one.
+
+    Claude Code's worktree feature was seen to replace `.githooks` with its full path.
+    """
+    value = (hooks_path or "").strip().rstrip("/\\")
+    if value == HOOKS_PATH:
+        return True
+    if not value or not Path(value).is_absolute():
+        return False
+    target = os.path.normcase(os.path.normpath(value))
+    return any(target == os.path.normcase(os.path.normpath(Path(root) / HOOKS_PATH)) for root in roots)
+
+
+def decide(tool_name, tool_input, hooks_path, roots=()):
     command = tool_input.get("command") or ""
     lower = command.lower()
     # `--no-v` also catches the short forms git accepts, such as `--no-veri`.
@@ -84,7 +98,7 @@ def decide(tool_name, tool_input, hooks_path):
         return None
     if any(_skips_hooks(s) for s in commits):
         return ("deny", "test gate: `git commit -n` skips the git hook and is not allowed.")
-    if (hooks_path or "").strip().rstrip("/") != HOOKS_PATH:
+    if not _installed(hooks_path, roots):
         return ("deny", "test gate: the git hook is not installed. The owner runs, once per clone: "
                         f"git config core.hooksPath {HOOKS_PATH}")
     return None
@@ -231,9 +245,29 @@ def git_pre_commit(repo, env):
 # Entry point
 
 
+def _git_out(cwd, *args):
+    """A git command's output, decoded as UTF-8 (never the Windows code page), or None."""
+    result = subprocess.run(["git", *args], cwd=cwd, capture_output=True, encoding="utf-8", errors="replace")
+    return result.stdout.strip() or None if result.returncode == 0 else None
+
+
 def _hooks_path(cwd):
-    result = subprocess.run(["git", "config", "--get", "core.hooksPath"], cwd=cwd, capture_output=True, text=True)
-    return result.stdout.strip() or None
+    return _git_out(cwd, "config", "--get", "core.hooksPath")
+
+
+def _repo_roots(cwd):
+    """This checkout's top folder, and the main checkout's, kept only if their `.githooks/pre-commit` exists.
+
+    The main checkout is the folder holding the shared `.git`. A bare repository has none, so it adds nothing.
+    """
+    roots = []
+    top = _git_out(cwd, "rev-parse", "--show-toplevel")
+    if top:
+        roots.append(Path(top))
+    common = _git_out(cwd, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    if common and Path(common).name == ".git":
+        roots.append(Path(common).parent)
+    return tuple(r for r in roots if (r / HOOKS_PATH / "pre-commit").is_file())
 
 
 def _emit(decision):
@@ -249,9 +283,11 @@ def main(argv):
     if argv == ["--git-pre-commit"]:
         return git_pre_commit(Path.cwd(), os.environ)
     try:
-        event = json.loads(sys.stdin.read())
+        # Claude Code sends UTF-8. Read bytes, so the system code page (cp932 here) never decodes it.
+        event = json.loads(sys.stdin.buffer.read().decode("utf-8"))
+        cwd = event.get("cwd") or "."
         decision = decide(event.get("tool_name"), event.get("tool_input") or {},
-                          hooks_path=_hooks_path(event.get("cwd") or "."))
+                          hooks_path=_hooks_path(cwd), roots=_repo_roots(cwd))
     except Exception as err:  # fail closed
         print(f"test gate hook failed: {type(err).__name__}", file=sys.stderr)
         return 2
