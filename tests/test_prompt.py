@@ -31,7 +31,7 @@ def _example(complaint_id="SYN-0101", split="train", text=None, label="Label Bet
 
 
 def _build(**overrides):
-    args = {"instructions": INSTRUCTIONS, "labels": LABELS, "text": TEXT}
+    args = {"instructions": INSTRUCTIONS, "labels": LABELS, "text": TEXT, "complaint_id": "SYN-0001"}
     args.update(overrides)
     return build_prompt(**args)
 
@@ -44,9 +44,9 @@ def _complaint_section(prompt):
 # What goes into the prompt (B4)
 
 
-def test_B4_the_builder_takes_only_instructions_labels_text_definitions_and_examples():
+def test_B4_the_builder_takes_only_instructions_labels_text_id_definitions_and_examples():
     params = set(inspect.signature(build_prompt).parameters)
-    assert params == {"instructions", "labels", "text", "definitions", "examples"}
+    assert params == {"instructions", "labels", "text", "complaint_id", "definitions", "examples"}
 
 
 def test_B4_an_example_carries_only_its_id_split_text_and_label():
@@ -98,6 +98,7 @@ def test_B4_the_prompt_is_made_only_of_the_given_parts_and_fixed_wording():
         instructions="Other synthetic instructions.",
         labels=["Label One", "Label Two", "Label Three"],
         text="Other synthetic complaint text here.",
+        complaint_id="SYN-0002",
         definitions={"Label One": "other synthetic definition"},
         examples=[_example(text="Other synthetic example text.", label="Label Two")],
     ).prompt
