@@ -55,19 +55,17 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - extra keys, two JSON objects, or text after the JSON are unparseable (review)
 - the examples used are logged by complaint ID (review)
 
-## Decision (B2, B3, B5), `tests/test_decision.py`
+## Decision (B3, B5), `tests/test_decision.py`
 
-- agreement view: accepted when the quote is real and both sources agree (reused)
-- agreement view: disagreement is quarantined as `disputed` (reused)
-- quote-only view: the same disagreement is accepted
+- a label with a real quote is accepted whatever TF-IDF says, and TF-IDF's label is never an input (B2 removed on 28 October, the three agreement tests are dropped)
 - a quarantined decision keeps the proposal but has no label (reused)
 - a made-up quote is quarantined (reused)
 - short and empty quotes are quarantined (reused)
 - a label outside the list is quarantined even with a real quote (reused)
 - an unparseable answer is quarantined (reused)
 - a failed, refused or cut-off model call is quarantined as `model_error` (review)
-- check order is model call, parse, label, quote, agreement (reused, changed)
-- an obeyed injection with a real quote is caught by agreement (reused)
+- check order is model call, parse, label, quote (reused, changed on 28 October)
+- an obeyed injection with a real quote is accepted, and the synthetic injection report counts it as "obeyed and accepted" (changed on 28 October: no agreement to catch it)
 - an obeyed injection with an invented quote is caught by the quote check (reused)
 - a quarantined decision never has an accepted label, 4 cases (reused)
 
@@ -198,15 +196,16 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - the bootstrap interval is computed for the figure that decides the verdict (review)
 - re-weighted strict accuracy matches a hand count, quarantined counted as wrong (review)
 - coverage is matched by count inside each resample (review)
-- claims A and B each get their own verdict (review)
+- the one claim gets one verdict, and no verdict is given with any `not_run_budget` complaint (changed on 28 October: claim B dropped)
 
 ## Method comparison (B23), `tests/test_metrics.py`
 
-- each confusion matrix matches a hand count, for the LLM, TF-IDF and the combined system
+- each confusion matrix matches a hand count, for the LLM and TF-IDF
 - per-Product precision, recall and F1, and macro-F1, match a hand count
 - the who-was-right table counts both, only LLM, only TF-IDF and neither correctly
 - the precision and coverage points match a hand count
-- the review queue breakdown matches a hand count
+- the review queue breakdown (quarantined LLM labels by reason, and how often TF-IDF was right on them) matches a hand count
+- cost and run time per 1,000 complaints are reported for each method (B23, 28 October)
 - synthetic results are reported apart and never enter accuracy figures (review)
 
 ## Pipeline (B4, B5, B9), `tests/test_pipeline.py`
@@ -248,9 +247,13 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - the `profile` command prints counts only: a hostile synthetic narrative never appears in its output (B22, B21)
 - the label set config lists every label once, and the prompt and both baselines read the same list from it (B24)
 - a recorded Product that is not in the label set, and has no mapping, stops sampling with a clear message (B24)
-- the sample size function gives about 2,732 for a margin of 1.5 points at 80 percent and 95 percent (B25)
-- the test sample takes every complaint of a Product with fewer than the cap, and records that it did (B25)
-- a smaller test size than B25 gives is refused unless a reason is given, and the reason is written with the sample (B25)
+- the paired size function matches McNemar's formula on hand-worked cases (B25)
+- the Kish design effect matches a hand count for a small made-up allocation (B25)
+- the test size is the largest of the paired size, the summed floors and the design-effect size, then capped at the ceiling (B25)
+- a Product with fewer complaints than its floor gives all of them, and this is recorded (B25)
+- the test set is the first n IDs of the frozen pool, whatever n is (B25)
+- the sizing rule refuses to run unless its inputs are committed and the pilot comes from the development set only (B25)
+- a smaller test size than the rule gives is refused unless a reason is given, and the reason is written with the sample (B25)
 
 ## Human review (B20), later feature
 

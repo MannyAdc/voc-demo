@@ -37,7 +37,7 @@ description: "Task list for the core labelling pipeline"
   - For parallel branches: they touch no shared file, and the tests pass on both merged together.
 
   Claude then gives a one-line verdict: MERGE or FIX FIRST, with the reason, and the merge order for parallel branches. The owner still merges. T005 and T006 get the same checks by hand. The command is used on every pull request from T007 on.
-- [ ] T007 PR "decision": tests in `tests/test_decision.py` (B2 both views, B3, B5), then `src/voc/decision.py`. Needs T005, T006.
+- [ ] T007 PR "decision": tests in `tests/test_decision.py` (B3, B5), then `src/voc/decision.py`. Needs T005, T006.
 
 **Checkpoint**: one model answer can be checked and accepted or quarantined, with no model call.
 
@@ -53,7 +53,7 @@ description: "Task list for the core labelling pipeline"
 
 - [ ] T010 [P] [US3] PR "staged load" (also owns: DuckDB extension auto-install and auto-load turned off on every connection, with a test): check DuckDB and dbt versions first, tests in `tests/test_load.py` (B14 re-runnable, schema check), then `scripts/load_month.py`
 - [ ] T011 [US3] PR "dbt curated and data tests": dbt project in `dbt/`, data tests for missing or repeated IDs and unknown Product, a test that a bad fixture fails the build. Lineage graph generated.
-- [ ] T012 [US3] PR "samples": tests in `tests/test_data.py` (B9, B16, B25), then `src/voc/data.py`, the `sample` command, and the committed ID lists in `splits/`. Uses the label set and the sizes from `docs/DATA.md` (B24, B25), after the owner has reviewed it.
+- [ ] T012 [US3] PR "samples": tests in `tests/test_data.py` (B9, B16, B25), then `src/voc/data.py`, the `sample` command, and the committed ID lists in `splits/`. Uses the label set from `docs/DATA.md` (B24), after the owner has reviewed it. Draws the development set and freezes the ordered test pool (B25 steps 2 and 3). The test size itself is set after the pilot (T016).
 
 ## Phase 5: User Story 2 and User Story 1 - Label, quarantine, score (P1, P2)
 
@@ -63,7 +63,7 @@ description: "Task list for the core labelling pipeline"
 - [ ] T014c PR "show command": tests (refuses test rows without `final`, blocked for Claude by the read guard), then the `show` command for the owner
 - [ ] T015 [US1] PR "eval skill": tests in `tests/test_evaluate.py` (B15, B17, B19), then the `evaluate` command, the test run log, the results file and `.claude/skills/eval/SKILL.md`
 - [ ] T015b [US1] Synthetic injection set: about 10 synthetic complaints with injection attempts, labelled synthetic, added to the evaluation (B5 real-model check)
-- [ ] T016 [US1] First real run: prompt v1 on 50 development complaints, then the full development set if it looks right. Row in `EVAL_VERSIONS.md`.
+- [ ] T016 [US1] First real run, which is also the B25 pilot: prompt v1 on 50 development complaints, then the full development set if it looks right. Row in `EVAL_VERSIONS.md`. It measures the share of split cases between the LLM and TF-IDF. The committed B25 rule then sets the test size, logged with its inputs.
 
 ## Phase 6: Polish
 
@@ -71,7 +71,7 @@ description: "Task list for the core labelling pipeline"
 - [ ] T018a PR "analyser": tests in `tests/test_analysis.py` (B21), then the `analyse` command with its fixed cause list
 - [ ] T018 Error analysis (B21) and prompt versions v2 onward (one cause per version)
 - [ ] T019 Final test run, once, with the chosen prompt version, only when the owner says "final" (B17)
-- [ ] T020 README results: every figure with the command that produced it, both views, per-Product table, re-weighted figure, synthetic injection results reported apart. README checklist, checked by the reviewer agent: the CFPB "not a statistical sample" sentence, narratives are a 1.5 percent subset with a different class mix, labels are set by the consumer, "quote found in the text" not "quote supports the label", the injection caveat for the quote-only view, the model's training cutoff, the CFPB file changes over time, Known limits (from the threat model), why there is no `cli` backend (untrusted text must never reach an agent with tools, and one code path keeps every number reproducible), the cost to label every narrative projected from measured tokens, every number with its command
+- [ ] T020 README results: every figure with the command that produced it, the LLM and TF-IDF side by side with cost and run time, per-Product table, re-weighted figure, synthetic injection results reported apart. README checklist, checked by the reviewer agent: the CFPB "not a statistical sample" sentence, narratives are a 1.5 percent subset with a different class mix, labels are set by the consumer, "quote found in the text" not "quote supports the label", the injection caveat (an obeyed injection with a real quote passes the quote check), the model's training cutoff, the CFPB file changes over time, Known limits (from the threat model), why there is no `cli` backend (untrusted text must never reach an agent with tools, and one code path keeps every number reproducible), the cost to label every narrative projected from measured tokens, every number with its command
 
 ## Dependencies
 
@@ -115,7 +115,7 @@ Cut in this order, never cutting the quote check, quarantine, tests, CI, the spe
 6. The version-to-version interval (keep the interval against TF-IDF).
 7. Method comparison extras beyond the confusion matrices and the who-was-right table (owner to confirm).
 8. The analyser (owner to confirm). The fallback is that the owner reads examples with `show` and Claude sees only counts.
-9. The brief's own cut order after that: synthetic sales calls, Azure, the dbt lineage graph. The agreement step is never cut, because claim B depends on it.
+9. The brief's own cut order after that: synthetic sales calls, Azure, the dbt lineage graph. (The agreement step was removed on 28 October by owner decision, with claim B.)
 
 ### Cut decision, 28 October (owner)
 

@@ -6,8 +6,7 @@
 
 - Every LLM label MUST come with a quote copied from the complaint text.
 - A script MUST check that the quote appears in the text. The model's own claim is never enough.
-- A label with no valid quote, or one the baseline disagrees with (in the agreement view), MUST go
-  to quarantine with one reason.
+- A label with no valid quote MUST go to quarantine with one reason.
 - A quarantined item MUST never be dropped without a record and MUST never count as correct.
 
 Rationale: the system is useful only if a reader can check every label against the source text.
@@ -26,12 +25,13 @@ Mixing the two makes both untrustworthy.
 ### III. Honest Measurement
 
 - Every report MUST show coverage and quarantine rate next to accuracy.
-- The recorded CFPB label MUST be used only for scoring, never in a labelling prompt. (The error analyser may see it, on development data only, because its job is to explain disagreements.)
+- The recorded CFPB label MUST be used only for scoring, never in a labelling prompt. (The error analyser may see it, on development data only, because its job is to explain wrong labels.)
 - Prompt changes MUST be scored on the development set only. The frozen test set is run once, at
   the end. A second run MUST be logged with its reason.
-- The success rule: two claims are fixed before the first run (spec B10). Each must beat the TF-IDF
+- The success rule: one claim is fixed before the first run (spec B10). The LLM must beat the TF-IDF
   baseline at the same coverage, with a 95 percent bootstrap interval wholly above zero, on the
-  single test run.
+  single test run. The two methods label independently, and neither sees the other's label.
+- Sample sizes MUST follow a method written down before it is applied (spec B25).
 - Every prompt version MUST get a row in `EVAL_VERSIONS.md`, including versions that made things
   worse.
 - Every number in the README MUST come from a run in this repo, with the command shown.
@@ -84,4 +84,4 @@ contradict it. If they disagree, this file wins until both are fixed in the same
 Amendments are made in a pull request and logged in `BUILD_LOG.md`. Versions follow semantic
 versioning: MAJOR for removing or redefining a principle, MINOR for adding one, PATCH for wording.
 
-**Version**: 1.3.1 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-10-28 (1.1.0: untrusted text never reaches an agent that can act. 1.2.0: two claims fixed in advance. 1.3.0: analyser exception and leak exception, after review round 4. 1.3.1: `cli` removed from the backend constraint, owner cut decision)
+**Version**: 2.0.0 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-10-28 (1.1.0: untrusted text never reaches an agent that can act. 1.2.0: two claims fixed in advance. 1.3.0: analyser exception and leak exception, after review round 4. 1.3.1: `cli` removed from the backend constraint, owner cut decision. 2.0.0: principles I and III redefined, owner decision: the agreement view and the second claim are dropped, one head-to-head claim remains, and sample sizes follow a written method)
