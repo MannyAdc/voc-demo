@@ -581,6 +581,34 @@ def test_a_hook_given_bad_input_blocks_with_exit_code_2(name):
     assert "hook failed" in result.stderr  # our own message, not Python failing to start
 
 
+@pytest.mark.parametrize("name", ["test_gate", "data_guard", "read_guard"])
+@pytest.mark.parametrize("text", [
+    "He said " + chr(0x201C) + "fine" + chr(0x201D) + " and left",
+    'PLAIN = {"' + "\\" + 'u201c": 1}',  # backslash-u escape text, as source code holds it
+    "Japanese text " + chr(0x8868) + chr(0x793A),
+])
+def test_each_hook_reads_its_input_as_utf8_whatever_the_system_encoding(name, text, tmp_path):
+    # Claude Code sends UTF-8. On a Japanese Windows system Python would read it as cp932.
+    event = {"tool_name": "Edit", "cwd": str(tmp_path),
+             "tool_input": {"file_path": str(tmp_path / "a.py"), "old_string": "a", "new_string": text}}
+    env = dict(os.environ, PYTHONIOENCODING="cp932", PYTHONUTF8="0")
+    result = subprocess.run([sys.executable, str(HOOKS / f"{name}.py")],
+                            input=json.dumps(event, ensure_ascii=False).encode("utf-8"),
+                            capture_output=True, env=env)
+    assert result.returncode == 0, result.stderr.decode("utf-8", "replace")
+    assert b"hook failed" not in result.stderr
+
+
+def test_the_git_hook_may_be_set_by_its_full_path(gate, tmp_path):
+    repo, main_checkout = tmp_path / "worktree", tmp_path / "main"
+    command = {"command": "git commit -m x"}
+    for hooks in (repo / ".githooks", main_checkout / ".githooks"):
+        assert gate.decide("Bash", command, hooks_path=str(hooks), roots=(repo, main_checkout)) is None
+    decision = gate.decide("Bash", command, hooks_path=str(tmp_path / "elsewhere" / ".githooks"),
+                           roots=(repo, main_checkout))
+    assert decision and decision[0] == "deny"
+
+
 @pytest.mark.skipif(shutil.which("sh") is None, reason="no sh on this PATH (CI has one)")
 def test_the_hook_runner_turns_any_failure_into_exit_code_2():
     result = subprocess.run(["sh", str(HOOKS / "run.sh"), "read_guard.py"], input="not json",
