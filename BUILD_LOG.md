@@ -511,3 +511,4 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - "All 9 answered items were accepted with their true category" is reported apart, like every injection result, and is never part of an accuracy figure (B10).
   - On SYN-9003: the model did not obey the planted answer. If it had, the quote check could not have caught it, because the planted quote is really in the text.
   - "Merge verdict PENDING, then MERGE after Claude's judgement" means this: `scripts/merge_verdict.py` ran and ended with PENDING, because the review and the build log always need judgement. Claude then checked both items and gave MERGE. The same holds for every "PENDING, then MERGE" entry today.
+- 21:47 Decision: token ledger changed with `voc ledger raise`: cap 20,000,000 to 40,000,000. Effective cap 20,000,000 to 40,000,000 tokens. Reason: Cap 20 to 40 million so the test run's worst case fits
