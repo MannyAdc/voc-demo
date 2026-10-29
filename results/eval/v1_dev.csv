@@ -1,0 +1,371 @@
+complaint_id,split,prompt_version,proposed_label,quote_start,quote_end,decision,reason,accepted_label,tfidf_label,tfidf_confidence,recording_key
+23741032,dev,v1,Debt collection,182,288,accepted,,Debt collection,Debt collection,0.9031599291463299,072148fda9be00f6a52bf4baebd387f335764418879c54cacd0f47255b78e169
+23743242,dev,v1,"Payday loan, title loan, personal loan, or advance loan",282,355,accepted,,"Payday loan, title loan, personal loan, or advance loan",Mortgage,0.5296527401553351,459d1315adebfc951661456b6011d2315902131211790ddf022cb92e6fc32768
+23743842,dev,v1,Vehicle loan or lease,0,53,accepted,,Vehicle loan or lease,Mortgage,0.25724938855919705,807e2638efa342d1053cfdefe0647cfc4eb089a6928635e741f7ea3fb4f96dc0
+23745215,dev,v1,Checking or savings account,541,591,accepted,,Checking or savings account,Credit card,0.43570797943964024,9688b9da33da64ca88a4ae4b3ec13f17c4a7f8fb07a0ddd3e0db656cb356c0e0
+23745978,dev,v1,Prepaid card,45,142,accepted,,Prepaid card,Credit card,0.6902902658886979,4017c5202ee4545caf650c1ea781ae0d941f6ae7cdd9e9330c5d878a3c567729
+23747400,dev,v1,Debt collection,0,79,accepted,,Debt collection,Debt collection,0.8021351294413018,595d57d08a1c8e7c2f1909c29085fc9afd9aeb401e105a5659df93f66d8fb324
+23750165,dev,v1,Debt collection,116,203,accepted,,Debt collection,Debt collection,0.9066500603706538,bcde3ca6b34dae1dbbf406e885677f37d836b31384212fc3c4b4ac3b6d7fce6d
+23750725,dev,v1,Debt collection,0,42,accepted,,Debt collection,Debt collection,0.6948104133058917,d79e85958ff3b7f0486e3cb0eaae65835d3a058882767fe7ef3351bcc0634f1d
+23751707,dev,v1,"Money transfer, virtual currency, or money service",193,279,accepted,,"Money transfer, virtual currency, or money service",Credit card,0.5559499052633108,ea96e55cf461a2223dfe09b23ce5a0e1d9f83c72bc7da9b2dddc8b96ce6db8c8
+23753212,dev,v1,Debt collection,342,385,accepted,,Debt collection,Debt collection,0.9865977743103135,e593bbaab040f9b61d5288c920d6e68777ca68df9ff598b4a5d7bd73b1047181
+23753401,dev,v1,Credit card,39,174,accepted,,Credit card,Credit card,0.7184512048686346,2c136b47eb3dd90f714f8d4d9addcd6e7f58668e116ef9fb16be5d7f2740adde
+23754556,dev,v1,"Money transfer, virtual currency, or money service",0,92,accepted,,"Money transfer, virtual currency, or money service",Checking or savings account,0.51301115124365,36f2ea4677547f2e267e02bab59eaae9cd940c76d0877adbabfe6d5f7ec42ed7
+23755269,dev,v1,"Payday loan, title loan, personal loan, or advance loan",0,43,accepted,,"Payday loan, title loan, personal loan, or advance loan",Credit card,0.3747297522426833,90f916372822f6cba31f8b7c596d27c70d3b621185c15b06c750eb0f5d6adfbc
+23756523,dev,v1,Checking or savings account,620,694,accepted,,Checking or savings account,Checking or savings account,0.910001815532801,1a120c6fa1bac60fdb9aee1efa88427db946d785a88f5de89794f2262dba1d37
+23757866,dev,v1,Credit card,0,65,accepted,,Credit card,Credit card,0.7150496326510556,a67404ba872f31dda8c5203973de5d58323177a21e8ba10f813a21253853be05
+23762149,dev,v1,Credit card,43,68,accepted,,Credit card,Checking or savings account,0.37724034318476996,35891e7d9458d16d1fb7e6561d45de1c764652d467a4be6405ed6734c1e9212d
+23763811,dev,v1,Checking or savings account,16,63,accepted,,Checking or savings account,Checking or savings account,0.3757427459079086,dd819eef0e06fb328d31c230c073a310ffcc29823e35c03672651fbe2b1e361e
+23763937,dev,v1,Credit card,0,63,accepted,,Credit card,Credit card,0.8632679814217216,f56a2819d22a75a88e945f82aeeec4d9d6d21ae68f1cb8f2b624840f5b57fb14
+23764451,dev,v1,Vehicle loan or lease,163,238,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.5245691810011577,e4ac69f02d3dd6e249ae286739c037e7e299c55b6b95fa89863cbe8645682296
+23765896,dev,v1,Checking or savings account,0,68,accepted,,Checking or savings account,Checking or savings account,0.6264673298494631,8d94ef474500ae9e0afa7b067b860762732c241470d4f316281675b4d04a99be
+23768219,dev,v1,Debt collection,182,254,accepted,,Debt collection,Debt collection,0.9945434238733234,1eb3fc56da1f5aa62f8cd6622db78b8c0353c07b491bf2efdec0b59a3a74f5c5
+23768722,dev,v1,Debt collection,149,256,accepted,,Debt collection,Debt collection,0.9741069020069435,f157a2379abb34001ddb7285eb02b70a04b2f4abebc1e89ba87c59d4910ce22a
+23768788,dev,v1,Debt or credit management,544,587,accepted,,Debt or credit management,Checking or savings account,0.2724367240545271,83a65d6a4c8650d419b948e70b490264cd70c7c7c8eefe9d2ca5e245c0b4af73
+23771988,dev,v1,Credit reporting or other personal consumer reports,198,231,accepted,,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,0.7734852226107908,e4a34e11521e87bb454626babb7cc2dbea84410877be4c69c004e014db138883
+23772160,dev,v1,Debt collection,0,28,accepted,,Debt collection,Debt collection,0.999167464733645,f845a42105c1e64a91c9b229dc035cc249af1ab4e3e47dc1590aa04e13a1ff70
+23774010,dev,v1,Debt collection,83,136,accepted,,Debt collection,Debt collection,0.9939240644978243,576d6eaa994aa182c67573767afd8c3b44b5e0cb997f4f2a21d5dd6952032d7e
+23774129,dev,v1,Debt collection,0,85,accepted,,Debt collection,Debt collection,0.9648478110007286,be08d765442bd18d9a632cb6b2fa16f6a668944410654748e9251700ceb4ffb4
+23776106,dev,v1,Debt collection,78,140,accepted,,Debt collection,Debt collection,0.9965213947012632,ff6312561346df3353b36b9f5c5d525f647bd7e839982f3241597dfc479b5920
+23777406,dev,v1,Checking or savings account,49,90,accepted,,Checking or savings account,Checking or savings account,0.7536260923126599,3b405f8e85270638c802a9b730812bcf6b1db4f9ca7ead77bb56d39a42368d27
+23777611,dev,v1,Student loan,96,175,accepted,,Student loan,Student loan,0.37565220974012603,48f82b6eda57416260b553226428e7f3dd87f9da84a01b14816627ebe54e1af9
+23779081,dev,v1,Vehicle loan or lease,946,972,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.5499836754155175,bcebcd73aa8dafe3a8feb0d19fda8c5d743f16ab05152601878e504c2056c404
+23779205,dev,v1,Credit reporting or other personal consumer reports,0,88,accepted,,Credit reporting or other personal consumer reports,Debt or credit management,0.7197034729113848,e0af7909c2b65af9d2c0ebd6782663bb698bc2a3c569f3b42dbfa0c6f67da0a5
+23783570,dev,v1,Mortgage,0,75,accepted,,Mortgage,Mortgage,0.9887076404175379,04965dd869952f250497cfe3311ed1f9e5ff10dc2b55ab39a5a87ccfb0ffc038
+23787184,dev,v1,Credit card,0,88,accepted,,Credit card,Credit card,0.44594389264059425,01010640054b8c7ac883d0803b2652bbfc6eaba5f654515f8e4fb674fbf60b17
+23790898,dev,v1,"Money transfer, virtual currency, or money service",0,70,accepted,,"Money transfer, virtual currency, or money service",Checking or savings account,0.5116986754150784,6c756d914cf778ed474f1d129401172ea1a1120699c81feef83245423dba4081
+23792577,dev,v1,"Money transfer, virtual currency, or money service",12,67,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.410324140718229,1d8d74eac1bb05cbdc92ba45a8410641d17084576a751e94ffaf00028a93228b
+23792826,dev,v1,Credit reporting or other personal consumer reports,34,64,accepted,,Credit reporting or other personal consumer reports,Checking or savings account,0.2875298943588253,5093a687caad4ad6d5ea7edfd271e7fcd3f1d121717e4736754d0bc122628af6
+23795429,dev,v1,Prepaid card,1331,1381,accepted,,Prepaid card,Checking or savings account,0.6825680128480502,538a04768ba0091663d825c1a5b771580a0315b518a6e16bf1585d093baf8fab
+23796797,dev,v1,Mortgage,409,489,accepted,,Mortgage,Mortgage,0.46374564138280355,d07c9a26c5a9e4d1269a51909ddab483436297145bc2265e68a156f334741c86
+23797340,dev,v1,Credit card,0,77,accepted,,Credit card,Credit card,0.6840861367851085,84a451bd9987aa71536ca395e15e68b7be2e71e4557f60ef1cbb7a35466f117d
+23801850,dev,v1,Credit card,0,79,accepted,,Credit card,Credit card,0.9625631048230568,8b870991ba7f6bf7227869662b42c01026aa4cfc520dd88ba04717f4c93b4cea
+23802303,dev,v1,Checking or savings account,590,640,accepted,,Checking or savings account,Checking or savings account,0.7523372682709886,4fa96cb35ec8e6c36e5cfa42b7601e5169a0008be36e692c119d2717f48b9863
+23804422,dev,v1,Checking or savings account,39,157,accepted,,Checking or savings account,Checking or savings account,0.4864951386346643,3d0e54ddf2e3681fae2b8028a8a5e1aed6a9cc0d4bab7cf24add2437940a1e82
+23805500,dev,v1,Credit card,0,97,accepted,,Credit card,Credit card,0.9424353759142915,7d05c2589737f4f9d8edc97ccfa447c104d3998c892ddec1e54dc5794282942e
+23806038,dev,v1,Checking or savings account,0,76,accepted,,Checking or savings account,Checking or savings account,0.7941506904451562,fdd4ad29179390f101b90345a7a7ed14ccf7cbd6f664b515bc1ac7e2a16241c8
+23806058,dev,v1,Credit reporting or other personal consumer reports,231,297,accepted,,Credit reporting or other personal consumer reports,Debt collection,0.6510362171787553,3dbdba1b702d2d93e31934006e5f69de198b7c0ef8da1a23242c9b99d4ba0f71
+23808584,dev,v1,Vehicle loan or lease,287,345,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.6097556737814592,074b029886d167e25a6c5a8a27ed1351faaf65954b6f8b52802f5e6745c25774
+23809590,dev,v1,Credit reporting or other personal consumer reports,106,176,accepted,,Credit reporting or other personal consumer reports,Debt collection,0.9384661838591356,e1f3d4c2c1c285cb7fe5e0906e2e4703193f5b9a19c0cf146d0db69406f749d6
+23809803,dev,v1,Checking or savings account,1112,1173,accepted,,Checking or savings account,Checking or savings account,0.7115437912580725,1dfdf2c4ffb86ab829c5a9b6c2d8b2677a8c0940a001d3bfb7bfb68e741db5c1
+23811505,dev,v1,"Money transfer, virtual currency, or money service",204,259,accepted,,"Money transfer, virtual currency, or money service",Checking or savings account,0.53460522364228,3ddfafed97eea02e99c477bf24435a3ff87f0c21e43cd5190d9c423229f1f64b
+23814222,dev,v1,Mortgage,149,185,accepted,,Mortgage,Debt collection,0.6384233781771936,1f9611e04b64dfeba0dca02fa73f3f06a01d9df4f950fff5402b00c9e49245ad
+23814939,dev,v1,"Payday loan, title loan, personal loan, or advance loan",0,77,accepted,,"Payday loan, title loan, personal loan, or advance loan",Debt collection,0.3412026713113565,b5a8b993e1df46551a404ae1edeb9c8c7321baa9d78cbfdf0fe0a7cf2f016cbf
+23815221,dev,v1,Credit card,,,quarantined,quote_not_in_text,,Credit card,0.5369754276145489,967ec44c14d444940238ce057babf6e66851c59553e8d825c27d0d737b859360
+23815455,dev,v1,Debt collection,0,72,accepted,,Debt collection,Debt collection,0.46590969510278346,a89749eff980b705c311b3d1a7b2fbba67784959ba6c6eb817aabe77e5cbd762
+23815827,dev,v1,"Money transfer, virtual currency, or money service",0,66,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.49278378288362695,662c85f7da5d4b6787f4104c41985c75dfd821ce0c7275ae51a7573a2cd8fd3e
+23816467,dev,v1,Checking or savings account,15,99,accepted,,Checking or savings account,Checking or savings account,0.644814392409634,3cde27965f9c784f66ea5bd21d60590f86ce61d33443a1a878f9861207a31e7c
+23817021,dev,v1,Checking or savings account,158,225,accepted,,Checking or savings account,Credit card,0.347754510159688,b8f1e7e713d1f0b04b3a264e213c4a30ba3a7c76c82fdab3308e10cc6f486864
+23819877,dev,v1,Debt collection,64,119,accepted,,Debt collection,Debt collection,0.9204949030193188,9d2386f543df308a349579fa7aadda321cce32bf7c8cb5c807261fba4db48dab
+23820539,dev,v1,Debt collection,77,124,accepted,,Debt collection,Debt collection,0.9869118782910588,33f1288dc01daf5f35982747f71f97554a3526a04276c94ad63a9ebc588035a8
+23822217,dev,v1,Debt collection,0,80,accepted,,Debt collection,Debt collection,0.9911896957962649,16ed7559efb224b9f68e3e2ab9e3dd8904de4233dcd8bc9ebe79b96007688cae
+23822259,dev,v1,Debt collection,437,524,accepted,,Debt collection,Debt collection,0.9091060557056896,a628f6dd73477abbb70375b2613b1ba789f67846f17e7075ab3a076a3faec15f
+23822711,dev,v1,Prepaid card,93,143,accepted,,Prepaid card,Checking or savings account,0.5706233339908543,12dc6c282d64d50682eef63c0dd6f175738d97da127e7e64c111c662d30f9969
+23825512,dev,v1,Credit card,67,140,accepted,,Credit card,Checking or savings account,0.6430898278450494,39839c5e4de693a15f28602d153612a07f6308fd871ccc5fa0c1113167539e66
+23826723,dev,v1,Checking or savings account,,,quarantined,quote_not_in_text,,Checking or savings account,0.5186924536397551,eaf04a3266a831115f358698b6a8b0e56d862769c3ad0b0a15aa7a2b2278f4ec
+23826742,dev,v1,"Money transfer, virtual currency, or money service",0,56,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.7725808732493276,e66b8d43a2a680014b2554ae6419a12870640b7742e0f7f64644d905f9678cb3
+23830424,dev,v1,Credit card,151,245,accepted,,Credit card,Credit card,0.6304724887178098,df66dc7a3ff2e83d2e257bb98716eb1b99e0828b2e66b03226f08dffdc3ee739
+23830457,dev,v1,"Money transfer, virtual currency, or money service",0,63,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.44016432053646243,fef3f47366f1a0894cf21f508ab6db60a5b2099e4fea1c52b0745b243bf18908
+23836313,dev,v1,Credit reporting or other personal consumer reports,106,179,accepted,,Credit reporting or other personal consumer reports,Debt collection,0.3313407889294146,42b3e11f9943d1aa0c0db286489ca89a173e89c7e9507cc47015ebdb69b43314
+23836754,dev,v1,Debt collection,529,588,accepted,,Debt collection,Debt collection,0.9884193631573526,13b83d24785fa9a8fc480a4ebf724727592142f2d38984d728c4234b833dc5af
+23839418,dev,v1,Credit card,16,73,accepted,,Credit card,Credit card,0.6208971369590396,22c3b0c9fe375148c8afaae3a4c0446b2a286585696045325c3c3e01ca84a07e
+23841643,dev,v1,"Payday loan, title loan, personal loan, or advance loan",14,88,accepted,,"Payday loan, title loan, personal loan, or advance loan",Checking or savings account,0.2897162958791427,e0d0523f855353e4e2b7955d4adbe1db1b3218194a95fc5999db93435d2a19e7
+23843006,dev,v1,Checking or savings account,63,132,accepted,,Checking or savings account,Checking or savings account,0.6810356637586218,45b6ae21473a5334efbcdfb31361799b3ddb115e0451f2613ce80b9f67179aa6
+23846924,dev,v1,Student loan,316,391,accepted,,Student loan,Student loan,0.5898944572577854,92e775bcbfd9e6958b907fb2ce6f4a9a625bfe44815c972af79c9f0d2708ee34
+23847654,dev,v1,Checking or savings account,706,759,accepted,,Checking or savings account,Checking or savings account,0.6017140098180536,4559a746a8824bdd7ba9ef20e7b43efa8b52430a3385038cad3356728d02aaea
+23849422,dev,v1,"Payday loan, title loan, personal loan, or advance loan",726,768,accepted,,"Payday loan, title loan, personal loan, or advance loan",Credit card,0.4558617457472294,fc6d4d6b5a9b69d66cbb6f91d311c0a03215631e3b3c33ff31a112c744438283
+23850449,dev,v1,Credit card,522,583,accepted,,Credit card,Credit card,0.5658821347541715,2ba5a3a917611ecf87e69025805ec271fba5d7637e69f09cc41c9f610829e8e0
+23851291,dev,v1,Credit card,0,50,accepted,,Credit card,Credit card,0.7504320894642298,d3c3e6fb50abbb0cb0ef136ce18e16c527e54f491dec56ba77aa603401fb9b82
+23872271,dev,v1,Debt collection,0,59,accepted,,Debt collection,Debt collection,0.8299276887298606,ef42328c9c93e0f3f9ad33e3c7877a188df3a0eadef36e0a69888dc2f405ce14
+23872283,dev,v1,Credit reporting or other personal consumer reports,985,1082,accepted,,Credit reporting or other personal consumer reports,Debt collection,0.888281378954624,3eae2eb0fda74d0c699db0b2be88373745100810a5b2b31862eb51baabfce127
+23872300,dev,v1,Debt collection,0,75,accepted,,Debt collection,Debt collection,0.5119298322768571,dbf2a95db4af79713bd6c991c41fb8e2385ecffbbd0acb65f662cf314d479a0d
+23873633,dev,v1,Debt collection,36,114,accepted,,Debt collection,Debt collection,0.9617256324027886,4c1b3991ddd60daf9fc545f2ec971e19f29db02c4fc71a2f6119940f2735a625
+23874077,dev,v1,Credit card,24,112,accepted,,Credit card,Credit card,0.9116511783826211,ee9fd3940b69854fb506cc8d29158d185c8d0a06ea07a21529364d0a0917502a
+23874636,dev,v1,Credit reporting or other personal consumer reports,0,26,accepted,,Credit reporting or other personal consumer reports,Mortgage,0.47784205462999246,0e479d868d358f75bf0a0006c871df37b2c2ea0a836ff57fb15eaeb7f4a30f44
+23877016,dev,v1,Credit card,0,53,accepted,,Credit card,Credit card,0.9447513826513455,1f015580866e8bece03a83707ff0b85d81a8cc45140a6c13d19cf31411f3f9f9
+23877635,dev,v1,"Money transfer, virtual currency, or money service",0,83,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.762835150449211,9e1f98c116be89843238b4fc617ee3133aae334cde2dd02e68db301c7bcc5405
+23878081,dev,v1,"Money transfer, virtual currency, or money service",425,490,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.5885638501109935,316b9b61145da0890334feb86c54bb0f84a55e85f50092e0e75f6bd9be3ea282
+23880307,dev,v1,Credit card,67,117,accepted,,Credit card,Credit card,0.5604784110404898,8af6593633052e1e74fc48ee9e9007297c5967ab4cedc6f21c80bc63e5b99ee0
+23880515,dev,v1,Mortgage,0,26,accepted,,Mortgage,Mortgage,0.26136837420852493,056d0009c753cd3862032bf75a63c882ca8078ca2662dac90bfbc5a79c737ba8
+23880858,dev,v1,"Payday loan, title loan, personal loan, or advance loan",133,207,accepted,,"Payday loan, title loan, personal loan, or advance loan","Payday loan, title loan, personal loan, or advance loan",0.46282969597227236,e3a86a819ac2d5b22a798dc25fc0fd6cdfa51c59bb6c90b74e1d284285ffa835
+23881362,dev,v1,Mortgage,,,quarantined,quote_not_in_text,,Mortgage,0.7652682466797647,6798af2ab1eb58e8e0aa4fc1c5fdcda1b7800ec9fd03923bcfde44f2a34c771b
+23881397,dev,v1,Student loan,122,164,accepted,,Student loan,Student loan,0.4497648338651088,a1b3415f06929e462758ab61987ff0ed2a998be74663e09aa954c3e064daa15e
+23881655,dev,v1,Debt collection,1248,1314,accepted,,Debt collection,Vehicle loan or lease,0.2730663573590372,b879ef5bb4783d6429fc9a865c76db266ee89d1b93e52019be0f25fd18e0e732
+23881707,dev,v1,Mortgage,0,91,accepted,,Mortgage,Mortgage,0.2698824262198849,36baa5548128931aad329da8ffd4a8172dde4c3aa27cece53ab8fafb6c4e1285
+23882212,dev,v1,Checking or savings account,0,75,accepted,,Checking or savings account,Checking or savings account,0.8679748983931235,1c1070eff12a12cede0c431b39e063df7a210d6f90bae0a84bac18b332e1056e
+23882264,dev,v1,Vehicle loan or lease,50,130,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.39275038478423296,5b48285945752d617f1ce05ee3cebaacfb39ea996a57db7e104cd067a4e2819a
+23882596,dev,v1,Checking or savings account,251,325,accepted,,Checking or savings account,Checking or savings account,0.6403797678833234,347eca9ea476113480545adcb465ff0aff82c02974215c6d6eb617b20ad28221
+23883258,dev,v1,Credit reporting or other personal consumer reports,186,270,accepted,,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,0.23908367149021123,8d9a2b151b6598fa1352102f84bf14bfa68d63b48666316dff8c2f0f8c1501d4
+23885235,dev,v1,Credit card,0,48,accepted,,Credit card,Credit card,0.7488650383859704,6da4e140b43991551199f5b3857f8026d5c559abcc9eec5a19be18219e727480
+23885354,dev,v1,Debt collection,1126,1203,accepted,,Debt collection,Debt collection,0.9913505477682634,35b4ea626b97ee74500137e4f370efd992e6dc5402d9f50e26a4f64a2ec4a36b
+23885818,dev,v1,Credit reporting or other personal consumer reports,0,97,accepted,,Credit reporting or other personal consumer reports,Vehicle loan or lease,0.7324628134604884,42cc9f8e054d0fefd9e5b05dd7df57838655dd53c896dc537486b176b681056a
+23886731,dev,v1,Checking or savings account,0,71,accepted,,Checking or savings account,Checking or savings account,0.3906435507585355,ad6ab8a1b2d80b1d32ecd8d5190a615a05ee2862eda7b10eaa78f1fe130bfb24
+23888002,dev,v1,Checking or savings account,0,51,accepted,,Checking or savings account,Checking or savings account,0.51704038359662,7f09a58238b3e25c137b01d311c7345761da00eb550e7de3219c5c335e3404a3
+23888639,dev,v1,Mortgage,0,53,accepted,,Mortgage,Mortgage,0.8032014832967841,9fa9f522a347e1e4fff678340d21ad6d072d4cd028c5fc5d63ef8c7873903622
+23889916,dev,v1,Checking or savings account,0,50,accepted,,Checking or savings account,Checking or savings account,0.833044011512513,49321f046a5a6a5975867e768689cb80ea7a017434ce0f6257eb147aa5036c6a
+23890529,dev,v1,"Money transfer, virtual currency, or money service",0,59,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.4698312908647848,2fc8b893be45376ca5bb5a1c63d99ce453581f4b8532585c2ccb47b17355023b
+23898952,dev,v1,Credit card,191,235,accepted,,Credit card,Credit card,0.5407116123839674,13adf3c3cdb92324149699f6ac2f4468e7a9e2a1e59b2a9d544823978d54457e
+23899467,dev,v1,Checking or savings account,0,45,accepted,,Checking or savings account,Checking or savings account,0.634053958910299,24904a526fe856bf3ed90d6a8d691527a639561c0d91d5f2f5ef2e61892f5b94
+23901539,dev,v1,Checking or savings account,550,602,accepted,,Checking or savings account,Checking or savings account,0.7742098412955288,03857a76f4f71166f152ade1a720d3786a096acda3b9b27ae19a2f1208ee67a5
+23901827,dev,v1,Credit card,58,162,accepted,,Credit card,Credit card,0.8976620331916656,66a8d1f835437630d81644f9c24d01176bbebe39c10bb6c300b8476a60e0734b
+23902030,dev,v1,"Payday loan, title loan, personal loan, or advance loan",25,94,accepted,,"Payday loan, title loan, personal loan, or advance loan","Payday loan, title loan, personal loan, or advance loan",0.8773175134573308,5dd8775c81cc5d6e7819bb1e5a97d3d38dc232809253e8a74043fc35a537361c
+23902313,dev,v1,"Money transfer, virtual currency, or money service",694,729,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.5320001522144532,46a7684fd27d2703c325ad64a308d467a94e6ebe5255f7211961cc51ae6576fc
+23902343,dev,v1,Vehicle loan or lease,110,185,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.3271487738301496,bf8ff447015801ea7264f14f73d453cedc2f081487b41099c92c1e30130315c6
+23902897,dev,v1,"Money transfer, virtual currency, or money service",0,40,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.44619899760787324,4b12082fb4abd1ce512831e71ed7edfd2cf4c4ae0673ffbbd87d793d81148c04
+23903080,dev,v1,Vehicle loan or lease,83,134,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.7521957470347668,a6d9d1f7d055e191289b681a20fdb1abfc03dd8b369d4d348e31adc3e1de4b43
+23903174,dev,v1,Debt collection,0,57,accepted,,Debt collection,Debt collection,0.7374879762397304,6b8d59dbbb325c0680b9136b5b656402ba8e3e284e186610be602db76cd32d43
+23904023,dev,v1,Credit card,328,366,accepted,,Credit card,Credit card,0.9021656882797062,a51470bbd75f6c365033ca8ba4f828396039d2494631169e83a4474d4e1604d5
+23905171,dev,v1,Credit card,89,149,accepted,,Credit card,Credit card,0.7922434089287921,9e08c2c724092cedd831526d0b1f179becd862352b0d72b08b1bf563592e9c1a
+23905484,dev,v1,Checking or savings account,0,61,accepted,,Checking or savings account,Checking or savings account,0.6257934529198071,35b03e8139454bf6cc43bb55ea76677d869ea5397be008c339c46c3ed3aedebe
+23905502,dev,v1,Checking or savings account,0,156,accepted,,Checking or savings account,Checking or savings account,0.8707894855513517,22e8e0643d769e1be275624c0b903f9cf91df88fb79cfcb7b73b4bfb54dd75aa
+23911252,dev,v1,Mortgage,0,67,accepted,,Mortgage,Mortgage,0.9858686855934506,a4dee2fb0c36ad25855ed4f3827aad4b59baf4e101a7b3fafd20e3ed54bd3f23
+23912769,dev,v1,Student loan,9,70,accepted,,Student loan,Student loan,0.4567234655087776,395be9a2ddfccb7e3882dffa03990c012858d6e26435b960e5f32e2e7bc4fb3e
+23916400,dev,v1,Credit card,0,35,accepted,,Credit card,Credit card,0.33334565971703717,742edcbb155da2419dde888ba83c135c4bd0b425d807f08c91f26f57d16a7fb2
+23917200,dev,v1,Mortgage,119,172,accepted,,Mortgage,Mortgage,0.9197640589542324,3a0c82617c554cd96100443eca43661b1fbe1027828ed7bf0abaa353c51f5254
+23918008,dev,v1,Debt collection,15,93,accepted,,Debt collection,Debt collection,0.9946592292900164,7e92cd64d91072fb4f2388ce0c5139b1380118e2680bb8f5fd233791c2f5d572
+23919173,dev,v1,Checking or savings account,20,87,accepted,,Checking or savings account,Checking or savings account,0.9106083454626279,4d279db5ba10721b86441975b86766bbd2651e22718f45ce07b133122660a892
+23921475,dev,v1,Mortgage,35,157,accepted,,Mortgage,Mortgage,0.9800230197993905,ceca48b7b2b0742447675d5d459cd804391867f43891dec1d5b73d24d39c4017
+23921571,dev,v1,Credit card,,,quarantined,quote_not_in_text,,Debt collection,0.32874917420619465,ec1f0be82b2a71c26c1fee5615e142edcebec3ffc8a7293c769da1edb9863a2b
+23921989,dev,v1,Credit card,232,329,accepted,,Credit card,Credit card,0.7933228473120836,fc3c32f5b775cbdbe11baa52ed60a987fe39628ea31477f44662e3aec229d868
+23922660,dev,v1,Debt or credit management,0,60,accepted,,Debt or credit management,Checking or savings account,0.4075521285052108,5e047aec80964b3f9ad5d948216b4a16726527a656940f662df5e0e293522785
+23924794,dev,v1,Checking or savings account,0,79,accepted,,Checking or savings account,Checking or savings account,0.8811344508561071,91710db953a32bb96636f65bbac2170dd85bb26b44cbe5a653625ff6e28e2c8b
+23924982,dev,v1,Debt collection,341,398,accepted,,Debt collection,Debt collection,0.9906084824133846,a49124ffc8e73db3516fe07193c4361f3a0b703417731e9418183780ceb82324
+23925909,dev,v1,Debt collection,419,508,accepted,,Debt collection,Debt collection,0.9911118551003589,872cbd04429643959e206a2be05b81962449e12f264e5d4eb09a53213b64efbd
+23927623,dev,v1,Student loan,53,116,accepted,,Student loan,Checking or savings account,0.24025912798244167,32c5b6d0576562cf34e48584faeb391632fd913bbf455599d6c63f0dd0fa16db
+23930319,dev,v1,Debt collection,24,93,accepted,,Debt collection,Debt collection,0.9889811283528136,bcccec6402f8443ceb64e60bb1cb69f87f9259f55d773de967ceec792114cef8
+23934787,dev,v1,"Money transfer, virtual currency, or money service",135,189,accepted,,"Money transfer, virtual currency, or money service",Credit card,0.7649398546939928,b04524fcb6046a2f32ca6f82f47fcf91b2003f2bec0e48aac5cf1eaee9c5d47a
+23939284,dev,v1,Checking or savings account,0,40,accepted,,Checking or savings account,Checking or savings account,0.4188505876021194,21f7312dd7b9cb7f913bd5fda8e88536d8d36a43138dda61dc1cbb509b1fa26f
+23939621,dev,v1,Credit reporting or other personal consumer reports,76,131,accepted,,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,0.39161350655882793,6ae2b18bbe3bd973d0597e5c704a780bca66e007d6cb3633f56c36adee22ed01
+23940703,dev,v1,Checking or savings account,193,250,accepted,,Checking or savings account,Checking or savings account,0.8602349602014655,31ca14bb34b5001ebbce7ae1a6b3a265bd73e80022d5977b89f6ff8b831bbe33
+23941973,dev,v1,Checking or savings account,29,99,accepted,,Checking or savings account,Checking or savings account,0.8012559923344871,589dbeda2a5c4714d5b616dc8dfd7984b4875e787df2583e65dae89bf5d878d5
+23942356,dev,v1,Checking or savings account,39,128,accepted,,Checking or savings account,Checking or savings account,0.7802482810261642,0946d6fa9f6d3570ea1af1073631e1e9b1891b4d4de595da7674cd05a0657f98
+23942604,dev,v1,"Payday loan, title loan, personal loan, or advance loan",223,277,accepted,,"Payday loan, title loan, personal loan, or advance loan","Payday loan, title loan, personal loan, or advance loan",0.673884847774788,37b60b4e7cead01cbbc6da955573ba3f8c5f7f5b1abf8e8a82d65ccb05f4bcd5
+23944382,dev,v1,Debt collection,0,80,accepted,,Debt collection,Debt collection,0.9848013511214637,b043e80a49d19fe88ce2939dc3c65d078454dc36c680c274fde30a84fbadadc9
+23944964,dev,v1,Credit reporting or other personal consumer reports,0,61,accepted,,Credit reporting or other personal consumer reports,Credit card,0.3776769194851366,d46691aa2ec504f5a27207683fa5b6218a396aaaf9f84fd4d566c453ef8889f5
+23945682,dev,v1,Checking or savings account,0,77,accepted,,Checking or savings account,Checking or savings account,0.8973316686323167,ed3d4cc88eb079b0f5190e1dec124d999eb1dfb83aa47e1350c6bc8f64fe14bb
+23947011,dev,v1,Credit card,139,266,accepted,,Credit card,Credit card,0.7115113196076502,81b699c6c9fb486745532eb8676fc881f2f2de88838cd34c6755c2974a1821cc
+23947681,dev,v1,Checking or savings account,37,71,accepted,,Checking or savings account,Checking or savings account,0.459710739583853,7c089f81e92760c6d0d864396f3399ca2fa8085814d5675d1f4bee437e8b1601
+23949399,dev,v1,Mortgage,244,284,accepted,,Mortgage,Mortgage,0.5595906354056955,bfcd57ef3b25ba5a9f898f30a1edfe435be71a33aee25f07b31a2b840a9536d3
+23949443,dev,v1,Debt collection,0,50,accepted,,Debt collection,Debt collection,0.8491178552672358,39ca6647a5cee6c9682bdd7876c283fabc21a661286f1ad22be55f6e56e04de1
+23949809,dev,v1,Mortgage,43,119,accepted,,Mortgage,Mortgage,0.9103525679258075,1d9f7f36ee56b943bb54d64b581afd5352e4135c7829994aab5a589530562c64
+23951384,dev,v1,Debt collection,520,583,accepted,,Debt collection,Debt collection,0.727571363847616,034286f8f75f5299393cfd76c379972e3651e1ba9bc1622ce611734713284a94
+23951784,dev,v1,Checking or savings account,0,56,accepted,,Checking or savings account,Checking or savings account,0.7875322851901959,e2f654d90a86af791afaf24ae6d707b4f5c63d4ceb2e5d3e5274f62a2a1bdd75
+23952210,dev,v1,Checking or savings account,80,151,accepted,,Checking or savings account,Checking or savings account,0.6868322852663166,1fd8011af2ea7e12cdfb56f14c207f42bf090382a93642552807073af3a8175d
+23952603,dev,v1,Student loan,64,103,accepted,,Student loan,Student loan,0.5405154110807249,9b9a67c7585998349a2039ea3cf032dcd867636aad6d6ca7d798f828cc27c603
+23954714,dev,v1,Debt collection,2367,2397,accepted,,Debt collection,Credit card,0.4778359272391279,f756f2037e2a0b8bf42efd66a65d2bf70292591243027d48718079d68640e97e
+23955336,dev,v1,Checking or savings account,35,100,accepted,,Checking or savings account,Checking or savings account,0.7877467314488382,80dbe78430d0d01184eb2ca14d8f92581d07084e98b14259a573a67f86470f2a
+23956986,dev,v1,Student loan,41,80,accepted,,Student loan,Student loan,0.6057837019886226,068a138c2d2136e61e5459255456d9511e945d6aabdd1b11f88c06efe04580a4
+23958636,dev,v1,Credit reporting or other personal consumer reports,0,105,accepted,,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,0.5630706500764301,081afc21fd5e930e3335ee6a5048f92a119a3e511488ca8b4bafdce0eb1c55ea
+23962953,dev,v1,Credit card,0,86,accepted,,Credit card,Credit card,0.7794281099953467,2b8a35f2dc5d0dc53effc36f65f32eaf3869e408d4140d0168ae7ca142226869
+23964125,dev,v1,Student loan,0,56,accepted,,Student loan,Student loan,0.5675925873195703,2ddead4497bd26de32c084964f6e1ecc2a9337601f5771738307de467b340619
+23967143,dev,v1,Mortgage,418,464,accepted,,Mortgage,Mortgage,0.741544233173975,433bcca578794a1ddfbbed83f578d538860e69c62a4d897201984994f610bd60
+23967280,dev,v1,Checking or savings account,0,85,accepted,,Checking or savings account,"Money transfer, virtual currency, or money service",0.3298161960191307,93216b485ca594e6f5a919c7d081a16b583deb872611681ac3e1e203e1a837f1
+23967909,dev,v1,Credit card,239,323,accepted,,Credit card,Credit card,0.7191782212345776,cfdc8d5d3e5b0e13f5371af23d4cae84afff0b9172c59fae40a438eca39fd96b
+23968054,dev,v1,Mortgage,557,596,accepted,,Mortgage,Mortgage,0.5980491481435809,8b5597983608032598f0d37dd1453d4b903a59a3eb54a5953c3044ecf2863f89
+23969170,dev,v1,Mortgage,201,308,accepted,,Mortgage,Mortgage,0.9757770749160901,e79d5a73a71e89ed9716428af3aff6d204178e8314798b00003cbc3ad266b263
+23970673,dev,v1,"Money transfer, virtual currency, or money service",173,203,accepted,,"Money transfer, virtual currency, or money service",Checking or savings account,0.6771320819126209,7dca5a40522416ed37b98cf977bbb5b8577aa6d357177c9f592b8b249d404622
+23971778,dev,v1,Credit card,0,85,accepted,,Credit card,Credit card,0.9843202537722758,2d4ef02b179503cae67ac8db31d8f83d09d7c4cf1b81029698f2c5714e98c070
+23972643,dev,v1,Vehicle loan or lease,286,313,accepted,,Vehicle loan or lease,Credit reporting or other personal consumer reports,0.5106664591437983,de179f2eea47116e39a1b7e26fd7611e655faa529e9a09274118e75bbe9dfed4
+23976072,dev,v1,Mortgage,9,130,accepted,,Mortgage,Mortgage,0.5460552755051363,acc2e5d7297672d183257e5b33c24b237c4757a6aef322895ff56a6c57225402
+23978381,dev,v1,Debt collection,0,116,accepted,,Debt collection,Debt collection,0.5805016059933429,263060967e5465d666e786a8bd9bc9e2e35ca5e2e14d296f7b3515113ccba93a
+23980983,dev,v1,Mortgage,0,73,accepted,,Mortgage,Mortgage,0.7280256047237976,4639bc4841af448db980e18b10de098a8d88ef48ee9962425ce38054c57a3607
+23982600,dev,v1,Credit reporting or other personal consumer reports,228,297,accepted,,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,0.43251031997429407,1e9a0d45b3b77f941825d93b97c1b38c160413c86a8f423c7135d9fa09ad0ccd
+23982707,dev,v1,Vehicle loan or lease,309,340,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.3871110544382707,a9a00d7f3695fc8dc1383864378562c9094cbaa07248ae47e1426f4bfb0a4fb1
+23985401,dev,v1,Vehicle loan or lease,0,146,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.7554477376604254,2506ae89d82a447be75bda728f761b9a64724ebb6692d6ed7749354fd372a9e7
+23986724,dev,v1,Credit card,85,135,accepted,,Credit card,Credit card,0.9022379051448842,265b3219e3b745516d392fa3435709fa401b10f8a006c007dede9babec9a4a3d
+23988342,dev,v1,Mortgage,213,240,accepted,,Mortgage,Mortgage,0.36576768051975705,c3b0fe6eeb5607fca34cfabf83b560ff81955c83eea06254fa49f115b9f134a2
+23989098,dev,v1,Credit card,772,862,accepted,,Credit card,Credit card,0.7334813238488672,bdbc79af62044a13bfc095636ca780df425e41955ab2b4c680aad7a683b2e72f
+23989850,dev,v1,Student loan,15,89,accepted,,Student loan,Student loan,0.8815056157870608,d004d01f722434693951d05263f12e948420e4fe0a15eb19cdbf2cd21faf7eac
+23989910,dev,v1,Checking or savings account,25,60,accepted,,Checking or savings account,Checking or savings account,0.4577056716916295,799965e381ca2a3096bb50f7d9bd283b381250dfed06023b4423d842547a8adf
+23990694,dev,v1,Vehicle loan or lease,88,137,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.6080415246578869,67d6626d94fa08dd591479b799273b0f22e345efeae2109b66f94e9dac77e60a
+23990797,dev,v1,Debt collection,15,75,accepted,,Debt collection,Debt collection,0.9375293515181741,df412bb6cd45f4766e87a68455b3e03dcc0a1149c9cd16ae706fad82654f54bd
+23991978,dev,v1,Credit card,0,52,accepted,,Credit card,Credit card,0.47168950947905774,35ea5eb4e1c67092a4fb82843d872cc615a239d643b18f4ce3c65d159c8b7940
+23992192,dev,v1,"Money transfer, virtual currency, or money service",20,63,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.875537012135801,0c4c51084165393a8cb63752563401915e70035a556980011a08f0034c0f22e7
+23994036,dev,v1,"Payday loan, title loan, personal loan, or advance loan",0,57,accepted,,"Payday loan, title loan, personal loan, or advance loan",Credit card,0.5724608820916883,1c12b7ddc5f38882471cfd26e7a112b5e0c6b77404549fd3d70fafdc625034cc
+23994251,dev,v1,Vehicle loan or lease,0,46,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.3761866957194799,8416af79a92e7467262703c37b63b7e2078437235f4c19f7f878713230c0bf62
+23994270,dev,v1,Debt collection,399,488,accepted,,Debt collection,Debt collection,0.9902570959611254,5c4158d99bd6d6ff796fa24c3ef00f07ac992017cffb95ceef8d6b2a53e52cbb
+23995047,dev,v1,Checking or savings account,14,49,accepted,,Checking or savings account,Checking or savings account,0.34589877115894585,4e4f517fa30d22a35ee7d880c8a1b3a83a3a3ef823bbb14476bbc8af33739198
+23995706,dev,v1,Credit card,1412,1476,accepted,,Credit card,Checking or savings account,0.41768842219189106,73736835db427c94c452c246d969dec32f5e7bf04d3d5d39d3f17ec0f7529952
+23996562,dev,v1,Checking or savings account,134,220,accepted,,Checking or savings account,Checking or savings account,0.6862273906252647,18c7ac635c02f5c5bf9fa6e0e90c54c62243a4f4ec467ba82c2e878be244ae3a
+23997155,dev,v1,Credit reporting or other personal consumer reports,0,33,accepted,,Credit reporting or other personal consumer reports,Credit card,0.40460180310214305,6cabafb93d9c4444bbae5bbb357d729f24207ca9955a4d2043826e63c3fa7c0f
+24002214,dev,v1,Checking or savings account,0,58,accepted,,Checking or savings account,Checking or savings account,0.535756990128646,350ff66a4c477fbc760287c7e19d38732a514940a4e4880c24ee493de3a055a5
+24005690,dev,v1,Mortgage,137,270,accepted,,Mortgage,Mortgage,0.630971985404614,247f634287e422a930cf89c6e8847c408811538dead3ee13f5a1945fa443073a
+24012535,dev,v1,Checking or savings account,0,68,accepted,,Checking or savings account,Checking or savings account,0.6379417656767032,9dbf25b5725de726388f1db1055f2ff73fc471cc4e37734d054280d757438de1
+24013645,dev,v1,Vehicle loan or lease,0,35,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.8016099013057898,ccf1e456bcfa79e82aa27e8df4fc178e4b89653842a7e7f7ed108bb4af959bd4
+24013665,dev,v1,Debt collection,,,quarantined,quote_not_in_text,,Debt collection,0.949947699592578,6f2c4a5fc70521837fdea785fe40b6ff87a9ff1af8d3a733af3bb3087f76b79f
+24016286,dev,v1,Debt collection,0,75,accepted,,Debt collection,Debt collection,0.5221991673036296,fbc10c85ba7b6aaf67e6e5fce9e0d13605ef72d10706a04dde9b6982ddb9e8a8
+24020517,dev,v1,Checking or savings account,2308,2401,accepted,,Checking or savings account,Checking or savings account,0.6299344892566514,b2bc71502f2774ecffb64932cebdd916420373c830421594dec92f0d17a8325a
+24021013,dev,v1,Checking or savings account,0,78,accepted,,Checking or savings account,Checking or savings account,0.7957831701877431,02fd467c07da0bc6101b7a0502918e03d575e21104c2e1ec33c0a84b2cc47d18
+24021759,dev,v1,Checking or savings account,361,412,accepted,,Checking or savings account,Checking or savings account,0.7053402527961602,54e6deba1dde9c8e3a364aa233c9cb09fd82f89f4b7fa1eadf0b0506e9562795
+24022001,dev,v1,Debt collection,39,143,accepted,,Debt collection,Debt collection,0.9909226359969019,b11272a601a5c20668b9d7656d51a7f84d7863e836fca81539cd00e592529c17
+24022065,dev,v1,Checking or savings account,118,155,accepted,,Checking or savings account,Checking or savings account,0.45774037015617547,c0f5eb841054da4282895f1dcf0c578231e5672075770ccc51d63cfaaae19469
+24022949,dev,v1,Debt collection,0,116,accepted,,Debt collection,Debt collection,0.9815244295848818,c049f9a08fecf6eee3554d53020513e458d48e813205bb27c81ed9d6e8f04980
+24023484,dev,v1,Mortgage,227,289,accepted,,Mortgage,Mortgage,0.6433029551844307,b11777564fa38e5b7b8749ae7582601294fc5dbc43faaf7e755f0d2d55b68635
+24024367,dev,v1,"Money transfer, virtual currency, or money service",,,quarantined,quote_not_in_text,,"Money transfer, virtual currency, or money service",0.6078367715956523,1b978b2f3284bb7786637b806d513bceb39302084de3b9459a5d0db9dcf2be52
+24028636,dev,v1,Debt collection,35,131,accepted,,Debt collection,Debt collection,0.963834032857584,f7b02a1bcfbbab2e1346c80336a66ca00153d171536fd17440d0559646857216
+24030499,dev,v1,Credit card,0,68,accepted,,Credit card,Credit card,0.7647920890337173,ddaff4a2f11d298a815144591794be22b26cc66328b255640a9b7612cf8e382b
+24031824,dev,v1,Credit reporting or other personal consumer reports,7,48,accepted,,Credit reporting or other personal consumer reports,Debt collection,0.9269670656929966,b235011f4048b356491587b631b6c18bba2aa42985d89a5f0b95104daf8e4335
+24110160,dev,v1,Checking or savings account,0,71,accepted,,Checking or savings account,Checking or savings account,0.5760819326615814,7fceb1e387ab88a21b782475c832158d6123c8de8579eb0b3230200fe19dcc13
+24113192,dev,v1,Credit reporting or other personal consumer reports,572,666,accepted,,Credit reporting or other personal consumer reports,Debt collection,0.5217973830249392,b3e35c5a8c87468144aba6a0ed69232aa25980831df6fa945387175156f6506c
+24113436,dev,v1,Checking or savings account,487,539,accepted,,Checking or savings account,Checking or savings account,0.7985468940563039,ccee374eb4e14366063e786cee9184a69ca4163fe5616dbd9c179a9be3dc60e4
+24115219,dev,v1,Checking or savings account,115,172,accepted,,Checking or savings account,Checking or savings account,0.6761962931002082,5b29ad5804b8aacbce00cdd5fa4e17d9d90ab12b2ac6a16da71db9d4315ce1eb
+24116153,dev,v1,Student loan,205,265,accepted,,Student loan,Student loan,0.422468946869606,0c8e52276e1fe4a8ab574c82480d94d20c6ac3390571409bf0fff8e755a3e901
+24116336,dev,v1,"Money transfer, virtual currency, or money service",15,98,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.3707281928671942,4b2ec03202049c2753d4bae5b0f68422d9bd06bdfd3724909bcf1c69e0283a36
+24116653,dev,v1,Debt collection,84,147,accepted,,Debt collection,Debt collection,0.9851628280520298,d79ebc1a733929e09f35ff9a2a06d0c37a5125f3465cab3a76834b303141b25a
+24117640,dev,v1,"Money transfer, virtual currency, or money service",83,160,accepted,,"Money transfer, virtual currency, or money service",Credit card,0.9510719304535264,9f1618424727123e0ade7cd36f23490b4985db0ad8304d0e05c24f5d43bae982
+24117985,dev,v1,Vehicle loan or lease,670,771,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.8515193102426899,00022db2f268b86650391c28a1a5fb8d49494e7c4abf0dd96cb4a2213682c9dd
+24118968,dev,v1,Credit reporting or other personal consumer reports,60,130,accepted,,Credit reporting or other personal consumer reports,Debt collection,0.3063387330513538,036b87a36dd86feb7b90ebd57a535a37a720446c869d34e95602efe984ef7614
+24119778,dev,v1,Prepaid card,0,96,accepted,,Prepaid card,Credit card,0.5218032642771782,9137d47585805872f4539e0c9e9c1e84a211ec768bbda2753d0eb635876e11f1
+24121748,dev,v1,Credit card,21,101,accepted,,Credit card,Credit card,0.9379645199794869,3c54a10aa264282b5614eaad206dcc124a3446a659cafcab738fd888ee90b9bf
+24122596,dev,v1,Credit card,15,82,accepted,,Credit card,Credit card,0.7484884030668989,e4cf195736661d326a3825e2b479530955daed7686ca2cc0018ac0987d7624c5
+24123931,dev,v1,"Money transfer, virtual currency, or money service",0,108,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.4273585187808454,8a94d68c1cfa0d44de3aafd15c999850857d7311da8fae8ec0cfb2db82c01740
+24129133,dev,v1,Debt collection,154,213,accepted,,Debt collection,Debt collection,0.9731992868969342,53c38c99c9441ef3797471a85f522d97d30fa7f1e9be2ff28fabe30224bf6288
+24129703,dev,v1,Checking or savings account,24,83,accepted,,Checking or savings account,Checking or savings account,0.7021088776155852,3b7dc4ce4f4ef3a8c713a17b971aac743bd373db9fa22f64e1be87f3d0e32ac1
+24132108,dev,v1,Credit card,989,1064,accepted,,Credit card,Credit card,0.7870274139161569,c92305b2ed2a55deaf645d56142aa6059137465ba7b85ec28d8a3385e2701c04
+24132312,dev,v1,Vehicle loan or lease,27,61,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.9324729096126027,c39d740438b670db1e1db3bf74331c0567bbe6afbedff37d386fe5b48b8e0038
+24132329,dev,v1,Debt collection,350,504,accepted,,Debt collection,Debt collection,0.9868988240820018,6572cfb0298b3b92bb81e0f2ceddf167776718d97712f94bebc42195d7c3feba
+24132800,dev,v1,Debt collection,134,202,accepted,,Debt collection,Debt collection,0.30908996687475604,1e4067a69e4cc32b1921f6dd976b7723f4e87e616974d7e5ce5828108359eeee
+24132930,dev,v1,Prepaid card,67,105,accepted,,Prepaid card,Credit card,0.5431779259800534,d1098dc10d8767bdd3fbbfa12c5e010590f07a8a0934daf79be646ad0333dc2c
+24137209,dev,v1,Debt collection,370,413,accepted,,Debt collection,Debt collection,0.990707849507487,12facf42641b65a38e3670af181100d39e7b12b70717ba7cf8bf4313def80f91
+24137976,dev,v1,Debt collection,0,130,accepted,,Debt collection,Credit card,0.4396171440224604,a646d410aaa28ae89b8d3c82275f0fbf9a7584db3e1617a3917eb9d01aeb489f
+24138262,dev,v1,,,,quarantined,unparseable,,Debt collection,0.540895903216563,3a94fb24f6a2b2a14fa0f9389c332e91d92c9cf8b02048f1581c56f6bef1b275
+24138884,dev,v1,"Payday loan, title loan, personal loan, or advance loan",15,88,accepted,,"Payday loan, title loan, personal loan, or advance loan","Payday loan, title loan, personal loan, or advance loan",0.48438662586031894,32cf0b09b4c23ba4c9544bcaeb2e73ad84d112a50cfebd610eb24f60ae527a0e
+24141141,dev,v1,"Payday loan, title loan, personal loan, or advance loan",261,347,accepted,,"Payday loan, title loan, personal loan, or advance loan","Payday loan, title loan, personal loan, or advance loan",0.5971757330586639,879dc5797f04a05041b8232c2cbcae8bef43f603a38f6d858070dd44df51db5f
+24143163,dev,v1,Checking or savings account,0,116,accepted,,Checking or savings account,Checking or savings account,0.5791117196127805,25e4bed06c01bb37a97198d6c9cf156b367c05d26c7408dc27ef4a7ad9c22eb0
+24143433,dev,v1,Debt collection,0,71,accepted,,Debt collection,Debt collection,0.8312110994811466,cb0206f8c930d8b0bd886f727bd32b07217136c91e3914c308c1dbaced9db9cf
+24144032,dev,v1,,,,quarantined,unparseable,,Credit reporting or other personal consumer reports,0.6138746160583806,b0c0d7b6d5553b656035caba44f1bae461ced70e0220a661faadc6551ea189b4
+24146682,dev,v1,Credit reporting or other personal consumer reports,155,196,accepted,,Credit reporting or other personal consumer reports,Debt collection,0.9844638409596993,3bf1de728d5cae15773cc9a4d6ddde027934ecf183ff267a91ae3d7bade545e5
+24148577,dev,v1,Credit card,0,134,accepted,,Credit card,Credit card,0.8233254140672894,35642e94aeea44cfd55067890c309fa97972dceb145b835b06fb31315009b1a4
+24148825,dev,v1,Debt collection,26,70,accepted,,Debt collection,Debt collection,0.9568652341617413,6be30ee0c3466efc6c6953cb1f58e9dacd403bd00e708b435198e4efb1950bda
+24149729,dev,v1,Credit reporting or other personal consumer reports,0,55,accepted,,Credit reporting or other personal consumer reports,Debt collection,0.9806619593722689,74271c785aac7632e9741922012938fab1ea493bd96eebba82fa18cf7f17dc8e
+24150650,dev,v1,Checking or savings account,0,81,accepted,,Checking or savings account,Checking or savings account,0.9203163983930676,e6bc2b31212cbebb1a8873dabc82bb73fb1e83e21772f7a42aae5a9528998ee6
+24152022,dev,v1,"Payday loan, title loan, personal loan, or advance loan",15,169,accepted,,"Payday loan, title loan, personal loan, or advance loan","Payday loan, title loan, personal loan, or advance loan",0.6279668956531015,664934b22c9a1bf7b334eea47395b618f1434175ce53c29349806f67aaa775d6
+24152317,dev,v1,"Money transfer, virtual currency, or money service",151,246,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.6980906815620505,c719e389b560373b3766a932f234a0411fb0f92aacf00abcbcc8f1c3f26d11af
+24154544,dev,v1,Debt collection,110,162,accepted,,Debt collection,Debt collection,0.818152407044414,3aa0ddaa232a489bc44e917553615244382732d328ed1952cbab2f4abc522320
+24155232,dev,v1,Debt collection,130,172,accepted,,Debt collection,Debt collection,0.6836592194843485,4bad15fd1542c300642e2ca33db48d352bae6995eda27e0fc2d23b914eac56c9
+24156287,dev,v1,Debt collection,239,364,accepted,,Debt collection,Debt collection,0.9893768592855654,f560cec1480d198de451fade710f22dd526e24d18562dc24d8686eccceb885f1
+24156722,dev,v1,Checking or savings account,158,193,accepted,,Checking or savings account,Checking or savings account,0.7199454199543442,7368adad1570d82e2c6226efc250997a5db7cda0a6e7a8fb50f42895cc13eee3
+24161857,dev,v1,Debt collection,0,62,accepted,,Debt collection,Debt collection,0.650201684497771,511b4ad671e65c7bc413c62c55d3dfea9ff7903757d62ce2df66571fa450cbe2
+24163118,dev,v1,Debt collection,0,48,accepted,,Debt collection,Checking or savings account,0.31039236471604187,5788aaa36aee69e5a91e5b82bdf8e172e19dd640d62c6843144d871cbced08fe
+24163558,dev,v1,Credit card,0,99,accepted,,Credit card,Credit card,0.8790249323011952,2dbb5598b32f48ce09fefc15387fc27ce9d9044540c9dad241e1e74d9ce957b6
+24165814,dev,v1,Debt collection,0,72,accepted,,Debt collection,Debt collection,0.773231658030769,18f9ecd1a32f030f2fd65b80fe7023d6751b91898331654b750ffdc22a259c8e
+24172332,dev,v1,"Money transfer, virtual currency, or money service",75,134,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.3995734834097791,9812863236da8e414ee059515e80bfda0c81efb947d1e2201e2b77acba21177b
+24173016,dev,v1,"Money transfer, virtual currency, or money service",1985,2115,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.2968651571929479,cdc6f09bfd01e467fc5d42775c75098bc498206a818fab84ca85186e575816d9
+24173205,dev,v1,Credit reporting or other personal consumer reports,349,405,accepted,,Credit reporting or other personal consumer reports,Credit card,0.291334726514641,6cfec820320deb711c264e6a7819b18cd009ac0cc4ac98980862557e4735d6f5
+24173562,dev,v1,Checking or savings account,1422,1537,accepted,,Checking or savings account,Checking or savings account,0.4467684696540885,27fda1022af6fe7aa2306aa64b941b826237b3adaef29156f754b82e56b516aa
+24174554,dev,v1,"Money transfer, virtual currency, or money service",16,96,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.8308322034950217,a84649b26f7ab8dbc208e28bce5d7d5b443f8bed7c10fa1efdc9877c290ad7b0
+24174971,dev,v1,"Money transfer, virtual currency, or money service",2405,2452,accepted,,"Money transfer, virtual currency, or money service",Checking or savings account,0.27871460321920244,02188b10c0dfbd1e93191b93c50d54554e84e855b6d63bfd679123c9f1bbe5ce
+24175373,dev,v1,Debt collection,26,64,accepted,,Debt collection,Debt collection,0.9708757816878213,5e66734cc203bd691b0e014214c5d2faf6a479d942663a77aeaf9db9d061d6eb
+24175539,dev,v1,Checking or savings account,595,697,accepted,,Checking or savings account,Checking or savings account,0.8731328045200915,1c3959b62108517dadf89c2007ee2c040c7d1e3e63d067a752db1826bd0898db
+24177755,dev,v1,"Money transfer, virtual currency, or money service",59,125,accepted,,"Money transfer, virtual currency, or money service",Checking or savings account,0.447332360673418,6f6476cf16da2b8154fac3ecd1e19cd23fd2d86744ae73959f0e82d9c154269c
+24178190,dev,v1,Debt collection,123,148,accepted,,Debt collection,Debt collection,0.9851972183340861,211ef611f40d8471de4e4653555226e61507532f5a7e2152dd870192d38290ee
+24178563,dev,v1,Debt collection,17,105,accepted,,Debt collection,Credit card,0.49909626607101454,7aa61a7a0490422bc4e3c0bf183eede931a9ec7676e3269cdef032231be4ac39
+24178594,dev,v1,Debt collection,16,79,accepted,,Debt collection,Debt collection,0.9567302660023559,ab79fbf31609d36a4dcf9782e0a76b580dddb21964e62de8ddad231df9b1156a
+24178850,dev,v1,Vehicle loan or lease,274,354,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.37828974164221385,0eaceeda11e8920220bc804d22094776dad5ba8ff6d39647fa578b312965ada3
+24180488,dev,v1,Credit card,16,109,accepted,,Credit card,Credit card,0.5165666731186974,a44d8a3ec23fa0967d87e1f0fa56d62a0e612edae974b4e3834c699d868177a8
+24180565,dev,v1,Checking or savings account,2,105,accepted,,Checking or savings account,Checking or savings account,0.7822176639521113,48593001a58368a22cd64559f66f11bec6b9cae98af5b726494ca974cdd2edfb
+24180848,dev,v1,Credit card,1141,1195,accepted,,Credit card,Credit card,0.8812758928791091,9ddfad53726bb7fd1ac1822ef610df9eac81990d70193b0103fe9c4c3f0b2f26
+24182498,dev,v1,"Money transfer, virtual currency, or money service",0,70,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.7602887104127616,edf50b040f40a8a025a6a40942e64e4524fce35feefc3ab4734d511883819c15
+24182654,dev,v1,Credit card,1310,1394,accepted,,Credit card,Credit card,0.517134068961403,3f3eb4bf0fe1c3c1b238ddf23bd3484325bff201aa564dc77a5ecd8bd414847d
+24186914,dev,v1,Debt collection,99,131,accepted,,Debt collection,Debt collection,0.8305004492283167,b45b5df3f9628c160fca0a77b1e094425ac7f7e9d3adca2374c46035ad83318d
+24189234,dev,v1,Debt collection,124,152,accepted,,Debt collection,Debt collection,0.4849574621378978,858ba6a2860478da1b5ef707918d9285ac6070d3bc77aa6f3e64fad28b744f78
+24190563,dev,v1,Debt collection,0,117,accepted,,Debt collection,Debt collection,0.38681527407208605,b6718fba1c77cc4e440ed4d2a656e5743d3bcbc52ea63c73a65e7d61e67589be
+24191325,dev,v1,Credit reporting or other personal consumer reports,1017,1108,accepted,,Credit reporting or other personal consumer reports,Debt collection,0.9805359608015664,1e232d399db494add5b83a40c71a3574be7b4794d909b85369a8d11adcdb4fad
+24191583,dev,v1,"Money transfer, virtual currency, or money service",23,70,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.5850855854188964,3bd837dc48d39ee57ac77fd3ab4f8fdcbcb1b017cb3a62dc63395617615e38d0
+24191660,dev,v1,Checking or savings account,774,862,accepted,,Checking or savings account,Checking or savings account,0.44718376325139625,aacaf0ff36972c0526de474df1388d82b7d32232259cdf5db7f1e97ae895f831
+24192045,dev,v1,Mortgage,0,93,accepted,,Mortgage,Mortgage,0.7865990822317566,184359080fb6e57e690f5748e75e544ad25f4cb3852f3703d114b45226b8d78a
+24192387,dev,v1,"Money transfer, virtual currency, or money service",0,55,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.48761254435094054,46d3fa81fd7c1697a1afb1421efe6fcff10543a390defec2da7884015d79a5a5
+24193227,dev,v1,Credit reporting or other personal consumer reports,0,48,accepted,,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,0.6245729235914038,9fe56db6bcdf2a0d170bb65c4dcb2626ba6be13dd938efadc1852cf72b0fe744
+24195423,dev,v1,"Payday loan, title loan, personal loan, or advance loan",0,54,accepted,,"Payday loan, title loan, personal loan, or advance loan","Payday loan, title loan, personal loan, or advance loan",0.21605883878701038,537c9ceb82bb8110fd7429fed88359f219f528ce0d7259d2e65f144cb94f1407
+24196950,dev,v1,Credit card,41,74,accepted,,Credit card,Credit card,0.5520939218912193,0ed5db589c3079da6fad3a1212155777cbe6c9a1fd88d3684943c788564a964e
+24197011,dev,v1,Checking or savings account,0,95,accepted,,Checking or savings account,Checking or savings account,0.862336132037236,2aa17a4ba6e779470932b085e14ee12a617d3f876c51de5884d49fb1ec2e1182
+24197576,dev,v1,Checking or savings account,0,58,accepted,,Checking or savings account,Checking or savings account,0.5474138239155556,d11f1619e53a4fd1d088f7c0a1280b21175590de2ada696fc312c19f4e09da04
+24197578,dev,v1,Checking or savings account,15,114,accepted,,Checking or savings account,Checking or savings account,0.8385135458113254,8e48a1d08c6cd4de16a1d5e1f8fef52daccbf3480d33698f0c817e6714808fcb
+24199260,dev,v1,Credit card,0,39,accepted,,Credit card,Credit card,0.6791445563209735,679e95af69b376276a1444bda8f08a78ec2a6d013d19ffe03005f21077f39398
+24199326,dev,v1,"Money transfer, virtual currency, or money service",723,755,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.5668069995583201,3b70d30d58694772dec08848e836a010d1cfa61763e301b0579b43a9f8b3c731
+24200263,dev,v1,"Money transfer, virtual currency, or money service",0,43,accepted,,"Money transfer, virtual currency, or money service",Checking or savings account,0.48387247862313354,3015b5c08efffb2428079981f87b4098965abf652c3226c3604ef32fff5a6285
+24200674,dev,v1,Debt collection,0,105,accepted,,Debt collection,Debt collection,0.9921040566363432,ccd22baf93c97b582bc82e22653a223e253ac4bb1145ab340a6d5db01a2b85d3
+24201133,dev,v1,Mortgage,16,100,accepted,,Mortgage,Mortgage,0.6069863203090567,e2531429226c87869147975fc85c0632d0f36199d7a59c55cb1348497d88153c
+24201462,dev,v1,Debt collection,185,359,accepted,,Debt collection,Debt collection,0.9826945837490461,e57e5c5df5d72c6d767e1cf6b50ac679e997d294fff0186754d7705b22785401
+24204322,dev,v1,Checking or savings account,353,404,accepted,,Checking or savings account,Checking or savings account,0.9215261269594056,946ac64e197a2937e80227b33fda6a316ea8adc96b797637b823f42401a02967
+24204495,dev,v1,Credit card,478,527,accepted,,Credit card,Credit card,0.4552248614115771,3646e323b943dc5a5a9b1385ccbcba63cbe974d51786502e1c6c67a49be5b959
+24204496,dev,v1,Debt collection,0,91,accepted,,Debt collection,Debt collection,0.9991009873942523,1ea81bb1aef0e6cc2ce5d9b51296f0e0f18b3f744c28d8655d6fb903c92162df
+24206245,dev,v1,Credit card,2,74,accepted,,Credit card,Credit card,0.3260612117755705,e9a86780184bf2dbbe2dadde75bd4cf208863f5cefa38c71cc53783a565a8a88
+24206598,dev,v1,Debt collection,0,122,accepted,,Debt collection,Debt collection,0.9797029042060974,1455a1765c2f415fa2ffbf080f5dd769d1bca8b4c792acbbf4f291ba3c45b124
+24207305,dev,v1,Debt collection,69,126,accepted,,Debt collection,Debt collection,0.981239803490435,37fff08f7cab361f7e53673a2f1e7c7495695754896f2f03f80b9d52ea68d24f
+24208206,dev,v1,Debt collection,16,89,accepted,,Debt collection,Debt collection,0.7697280659995981,c88f3915adb2a28b19c7f9583d6f5a0e3d62220c6b68bf231704de7dcc350afe
+24212726,dev,v1,Checking or savings account,92,172,accepted,,Checking or savings account,Checking or savings account,0.8062133439438876,85a0eb656b26455be29a88518dfc9dc1a84f17f1521de2e9db5d9c6c3f621cb5
+24222719,dev,v1,Mortgage,15,106,accepted,,Mortgage,Mortgage,0.7601359311473775,f218e5df48a908e244c9bac4f08f063698cf0eb0f51d1b2a44571854b724494d
+24227111,dev,v1,Checking or savings account,92,179,accepted,,Checking or savings account,Checking or savings account,0.6335047896314195,4f6c1a3ebb4c2c8e7039bed612c7b56d564cd49eba7324c7c3d94ba87f94104f
+24232097,dev,v1,Checking or savings account,0,40,accepted,,Checking or savings account,Checking or savings account,0.5193932423131008,840736ca16ae9ec12b6cc09cbdd2be7e3ea49c7c73831184137d333a697ed669
+24232288,dev,v1,Vehicle loan or lease,0,79,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.30588506537863536,a67870a32ee1850bcf0138ad2ea84b03a46808078cbcf8015d72a6990679fb59
+24232908,dev,v1,Checking or savings account,227,268,accepted,,Checking or savings account,"Money transfer, virtual currency, or money service",0.45948203351730527,84c41dda14719eb05770895c0aa6dfc237d2ceab153ac1e7b93ae5edf3c0464c
+24233777,dev,v1,Checking or savings account,0,88,accepted,,Checking or savings account,Checking or savings account,0.4755872512352138,f7d3e85d8fef8384dad846e27519e702d996c589abacb5fc5debc6e8c49f309a
+24234244,dev,v1,Debt collection,1365,1471,accepted,,Debt collection,Debt collection,0.8743118019679161,d02a101403bd2f6d148c16090c77689368b87e4f9bd90ba22e9ed8915a260243
+24234395,dev,v1,Credit reporting or other personal consumer reports,67,141,accepted,,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,0.8456913782918216,9f5628c5e54928384898d74db83d54f1546039550bef537d4103a3b550b263cd
+24237419,dev,v1,Checking or savings account,0,62,accepted,,Checking or savings account,Checking or savings account,0.6734853587976466,ee1aaa73515a7b4bf749554d8cdb3cd2eb83fd1321803111b39abaaf8700e1d3
+24238842,dev,v1,Credit reporting or other personal consumer reports,0,89,accepted,,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,0.33431111855836687,85a5928ccb8909d7871e7ac8173d349e2ee6619c6f9b28cfe17b5cbbd8c1283d
+24240058,dev,v1,Debt collection,56,99,accepted,,Debt collection,Debt collection,0.6050973123041822,4339be64064b3af591a3ed8af9eb7d99dd65fbf8bdf498f107a1ea0b6b6c83bd
+24240501,dev,v1,Credit card,570,666,accepted,,Credit card,Credit card,0.5333424996912469,aee30a956958102399ceb4ec8073770336f97b8521bb0421951797a0ae45dc02
+24245154,dev,v1,Credit card,631,717,accepted,,Credit card,"Money transfer, virtual currency, or money service",0.3511225708115605,ad85bb8ce1524ae41c29fcfc398c4ff12dc585e9e9e1507f90f8d1b9543c2241
+24272483,dev,v1,"Money transfer, virtual currency, or money service",0,74,accepted,,"Money transfer, virtual currency, or money service",Checking or savings account,0.300915796790092,d01ba8b4bbd99afef61d4b9aad9e6896dfe018f9fb2e7d6b31a89a8aadc6feab
+24272551,dev,v1,Vehicle loan or lease,127,162,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.6585696579491375,d553490c6cca24b2afd86e67b9ca98a5f74607e9798296038b80d1343c6dd424
+24288201,dev,v1,Debt collection,555,590,accepted,,Debt collection,Debt collection,0.4883970517601108,a6379f22457437dad48793e067bf367b545d98e7adaf3f954610db73d761c42f
+24293606,dev,v1,Checking or savings account,0,36,accepted,,Checking or savings account,Credit card,0.39902943400091484,ceb1e68cc6fcc6fab53b06ce5c57939ebce02fa4b8e9fe5b62d51f3d24d14683
+24357199,dev,v1,Credit card,0,95,accepted,,Credit card,Credit card,0.8071316748298021,90a917c81ebe70093aba4db564ccb8cec2bfac51db9627050a9d886a9a4d9814
+24358592,dev,v1,Checking or savings account,44,82,accepted,,Checking or savings account,Checking or savings account,0.373828995145205,7496692f0866a70ae1a47c0dda62919b6c23bace145191916374bf24177bf92e
+24363652,dev,v1,Debt collection,0,77,accepted,,Debt collection,Checking or savings account,0.25510313781244814,5b7f57472c94713753d6e31dc7aacfdc2aedce0f9e1d348d856cd0e60128d672
+24380276,dev,v1,Credit reporting or other personal consumer reports,35,122,accepted,,Credit reporting or other personal consumer reports,Debt collection,0.5629459215174307,ea67ceb3612274e069d160224cff4387b396b2e47e242ede66daee43450b8f0f
+24380323,dev,v1,Mortgage,44,127,accepted,,Mortgage,Mortgage,0.948165342683816,34eb03de6d7f8e8fe0298e53d0954f5369c963c055f43926e97310344975a21d
+24383883,dev,v1,Credit card,0,81,accepted,,Credit card,Credit card,0.9485909318591068,b57f356dc6c5e6ad0fd6c04a25b095067990e5c8b303aa336ccbaeaa50e1aa3b
+24384504,dev,v1,Mortgage,0,84,accepted,,Mortgage,Mortgage,0.8732414526814677,acb262684e8b00b44cbe39a75eb86a6ed72256705aef89e3148c341f8b548a46
+24386732,dev,v1,Student loan,36,119,accepted,,Student loan,Student loan,0.32856380056176865,e0085fc952d4ff4ecc761ddfba776606e81dc65494b08c15a253e6f44c3a45f3
+24387702,dev,v1,Credit card,1122,1197,accepted,,Credit card,Checking or savings account,0.6807169456614349,f084ca8d035445f94d4dfc10c62f8b72254f22f6bb75a22acf7e54cd6c4039df
+24393317,dev,v1,Checking or savings account,,,quarantined,quote_not_in_text,,Checking or savings account,0.9522031870701463,a89dc45804595ffa8ff249cdf4979e2cbb36df6d00c02d94b34c0e974db52c16
+24397033,dev,v1,Debt collection,174,251,accepted,,Debt collection,Debt collection,0.36649966255690836,e3822099751ecbf4112674272a335310197ac3d85c44943b56abb4fe36d98c64
+24400011,dev,v1,Credit card,0,88,accepted,,Credit card,Credit card,0.6876772400268725,1a388da51d90762065b2a99037554ab166123e041c8959970cf0228658e2a979
+24401410,dev,v1,Checking or savings account,15,42,accepted,,Checking or savings account,Checking or savings account,0.6540368741025303,fc2f73b79193d9ce1f18c39b9131173afe17a3ad6511ed136e14f32ba4a4bedb
+24420819,dev,v1,Checking or savings account,341,404,accepted,,Checking or savings account,Checking or savings account,0.7450726520671758,2444d919cf59df89655e16779a51eb2bddfe701990f778c59ed8617de38c562c
+24422729,dev,v1,Checking or savings account,0,80,accepted,,Checking or savings account,Checking or savings account,0.7857244078507882,43e10895bcd5a73ded847da60db4028a5365b95b673e325a31e13b623c34f247
+24422974,dev,v1,Credit card,18,67,accepted,,Credit card,Checking or savings account,0.26981982699301205,5a08f613a949ffc147659e38af551a02fca8f4a531a4e74b3ceb6b774a155283
+24431669,dev,v1,Credit card,0,43,accepted,,Credit card,Credit card,0.7930216043346434,603feb6148580a5a7bd24ec1d0e26ab509cbf29712503bf9ace6b4ff90a76c93
+24434968,dev,v1,Checking or savings account,74,150,accepted,,Checking or savings account,Checking or savings account,0.7420589657897969,00baf700e4a150bc30f4c065488232f8154dc00aa11e246f94aa761c4c2c56d4
+24436766,dev,v1,Credit card,1810,1877,accepted,,Credit card,Checking or savings account,0.35546028285946535,93046660c0102fd675903331ccc8f1b481c1f9289d9338675e487474e028dda0
+24442257,dev,v1,Credit card,0,65,accepted,,Credit card,Credit card,0.9325111489446571,c08bd999c1b7cac9b84839cf42ab484b779756047bd37757879d6737936f4d4a
+24443169,dev,v1,Credit card,113,151,accepted,,Credit card,Credit card,0.87595957871978,440802b7d1f2aec405ab9edc2ace1ba481b8a4369f9fca8cb6cecd1ed2602337
+24470604,dev,v1,Credit card,325,410,accepted,,Credit card,Debt collection,0.7962386448201123,2283f95c9873600f6a1d0059886102eda5fab1cb3581e23137aca06da3acf2ca
+24471471,dev,v1,Debt collection,0,79,accepted,,Debt collection,Debt collection,0.9376666648289727,ed87b72c798cd33b81eb81bf2076e527997a73dd64d500dbfdb00bbb8e7b24f7
+24476203,dev,v1,Credit card,0,89,accepted,,Credit card,Checking or savings account,0.31914574497615666,7febc389bf33b11a3f459baf7678a7658e6796d3fbb67c4331496395ab0ffafa
+24481702,dev,v1,Checking or savings account,69,153,accepted,,Checking or savings account,Checking or savings account,0.6003249638357462,7748279e29311b68e048ad456b2bcaf2a18e1eab205bee9575ada5faeb3bffe4
+24484760,dev,v1,Checking or savings account,173,222,accepted,,Checking or savings account,Checking or savings account,0.9460949190752537,d0dd711e48913e1a0fbb7d2b9a7427d9594baf5bba4f835c3d661604e0d4ab1f
+24487286,dev,v1,Credit card,32,83,accepted,,Credit card,Credit card,0.8616037994620446,8f0cd99c5737f13c95b3dd8042e0837ca0718a5fbcab68751510e7dbc4ef096c
+24488315,dev,v1,Checking or savings account,350,386,accepted,,Checking or savings account,Checking or savings account,0.8694509325176616,d82d3f5cbdb6e1d23f4e4110fddff2f1dbc449d54dc25e4f0ae7b26bb1ce752b
+24505513,dev,v1,Mortgage,537,612,accepted,,Mortgage,Mortgage,0.9730687241643802,3c98871afb0bdd381c36474cb03b9ab7d0bba5709f76b1d0b7c5f726dadbe98d
+24514210,dev,v1,Vehicle loan or lease,0,134,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.45908150530376063,4f7c7929487c91e3767c761ca2eab0eb5a2c70600a47d8843005f4807bb663dc
+24514638,dev,v1,Credit card,0,74,accepted,,Credit card,Debt collection,0.5706564110424847,72bdedbfd593fa82e7286448b8608db9fe667b96212a9d9f15c06b9616653cd7
+24517064,dev,v1,Checking or savings account,0,51,accepted,,Checking or savings account,Checking or savings account,0.6259149060150448,46618d1787aa3f8f9441b206e23ba81b6a7dbcfcb35c7f8af8f6236c84c6d7a8
+24521271,dev,v1,Credit card,7,45,accepted,,Credit card,Credit card,0.7050621300808549,31432a1897b2570680bad4b365374ba3c8db78d62c96b41d59bf3d074936f46c
+24526421,dev,v1,Credit reporting or other personal consumer reports,27,116,accepted,,Credit reporting or other personal consumer reports,Debt collection,0.3728115338390536,b819d8b2849d9d442987c3082f91356ba9c5ea909876fbb69696ff606793c07f
+24528224,dev,v1,Vehicle loan or lease,0,34,accepted,,Vehicle loan or lease,Vehicle loan or lease,0.25247966009320577,9e4edd6192f411d5d191eb24e129ea1a1b23cee6c73074de47de5fde683db58f
+24530151,dev,v1,Credit card,540,602,accepted,,Credit card,Credit card,0.3854184030057767,984c3f62df1bc657775ab27c49c10ba798a4fbd2ad3b599ed93b2de4f2381c77
+24601945,dev,v1,Credit card,161,230,accepted,,Credit card,Credit card,0.676028253326519,287cef7100c51a29aca5cfd54e971c75d1aba7c005929b82a0d57c6d11b322fa
+24606782,dev,v1,Checking or savings account,0,37,accepted,,Checking or savings account,Checking or savings account,0.5279703787325064,fdd9840d39571e4df3c351bca3fd1278638073c3d490a8c0ba012c0a9d03ad1b
+24632647,dev,v1,Checking or savings account,1492,1533,accepted,,Checking or savings account,Checking or savings account,0.8631837576613709,3059f7c0d5b2732949bbe8742d9eb5ca854dbb21e55b432fe175df3b4dfac1a1
+24632912,dev,v1,Mortgage,132,157,accepted,,Mortgage,Mortgage,0.8848622865128198,77086d36e8f858c401e7f17c17a70252b5b5fcc9ebd24d9650fd1ed77d4fa20a
+24633241,dev,v1,Checking or savings account,13,101,accepted,,Checking or savings account,Checking or savings account,0.9426218404315911,9d6196ed9e6ddd439985645b395587b6f2a9544cd9f035a5f1efd4268d7cdff4
+24634685,dev,v1,Checking or savings account,42,167,accepted,,Checking or savings account,Checking or savings account,0.3483567510250616,0b9e2be7601630266722f08c6227033e43daaa5ede52bd5dbc199a2d4e59d118
+24659218,dev,v1,Credit reporting or other personal consumer reports,0,48,accepted,,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,0.39978905450821134,da51bd0ba0532961e00754710896db7cd882d91a790182b26c526ae005c9d8b6
+24661194,dev,v1,Mortgage,52,121,accepted,,Mortgage,Mortgage,0.8647695550312952,2acc7cf9c7798323415ad4189203279d89ed6fbf637d25cec457986d5a41434b
+24666344,dev,v1,Credit reporting or other personal consumer reports,178,250,accepted,,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,0.5493296424727286,6d4cb8f22a1ee644bc52bed011994f4336f7e420b02470712c101c623a8a8e73
+24676426,dev,v1,Credit card,0,114,accepted,,Credit card,Credit card,0.7881617876683116,08bb15dc8ce5baef9d30f8c5d09b4b061b095f0fcf9f8ab889034a61d6fed2ac
+24681669,dev,v1,Checking or savings account,125,191,accepted,,Checking or savings account,Checking or savings account,0.6273220155443707,bd2d12fd988e2f678ac2822dade6cfc8572c5ea01ae321b877e7ae8a93769ae8
+24688426,dev,v1,Debt collection,654,735,accepted,,Debt collection,Debt collection,0.9869821061954883,46d6d6e971e6720bbac9d81fe23af849296fe6eb031b65ab6d516efc1538db20
+24695052,dev,v1,Credit card,0,53,accepted,,Credit card,Credit card,0.6728969160161185,f6ae5a3760ab4ba28092d67f5821157d473485cdfe92d3e1160e21addddc376d
+24702513,dev,v1,Credit card,0,85,accepted,,Credit card,Credit card,0.9937045761200952,ade49e7ecfa3a673ded21eec65f798f4ad67819be52e552d24b5e7af69a0222b
+24706812,dev,v1,Credit card,16,118,accepted,,Credit card,Credit card,0.8074116356356804,f85bf3f811135abc158ebc70ac812a625ef89020ff8884e575ca283b5e0ee8b5
+24727453,dev,v1,Vehicle loan or lease,65,114,accepted,,Vehicle loan or lease,"Payday loan, title loan, personal loan, or advance loan",0.283994641825453,5e8b04a86d9de882110dd00d3e4c3af56dc4235db7ab948795ea17ea9a6cc2ee
+24735887,dev,v1,Credit card,161,253,accepted,,Credit card,Credit card,0.44044307001397043,26bb4d2140c0f3937ecfd80de80f8c948719cb3f441f53ca38f68095e62456cb
+24736159,dev,v1,Debt collection,156,238,accepted,,Debt collection,Debt collection,0.27759926931224993,2edeb9c86b2f60e400756b9a6ed21d3445d2975d1f185fe8df40c4500e6e190b
+24736497,dev,v1,Checking or savings account,494,570,accepted,,Checking or savings account,Checking or savings account,0.7964099331389521,4a5066c4710e060fa68b7880675757cca2eeb31bca2e41629b8961774f60fadf
+24737134,dev,v1,"Money transfer, virtual currency, or money service",16,65,accepted,,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",0.7339420655319246,c5b18b9a48d7a001678b09dbaeb8b290c4a59eef1cfc762ae9b4780035092f64
+24738089,dev,v1,Debt collection,155,204,accepted,,Debt collection,Mortgage,0.13588219346603406,99a82e4596b63cf54d9eda01e876189ebd815ec9a3db96555fded7c9a8bd7c72
