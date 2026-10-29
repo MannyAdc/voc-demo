@@ -39,6 +39,10 @@ def repo(tmp_path):
     (tmp_path / "config").mkdir()
     shutil.copy(REPO / "config" / "labels.toml", tmp_path / "config" / "labels.toml")
     shutil.copytree(REPO / "dbt", tmp_path / "dbt", ignore=shutil.ignore_patterns("target", "logs"))
+    # Changed in the code commit of the dbt test-set flag (B17): `voc dbt` refuses without splits/test.csv,
+    # so the fixture's own test list is copied too. It holds no ID from the fixture, so no count changes.
+    (tmp_path / "splits").mkdir()
+    shutil.copy(FIXTURE.parent / "splits" / "test.csv", tmp_path / "splits" / "test.csv")
     load_month(tmp_path / DB_PATH, FIXTURE, "july_2026", _labels())
     return tmp_path
 

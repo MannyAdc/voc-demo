@@ -2,7 +2,9 @@ version: 2
 
 models:
   - name: stg_complaints
-    description: The staged complaints, incremental and keyed on complaint ID.
+    description: >
+      The staged complaints, incremental and keyed on complaint ID. The test rows from splits/test.csv
+      are left out unless the `final` variable is on (B17), see tests/no_test_set_rows.sql.
     columns:
       - name: complaint_id
         description: The CFPB complaint ID. Must be present and appear once (B14).
@@ -12,4 +14,4 @@ models:
       - name: product
         description: The Product the consumer chose. Must be in config/labels.toml, see tests/product_in_label_list.sql.
   - name: curated_complaints
-    description: The staged complaints that have a narrative.
+    description: The staged complaints that have a narrative, without the test rows unless `final` is on (B17).

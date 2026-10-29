@@ -28,6 +28,8 @@ QUIET = {
     "DO_NOT_TRACK": "1",
 }
 COMMANDS = {"build": ["build"], "docs": ["docs", "generate"]}
+# B17: the models read the test IDs from this list, next to the dbt folder (dbt/macros/test_set.sql).
+TEST_LIST = Path("splits") / "test.csv"
 
 
 class DbtError(Exception):
@@ -43,6 +45,10 @@ def dbt_env(base):
 
 
 def _run(root, action, labels):
+    # B17: without the test list the models cannot leave out the test rows, so dbt does not start.
+    if not (Path(root) / TEST_LIST).is_file():
+        raise DbtError(f"{TEST_LIST.as_posix()} is missing, so the dbt models cannot leave out the test rows "
+                       "(B17). dbt did not run")
     project = (Path(root) / PROJECT).resolve()
     target = (Path(root) / TARGET).resolve()
     results = target / "run_results.json"
@@ -50,7 +56,8 @@ def _run(root, action, labels):
     args = [sys.executable, "-c", "from dbt.cli.main import cli; cli()", *COMMANDS[action],
             "--project-dir", str(project), "--profiles-dir", str(project),
             "--target-path", str(target), "--log-path", str((Path(root) / LOGS).resolve()),
-            "--vars", json.dumps({"labels": labels})]
+            # B17: the test-set flag is always passed off. It overrides dbt_project.yml, and no command turns it on.
+            "--vars", json.dumps({"labels": labels, "final": False})]
     env = dbt_env(os.environ)
     env["VOC_DBT_DB"] = str((Path(root) / DB_PATH).resolve())
     code = subprocess.run(args, env=env, cwd=project, stdin=subprocess.DEVNULL,

@@ -4,6 +4,11 @@ The fixture is loaded with the same load code as `voc load`, without the pin
 check, because it is a committed synthetic file (`SYN-` IDs), not an export.
 Then `voc dbt build` runs on it. Only counts and check names are printed (B21).
 
+The models read the test list from `splits/test.csv` (B17), so the fixture's own list,
+`splits/test.csv` next to the fixture file, is copied into the work folder. Without it
+`voc dbt build` refuses. The dbt fixture's list holds no ID from `complaints.csv`, so its
+counts stay the same. The scheduled run's fixture checks the filter on real fixture rows.
+
 Run: uv run python scripts/dbt_fixture_build.py tests/fixtures/dbt/complaints.csv <empty work folder>
 """
 import shutil
@@ -25,6 +30,10 @@ def main(argv):
     (work / "config").mkdir(parents=True)
     shutil.copy(REPO / "config" / "labels.toml", work / "config" / "labels.toml")
     shutil.copytree(REPO / "dbt", work / "dbt", ignore=shutil.ignore_patterns("target", "logs"))
+    test_list = fixture.parent / "splits" / "test.csv"
+    if test_list.is_file():
+        (work / "splits").mkdir()
+        shutil.copy(test_list, work / "splits" / "test.csv")
     labels = [label.name for label in load_labels(work / "config" / "labels.toml")]
     counts = load_month(work / DB_PATH, fixture, "synthetic", labels)
     print(f"loaded the fixture: {counts['rows']} rows, {counts['new']} new")
