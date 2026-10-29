@@ -559,3 +559,11 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - In the per-category figures, the LLM's quarantined labels count as wrong, and TF-IDF labels every complaint, at full coverage.
   - Results in `results/labels/v1_test.*` and `results/eval/v1_test.*`.
   - AI error: Claude's first draft of this entry said "7 of the 9 categories". Claude caught it by counting again before the commit. It is 6.
+- 23:46 Reviewer findings posted on #39, with Claude's checks (time from GitHub). 23:52 Owner decision: fix them with this correction entry and an edit to the PR body. The Known limits line goes in the README PR.
+- 23:52 Correction of the entries above, which stay as written:
+  - "Per category, the LLM's F1 is higher in 6 of the 9 categories with 30 or more complaints. Mortgage ties at 0.910." At full precision, Mortgage is LLM 0.910394 and TF-IDF 0.910345, so the LLM is higher in 7 of the 9, Mortgage by less than 0.001. At the 3 decimals that `voc final` prints, they tie, and the count is 6.
+  - So the AI error line "Claude's first draft of this entry said 7 of the 9 categories" is wrong too. Both counts were right for their rounding. The real AI error: Claude did not say which rounding the count used. The reviewer caught it.
+  - "19:36 main merged into `feat/dbt-test-flag` (`c1cca57`)". The commit's own time is 19:22. Git stamps a commit before the pre-commit gate runs, so 19:36 is most likely when its gate ended, but no record shows it.
+  - The helper's relative path to `splits/test.csv` in the #35 entry was an AI error, caught by the helper itself when querying the view failed.
+  - The entries from "Parallel run, the dbt test-set flag (#35)" to the end of the test run were written at about 23:30. The #35 and #36 parts were drafted during the day and held back until this pull request.
+  - AI error: Claude's first draft of this entry gave 23:44 for the reviewer findings, without checking. Claude caught it by checking GitHub before the commit finished, stopped the commit and fixed the draft.
