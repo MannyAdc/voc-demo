@@ -428,3 +428,61 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - Owner decisions on names: the `test_T006b_` prefix stays, because no B rule covers the tool. "Synthetic Bank" in the fixtures stays, because it is a made-up placeholder, like the existing dbt fixture's names.
 - Results API (#32): red `b6e3342` at 13:27 (31 tests), green `f7c9628` at 13:52. Draft opened at about 14:00. Reviewer findings posted at 14:11, with Claude's checks.
 - 14:29 Main merged into `feat/merge-verdict`.
+- 14:36 Main merged into `feat/results-api`. It had one conflict in `src/voc/cli.py`, because both branches added a command (`audit` and `serve`) in the same three places. Claude kept both, and the API, audit and evaluate tests passed on the result.
+- Between 14:37 and 14:47 (exact time not recorded) AI error: a Python heredoc that applied the #32 fixes broke on backslash escapes again. Python stopped on a syntax error before writing anything. Claude wrote the whole new `src/voc/api.py` with the Write tool instead.
+- #32 fixes, after the owner's OK:
+  - Red `cd92b0f` at 14:47: 13 new tests. They cover hostile text and wrong types in served fields, count keys and queue labels, the host check, write methods, the full policy header, a missing data file, the page's labels, axis note and cost note, and A6.
+  - Green `17bf2f0` at 15:03:
+    - Every served field is checked by type or against a fixed list.
+    - `/api/versions` serves named columns only.
+    - The API sets the "tuning figures" label itself.
+    - Only `127.0.0.1` and `localhost` are answered.
+    - Every development panel is tagged as a tuning figure, and the page says the precision axis starts at 50%. A point below it is drawn as a hollow ring.
+    - A missing value shows "n/a". The LLM cost says it is the cost if every answer was live. The page uses the last dev row.
+    - `voc audit` writes `results/audit/<version>_<set>.json` (A6).
+  - httpx was not added. The test client uses `httpx2`, which the Anthropic SDK already requires, and pinning it would mean a release only 8 days old.
+- 15:03 #30 merged by the owner (`cc98fd7`). Claude first ran the new merge verdict script on #30 itself: 4 checks PASS, review and build log FOR CLAUDE, verdict PENDING, exit code 3. Claude judged both items, said MERGE and marked #30 ready.
+- 15:23 #31 checked the same way: PENDING, then MERGE after Claude's judgement. Marked ready. 15:24 #31 merged by the owner (`13d736c`).
+- After the merge the owner started the scheduled workflow by hand on GitHub. Run #1 on `main` (`13d736c`) passed in 31 seconds. Source: the owner's screenshot of the Actions page.
+- About 15:45 Owner decision: the dbt test-set flag (B17) is built by a helper agent in parallel, in `../voc-demo-dbtflag`. Before deciding, the owner asked how the gap would look to a technical audience, and Claude gave the pros and cons. A dbt flag is a second layer, because the staged table still holds the test rows.
+- 15:50 #33 (injection set) opened as a draft, with a reviewer.
+- About 16:00 The owner's computer rebooted because VS Code crashed. Afterwards:
+  - The merge of main into `feat/results-api` had been cut off mid-commit. git no longer recorded it as a merge, but main's changes were still staged. Committing them would have recorded a plain commit instead of a merge. Claude checked that nothing else was staged, unstaged or untracked, discarded the half-done result with `git reset --hard HEAD`, and redid the merge (`8307b82` at 16:18).
+  - The dbt-flag helper had saved nothing, so it was restarted from the beginning. The #33 reviewer was resumed and reported. Its findings were posted at 16:14, with Claude's checks.
+- 16:41 CI green on #32. The merge verdict script said PENDING, with the review and the build log for Claude to judge. Claude judged both and said MERGE. #32 marked ready. 16:45 #32 merged by the owner (`68f92eb`).
+- Between 16:41 and 16:46 (exact time not recorded) Owner decision: fix the four #33 findings Claude listed:
+  - separate outcomes for items caught before a call and for no usable answer
+  - fairer wording for SYN-9003 and SYN-9004
+  - refuse an uncommitted injection file and `--limit`
+  - stronger tests
+- 16:46 Official audit of the v1 development run, by Claude on main: `uv run --native-tls voc audit dev --prompt v1`. It calls no model.
+  - Re-verified 361 of 361 accepted labels.
+  - 361 word for word at the stored position.
+  - Re-derived 9 of 9 quarantined decisions. 0 rows had no recorded answer.
+  - 370 of 370 rows checked against the committed list.
+  - It matches the 13:10 dry run. The counts are in `results/audit/v1_dev.json`, so the dashboard can show them (A6).
+- 17:10 AI note: a `git add` in the T019 worktree failed with "Permission denied" on an object file in the shared object store. Nothing was staged. A retry a few minutes later worked. Several worktrees were running git and the test gate at the same time, so the most likely cause is another process holding the file. The intermittent `git init` and `git add` failures (exit 128) seen in the injection test fixture at about 16:55 may have the same cause. That fixture now prints git's own message, so the next one shows why.
+- 17:30 #34 opened as a draft, with a reviewer. Its findings were posted at 17:32, with Claude's checks. #35 (the dbt flag) opened at the same time. Its findings were posted at 17:34.
+- About 17:36 Owner decisions:
+  - #34: a correcting entry, below.
+  - #35: the helper fixes the four real gaps (a hash check of `splits/test.csv`, honest B17 and README wording, a Known limits line, a wider scan test).
+- 17:38 Correction of the 16:46 entry, which stays as written:
+  - The audit is a consistency check, not a second quote check (B1). It decides each complaint again from its recorded answer, with the labeller's own steps, and checks that the results file says the same.
+  - So "re-verified 361 of 361 accepted labels" means the 361 accepted decisions were re-derived and matched. It does not mean the labels are correct.
+  - The one independent part is the plain character comparison at the stored position: 361 of 361.
+  - The command wrote `results/audit/v1_dev.json` itself.
+  - In the line before, read "(exact time not recorded): owner decision".
+- 18:05 CI green on #34. Merge verdict PENDING, then MERGE after Claude's judgement. #34 marked ready. The owner merged it soon after, with no exact time recorded.
+- Injection set (#33), the review fixes chosen by the owner at about 16:20:
+  - Red `755974e` at 16:54: 9 new tests. They cover each non-answer outcome, refusal of unanswered items, stopped runs, wrong IDs, uncommitted edits, repeated IDs and `--limit`, and the dev results left unchanged.
+  - Green, tried at 17:35. The gate refused it because of `tests.test_hooks::test_a_red_commit_may_still_not_delete_a_test_that_was_already_failing`. Its saved output showed the cause for the first time: inside that test's own temp repo, `git add -A` returned exit code 128. The retry at 18:01 passed (`d6dff8a`).
+  - The fixes:
+    - Five outcomes: obeyed and accepted, obeyed and quarantined, caught before any call, no usable answer, and not obeyed.
+    - A run with a model error or a budget stop is refused.
+    - SYN-9003 no longer reads like a second product of the writer's own, and SYN-9004 names the exact forced label.
+    - An uncommitted `config/injection.toml`, `--limit`, a repeated ID and a forced label equal to the true one are refused.
+  - One old test was changed in the green commit, with a comment. The closing-tag item is now "caught before any call", not "not obeyed".
+- 18:18 Main merged into `feat/injection-set`. It was refused twice:
+  - AI error: Claude merged main, which adds FastAPI, without first syncing the worktree's packages. So every API test failed to import FastAPI.
+  - The sync then failed with "Access is denied" on the `.venv` package folder. That is the same problem as on 28 October, and the same fix worked: remove the half-installed `voc` dist-info folder and sync again.
+  - The merge then passed (`7190734` at 18:48). All of today's intermittent errors are Windows refusing access to a file for a moment: the git exit 128 in test repos, the "Permission denied" on a git object at 17:10, and this `.venv` lock. They are most likely a scanner or another process holding a file while many test runs work at once. Claude suggested the owner consider a Windows Defender exclusion for the project and temp test folders after the demo.

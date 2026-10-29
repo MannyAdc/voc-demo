@@ -330,3 +330,13 @@ def test_B21_audit_prints_counts_only_on_every_failure_path(repo, home, capsys):
     assert code == 1
     for stream in (captured.out, captured.err):
         assert "SYNHOSTILE" not in stream and "escrow" not in stream and "SYN story" not in stream
+
+
+def test_A6_audit_writes_its_counts_for_the_dashboard(repo, capsys):
+    _labelled(repo)
+    code, out = _audit(repo, capsys)
+    assert code == 0
+    written = (repo / "results" / "audit" / "v1_dev.json").read_text(encoding="utf-8")
+    counts = json.loads(written)
+    assert counts["verified"] == counts["accepted"] > 0 and counts["failures"] == {}
+    assert "SYNHOSTILE" not in written and "escrow" not in written
