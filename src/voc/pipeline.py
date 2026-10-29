@@ -6,8 +6,8 @@ model sees and quotes only the cut text (B9). A text with no words or with a
 boundary tag is decided with no call (B5, B9). Once the cap is reached, that
 complaint and every later one is `not_run_budget`, with no more calls (B8).
 Any other ledger problem, and a missing recording in replay mode, stops the
-run (B7, B8). Only the wanted development rows are read, never the test rows
-(B17).
+run (B7, B8). `load_complaints` reads only the wanted development rows. Test
+rows are read only by `voc.testrun`, after its checks (B17).
 
 B21: the results hold IDs, labels, reasons, positions and counts only. A
 proposed label outside the list is model text, so it is written as a marker.
@@ -183,7 +183,7 @@ def results_csv(outcomes, set_name, version, names):
     for o in outcomes:
         d = o.decision
         writer.writerow({
-            "complaint_id": d.complaint_id, "split": "injection" if set_name == "injection" else "dev",
+            "complaint_id": d.complaint_id, "split": set_name if set_name in ("test", "injection") else "dev",
             "prompt_version": version.name,
             "proposed_label": _proposed(d, names), "quote_start": "" if d.quote_start is None else d.quote_start,
             "quote_end": "" if d.quote_end is None else d.quote_end,

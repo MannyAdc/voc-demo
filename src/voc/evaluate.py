@@ -3,7 +3,8 @@
 It reads the run's results file and summary, and the recorded Products of the development and training
 sets, checked against the committed lists. TF-IDF learns from the training set and labels every
 development complaint. Both methods are then scored by `voc.metrics`. Everything printed or written is
-figures, labels, reasons and IDs, never text (B21). The test set is never read here (B17).
+figures, labels, reasons and IDs, never text (B21). The test set is scored only through `voc.testrun`, after
+its run is logged and committed (B17).
 """
 import csv
 import hashlib
@@ -24,6 +25,9 @@ from voc.load import DB_PATH
 from voc.pipeline import _rows_by_id
 
 SETS = ("dev",)
+TUNING = "tuning figures. The verdict comes only from the single logged test run"
+CLAIM = "the claim's verdict, from the single logged test run (B10, B17)"
+TOO_FEW = 30  # B25: a Product with fewer complaints in a sample is "too few to judge"
 RESAMPLES = 2000
 SEED = 0
 COVERAGE_POINTS = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0)
@@ -76,15 +80,16 @@ def _run(root, set_name, version):
     return summary, rows
 
 
-def _check_run(splits_dir, summary, rows):
+def _check_run(splits_dir, summary, rows, set_name="dev"):
     manifest = _manifest(splits_dir)
-    if summary.get("list_sha256") != manifest["lists"]["dev"]["sha256"]:
-        raise SampleMismatch("the run's list hash does not match splits/dev.csv, so it labelled another list")
-    dev = set(read_splits(splits_dir)["dev"])
+    if summary.get("list_sha256") != manifest["lists"][set_name]["sha256"]:
+        raise SampleMismatch(f"the run's list hash does not match splits/{set_name}.csv, so it labelled another list")
+    wanted = set(read_splits(splits_dir)[set_name])
     ids = [r["complaint_id"] for r in rows]
-    if set(ids) != dev or len(ids) != len(dev):
-        raise SampleMismatch(f"the results file holds {len(set(ids))} complaints and the development list "
-                             f"{len(dev)}. Only a run of the whole development list is scored")
+    if set(ids) != wanted or len(ids) != len(wanted):
+        name = "development" if set_name == "dev" else set_name
+        raise SampleMismatch(f"the results file holds {len(set(ids))} complaints and the {name} list "
+                             f"{len(wanted)}. Only a run of the whole list is scored")
     return manifest
 
 
@@ -100,8 +105,8 @@ def _rows(db_path, splits_dir, month, name, ids):
 def pool_shares(path, dev_rows, train_rows, test_size):
     """Each Product's share of the pool (B18), from the committed counts, checked against the lists.
 
-    The test counts cannot be checked per category before the final run (B17). Only their total is checked
-    against the test list, so counts moved between categories would go unnoticed.
+    Only the total of the test counts is checked here, against the test list. The scored test run checks each
+    category's test count against the test rows before it starts (`voc.testrun`, B17).
     """
     if not Path(path).exists():
         raise EvaluationError("config/pool.toml is missing, so the pool shares are unknown (B18)")
@@ -142,14 +147,35 @@ def evaluate(root, set_name, version, note):
     """Score the run, write the results file, the figures and one EVAL_VERSIONS.md row. Returns the figures."""
     if set_name not in SETS:
         raise EvaluationError("only the development set is scored here. The test set waits for the final run")
+    return _score(root, set_name, version, note)
+
+
+def _score_test_set(root, version, note):
+    """B17: score the test set. Only `voc.testrun` calls this, after the run is logged and committed.
+
+    It refuses unless `runs/TEST_RUNS.md` holds a row for this prompt version.
+    """
+    log = Path(root) / "runs" / "TEST_RUNS.md"
+    cells = [[c.strip() for c in line.strip("|").split("|")]
+             for line in (log.read_text(encoding="utf-8").splitlines() if log.exists() else [])
+             if line.startswith("| 20")]
+    if not any(len(row) > 1 and row[1] == version for row in cells):
+        raise EvaluationError(f"no logged test run of prompt {version} in runs/TEST_RUNS.md, so the test set is "
+                              "not scored (B17)")
+    return _score(root, "test", version, note)
+
+
+def _score(root, set_name, version, note):
     root = Path(root)
     splits_dir = root / "splits"
     run, rows = _run(root, set_name, version)
-    manifest = _check_run(splits_dir, run, rows)
+    manifest = _check_run(splits_dir, run, rows, set_name)
     lists = read_splits(splits_dir)
-    dev_rows = _rows(root / DB_PATH, splits_dir, manifest["month"], "dev", set(lists["dev"]))
+    dev_rows = _rows(root / DB_PATH, splits_dir, manifest["month"], set_name, set(lists[set_name]))
     train_rows = _rows(root / DB_PATH, splits_dir, manifest["month"], "train", set(lists["train"]))
-    shares = pool_shares(root / "config" / "pool.toml", dev_rows, train_rows, len(lists["test"]))
+    dev_for_pool = dev_rows if set_name == "dev" else _rows(root / DB_PATH, splits_dir, manifest["month"], "dev",
+                                                              set(lists["dev"]))
+    shares = pool_shares(root / "config" / "pool.toml", dev_for_pool, train_rows, len(lists["test"]))
 
     tfidf_path = root / "config" / "tfidf.toml"
     model = fit_tfidf([(r.complaint_id, "train", r.narrative, r.product) for r in train_rows],
@@ -175,7 +201,7 @@ def evaluate(root, set_name, version, note):
     figures = {
         "set": set_name, "prompt_version": version, "note": note, "backend": run["backend"], "model": run["model"],
         "settings": run["settings"], "list_sha256": run["list_sha256"], "complaints": n,
-        "figures_are": "tuning figures. The verdict comes only from the final test run",
+        "figures_are": TUNING if set_name == "dev" else CLAIM,
         "verdict": compared["verdict"], "difference": compared["difference"], "interval": list(compared["interval"]),
         "resamples": RESAMPLES, "seed": SEED,
         "llm": {"reweighted_accuracy": compared["llm_reweighted"], "precision": compared["llm_precision"],
@@ -189,7 +215,8 @@ def evaluate(root, set_name, version, note):
                   "cost_per_1000_usd": "0",
                   "settings_sha256": hashlib.sha256(tfidf_path.read_bytes()).hexdigest(),
                   "seconds_per_1000_complaints": round(metrics.per_thousand(tfidf_seconds, n), 3)},
-        "per_category": "not reported for the development set (docs/DATA.md, decision 2)",
+        "per_category": ("not reported for the development set (docs/DATA.md, decision 2)" if set_name == "dev"
+                         else _per_category(items, labels)),
         "confusion": {**{method: sorted([p, q, c] for (p, q), c in metrics.confusion(items, method).items())
                          for method in ("llm", "tfidf")},
                       "note": "[recorded, predicted, count]. The LLM matrix has a 'quarantined' column. The TF-IDF "
@@ -207,8 +234,20 @@ def evaluate(root, set_name, version, note):
                                                        newline="")
     (folder / f"{version}_{set_name}.json").write_text(json.dumps(figures, indent=2, sort_keys=True) + "\n",
                                                         encoding="utf-8", newline="")
-    _append_row(root / VERSIONS_FILE, figures)
+    if set_name == "dev":  # B15: the table holds development rows only
+        _append_row(root / VERSIONS_FILE, figures)
     return figures
+
+
+def _per_category(items, labels):
+    """B18: per-Product figures for the test set. A Product with fewer than 30 complaints is "too few to judge"."""
+    counts = {label: sum(i.product == label for i in items) for label in labels}
+    llm, tfidf = metrics.prf(items, "llm", labels), metrics.prf(items, "tfidf", labels)
+    return {"note": "the LLM's quarantined labels count as wrong. TF-IDF here labels every complaint, at full "
+                    "coverage, not the matched coverage of the headline figures (B10)",
+            "categories": {label: ({"complaints": n, "too_few_to_judge": True} if n < TOO_FEW else
+                                   {"complaints": n, "llm": llm[label], "tfidf": tfidf[label]})
+                           for label, n in counts.items()}}
 
 
 def _results_csv(rows, predictions, dev_rows):

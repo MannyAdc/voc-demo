@@ -70,6 +70,18 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: uv run --locked python -m voc.repo_checks
 
+      - name: The test run log only grows compared with main (B17)
+        run: |
+          base="$RUNNER_TEMP/test_runs_on_main.md"
+          # Fail if main cannot be read at all, so a git error never counts as "nothing on main yet".
+          git rev-parse --verify origin/main > /dev/null
+          if git cat-file -e origin/main:runs/TEST_RUNS.md 2>/dev/null; then
+            git show origin/main:runs/TEST_RUNS.md > "$base"
+          else
+            rm -f "$base"
+          fi
+          uv run --locked python scripts/check_test_runs.py "$base" runs/TEST_RUNS.md
+
   secret-scan:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
