@@ -39,7 +39,7 @@ def _comment(body, date):
 
 def _pr(number=101, **over):
     pr = {
-        "number": number, "state": "OPEN", "isDraft": True, "mergeable": "MERGEABLE",
+        "number": number, "state": "OPEN", "isDraft": True, "mergeable": "MERGEABLE", "isCrossRepository": False,
         "baseRefName": "main", "headRefName": f"feat/syn-{number}", "headRefOid": f"{number:a<40}",
         "statusCheckRollup": [_run(n) for n in ("tests", "repo-checks", "secret-scan")] * 2,
         "commits": [
@@ -75,6 +75,22 @@ def test_T006b_ci_fails_while_a_check_is_still_running(mv):
     check = mv.check_ci(_pr(statusCheckRollup=rollup))
     assert check.status == mv.FAIL
     assert "running" in check.detail
+
+
+def test_T006b_ci_fails_on_a_pending_commit_status(mv):
+    rollup = [_run(n) for n in mv.EXPECTED_CHECKS]
+    rollup.append({"__typename": "StatusContext", "context": "syn-status", "state": "PENDING"})
+    check = mv.check_ci(_pr(statusCheckRollup=rollup))
+    assert check.status == mv.FAIL
+    assert "syn-status" in check.detail
+
+
+@pytest.mark.parametrize("status", ["QUEUED", "IN_PROGRESS", "WAITING", "PENDING", None])
+def test_T006b_ci_fails_on_a_check_run_not_completed(mv, status):
+    rollup = [_run("tests", None, status), _run("repo-checks"), _run("secret-scan")]
+    check = mv.check_ci(_pr(statusCheckRollup=rollup))
+    assert check.status == mv.FAIL
+    assert "tests" in check.detail
 
 
 def test_T006b_ci_fails_with_no_checks(mv):
@@ -214,6 +230,17 @@ def test_T006b_findings_that_found_nothing_pass(mv):
     assert check.status == mv.PASS
 
 
+@pytest.mark.parametrize("body", [
+    "## Reviewer findings\n\nNo findings.\n\n1. A real synthetic finding.",
+    "## Reviewer findings\n\nNo findings. Nothing to fix.",
+    "## Reviewer findings\n\nNothing to fix.",
+    "## Reviewer findings\n\nNo fix needed.",
+])
+def test_T006b_review_is_never_a_pass(mv, body):
+    check = mv.check_review(_pr(comments=[_comment(body, "2026-10-29T03:00:00Z")]))
+    assert check.status == mv.CLAUDE
+
+
 def test_T006b_latest_findings_comment_counts(mv):
     comments = [_comment("## Reviewer findings\n\n1. X.", "2026-10-29T01:05:00Z"),
                 _comment("## Reviewer findings (second round)\n\n1. Y.", "2026-10-29T01:30:00Z")]
@@ -294,6 +321,21 @@ def test_T006b_verdict_waits_for_claude_on_judgement_items(mv):
     assert "#101 review findings" in line
 
 
+def test_T006b_verdict_is_pending_while_claude_must_judge(mv):
+    checks = [mv.Check(101, "CI", mv.PASS, "green"), mv.Check(101, "review findings", mv.CLAUDE, "judge"),
+              mv.Check(101, "build log", mv.CLAUDE, "judge")]
+    line = mv.verdict(checks)
+    assert line.startswith("PENDING: Claude must judge: ")
+    assert "#101 review findings" in line and "#101 build log" in line
+    assert "MERGE" not in line
+    assert "\n" not in line
+
+
+def test_T006b_verdict_fix_first_wins_over_pending(mv):
+    checks = [mv.Check(101, "CI", mv.FAIL, "tests failed"), mv.Check(101, "review findings", mv.CLAUDE, "judge")]
+    assert mv.verdict(checks).startswith("FIX FIRST: ")
+
+
 # The command
 
 
@@ -354,6 +396,60 @@ def test_T006b_main_exits_2_when_the_data_cannot_be_read(mv, capsys):
 
     assert mv.main(["101"], fetch=fetch) == 2
     assert capsys.readouterr().out.startswith("error: ")
+
+
+def test_T006b_main_exits_3_while_pending(mv, capsys):
+    assert mv.main(["101"], fetch=_fake_fetch([_pr(101)])) == 3
+    last = capsys.readouterr().out.strip().splitlines()[-1]
+    assert last.startswith("PENDING: Claude must judge: ")
+
+
+def test_T006b_main_exits_0_only_on_merge(mv, capsys, monkeypatch):
+    monkeypatch.setattr(mv, "check_all", lambda prs, merged=None: [mv.Check(101, "CI", mv.PASS, "green")])
+    assert mv.main(["101"], fetch=_fake_fetch([_pr(101)])) == 0
+    assert capsys.readouterr().out.strip().splitlines()[-1] == "MERGE"
+
+
+def test_T006b_main_crash_exits_2_with_the_error_type_only(mv, capsys):
+    message = "SYN crash text " + "that must never be printed"
+
+    def fetch(number):
+        raise ValueError(message)
+
+    assert mv.main(["101"], fetch=fetch) == 2
+    out = capsys.readouterr().out
+    assert out.strip() == "error: ValueError"
+    assert message not in out
+
+
+def test_T006b_main_refuses_the_trial_merge_for_a_fork(mv, capsys):
+    prs = [_pr(101), _pr(102, files=[{"path": "src/voc/other.py"}], isCrossRepository=True)]
+    calls = []
+
+    def trial(ordered):
+        calls.append(ordered)
+        return mv.Check(None, "tests on the merge", mv.PASS, "3 passed")
+
+    assert mv.main(["101", "102", "--test-merge"], fetch=_fake_fetch(prs), trial=trial) == 1
+    out = capsys.readouterr().out
+    assert calls == []
+    assert any(line.startswith("FAIL") and "tests on the merge" in line and "#102" in line and "fork" in line
+               for line in out.splitlines())
+
+
+@pytest.mark.parametrize("over", [{"isCrossRepository": True}, {"isCrossRepository": None}])
+def test_T006b_trial_merge_refuses_a_fork_before_any_fetch(mv, tmp_path, over):
+    pr = _pr(101, **over)
+    if over["isCrossRepository"] is None:
+        del pr["isCrossRepository"]
+    # tmp_path is not a git repo, so any fetch or git call would raise.
+    check = mv.fetch_and_trial_merge([pr], repo=tmp_path)
+    assert check.status == mv.FAIL
+    assert "#101" in check.detail and "fork" in check.detail
+
+
+def test_T006b_pr_fields_include_the_fork_flag(mv):
+    assert "isCrossRepository" in mv.PR_FIELDS.split(",")
 
 
 # The gh layer
@@ -456,3 +552,46 @@ def test_T006b_trial_merge_runs_pytest_on_the_merged_tree(mv, repo):
     code, summary = mv.run_tests_on_tree(repo, mv.merged_tree(repo, base, [(101, one), (102, two)])[1])
     assert code == 0
     assert "2 passed" in summary
+
+
+def _syn_env():
+    # Names are built while the test runs. The values are plain synthetic words, not key-like.
+    return {
+        "PATH": "syn-path",
+        "SYSTEMROOT": "syn-root",
+        "ANTHROPIC_" + "API_KEY": "syn-value",
+        "SYN_" + "KEY_FILE": "syn-value",
+        "syn_lower_" + "key": "syn-value",
+        "SYN_" + "TOKEN": "syn-value",
+        "GH_" + "TOKEN": "syn-value",
+        "SYN_" + "SECRET_VALUE": "syn-value",
+        "VOC_DATA_DIR": "syn-folder",
+        "VOC_NEXT_DATA_DIR": "syn-folder",
+        "VOC_MOCK_FIXTURES": "syn-folder",
+        "GIT_DIR": "syn-git",
+        "LLM_BACKEND": "api",
+    }
+
+
+def test_T006b_trial_merge_env_drops_secrets_and_data_folders(mv):
+    env = mv.trial_env(_syn_env())
+    assert env == {"PATH": "syn-path", "SYSTEMROOT": "syn-root", "LLM_BACKEND": "mock"}
+
+
+def test_T006b_trial_merge_tests_run_with_mock_and_no_secrets(mv, repo, monkeypatch):
+    for name, value in _syn_env().items():
+        if name not in ("PATH", "SYSTEMROOT", "GIT_DIR"):  # the test's own git calls need GIT_DIR unset
+            monkeypatch.setenv(name, value)
+    probe = (
+        "import os\n\n"
+        "def test_env():\n"
+        "    assert os.environ.get('LLM_BACKEND') == 'mock'\n"
+        "    names = [n.upper() for n in os.environ]\n"
+        "    assert not [n for n in names if 'KEY' in n or 'TOKEN' in n or 'SECRET' in n]\n"
+        "    assert not {'VOC_DATA_DIR', 'VOC_NEXT_DATA_DIR', 'VOC_MOCK_FIXTURES'} & set(names)\n"
+    )
+    base = _git(repo, "rev-parse", "HEAD")
+    one = _branch(repo, base, "one", {"tests/test_syn_env.py": probe})
+    code, summary = mv.run_tests_on_tree(repo, mv.merged_tree(repo, base, [(101, one)])[1])
+    assert code == 0, summary
+    assert "1 passed" in summary
