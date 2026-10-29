@@ -651,3 +651,10 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - About 09:55 The first try of the green commit was refused by the gate: `test_B14_git_ignores_any_seed_file_so_a_seed_cannot_be_committed_by_accident` failed with git exit code 128.
   - AI error: the test ran `git check-ignore` in the repo folder. The gate runs the tests on a copy of the staged files, which is not a git checkout. The gate caught it.
   - The test now checks a copy of `.gitignore` in a new temp repo. It passes with the new `.gitignore` and fails with the old one, checked by hand before the retry. It is changed in this green commit, with a comment.
+- 10:07 Green `706f73a` passed its gate and was pushed.
+- 10:13 First live try of T021, by the owner in their own PowerShell, from `../voc-demo-dbx`: `uv run --native-tls --group databricks python scripts/databricks_fixture_build.py tests/fixtures/dbt/complaints.csv <new work folder>`. The seed check passed. dbt then stopped with exit code 2 before any result.
+  - The owner ran a log filter that Claude wrote. It first checked dbt's log for token-like text (none found), then printed only the error lines, which the owner pasted.
+  - The cause: the host was the placeholder text "paste the Server hostname here". AI error: Claude's run commands asked the owner to edit text inside quote marks, which was easy to misread. Claude rewrote them to ask for each value with `Read-Host`.
+- About 10:18 (exact time not recorded) Second live try, same command: "dbt build: 2 seeds, 2 models, 4 data tests. passed 8, failed 0, errors 0, skipped 0". The same dbt models ran on the owner's Databricks Free Edition SQL warehouse, on the 12 synthetic complaints only.
+- About 10:20 The owner searched every file in the work folder for the token, in their own PowerShell: "files holding the token: 0". The command printed only the count. Claude never saw the token.
+- T021 went past its 1 hour time box: about 20 minutes before 02:50 and about 1 hour 35 minutes from 08:45. The owner had allowed past 12:00 at about 02:28.
