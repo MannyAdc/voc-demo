@@ -567,3 +567,22 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - The helper's relative path to `splits/test.csv` in the #35 entry was an AI error, caught by the helper itself when querying the view failed.
   - The entries from "Parallel run, the dbt test-set flag (#35)" to the end of the test run were written at about 23:30. The #35 and #36 parts were drafted during the day and held back until this pull request.
   - AI error: Claude's first draft of this entry gave 23:44 for the reviewer findings, without checking. Claude caught it by checking GitHub before the commit finished, stopped the commit and fixed the draft.
+- Entries written at about 00:30 on 30 October, for times before the 23:46 entry above:
+  - About 23:35 Work start on the README (T020, T017 in part). Claude checked the model's training data cutoff on the [models overview](https://platform.claude.com/docs/en/about-claude/models/overview): June 2026 for claude-haiku-5-5, as both the reliable knowledge cutoff and the training data cutoff.
+  - 23:42 #39 opened (time from GitHub), with a reviewer.
+
+## Friday 30 October 2026
+
+- 00:16 Merge verdict on #39 PENDING, then MERGE after Claude's judgement. #39 marked ready. 00:17 The owner merged #39 (time from GitHub).
+- README (#40):
+  - Commit `303f6b4` at 23:59 on 29 October, in the worktree `../voc-demo-readme`, branch `docs/readme-results`, started from `run/test-v1`.
+  - 00:15 #40 opened (time from GitHub). 00:22 Reviewer findings posted, with Claude's checks: 20 points.
+  - The real ones:
+    - The injection command lacked its required `--note`, so it failed as written.
+    - TF-IDF's macro-F1 sat under "at the same coverage", but it is at full coverage.
+    - The data figures cited `docs/DATA.md`, not the command that made them.
+    - "Decision 2 in docs/DATA.md" was cited for a reason that decision does not give.
+    - Four claims overstated: the git hook "for every commit", a failing-test commit in "each pull request", "never read a complaint", and "word for word" for a match after normalisation.
+  - About 00:24 (exact time not recorded) Owner decision: fix all 20.
+  - AI error: the README overstated those four claims and cited the wrong source for the over-sampling reason. The reviewer caught them.
+  - Main merged into `docs/readme-results` first, so this PR's log lines follow #39's.
