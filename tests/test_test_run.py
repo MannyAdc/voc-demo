@@ -250,3 +250,165 @@ def test_B17_the_log_check_fails_when_a_row_is_changed_or_removed(tmp_path):
 def test_B17_ci_runs_the_log_check():
     workflow = (REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert "scripts/check_test_runs.py" in workflow
+
+
+# Review of #36: nothing that can fail later may use up the logged run, and the counts are right
+
+
+def _logged(root):
+    path = root / "runs" / "TEST_RUNS.md"
+    return path.read_text(encoding="utf-8").count("| 20") if path.exists() else 0
+
+
+def _home_log(home):
+    return home / ".voc" / "test_runs.log"
+
+
+def test_B8_an_open_overrun_is_refused_before_anything_is_written(repo, home):
+    from voc import testrun
+
+    with pytest.raises(testrun.TestRunError, match="overrun"):
+        testrun.run(repo, "v1", None, FakeCall(repo), 10_000_000, overrun=True)
+    assert _logged(repo) == 0 and not _home_log(home).exists()
+
+
+def test_B8_the_cap_check_counts_every_retry(repo):
+    from voc import testrun
+
+    worst = testrun.preflight(repo, "v1", None, 10_000_000)[-1]
+    with pytest.raises(testrun.TestRunError, match="worst case"):
+        testrun.preflight(repo, "v1", None, worst * 2 // 3)
+    assert testrun.preflight(repo, "v1", None, worst)[-1] == worst
+
+
+def test_B18_pool_counts_that_do_not_match_are_refused_before_the_log(repo):
+    path = repo / "config" / "pool.toml"
+    path.write_text(path.read_text(encoding="utf-8").replace("train = ", "train = 1", 1), encoding="utf-8")
+    _git(repo, "commit", "-q", "-am", "SYN broken pool counts")
+    with pytest.raises(Exception, match="pool"):
+        _run(repo)
+    assert _logged(repo) == 0
+
+
+def test_B18_per_category_test_counts_are_checked_against_the_test_rows(repo):
+    import re
+
+    path = repo / "config" / "pool.toml"
+    text = path.read_text(encoding="utf-8")
+    tests = [int(n) for n in re.findall(r"^test = (\d+)$", text, re.M)]
+    pools = [int(n) for n in re.findall(r"^pool = (\d+)$", text, re.M)]
+    # Move one test complaint from the first category to the second, keeping every total right.
+    moved_tests = iter([f"test = {tests[0] - 1}", f"test = {tests[1] + 1}"])
+    moved_pools = iter([f"pool = {pools[0] - 1}", f"pool = {pools[1] + 1}"])
+    text = re.sub(r"^test = \d+$", lambda m: next(moved_tests), text, flags=re.M)
+    text = re.sub(r"^pool = \d+$", lambda m: next(moved_pools), text, flags=re.M)
+    path.write_text(text, encoding="utf-8")
+    _git(repo, "commit", "-q", "-am", "SYN moved test counts")
+    with pytest.raises(Exception, match="test count"):
+        _run(repo)
+    assert _logged(repo) == 0
+
+
+def test_B17_one_earlier_run_counts_once(repo):
+    _run(repo)
+    _commit_results(repo)
+    _run(repo, reason="SYN second look")
+    assert "Test run number 2 " in (repo / "BUILD_LOG.md").read_text(encoding="utf-8")
+    assert _logged(repo) == 2
+
+
+def test_B17_the_build_log_line_sits_under_the_days_heading(repo):
+    from datetime import datetime
+
+    _run(repo)
+    _commit_results(repo)
+    _run(repo, reason="SYN second look")
+    now = datetime.now()
+    text = (repo / "BUILD_LOG.md").read_text(encoding="utf-8")
+    heading = f"## {now:%A} {now.day} {now:%B %Y}"
+    assert heading in text and text.index(heading) < text.index("Test run number 2")
+
+
+def test_B17_a_failed_log_commit_leaves_the_tree_clean_and_says_why(repo, home):
+    from voc import testrun
+
+    hooks = repo / ".git" / "hooks"
+    hooks.mkdir(parents=True, exist_ok=True)
+    hook = hooks / "pre-commit"
+    hook.write_text("#!/bin/sh\necho SYN refused by the gate\nexit 1\n", encoding="utf-8")
+    hook.chmod(0o755)
+    with pytest.raises(testrun.TestRunError, match="could not be committed") as err:
+        _run(repo)
+    assert "SYN refused by the gate" in str(err.value)
+    assert _git(repo, "status", "--porcelain").strip() == ""
+    assert _home_log(home).exists()
+
+
+def test_B7_a_run_stopped_by_model_errors_writes_its_results_and_is_not_scored(repo):
+    from voc import testrun
+    from voc.replay import ModelError
+
+    def failing(prompt):
+        raise ModelError("the API refused the call: SYN (HTTP 401)")
+
+    with pytest.raises(testrun.TestRunError, match="stopped early"):
+        testrun.run(repo, "v1", None, failing, 10_000_000)
+    summary = json.loads((repo / "results" / "labels" / "v1_test.json").read_text(encoding="utf-8"))
+    assert summary["stopped"]
+    assert not (repo / "results" / "eval" / "v1_test.json").exists()
+    assert _logged(repo) == 1
+
+
+def test_B16_changed_test_rows_are_refused_before_anything_is_logged(repo):
+    from voc.data import read_splits
+    from voc.db import connect
+    from voc.load import DB_PATH, TABLE
+
+    first = sorted(read_splits(repo / "splits")["test"])[0]
+    con = connect(repo / DB_PATH)
+    con.execute(f"UPDATE {TABLE} SET narrative = narrative || ' changed' WHERE complaint_id = ?", [first])
+    con.close()
+    with pytest.raises(Exception):
+        _run(repo)
+    assert _logged(repo) == 0
+
+
+def test_B17_the_test_rows_and_their_scoring_are_not_public(repo):
+    from voc import evaluate, testrun
+
+    assert not hasattr(testrun, "test_complaints") and not hasattr(evaluate, "score_test_set")
+    with pytest.raises(evaluate.EvaluationError, match="no logged test run"):
+        evaluate._score_test_set(repo, "v1", "SYN")
+
+
+def test_B18_per_category_figures_say_tfidf_is_at_full_coverage(repo):
+    _run(repo)
+    figures = json.loads((repo / "results" / "eval" / "v1_test.json").read_text(encoding="utf-8"))
+    assert "full coverage" in figures["per_category"]["note"]
+    for entry in figures["per_category"]["categories"].values():
+        assert entry.get("too_few_to_judge") or {"llm", "tfidf"} <= set(entry)
+
+
+def test_B18_the_printout_gives_precision_and_each_category(repo):
+    from voc import testrun
+
+    report = testrun.run(repo, "v1", None, FakeCall(repo), 10_000_000)
+    out = testrun.format_report(report)
+    assert "precision" in out
+    for product in QUOTES:
+        assert product in out
+
+
+def test_B17_the_log_check_fails_when_the_log_is_deleted(tmp_path):
+    import sys
+
+    base = tmp_path / "base.md"
+    base.write_text("| a |\n", encoding="utf-8")
+    result = subprocess.run([sys.executable, str(REPO / "scripts" / "check_test_runs.py"), str(base),
+                             str(tmp_path / "missing.md")], capture_output=True, text=True)
+    assert result.returncode == 1
+
+
+def test_B17_the_ci_step_fails_when_main_cannot_be_read():
+    workflow = (REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "git rev-parse --verify origin/main" in workflow
