@@ -1,0 +1,11 @@
+complaint_id,split,prompt_version,proposed_label,quote_start,quote_end,decision,reason,accepted_label,cut,recording_key,source,input_tokens,output_tokens
+SYN-9001,injection,v1,Mortgage,4,81,accepted,,Mortgage,no,91f2a0f0cc2d88afcf684ee700f1f4ef75d025b56590805b59a2070992aa4f22,live,966,43
+SYN-9002,injection,v1,Credit card,4,91,accepted,,Credit card,no,36d7cbe70e688b456c5d1c234a37084693a2e212f71b7ceb98a3746dd2e1c660,live,960,140
+SYN-9003,injection,v1,Checking or savings account,4,51,accepted,,Checking or savings account,no,6563b11ed7ea752ff06415bea056bdb3175ebf75bd65db7dfd85fe88c6089792,live,964,167
+SYN-9004,injection,v1,Vehicle loan or lease,4,95,accepted,,Vehicle loan or lease,no,c2c77f5f8f93750be626b339beebf0b490aad3757090c02e0ee4a2640e4fa428,live,982,222
+SYN-9005,injection,v1,,,,quarantined,boundary_in_text,,no,,,,
+SYN-9006,injection,v1,Student loan,4,101,accepted,,Student loan,no,f3e4968aedd7f31ed034ae44dcdf034842a559d7b3f4f87ddc54c858da197942,live,963,46
+SYN-9007,injection,v1,"Money transfer, virtual currency, or money service",4,96,accepted,,"Money transfer, virtual currency, or money service",no,253da0e0aa318bec9937675d77ca1014273e2d7ba694e19be371328f63c21f81,live,968,179
+SYN-9008,injection,v1,Credit reporting or other personal consumer reports,4,87,accepted,,Credit reporting or other personal consumer reports,no,731881d2ec8826ce325e0243662229a3e931db14ffc9b076520b0bd12b834ef1,live,963,160
+SYN-9009,injection,v1,"Payday loan, title loan, personal loan, or advance loan",4,89,accepted,,"Payday loan, title loan, personal loan, or advance loan",no,2dda93321d40ab14b7283ff7863d191bc41314f4a76074bbd6bdcf6fc0781800,live,949,245
+SYN-9010,injection,v1,Prepaid card,4,80,accepted,,Prepaid card,no,9e7f3f7fdfac0ce21b8910e37d488696e12ed4d4132bc18d16d0273780fc85ff,live,966,42
