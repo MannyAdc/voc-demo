@@ -394,3 +394,37 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - The PyPI facts came from `https://pypi.org/pypi/fastapi/0.162.0/json` and `https://pypi.org/pypi/uvicorn/0.54.0/json`.
   - "12:39 Audit red `3aa28dc`" is the red commit for the confusion matrix note, not an audit test.
   - The 11:52 entry "Work start: the quote audit" is wrong. 11:52 was when #28 was opened. The audit worktree was made after the owner's answer at about 11:55, so the audit work started at about 11:56.
+- Correction of the 13:07 entry, which stays as written: the time the two helpers started was not recorded. They started at about 13:07, after their worktrees were made. The T015c helper reports it started at 13:10.
+- 13:51 CI green on #29. Claude's merge check by hand: MERGE. #29 marked ready. 14:26 #29 merged by the owner (`41036f9`).
+- Parallel run, T006b (`/merge-verdict`), helper agent in `../voc-demo-verdict`:
+  - Red `38b993b` at 13:12 (68 tests). Green `0ee8792` at 13:32. The helper reports it started at about 12:50. That cannot be right, because its worktree was made at about 13:05, so the start is about 13:07.
+  - AI error (helper): one new red test had a wrong fixture. A fake commit ID shortened to the wrong 7 characters, so the assertion could never pass. The helper fixed it in the green commit, with the reason in the commit message.
+  - Claude read the diff before pushing. Every `gh` call is read-only, and the trial merge writes nothing to the work tree. #30 opened as a draft at about 13:48. Reviewer findings posted with Claude's checks.
+    - The reviewer found that a "No findings" first line could hide real findings, and that the trial merge ran the PR's tests with a key in the environment.
+    - Two of its claims were checked and found wrong: `pyproject.toml` sets `pythonpath = ["src"]`, so the merged tree's own code is tested, and the gate strips the git variables.
+  - Owner chose the real gaps. Fix round by the same helper, from 13:58 to 14:22: red `2556e15` (14 tests), green `b16f0b0`.
+    - The review check is always for Claude.
+    - The verdict is PENDING, with exit code 3, while anything needs judgement.
+    - The trial merge drops git variables, secrets and data folders, sets the mock backend, and refuses forks.
+    - Known limits gained two lines.
+  - The green commit removed two old tests and changed one. They checked behaviour the owner chose to remove. Their stronger replacements were committed red first. The gate refuses a tests-only commit that stops a passing test, so the change had to be in the green commit.
+- Parallel run, T015c (scheduled pipeline), helper agent in `../voc-demo-ci`:
+  - Red `77af908` at 13:12 (19 tests). Green `a7af188` at 13:32. The gate passed: 858 tests, 0 failures.
+  - AI error (helper): its first commit try also ran a git command that names the hooks setting. The Claude-side test gate blocked it.
+  - Claude read the workflow before pushing:
+    - no secrets, and `contents: read`
+    - no network for the `voc` steps
+    - the same pinned actions as `ci.yml`
+    - all 92 fixture rows have `SYN-` IDs.
+  - #31 opened as a draft at about 13:48. Reviewer findings posted with Claude's checks. Its main claim, that steps 2 to 4 might run on the real repo, was checked and found wrong: `cli.main` takes the current folder as its root, and each step changes into the work folder first.
+  - Owner chose the real gaps. Fix round by the same helper, from 13:58 to about 14:24: red `8f7b44f` (12 tests), green `da04061`. The gate passed: 867 tests, 0 failures.
+    - Every step name says "synthetic fixture".
+    - Each step runs through a tested script entry, and the prepare step has no network.
+    - The dbt copy skips local DuckDB and profile files.
+    - A failing dbt data test fails the run.
+    - A local run writes no ledger entry and no recording, and a test checks that.
+  - The green commit removed three old workflow tests, replaced by tests committed red first. It also fixed one wrong check in a new red test: the home folder exists, so the test now checks it stays empty.
+  - AI error (helper): a search command that named the home ledger folder was blocked by the read guard. Nothing was read.
+- Owner decisions on names: the `test_T006b_` prefix stays, because no B rule covers the tool. "Synthetic Bank" in the fixtures stays, because it is a made-up placeholder, like the existing dbt fixture's names.
+- Results API (#32): red `b6e3342` at 13:27 (31 tests), green `f7c9628` at 13:52. Draft opened at about 14:00. Reviewer findings posted at 14:11, with Claude's checks.
+- 14:29 Main merged into `feat/merge-verdict`.
