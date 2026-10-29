@@ -586,3 +586,31 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - About 00:24 (exact time not recorded) Owner decision: fix all 20.
   - AI error: the README overstated those four claims and cited the wrong source for the over-sampling reason. The reviewer caught them.
   - Main merged into `docs/readme-results` first, so this PR's log lines follow #39's.
+- 00:53 Merge verdict on #40 PENDING, then MERGE after Claude's judgement. #40 marked ready. 01:00 The owner merged #40 (time from GitHub).
+- About 01:02 Work start on T020b (small categories, written up), in the worktree `../voc-demo-smallcat`, branch `docs/small-categories`.
+  - `docs/HOW_WE_MEASURE.md` gets a section on labelling a category against measuring it. It also gets one line saying that the real sample sizes are 370 and 1,909, not the "about 385" and "about 2,400" it gave before the correction for the pool's size.
+  - `docs/DATA.md` gets the reason the small categories were not over-sampled, which the README had wrongly cited as decision 2 (see the #40 entry).
+- About 01:10 Owner task T008b done: the owner lowered the monthly spend limit in the API Console from 1000 to 20. The currency was not checked. Claude has no Console access, so this is the owner's word.
+- 01:31 Correction of the 28 October entry "About 16:35 ... owner task T008b done", which stays as written:
+  - On 28 October the owner set a limit on the Claude subscription, not on the API. The owner did not know they are separate. So the API had no 20 limit until about 01:10 today.
+  - The development, injection and test runs ran under the API Console's limit of 1000, currency not checked.
+  - The token ledger's cap was the hard stop all along. At claude-haiku-5-5's prices in `config/prices.toml`, 40,000,000 tokens cost at most US$20, even if every token were output.
+  - Real API spend so far, from the committed results files, is under US$1: $0.0862902 for the development run, $0.0014901 for the injection run, $0.4530015 for the test run, plus the smoke tests.
+  - AI error: on 30 October Claude asked the owner about T008b without first reading the log. The #41 reviewer caught the conflict.
+- About 01:12 Work start on ticking the finished tasks in `tasks.md`, with their pull request numbers, in the worktree `../voc-demo-tasks`, branch `docs/tick-tasks`. Commit `b7e5ca6` at 01:12, gate passed at about 01:27. Its log lines are here, to avoid a clash at the end of this file.
+- The first try of the T020b commit was refused by the gate: `tests.test_replay::test_B7_a_failure_a_retry_cannot_fix_is_tried_once_and_named` errored in setup, because `git commit` failed inside that test's own temp repo. The change touches docs only. It is the same intermittent Windows file lock as on 29 October, with two gates running at once. The retry ran alone.
+- 01:31 Reviewer findings posted on #41, with Claude's checks (time from GitHub). 01:35 Owner decision: go with the proposed fixes. They change the notes for T008b, T014b, T015, T011, T009 and T018a, add full stops, and add the README note on a full scheduler that T015c asked for.
+- 01:49 Reviewer findings posted on #42, with Claude's checks (time from GitHub). About 01:52 Owner decision: fix all of them. The time is Claude's clock when the owner's message arrived. The fixes:
+  - `docs/HOW_WE_MEASURE.md`: the LLM labels almost every complaint, not every one (21 of 1,909 had no usable category). The wide margin is given in place of "mostly luck". The cheap option, 2 and 11 more complaints to reach 30, is given with why it was not taken. One sentence explains re-weighting. The contradiction is gone: re-weighting would fix the mix, but not TF-IDF's lost training examples.
+  - `docs/DATA.md`: the re-weighting point is the right way round. Proportional samples need no re-weighting. Over-sampled ones would.
+- 01:57 Correction of the entries above, which stay as written:
+  - The gate refusal of the first T020b commit has no recorded time. It came between about 01:04 and 01:27. "The same intermittent Windows file lock" should read "most likely the same".
+  - The entries from "About 01:10" to "01:35" are not in time order. They were written as things were found.
+  - "01:35 Owner decision" is Claude's clock when the owner's message arrived.
+  - The 28 October 11:50 line "Console limit $20" was a decision. The limit set after it was on the Claude subscription, as the 01:31 correction says.
+  - The spend list used $0.0862902 for the development run. That figure includes replayed calls. The run's own cost is $0.0718306. All these costs are estimates from list prices for calls that returned an answer. The Console bill was not checked.
+  - The own costs in the committed results files add up to about US$0.54: $0.0045288 (smoke test), $0.0099308 (first 50), $0.0718306 (development), $0.0014901 (injection), $0.4530015 (test).
+  - A hard bound, from the ledger: 682,928 tokens charged before the test run (the cap of 20,000,000 less the 19,317,072 left, in the refused run's output) plus 3,010,447 in the test run. That is 3,693,375 tokens, at most US$1.85 even if every token were output at US$0.50 per million.
+  - The long-context price does not apply. The largest prompt in these runs was 2,669 tokens (`token_pairs` in the labels results files), far below the 100,000 threshold.
+  - AI error: Claude's comment on #42 said the hard bound was "under US$1 even at the output price". It is US$1.85. Claude caught it when working the numbers out and corrected it on #42.
+  - AI error: `docs/HOW_WE_MEASURE.md` kept "about 385" and "about 2,400" after the real sizes, 370 and 1,909, were drawn on 28 October. Claude found it while writing T020b, and logged it at the reviewer's prompt.
