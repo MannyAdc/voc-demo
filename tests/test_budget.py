@@ -372,7 +372,7 @@ def test_B8_cli_ledger_init_and_raise(budget, repo):
 def test_B8_the_committed_cap_config_is_valid(budget):
     root = Path(__file__).resolve().parents[1]
     config = budget.load_config(root)
-    assert config["cap_tokens"] == 20_000_000
+    assert config["cap_tokens"] == 40_000_000  # raised from 20,000,000 on 29 October (owner decision)
     assert config["input_margin_tokens"] > 0
 
 
