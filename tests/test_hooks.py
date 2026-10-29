@@ -170,6 +170,27 @@ def test_the_gate_saves_the_full_pytest_output_and_names_the_folder(gate, projec
     assert any(str(tmp_path / "gate-log") in problem for problem in problems)
 
 
+def test_each_checkout_has_its_own_gate_output_folder(gate, tmp_path):
+    # Two worktrees can commit at the same time, so they must not share one folder (review of #26).
+    first, second = gate._default_log_dir(tmp_path / "voc-demo"), gate._default_log_dir(tmp_path / "voc-demo-t015")
+    assert first != second
+    assert first.parent == second.parent and first.parent.name == "voc-gate"
+    assert first == gate._default_log_dir(tmp_path / "voc-demo")
+
+
+def test_a_folder_that_cannot_be_written_leaves_the_decision_unchanged(gate, project, tmp_path, monkeypatch,
+                                                                         capsys):
+    blocked = tmp_path / "a-file-not-a-folder"
+    blocked.write_text("SYN", encoding="utf-8")
+    monkeypatch.setattr(gate, "LOG_DIR", blocked)
+    _stage(project, "src/mod.py", "def f():\n    return 1  # same\n")
+    assert gate.check_staged(project) == []
+    assert "could not save the pytest output" in capsys.readouterr().out
+    _stage(project, "src/mod.py", "def f():\n    return 2\n")
+    problems = gate.check_staged(project)
+    assert any(p.startswith("failing test:") for p in problems)
+
+
 def test_a_new_gate_run_removes_the_last_runs_output(gate, project, tmp_path):
     folder = tmp_path / "gate-log"
     folder.mkdir()
