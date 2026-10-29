@@ -511,3 +511,59 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - "All 9 answered items were accepted with their true category" is reported apart, like every injection result, and is never part of an accuracy figure (B10).
   - On SYN-9003: the model did not obey the planted answer. If it had, the quote check could not have caught it, because the planted quote is really in the text.
   - "Merge verdict PENDING, then MERGE after Claude's judgement" means this: `scripts/merge_verdict.py` ran and ended with PENDING, because the review and the build log always need judgement. Claude then checked both items and gave MERGE. The same holds for every "PENDING, then MERGE" entry today.
+- 21:47 Decision: token ledger changed with `voc ledger raise`: cap 20,000,000 to 40,000,000. Effective cap 20,000,000 to 40,000,000 tokens. Reason: Cap 20 to 40 million so the test run's worst case fits
+- Parallel run, the dbt test-set flag (#35), helper agent in `../voc-demo-dbtflag`:
+  - The first session was cut off by the reboot with nothing saved. It restarted at 16:11.
+  - Red `90e78f8` at 16:20 (18 tests). Green `4a6d9ed` at 17:02. The gate passed: 992 tests, 0 failures.
+  - The helper caught its own first mistake before either commit: a relative path to `splits/test.csv` built fine, but querying the view then failed, because a view reads the file from the reader's folder.
+  - #35 opened at about 17:30. Reviewer findings posted at 17:34, with Claude's checks. Its claim that the scored run might read test rows from the dbt models was checked and found wrong: every scoring path reads the staged table.
+  - Owner chose four fixes at about 17:36. Fix round from 17:42: red `c073383` at 17:58 (17 tests), green `6c79e3b` at 18:33. The gate passed: 1,008 tests, 0 failures.
+    - `voc dbt` checks `splits/test.csv` against its hash and count in the manifest, and refuses an empty or malformed list.
+    - B17 now says honestly that a hand run of dbt with the flag on goes through no guard.
+    - Known limits has the relative-path line.
+    - The scan covers `.claude/` and `src/`.
+  - The green commits changed or removed some existing tests whose behaviour changed, each with a comment: the fixture copies its splits, and the old "an empty list leaves out nothing" test is gone, because an empty list is now refused.
+  - 19:36 main merged into `feat/dbt-test-flag` (`c1cca57`), with the packages synced first. 19:41 merge verdict PENDING, then MERGE after Claude's judgement. #35 marked ready. The owner merged #37 and #35 at 19:43 (time from GitHub).
+- The scored test run (#36), T019:
+  - Red `c7e2853` at 16:24 (15 tests). Its gate took 43 minutes, from 16:24 to 17:07, with four gates running at once.
+  - Green `ced6165` at 17:29. Spec `cece375` at 18:04. #36 opened at 18:28 (time from GitHub), with a reviewer.
+  - Owner decision at about 18:50 (see above). Fix round: red `ca2cd9e` at 18:57 (14 tests, 4 of which pass at once and guard working code), green `d44ca12` at 19:21.
+    - An open overrun, the pool counts and each category's test count are checked before anything is written.
+    - Earlier runs are counted once, as the larger of the two logs.
+    - A failed log commit takes the row out again and says what git said.
+    - The BUILD_LOG line goes under the day's heading.
+    - The test-row loader and the scoring are private, and scoring refuses without a logged row.
+    - Per-category figures say TF-IDF is at full coverage, and the printout gives precision and each category.
+    - The CI step fails if `origin/main` cannot be read.
+    - Known limits has the crash-in-the-middle line.
+  - After #35 and #37 merged, main was merged into `feat/test-run`, with the packages synced first. It had conflicts in `src/voc/cli.py`, `src/voc/pipeline.py` and B17 in the spec, because both sides added a command, a split value and B17 text. Claude kept both sides each time, and the affected tests passed.
+- 21:05 The owner merged #36 (time from GitHub).
+- Between 21:05 and 21:37 (exact time not recorded) First try of the scored test run, by the owner in their own PowerShell: `uv run --native-tls voc final --prompt v1`. It refused at the cap check, before anything was written or spent: "error: the cap has 19,317,072 tokens left, and the test set needs up to 35,233,329 in the worst case, retries included". The check worked as designed.
+- Owner decision (exact time not recorded): raise the cap to 40,000,000, as Claude recommended. A lower output limit was turned down, because it would change prompt v1's settings after tuning. Relaxing the cap check was turned down, because it would weaken the rule that had just refused the run.
+- 21:37 #38 opened (time from GitHub). 21:38 Reviewer findings posted, with Claude's checks. Owner decision: no code changes, and the sources of the numbers go into this log:
+  - 35,233,329 and 19,317,072: the refused run's output, above.
+  - About 3,000,000 expected: the development run used 501,192 input and 72,342 output tokens (`results/labels/v1_dev.json`). That is 573,534 tokens for 370 complaints, about 1,550 each. 1,909 test complaints need about 2,960,000.
+  - "Tried 3 times": `MAX_RETRIES = 2` in `src/voc/replay.py`, so 1 try plus 2 retries.
+- 21:47 The owner merged #38 (time from GitHub), then ran `voc ledger raise`, which wrote the line above.
+- Second try of the scored run, by the owner (exact time not recorded). It refused: "error: the working tree is not clean". `voc ledger raise` had written its line to BUILD_LOG.md, and the scored run needs a clean tree. Nothing was written or spent.
+  - AI error: Claude's steps after #38 did not allow for that line. The clean-tree check caught it.
+  - Claude suggested setting the line aside with `git stash`, running, and restoring it with `git stash pop`, so that no extra gate run was needed first. The owner did so. The line is committed with the results.
+- Third try, by the owner: `uv run --native-tls voc final --prompt v1`. The log commit `29e5e57` has the time 21:48:50. The row in `runs/TEST_RUNS.md` has 21:48, reason "first test run". Labelling took 3,847 seconds. The results files were written at 23:04 and 23:05.
+  - 1,909 complaints, all live calls. 1,864 accepted, 45 quarantined: quote not in text 21, invalid label 15, unparseable 6, quote too short 3.
+  - Tokens: input 2,630,555, output 379,892, so 3,010,447 in all, close to the 2,960,000 expected. Cost $0.4530015, or $0.2373 per 1,000 complaints. 2,015.2 seconds per 1,000 complaints.
+  - The verdict: **beats**. LLM re-weighted strict accuracy 80.3%, precision 82.2%, coverage 97.6%. TF-IDF at the same coverage: 77.9%, precision 79.7%. Difference +2.4 points, 95% interval +0.5 to +4.1 points. This is the claim's single verdict (B10, B17).
+  - Per category, the LLM's F1 is higher in 6 of the 9 categories with 30 or more complaints. Mortgage ties at 0.910. TF-IDF is higher in two:
+    - Credit reporting or other personal consumer reports: 64 complaints, F1 LLM 0.500, TF-IDF 0.697. The LLM gave this label to 168 accepted complaints.
+    - Debt collection: 452 complaints, F1 LLM 0.833, TF-IDF 0.863.
+  - Debt or credit management (19) and Prepaid card (28) have too few to judge.
+  - In the per-category figures, the LLM's quarantined labels count as wrong, and TF-IDF labels every complaint, at full coverage.
+  - Results in `results/labels/v1_test.*` and `results/eval/v1_test.*`.
+  - AI error: Claude's first draft of this entry said "7 of the 9 categories". Claude caught it by counting again before the commit. It is 6.
+- 23:46 Reviewer findings posted on #39, with Claude's checks (time from GitHub). 23:52 Owner decision: fix them with this correction entry and an edit to the PR body. The Known limits line goes in the README PR.
+- 23:52 Correction of the entries above, which stay as written:
+  - "Per category, the LLM's F1 is higher in 6 of the 9 categories with 30 or more complaints. Mortgage ties at 0.910." At full precision, Mortgage is LLM 0.910394 and TF-IDF 0.910345, so the LLM is higher in 7 of the 9, Mortgage by less than 0.001. At the 3 decimals that `voc final` prints, they tie, and the count is 6.
+  - So the AI error line "Claude's first draft of this entry said 7 of the 9 categories" is wrong too. Both counts were right for their rounding. The real AI error: Claude did not say which rounding the count used. The reviewer caught it.
+  - "19:36 main merged into `feat/dbt-test-flag` (`c1cca57`)". The commit's own time is 19:22. Git stamps a commit before the pre-commit gate runs, so 19:36 is most likely when its gate ended, but no record shows it.
+  - The helper's relative path to `splits/test.csv` in the #35 entry was an AI error, caught by the helper itself when querying the view failed.
+  - The entries from "Parallel run, the dbt test-set flag (#35)" to the end of the test run were written at about 23:30. The #35 and #36 parts were drafted during the day and held back until this pull request.
+  - AI error: Claude's first draft of this entry gave 23:44 for the reviewer findings, without checking. Claude caught it by checking GitHub before the commit finished, stopped the commit and fixed the draft.
