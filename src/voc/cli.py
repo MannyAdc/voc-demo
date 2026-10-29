@@ -186,7 +186,7 @@ def _label(config, root, args):
 
 
 def _audit(config, root, args):
-    from voc.audit import AuditError, audit, format_audit
+    from voc.audit import audit, format_audit
 
     result = audit(root, args.set, args.prompt)
     print(format_audit(result))
