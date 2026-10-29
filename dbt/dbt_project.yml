@@ -14,3 +14,6 @@ flags:
 vars:
   # The label set, passed by the wrapper from config/labels.toml (B24). Empty means every row fails.
   labels: []
+  # B17: while this is false, the models leave out every complaint ID in splits/test.csv.
+  # `voc dbt` always passes false. Only a person running dbt by hand can set it to true.
+  final: false
