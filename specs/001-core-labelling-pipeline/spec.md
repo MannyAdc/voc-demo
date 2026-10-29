@@ -35,6 +35,8 @@ The guards in this spec (hooks, checks, logs, the spend stop) are built to stop 
 - `voc audit` needs the recorded answers, which stay outside the repo. So only the owner's machine can run it, not a reader of the repo. A recording rewritten together with matching positions in the results file would pass it, because recordings carry no signature.
 - `voc sample` records the pinned file's SHA-256 in `splits/manifest.json`, but it does not check that the staged rows came from that file. `voc load` checks the file against its pin before loading, and the staged table does not keep the file's hash.
 - No CI check yet stops `splits/` from changing compared with `main`. `voc sample` refuses to run while any list file is there, but a deleted folder can be rebuilt. With the same code and seed, the rebuilt lists are the same.
+- The merge verdict's trial merge (`--test-merge`) runs the tests with this checkout's installed packages, so a dependency change in a pull request is not covered.
+- The trial merge runs a pull request's tests on this machine. So it is for this repo's own pull requests only, and it refuses a pull request from a fork.
 
 ## User Scenarios & Testing *(mandatory)*
 

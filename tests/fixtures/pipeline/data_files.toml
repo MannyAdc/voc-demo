@@ -1,0 +1,8 @@
+# The pin of the synthetic export for the scheduled pipeline run (T015c), made by
+# scripts/make_pipeline_fixture.py. It stands in for the July pin only in a work folder.
+# The real pin in config/data_files.toml is never changed or read by the scheduled run.
+
+[july_2026]
+file_name = "synthetic_complaints.csv"
+size_bytes = 25900
+sha256 = "21d2aa89885393ee6756a635ee5e195c0e562de0337dd2d25ead2205c1ec1054"

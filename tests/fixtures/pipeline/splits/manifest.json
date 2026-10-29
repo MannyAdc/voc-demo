@@ -1,0 +1,59 @@
+{
+  "dev_margin": 0.15,
+  "duplicate_measure": "Jaccard similarity of word 5-grams, punctuation ignored",
+  "duplicate_threshold": 0.9,
+  "duplicates_removed": 0,
+  "exact_copies": 0,
+  "lists": {
+    "dev": {
+      "count": 30,
+      "sha256": "04e87255f70bfe32c8abdc65beea1235e76d8de21cfe9fcc3c7a68389bdf6b0a"
+    },
+    "test": {
+      "count": 30,
+      "sha256": "f79b5289314faf00f6ba9601a00aaf6eed9604f3b4f23f8c69bf03000cf01f3d"
+    },
+    "train": {
+      "count": 30,
+      "sha256": "dd6868221c606e4a27d4f628dcde129ccad5733260568d6c3b8cc35cf6447d29"
+    }
+  },
+  "month": "july_2026",
+  "near_copies": 0,
+  "opening_words": 6,
+  "quick_check": [
+    "SYN-6",
+    "SYN-10",
+    "SYN-11",
+    "SYN-15",
+    "SYN-18",
+    "SYN-20",
+    "SYN-22",
+    "SYN-23",
+    "SYN-26",
+    "SYN-28",
+    "SYN-32",
+    "SYN-34",
+    "SYN-36",
+    "SYN-43",
+    "SYN-45",
+    "SYN-47",
+    "SYN-49",
+    "SYN-54",
+    "SYN-58",
+    "SYN-59",
+    "SYN-64",
+    "SYN-67",
+    "SYN-69",
+    "SYN-70",
+    "SYN-74",
+    "SYN-81",
+    "SYN-84",
+    "SYN-86",
+    "SYN-89",
+    "SYN-90"
+  ],
+  "seed": 20261029,
+  "source_sha256": "21d2aa89885393ee6756a635ee5e195c0e562de0337dd2d25ead2205c1ec1054",
+  "test_margin": 0.15
+}

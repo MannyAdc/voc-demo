@@ -1,0 +1,74 @@
+# The scheduled pipeline run (T015c): load, dbt build with data tests, label and evaluate, in order.
+#
+# It runs on the committed synthetic fixture in tests/fixtures/pipeline (SYN- IDs only), with the mock
+# backend, because real complaints, the replay cache and the key all stay outside the repo. Its figures are
+# synthetic, not a real result. It labels and scores the development list only.
+# scripts/pipeline_project.py builds the synthetic project folder, then runs each real `voc` command
+# through its tested `step` entry, which sets the environment and the project root itself. Every step runs
+# with no network. Any failing step or data test fails the run.
+# GitHub runs a scheduled workflow only from the default branch.
+name: Scheduled pipeline run (synthetic fixture)
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pipeline:
+    name: Pipeline on the synthetic fixture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: "Synthetic fixture run: check out the repo"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: "Synthetic fixture run: install uv"
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: "0.6.17"
+
+      - name: "Synthetic fixture run: install the project (fails if uv.lock does not match pyproject.toml)"
+        run: uv sync --locked
+
+      # From here on, each step runs in a new network namespace with only loopback, as in ci.yml.
+      # Arguments: $0 user, $1 PATH, $2 HOME, $3 work folder, $4 data folder.
+      - name: "Synthetic fixture: build the project folder"
+        run: |
+          sudo unshare --net -- sh -c '
+            ip link set lo up &&
+            sudo -u "$0" env "PATH=$1" "HOME=$2" .venv/bin/python scripts/pipeline_project.py prepare "$3" "$4"
+          ' "$(id -un)" "$PATH" "$HOME" "$RUNNER_TEMP/pipeline/work" "$RUNNER_TEMP/pipeline/data"
+
+      - name: "Synthetic fixture step 1 of 4: load the export, after its pin check"
+        run: |
+          sudo unshare --net -- sh -c '
+            ip link set lo up &&
+            sudo -u "$0" env "PATH=$1" "HOME=$2" .venv/bin/python scripts/pipeline_project.py step load "$3" "$4"
+          ' "$(id -un)" "$PATH" "$HOME" "$RUNNER_TEMP/pipeline/work" "$RUNNER_TEMP/pipeline/data"
+
+      - name: "Synthetic fixture step 2 of 4: dbt build with its data tests"
+        run: |
+          sudo unshare --net -- sh -c '
+            ip link set lo up &&
+            sudo -u "$0" env "PATH=$1" "HOME=$2" .venv/bin/python scripts/pipeline_project.py step dbt "$3" "$4"
+          ' "$(id -un)" "$PATH" "$HOME" "$RUNNER_TEMP/pipeline/work" "$RUNNER_TEMP/pipeline/data"
+
+      - name: "Synthetic fixture step 3 of 4: label the development list on the mock backend"
+        run: |
+          sudo unshare --net -- sh -c '
+            ip link set lo up &&
+            sudo -u "$0" env "PATH=$1" "HOME=$2" .venv/bin/python scripts/pipeline_project.py step label "$3" "$4"
+          ' "$(id -un)" "$PATH" "$HOME" "$RUNNER_TEMP/pipeline/work" "$RUNNER_TEMP/pipeline/data"
+
+      - name: "Synthetic fixture step 4 of 4: evaluate against TF-IDF (synthetic figures, not a real result)"
+        run: |
+          sudo unshare --net -- sh -c '
+            ip link set lo up &&
+            sudo -u "$0" env "PATH=$1" "HOME=$2" .venv/bin/python scripts/pipeline_project.py step evaluate "$3" "$4"
+          ' "$(id -un)" "$PATH" "$HOME" "$RUNNER_TEMP/pipeline/work" "$RUNNER_TEMP/pipeline/data"

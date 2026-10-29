@@ -1,0 +1,31 @@
+complaint_id,label,quote
+SYN-6,Student loan,They put my loans in forbearance without asking
+SYN-10,Mortgage,My escrow payment was applied to the wrong month
+SYN-11,Credit card,The card company charged the same fee twice
+SYN-15,Mortgage,They put my loans in forbearance without asking
+SYN-18,Student loan,The repayment plan paperwork was lost again
+SYN-20,Credit card,SYN words that appear in no complaint
+SYN-22,Mortgage,The servicer lost my loan modification papers
+SYN-23,Credit card,My credit limit was cut without notice
+SYN-26,Credit card,The dispute on my statement was closed with no answer
+SYN-28,Mortgage,My escrow payment was applied to the wrong month
+SYN-32,Student loan,My credit limit was cut without notice
+SYN-34,Mortgage,They charged a late fee on my home loan
+SYN-36,Student loan,SYN words that appear in no complaint
+SYN-43,Mortgage,They charged a late fee on my home loan
+SYN-45,Student loan,The repayment plan paperwork was lost again
+SYN-47,Credit card,The card company charged the same fee twice
+SYN-49,Mortgage,The servicer lost my loan modification papers
+SYN-54,Mortgage,The repayment plan paperwork was lost again
+SYN-58,Mortgage,The servicer lost my loan modification papers
+SYN-59,Credit card,SYN words that appear in no complaint
+SYN-64,Mortgage,My escrow payment was applied to the wrong month
+SYN-67,Mortgage,The servicer lost my loan modification papers
+SYN-69,Student loan,They put my loans in forbearance without asking
+SYN-70,Mortgage,They charged a late fee on my home loan
+SYN-74,Student loan,The card company charged the same fee twice
+SYN-81,Student loan,The repayment plan paperwork was lost again
+SYN-84,Student loan,SYN words that appear in no complaint
+SYN-86,Credit card,My credit limit was cut without notice
+SYN-89,Credit card,The dispute on my statement was closed with no answer
+SYN-90,Student loan,The repayment plan paperwork was lost again
