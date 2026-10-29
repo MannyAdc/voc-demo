@@ -360,3 +360,17 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - "63 calls were replayed" comes from the labelling run's summary, `results/labels/v1_dev.json` (`calls_by_source`, 307 live and 63 replayed), logged at 08:18. It is not printed by `voc evaluate`.
   - "Cost per 1,000 ... LLM $0.2332" is the cost if every answer had been live: $0.0862902 for 370 complaints. This run itself paid $0.0718306.
   - "Verdict: inconclusive" is the development verdict, a tuning figure. It is not the claim's verdict, which comes only from the test run (B10).
+- 12:39 Audit red `3aa28dc` (1 test: the confusion matrices say what they count, from the review of #28). Green `b32d71a` at 12:48:
+  - The `voc audit` command.
+  - The confusion matrix note.
+  - B1 now describes the audit.
+  - B18 now says the confusion matrices are still given for the development set.
+- 12:42 CI green on #28. Claude's merge check by hand: MERGE. #28 marked ready. 12:44 #28 merged by the owner (`99ce0d8`).
+- Between 12:44 and 13:00 (exact times not recorded) Owner asked how far behind the schedule is. Claude:
+  - About 5 hours late at the Thursday 01:00 checkpoint. Caught up by 10:00. On time at 12:00.
+  - The `final` machinery (T019) is not built yet, and is not in the API estimate.
+  - About 11 hours of work are left from 13:00.
+  - Claude suggested cutting T021, T006b and T014c.
+- Same window: owner decision. Cut T014c and document it as a pending improvement (the human check of whether quotes support their labels). Keep T021, T006b and T015c. At about 13:00 (the owner's own time) the new target became everything by 23:59 on Thursday. The owner has created the Databricks account for T021.
+- Same window: FastAPI and uvicorn versions checked on PyPI, for the API: FastAPI 0.162.0 (uploaded 23 October 2026), uvicorn 0.54.0 (uploaded 25 September 2026). Claude will pin a FastAPI release at least two weeks old, as a supply-chain precaution.
+- 12:53 Main merged into `feat/quote-audit` (`4b3e488`).
