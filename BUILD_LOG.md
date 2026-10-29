@@ -394,3 +394,81 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - The PyPI facts came from `https://pypi.org/pypi/fastapi/0.162.0/json` and `https://pypi.org/pypi/uvicorn/0.54.0/json`.
   - "12:39 Audit red `3aa28dc`" is the red commit for the confusion matrix note, not an audit test.
   - The 11:52 entry "Work start: the quote audit" is wrong. 11:52 was when #28 was opened. The audit worktree was made after the owner's answer at about 11:55, so the audit work started at about 11:56.
+- Correction of the 13:07 entry, which stays as written: the time the two helpers started was not recorded. They started at about 13:07, after their worktrees were made. The T015c helper reports it started at 13:10.
+- 13:51 CI green on #29. Claude's merge check by hand: MERGE. #29 marked ready. 14:26 #29 merged by the owner (`41036f9`).
+- Parallel run, T006b (`/merge-verdict`), helper agent in `../voc-demo-verdict`:
+  - Red `38b993b` at 13:12 (68 tests). Green `0ee8792` at 13:32. The helper reports it started at about 12:50. That cannot be right, because its worktree was made at about 13:05, so the start is about 13:07.
+  - AI error (helper): one new red test had a wrong fixture. A fake commit ID shortened to the wrong 7 characters, so the assertion could never pass. The helper fixed it in the green commit, with the reason in the commit message.
+  - Claude read the diff before pushing. Every `gh` call is read-only, and the trial merge writes nothing to the work tree. #30 opened as a draft at about 13:48. Reviewer findings posted with Claude's checks.
+    - The reviewer found that a "No findings" first line could hide real findings, and that the trial merge ran the PR's tests with a key in the environment.
+    - Two of its claims were checked and found wrong: `pyproject.toml` sets `pythonpath = ["src"]`, so the merged tree's own code is tested, and the gate strips the git variables.
+  - Owner chose the real gaps. Fix round by the same helper, from 13:58 to 14:22: red `2556e15` (14 tests), green `b16f0b0`.
+    - The review check is always for Claude.
+    - The verdict is PENDING, with exit code 3, while anything needs judgement.
+    - The trial merge drops git variables, secrets and data folders, sets the mock backend, and refuses forks.
+    - Known limits gained two lines.
+  - The green commit removed two old tests and changed one. They checked behaviour the owner chose to remove. Their stronger replacements were committed red first. The gate refuses a tests-only commit that stops a passing test, so the change had to be in the green commit.
+- Parallel run, T015c (scheduled pipeline), helper agent in `../voc-demo-ci`:
+  - Red `77af908` at 13:12 (19 tests). Green `a7af188` at 13:32. The gate passed: 858 tests, 0 failures.
+  - AI error (helper): its first commit try also ran a git command that names the hooks setting. The Claude-side test gate blocked it.
+  - Claude read the workflow before pushing:
+    - no secrets, and `contents: read`
+    - no network for the `voc` steps
+    - the same pinned actions as `ci.yml`
+    - all 92 fixture rows have `SYN-` IDs.
+  - #31 opened as a draft at about 13:48. Reviewer findings posted with Claude's checks. Its main claim, that steps 2 to 4 might run on the real repo, was checked and found wrong: `cli.main` takes the current folder as its root, and each step changes into the work folder first.
+  - Owner chose the real gaps. Fix round by the same helper, from 13:58 to about 14:24: red `8f7b44f` (12 tests), green `da04061`. The gate passed: 867 tests, 0 failures.
+    - Every step name says "synthetic fixture".
+    - Each step runs through a tested script entry, and the prepare step has no network.
+    - The dbt copy skips local DuckDB and profile files.
+    - A failing dbt data test fails the run.
+    - A local run writes no ledger entry and no recording, and a test checks that.
+  - The green commit removed three old workflow tests, replaced by tests committed red first. It also fixed one wrong check in a new red test: the home folder exists, so the test now checks it stays empty.
+  - AI error (helper): a search command that named the home ledger folder was blocked by the read guard. Nothing was read.
+- Owner decisions on names: the `test_T006b_` prefix stays, because no B rule covers the tool. "Synthetic Bank" in the fixtures stays, because it is a made-up placeholder, like the existing dbt fixture's names.
+- Results API (#32): red `b6e3342` at 13:27 (31 tests), green `f7c9628` at 13:52. Draft opened at about 14:00. Reviewer findings posted at 14:11, with Claude's checks.
+- 14:29 Main merged into `feat/merge-verdict`.
+- 14:36 Main merged into `feat/results-api`. It had one conflict in `src/voc/cli.py`, because both branches added a command (`audit` and `serve`) in the same three places. Claude kept both, and the API, audit and evaluate tests passed on the result.
+- Between 14:37 and 14:47 (exact time not recorded) AI error: a Python heredoc that applied the #32 fixes broke on backslash escapes again. Python stopped on a syntax error before writing anything. Claude wrote the whole new `src/voc/api.py` with the Write tool instead.
+- #32 fixes, after the owner's OK:
+  - Red `cd92b0f` at 14:47: 13 new tests. They cover hostile text and wrong types in served fields, count keys and queue labels, the host check, write methods, the full policy header, a missing data file, the page's labels, axis note and cost note, and A6.
+  - Green `17bf2f0` at 15:03:
+    - Every served field is checked by type or against a fixed list.
+    - `/api/versions` serves named columns only.
+    - The API sets the "tuning figures" label itself.
+    - Only `127.0.0.1` and `localhost` are answered.
+    - Every development panel is tagged as a tuning figure, and the page says the precision axis starts at 50%. A point below it is drawn as a hollow ring.
+    - A missing value shows "n/a". The LLM cost says it is the cost if every answer was live. The page uses the last dev row.
+    - `voc audit` writes `results/audit/<version>_<set>.json` (A6).
+  - httpx was not added. The test client uses `httpx2`, which the Anthropic SDK already requires, and pinning it would mean a release only 8 days old.
+- 15:03 #30 merged by the owner (`cc98fd7`). Claude first ran the new merge verdict script on #30 itself: 4 checks PASS, review and build log FOR CLAUDE, verdict PENDING, exit code 3. Claude judged both items, said MERGE and marked #30 ready.
+- 15:23 #31 checked the same way: PENDING, then MERGE after Claude's judgement. Marked ready. 15:24 #31 merged by the owner (`13d736c`).
+- After the merge the owner started the scheduled workflow by hand on GitHub. Run #1 on `main` (`13d736c`) passed in 31 seconds. Source: the owner's screenshot of the Actions page.
+- About 15:45 Owner decision: the dbt test-set flag (B17) is built by a helper agent in parallel, in `../voc-demo-dbtflag`. Before deciding, the owner asked how the gap would look to a technical audience, and Claude gave the pros and cons. A dbt flag is a second layer, because the staged table still holds the test rows.
+- 15:50 #33 (injection set) opened as a draft, with a reviewer.
+- About 16:00 The owner's computer rebooted because VS Code crashed. Afterwards:
+  - The merge of main into `feat/results-api` had been cut off mid-commit. git no longer recorded it as a merge, but main's changes were still staged. Committing them would have recorded a plain commit instead of a merge. Claude checked that nothing else was staged, unstaged or untracked, discarded the half-done result with `git reset --hard HEAD`, and redid the merge (`8307b82` at 16:18).
+  - The dbt-flag helper had saved nothing, so it was restarted from the beginning. The #33 reviewer was resumed and reported. Its findings were posted at 16:14, with Claude's checks.
+- 16:41 CI green on #32. The merge verdict script said PENDING, with the review and the build log for Claude to judge. Claude judged both and said MERGE. #32 marked ready. 16:45 #32 merged by the owner (`68f92eb`).
+- Between 16:41 and 16:46 (exact time not recorded) Owner decision: fix the four #33 findings Claude listed:
+  - separate outcomes for items caught before a call and for no usable answer
+  - fairer wording for SYN-9003 and SYN-9004
+  - refuse an uncommitted injection file and `--limit`
+  - stronger tests
+- 16:46 Official audit of the v1 development run, by Claude on main: `uv run --native-tls voc audit dev --prompt v1`. It calls no model.
+  - Re-verified 361 of 361 accepted labels.
+  - 361 word for word at the stored position.
+  - Re-derived 9 of 9 quarantined decisions. 0 rows had no recorded answer.
+  - 370 of 370 rows checked against the committed list.
+  - It matches the 13:10 dry run. The counts are in `results/audit/v1_dev.json`, so the dashboard can show them (A6).
+- 17:10 AI note: a `git add` in the T019 worktree failed with "Permission denied" on an object file in the shared object store. Nothing was staged. A retry a few minutes later worked. Several worktrees were running git and the test gate at the same time, so the most likely cause is another process holding the file. The intermittent `git init` and `git add` failures (exit 128) seen in the injection test fixture at about 16:55 may have the same cause. That fixture now prints git's own message, so the next one shows why.
+- 17:30 #34 opened as a draft, with a reviewer. Its findings were posted at 17:32, with Claude's checks. #35 (the dbt flag) opened at the same time. Its findings were posted at 17:34.
+- About 17:36 Owner decisions:
+  - #34: a correcting entry, below.
+  - #35: the helper fixes the four real gaps (a hash check of `splits/test.csv`, honest B17 and README wording, a Known limits line, a wider scan test).
+- 17:38 Correction of the 16:46 entry, which stays as written:
+  - The audit is a consistency check, not a second quote check (B1). It decides each complaint again from its recorded answer, with the labeller's own steps, and checks that the results file says the same.
+  - So "re-verified 361 of 361 accepted labels" means the 361 accepted decisions were re-derived and matched. It does not mean the labels are correct.
+  - The one independent part is the plain character comparison at the stored position: 361 of 361.
+  - The command wrote `results/audit/v1_dev.json` itself.
+  - In the line before, read "(exact time not recorded): owner decision".
