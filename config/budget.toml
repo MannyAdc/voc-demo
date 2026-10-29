@@ -4,7 +4,12 @@
 # Init and raise read this file as committed on main, never from a branch.
 # To raise the cap later, merge a higher value to main, then run
 # `voc ledger raise --reason "..."` in this repo.
-cap_tokens = 20000000
+# Raised from 20,000,000 on 29 October 2026 (owner decision). The scored test run
+# (`voc final --prompt v1`) refused at the cap check: the worst case for the 1,909
+# test complaints is 35,233,329 tokens (the prompt plus the 2,048-token output limit,
+# tried 3 times each), and 19,317,072 were left. The expected use is about 3,000,000,
+# from the development run's tokens per complaint. 40,000,000 covers the worst case.
+cap_tokens = 40000000
 
 # Added to the UTF-8 byte count of a prompt to make the worst-case input estimate.
 # It covers the tokens the API adds around the prompt. It was checked on
