@@ -1,26 +1,30 @@
 """B17: the one scored run of the frozen test set, behind the owner's `voc final` command.
 
-Before any model call it checks that:
+Before anything is written or any model is called, it checks that:
+- no ledger overrun is open
 - the working tree is clean
 - the run is on a branch, not on main, so its log entry reaches main through a pull request
-- the remaining cap covers the worst case for the whole test set, retries included
+- every test row matches the committed list by ID and content hash (B16)
+- the pool counts match the lists and the test rows, so scoring cannot fail later (B18)
+- the remaining cap covers the worst case for the whole test set, retries included (B8)
 - if a test run is already logged, in the repo or in the home folder, a written reason is given
 
 Then it writes the entry to `runs/TEST_RUNS.md` and commits it, and adds it to a second log beside the ledger,
 so a crashed run on a deleted branch still counts. A second run's reason also goes in `BUILD_LOG.md`. Only then
-does it label the test set and score it. The test rows are loaded here, through the content-hash check, and
-nowhere else.
+does it label the test set and score it. The test rows are loaded here, and nowhere else.
 """
 import subprocess
 import time
+import tomllib
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
 from voc import pipeline
 from voc.baselines import cut_text
-from voc.budget import load_config, voc_home, worst_case
+from voc.budget import _append_log, load_config, voc_home, worst_case
 from voc.data import _manifest, read_splits, verify_ids
-from voc.evaluate import score_test_set
+from voc.evaluate import _rows, _score_test_set, pool_shares
 from voc.labels import load_labels
 from voc.load import DB_PATH
 from voc.prompt import build_prompt
@@ -51,16 +55,16 @@ def _git(root, *args):
 
 
 def _logged_runs(root):
-    """How many test runs are already logged, in the repo log and in the home log together."""
+    """How many test runs are already logged. Every run is in both logs, so the larger count is the true one."""
     path = Path(root) / LOG
     repo = sum(line.startswith("| 20") for line in path.read_text(encoding="utf-8").splitlines()) if path.exists() else 0
     home = home_log()
     other = len([line for line in home.read_text(encoding="utf-8").splitlines() if line.strip()]) if home.exists() else 0
-    return repo + other
+    return max(repo, other)
 
 
-def test_complaints(root):
-    """The test complaints, checked against the committed list by ID and content hash (B16, B17)."""
+def _test_rows(root):
+    """The test rows with their Products, checked against the committed list by ID and content hash (B16, B17)."""
     root = Path(root)
     splits_dir = root / "splits"
     wanted = set(read_splits(splits_dir)["test"])
@@ -69,13 +73,32 @@ def test_complaints(root):
         raise TestRunError(f"{len(wanted - {r.complaint_id for r in rows})} test complaints are missing from the "
                            "staged table")
     verify_ids(splits_dir, "test", rows)
-    return sorted((pipeline.Complaint(row.complaint_id, row.narrative) for row in rows),
-                  key=lambda c: pipeline._id_number(c.complaint_id))
+    return sorted(rows, key=lambda r: pipeline._id_number(r.complaint_id))
 
 
-def preflight(root, version_name, reason, remaining):
+def _check_scoring_inputs(root, test_rows):
+    """Everything scoring needs, checked now, so a scoring failure never uses up a logged run (B18)."""
+    root = Path(root)
+    splits_dir = root / "splits"
+    month = _manifest(splits_dir)["month"]
+    lists = read_splits(splits_dir)
+    dev_rows = _rows(root / DB_PATH, splits_dir, month, "dev", set(lists["dev"]))
+    train_rows = _rows(root / DB_PATH, splits_dir, month, "train", set(lists["train"]))
+    pool_shares(root / "config" / "pool.toml", dev_rows, train_rows, len(lists["test"]))
+    with open(root / "config" / "pool.toml", "rb") as f:
+        products = tomllib.load(f)["products"]
+    found = Counter(row.product for row in test_rows)
+    for product in set(found) | set(products):
+        if products.get(product, {}).get("test") != found.get(product, 0):
+            raise TestRunError(f"config/pool.toml does not match the test rows: the test count of {product} is "
+                               "wrong")
+
+
+def preflight(root, version_name, reason, remaining, overrun=False):
     """Every check that must pass before anything is written or any model is called. Returns what the run needs."""
     root = Path(root)
+    if overrun:
+        raise TestRunError("a ledger overrun is open. Clear it with `voc ledger clear-overrun` first")
     status = _git(root, "status", "--porcelain")
     if status.returncode != 0 or status.stdout.strip():
         raise TestRunError("the working tree is not clean. Commit or remove every change first")
@@ -86,7 +109,9 @@ def preflight(root, version_name, reason, remaining):
     labels = load_labels(root / "config" / "labels.toml")
     names = [label.name for label in labels]
     defined = pipeline.definitions(labels)
-    complaints = test_complaints(root)
+    rows = _test_rows(root)
+    _check_scoring_inputs(root, rows)
+    complaints = [pipeline.Complaint(row.complaint_id, row.narrative) for row in rows]
     margin = load_config(root)["input_margin_tokens"]
     per_try = sum(worst_case(build_prompt(version.instructions, names, cut_text(c.narrative)[0],
                                           complaint_id=c.complaint_id, definitions=defined).prompt,
@@ -106,12 +131,13 @@ def _log_the_run(root, version, complaints, reason, earlier, now):
     """Write the entry to both logs and commit the repo log, before any model call."""
     root = Path(root)
     manifest = _manifest(root / "splits")
-    when = now.strftime("%Y-%m-%d %H:%M")
-    cells = [when, version.name, manifest["lists"]["test"]["sha256"], version.settings["model"],
-             str(len(complaints)), (reason or "first test run").replace("|", "/").replace("\n", " ")]
+    cells = [now.strftime("%Y-%m-%d %H:%M"), version.name, manifest["lists"]["test"]["sha256"],
+             version.settings["model"], str(len(complaints)),
+             (reason or "first test run").replace("|", "/").replace("\n", " ")]
     path = root / LOG
+    existed = path.exists()
     path.parent.mkdir(parents=True, exist_ok=True)
-    if not path.exists():
+    if not existed:
         path.write_text(LOG_INTRO, encoding="utf-8", newline="")
     with open(path, "a", encoding="utf-8", newline="") as out:
         out.write("| " + " | ".join(cells) + " |\n")
@@ -121,23 +147,34 @@ def _log_the_run(root, version, complaints, reason, earlier, now):
         out.write(" | ".join(cells) + f" | {root}\n")
     paths = [str(LOG)]
     if earlier:
-        with open(root / "BUILD_LOG.md", "a", encoding="utf-8", newline="") as out:
-            out.write(f"- {now.strftime('%H:%M')} Test run number {earlier + 1} of prompt {version.name}. "
-                      f"Reason: {cells[-1]}\n")
+        _append_log(root / "BUILD_LOG.md", now, f"Test run number {earlier + 1} of prompt {version.name}. "
+                                                f"Reason: {cells[-1]}")
         paths.append("BUILD_LOG.md")
     _git(root, "add", *paths)
     commit = _git(root, "commit", "-q", "-m", f"Log a test run of prompt {version.name} before scoring")
     if commit.returncode != 0:
-        raise TestRunError("the log entry could not be committed, so nothing was scored. The home log keeps the entry")
+        said = " ".join((commit.stdout + commit.stderr).split())[-400:]
+        _git(root, "reset", "-q", "--", *paths)
+        if existed:
+            _git(root, "checkout", "--", str(LOG))
+        else:
+            path.unlink(missing_ok=True)
+        if earlier:
+            _git(root, "checkout", "--", "BUILD_LOG.md")
+        raise TestRunError(f"the log entry could not be committed, so nothing was scored. git said: {said}. "
+                           "The row was taken out again, so the tree is clean. The home log keeps the entry, so "
+                           "the next try needs --reason. If the test gate refused, its full output is in the "
+                           "voc-gate folder it names")
 
 
-def run(root, version_name, reason, call, remaining, backend_name="api", now=None, add_to_summary=None):
+def run(root, version_name, reason, call, remaining, backend_name="api", now=None, add_to_summary=None,
+        overrun=False):
     """Check, log and commit, then label and score the test set. Returns the run summary and the figures.
 
     `add_to_summary(outcomes)` gives extra summary fields, such as the cost, before the results are written.
     """
     root = Path(root)
-    version, labels, complaints, earlier, worst = preflight(root, version_name, reason, remaining)
+    version, labels, complaints, earlier, worst = preflight(root, version_name, reason, remaining, overrun)
     _log_the_run(root, version, complaints, reason, earlier, now or datetime.now())
     stopped = None
     started = time.monotonic()
@@ -155,19 +192,31 @@ def run(root, version_name, reason, call, remaining, backend_name="api", now=Non
     if stopped is not None:
         raise TestRunError(f"the run stopped early, so it is not scored: {stopped}. It is logged, so a new run "
                            "needs --reason")
-    figures = score_test_set(root, version_name, reason or "first test run")
+    figures = _score_test_set(root, version_name, reason or "first test run")
     return {"summary": summary, "figures": figures, "worst_case_tokens": worst}
 
 
 def format_report(report):
     s, f = report["summary"], report["figures"]
     low, high = f["interval"]
-    return "\n".join([
+    llm, tfidf = f["llm"], f["tfidf"]
+    lines = [
         f"test run, prompt {f['prompt_version']}: {s['complaints']} complaints, accepted {s['accepted']}, "
         f"quarantined {s['quarantined']}",
         f"these are {f['figures_are']}",
-        f"LLM re-weighted strict accuracy {f['llm']['reweighted_accuracy'] * 100:.1f}%, TF-IDF at the same "
-        f"coverage {f['tfidf']['reweighted_accuracy'] * 100:.1f}%",
+        f"LLM: re-weighted strict accuracy {llm['reweighted_accuracy'] * 100:.1f}%, precision "
+        f"{llm['precision'] * 100:.1f}%, coverage {llm['coverage'] * 100:.1f}%",
+        f"TF-IDF at the same coverage: re-weighted strict accuracy {tfidf['reweighted_accuracy'] * 100:.1f}%, "
+        f"precision {tfidf['precision'] * 100:.1f}%",
         f"difference {f['difference'] * 100:+.1f} points, 95% interval {low * 100:+.1f} to {high * 100:+.1f} points",
         f"verdict: {f['verdict'] or 'none, because some complaints were not run (budget)'}",
-        f"results: results/labels/{f['prompt_version']}_test.csv and results/eval/{f['prompt_version']}_test.json"])
+        f"per category ({f['per_category']['note']}):"]
+    for product, entry in f["per_category"]["categories"].items():
+        if entry.get("too_few_to_judge"):
+            lines.append(f"  {product}: {entry['complaints']} complaints, too few to judge")
+        else:
+            lines.append(f"  {product}: {entry['complaints']} complaints, F1 LLM {entry['llm']['f1']:.3f}, "
+                         f"TF-IDF {entry['tfidf']['f1']:.3f}")
+    lines.append(f"results: results/labels/{f['prompt_version']}_test.csv and results/eval/"
+                 f"{f['prompt_version']}_test.json")
+    return "\n".join(lines)

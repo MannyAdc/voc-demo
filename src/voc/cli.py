@@ -219,7 +219,9 @@ def _test_run(config, root, args):
         found = run_cost(load_prices(root / "config" / "prices.toml"), model, [o for o in outcomes if o.source])
         return {"cost": {key: str(value) for key, value in found.items()}}
 
-    print(testrun.format_report(testrun.run(root, args.prompt, args.reason, call, remaining, add_to_summary=cost)))
+    report = testrun.run(root, args.prompt, args.reason, call, remaining, add_to_summary=cost,
+                         overrun=state["overrun"] is not None)
+    print(testrun.format_report(report))
 
 
 def _evaluate(config, root, args):

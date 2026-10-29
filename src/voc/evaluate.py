@@ -3,7 +3,8 @@
 It reads the run's results file and summary, and the recorded Products of the development and training
 sets, checked against the committed lists. TF-IDF learns from the training set and labels every
 development complaint. Both methods are then scored by `voc.metrics`. Everything printed or written is
-figures, labels, reasons and IDs, never text (B21). The test set is never read here (B17).
+figures, labels, reasons and IDs, never text (B21). The test set is scored only through `voc.testrun`, after
+its run is logged and committed (B17).
 """
 import csv
 import hashlib
@@ -104,8 +105,8 @@ def _rows(db_path, splits_dir, month, name, ids):
 def pool_shares(path, dev_rows, train_rows, test_size):
     """Each Product's share of the pool (B18), from the committed counts, checked against the lists.
 
-    The test counts cannot be checked per category before the final run (B17). Only their total is checked
-    against the test list, so counts moved between categories would go unnoticed.
+    Only the total of the test counts is checked here, against the test list. The scored test run checks each
+    category's test count against the test rows before it starts (`voc.testrun`, B17).
     """
     if not Path(path).exists():
         raise EvaluationError("config/pool.toml is missing, so the pool shares are unknown (B18)")
@@ -149,8 +150,18 @@ def evaluate(root, set_name, version, note):
     return _score(root, set_name, version, note)
 
 
-def score_test_set(root, version, note):
-    """B17: score the test set. Only `voc.testrun` calls this, after the run is logged and committed."""
+def _score_test_set(root, version, note):
+    """B17: score the test set. Only `voc.testrun` calls this, after the run is logged and committed.
+
+    It refuses unless `runs/TEST_RUNS.md` holds a row for this prompt version.
+    """
+    log = Path(root) / "runs" / "TEST_RUNS.md"
+    cells = [[c.strip() for c in line.strip("|").split("|")]
+             for line in (log.read_text(encoding="utf-8").splitlines() if log.exists() else [])
+             if line.startswith("| 20")]
+    if not any(len(row) > 1 and row[1] == version for row in cells):
+        raise EvaluationError(f"no logged test run of prompt {version} in runs/TEST_RUNS.md, so the test set is "
+                              "not scored (B17)")
     return _score(root, "test", version, note)
 
 
@@ -232,9 +243,11 @@ def _per_category(items, labels):
     """B18: per-Product figures for the test set. A Product with fewer than 30 complaints is "too few to judge"."""
     counts = {label: sum(i.product == label for i in items) for label in labels}
     llm, tfidf = metrics.prf(items, "llm", labels), metrics.prf(items, "tfidf", labels)
-    return {label: ({"complaints": n, "too_few_to_judge": True} if n < TOO_FEW else
-                    {"complaints": n, "llm": llm[label], "tfidf": tfidf[label]})
-            for label, n in counts.items()}
+    return {"note": "the LLM's quarantined labels count as wrong. TF-IDF here labels every complaint, at full "
+                    "coverage, not the matched coverage of the headline figures (B10)",
+            "categories": {label: ({"complaints": n, "too_few_to_judge": True} if n < TOO_FEW else
+                                   {"complaints": n, "llm": llm[label], "tfidf": tfidf[label]})
+                           for label, n in counts.items()}}
 
 
 def _results_csv(rows, predictions, dev_rows):
