@@ -21,6 +21,7 @@ from voc.dbt_run import DbtError
 from voc.env import settings
 from voc.audit import AuditError
 from voc.evaluate import EvaluationError
+from voc.injection import InjectionError
 from voc.labels import load_labels
 from voc.load import DB_PATH, load_month
 from voc.profile import format_profile, profile
@@ -138,7 +139,14 @@ def _label(config, root, args):
     root = Path(root)
     version = pipeline.load_prompt_version(root, args.prompt)
     labels = load_labels(root / "config" / "labels.toml")
-    complaints = pipeline.load_complaints(root / DB_PATH, root / "splits", args.set)
+    if args.set == "injection":  # B5: the synthetic injection set, tied to its file by the file's hash
+        from voc import injection
+
+        if args.limit is not None:
+            raise injection.InjectionError("the injection set is labelled whole, never with --limit")
+        complaints, list_hash = injection.complaints(root)
+    else:
+        complaints, list_hash = pipeline.load_complaints(root / DB_PATH, root / "splits", args.set), None
     complaints = sorted(complaints, key=lambda c: pipeline._id_number(c.complaint_id))
     if args.limit is not None:
         complaints = complaints[:args.limit]
@@ -168,8 +176,9 @@ def _label(config, root, args):
         stopped, outcomes = err, err.outcomes
     run_seconds = time.monotonic() - started
     names = [label.name for label in labels]
-    summary = pipeline.summarise(outcomes, args.set, version, backend_name,
-                                 pipeline.list_sha256(root / "splits", args.set, complaints), limit=args.limit,
+    if list_hash is None:
+        list_hash = pipeline.list_sha256(root / "splits", args.set, complaints)
+    summary = pipeline.summarise(outcomes, args.set, version, backend_name, list_hash, limit=args.limit,
                                  stopped=stopped, run_seconds=run_seconds)
     if backend_name == "api":
         cost = run_cost(load_prices(root / "config" / "prices.toml"), model, [o for o in outcomes if o.source])
@@ -205,6 +214,11 @@ def _serve(config, root, args):
 
 
 def _evaluate(config, root, args):
+    if args.set == "injection":  # B10: scored apart, never in an accuracy figure or EVAL_VERSIONS.md
+        from voc.injection import format_score, score
+
+        print(format_score(score(root, args.prompt, args.note)))
+        return
     from voc.evaluate import evaluate, format_evaluation
 
     print(format_evaluation(evaluate(root, args.set, args.prompt, args.note), root))
@@ -227,13 +241,15 @@ def main(argv=None, env=None, root=None):
     p.add_argument("--write", help="also write the facts as JSON to this file")
     sub.add_parser("sample", help="build and freeze the samples from the staged July rows (B9, B16, B25)")
     lb = sub.add_parser("label", help="label development complaints with the LLM, printing counts only (B3, B21)")
-    lb.add_argument("set", choices=("dev", "quick"), help="the development set, or its fixed 50-complaint part")
+    lb.add_argument("set", choices=("dev", "quick", "injection"),
+                    help="the development set, its fixed 50-complaint part, or the synthetic injection set")
     lb.add_argument("--limit", type=int, help="label only the first N complaints, in complaint ID order")
     lb.add_argument("--prompt", default="v1", help="the prompt version, from config/prompts")
     lb.add_argument("--replay", action="store_true", help="serve recorded answers only, never a live call")
     ev = sub.add_parser("evaluate", help="score a finished development run against TF-IDF, printing figures only "
                                          "(B10, B15, B21)")
-    ev.add_argument("set", choices=("dev",), help="the development set. The test set waits for the final run")
+    ev.add_argument("set", choices=("dev", "injection"),
+                    help="the development set, or the synthetic injection set. The test set waits for the final run")
     ev.add_argument("--prompt", default="v1", help="the prompt version whose run is scored")
     ev.add_argument("--note", required=True, help="what changed in this version, for EVAL_VERSIONS.md")
     au = sub.add_parser("audit", help="re-check every accepted label against its recorded answer and the text, "
@@ -266,7 +282,7 @@ def main(argv=None, env=None, root=None):
         command = (args.command, args.action) if args.command in ("ledger", "dbt") else args.command
         COMMANDS[command](config, root, args)
     except (DataFileError, BudgetError, DbtError, SampleMismatch, BackendError, RecordingMissing,
-            RecordingCorrupt, RunStopped, EvaluationError, AuditError) as err:
+            RecordingCorrupt, RunStopped, EvaluationError, AuditError, InjectionError) as err:
         print(f"error: {err}")
         return 1
     # B21: the type only, never the message. The spec also asks for the row number and the
