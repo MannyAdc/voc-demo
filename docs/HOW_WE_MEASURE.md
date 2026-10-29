@@ -42,12 +42,17 @@ Both samples keep the same mix of categories as the whole data. If a category ma
 
 Classifying and measuring are two different things.
 
-- **Classifying** is what each method does to one complaint: it picks a category. Both methods do this for every complaint, in every category, however small. In the test run, the LLM accepted the label "prepaid card" 24 times and "debt or credit management" 15 times (`results/labels/v1_test.json`).
-- **Measuring** is how we find out how often those labels are right. That needs enough complaints of each category with a known answer. With 28 prepaid card complaints in the test set, each one is 3.6 percent of them, so one more right or wrong answer moves their accuracy by 3.6 points. So a score from so few would mostly show luck.
+- **Classifying** is what each method does to one complaint: it picks a category. TF-IDF does this for every complaint, in every category, however small. The LLM does it for almost every complaint. In the test run it gave no usable category for 21 of the 1,909: 15 times a category not in the list, and 6 times an answer that could not be read. It accepted the label "prepaid card" 24 times and "debt or credit management" 15 times (`results/labels/v1_test.json`).
+- **Measuring** is how we find out how often those labels are right. That needs enough complaints of each category with a known answer. With 28 prepaid card complaints in the test set, each one is 3.6 percent of them, so one more right or wrong answer moves their accuracy by 3.6 points. The likely range is wide. By the same formula as above, a score of 80 percent on 28 complaints could really be anywhere from about 65 to 95 percent.
 
-So the small categories are labelled like all the others, and they count in the overall score. We just cannot say how good the labels are for each of them on its own.
+So the small categories are labelled like the others, and they count in the overall score. We just cannot say how good the labels are for each of them on its own.
 
-Could we take more of them into the test set? Only a little. The whole pool has 134 prepaid card and 91 debt or credit management complaints. Every one taken for testing is one fewer for TF-IDF to learn from, and TF-IDF learns only from examples. Taking most of them would make the contest unfair to TF-IDF in exactly these categories. The overall score would stay fair, because it is re-weighted by each category's share of the pool. But the per-category scores would still rest on fewer than 135 complaints each. [DATA.md](DATA.md) gives the numbers.
+Could we have taken more of them into the test set? Yes, a few. 2 more prepaid card and 11 more debt or credit management complaints would have reached the bar of 30. That was not done, for two reasons:
+
+- 30 is only the floor below which we give no score at all. At 30, for a score of 80 percent, the likely range is still about 14 points either way.
+- Every one taken for testing is one fewer for TF-IDF to learn from, and TF-IDF learns only from examples. The whole pool has only 134 prepaid card and 91 debt or credit management complaints. Taking many more would leave TF-IDF few or none, which would make the contest unfair to it in exactly these categories.
+
+The overall score is **re-weighted**: each category counts in proportion to its share of the whole pool, not its share of the sample. So taking extra complaints of one category would not give it extra weight in the overall score. But re-weighting cannot give TF-IDF back the training examples it lost. So over-sampling would still tilt the result slightly against TF-IDF. The samples were drawn in proportion and frozen before the first run, as [DATA.md](DATA.md) records.
 
 A fair measurement of the small categories needs more data, for example several months of complaints, not a bigger slice of one month.
 
