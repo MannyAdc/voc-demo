@@ -1,0 +1,71 @@
+# The scheduled pipeline run (T015c): load, dbt build with data tests, label and evaluate, in order.
+#
+# It runs on the committed synthetic fixture in tests/fixtures/pipeline (SYN- IDs only), with the mock
+# backend, because real complaints, the replay cache and the key all stay outside the repo. It labels and
+# scores the development list only. scripts/pipeline_project.py builds the synthetic project folder, then
+# each real `voc` command runs in its own step, with no network. Any failing step or data test fails the run.
+# GitHub runs a scheduled workflow only from the default branch.
+name: Scheduled pipeline run
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: "0.6.17"
+
+      - name: Install the project (fails if uv.lock does not match pyproject.toml)
+        run: uv sync --locked
+
+      - name: Build the synthetic project folder from the committed fixture
+        run: .venv/bin/python scripts/pipeline_project.py prepare "$RUNNER_TEMP/pipeline/work" "$RUNNER_TEMP/pipeline/data"
+
+      # Each step below runs one `voc` command in the work folder, in a new network namespace with only
+      # loopback, as in ci.yml. Arguments: $0 user, $1 PATH, $2 HOME, $3 repo, $4 work folder, $5 data folder.
+      - name: "Step 1 of 4: load the synthetic export, after its pin check"
+        run: |
+          sudo unshare --net -- sh -c '
+            ip link set lo up && cd "$4" &&
+            sudo -u "$0" env "PATH=$1" "HOME=$2" LLM_BACKEND=mock "VOC_DATA_DIR=$5" \
+              "$3/.venv/bin/python" -m voc.cli load july_2026
+          ' "$(id -un)" "$PATH" "$HOME" "$GITHUB_WORKSPACE" "$RUNNER_TEMP/pipeline/work" "$RUNNER_TEMP/pipeline/data"
+
+      - name: "Step 2 of 4: dbt build with its data tests"
+        run: |
+          sudo unshare --net -- sh -c '
+            ip link set lo up && cd "$4" &&
+            sudo -u "$0" env "PATH=$1" "HOME=$2" LLM_BACKEND=mock DO_NOT_TRACK=1 DBT_ENGINE_SEND_ANONYMOUS_USAGE_STATS=False \
+              "$3/.venv/bin/python" -m voc.cli dbt build
+          ' "$(id -un)" "$PATH" "$HOME" "$GITHUB_WORKSPACE" "$RUNNER_TEMP/pipeline/work" "$RUNNER_TEMP/pipeline/data"
+
+      - name: "Step 3 of 4: label the development list on the mock backend"
+        run: |
+          sudo unshare --net -- sh -c '
+            ip link set lo up && cd "$4" &&
+            sudo -u "$0" env "PATH=$1" "HOME=$2" LLM_BACKEND=mock "VOC_MOCK_FIXTURES=$4/mock/answers.json" \
+              "$3/.venv/bin/python" -m voc.cli label dev --prompt v1
+          ' "$(id -un)" "$PATH" "$HOME" "$GITHUB_WORKSPACE" "$RUNNER_TEMP/pipeline/work" "$RUNNER_TEMP/pipeline/data"
+
+      - name: "Step 4 of 4: evaluate the development run against TF-IDF"
+        run: |
+          sudo unshare --net -- sh -c '
+            ip link set lo up && cd "$4" &&
+            sudo -u "$0" env "PATH=$1" "HOME=$2" LLM_BACKEND=mock \
+              "$3/.venv/bin/python" -m voc.cli evaluate dev --prompt v1 --note "scheduled run on the synthetic fixture, mock backend"
+          ' "$(id -un)" "$PATH" "$HOME" "$GITHUB_WORKSPACE" "$RUNNER_TEMP/pipeline/work" "$RUNNER_TEMP/pipeline/data"

@@ -1,0 +1,20 @@
+# Synthetic pool counts for the scheduled pipeline run (T015c), from the `build_samples`
+# summary in scripts/make_pipeline_fixture.py.
+
+[products."Credit card"]
+pool = 30
+dev = 10
+test = 10
+train = 10
+
+[products."Mortgage"]
+pool = 30
+dev = 10
+test = 10
+train = 10
+
+[products."Student loan"]
+pool = 30
+dev = 10
+test = 10
+train = 10
