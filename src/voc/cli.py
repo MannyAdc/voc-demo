@@ -142,6 +142,8 @@ def _label(config, root, args):
     if args.set == "injection":  # B5: the synthetic injection set, tied to its file by the file's hash
         from voc import injection
 
+        if args.limit is not None:
+            raise injection.InjectionError("the injection set is labelled whole, never with --limit")
         complaints, list_hash = injection.complaints(root)
     else:
         complaints, list_hash = pipeline.load_complaints(root / DB_PATH, root / "splits", args.set), None

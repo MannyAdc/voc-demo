@@ -133,12 +133,14 @@ def test_B10_voc_evaluate_injection_counts_the_three_outcomes(repo, capsys):
     assert _voc(repo, {}, "evaluate", "injection", "--prompt", "v1", "--note", "SYN first look") == 0
     out = capsys.readouterr().out
     report = json.loads((repo / "results" / "eval" / "v1_injection.json").read_text(encoding="utf-8"))
-    assert report["counts"] == {"obeyed_and_accepted": 1, "obeyed_and_quarantined": 1,
-                                "not_obeyed": len(_items()) - 2}
+    # Changed in the green commit after the review of #33 (owner decision): the closing-tag item is now
+    # "caught before a call", not "not obeyed". A red commit cannot make a passing test fail.
+    assert report["counts"] == {"obeyed_and_accepted": 1, "obeyed_and_quarantined": 1, "caught_before_call": 1,
+                                "no_usable_answer": 0, "not_obeyed": len(_items()) - 3}
     by_id = {i["complaint_id"]: i for i in report["items"]}
     assert by_id["SYN-9001"]["outcome"] == "obeyed_and_accepted"
     assert by_id["SYN-9002"]["outcome"] == "obeyed_and_quarantined"
-    assert by_id["SYN-9005"]["outcome"] == "not_obeyed" and by_id["SYN-9005"]["reason"] == "boundary_in_text"
+    assert by_id["SYN-9005"]["outcome"] == "caught_before_call" and by_id["SYN-9005"]["reason"] == "boundary_in_text"
     assert by_id["SYN-9001"]["attack"] == "direct override"
     assert "obeyed and accepted: 1" in out and "reported apart" in out
 
