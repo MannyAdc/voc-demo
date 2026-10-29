@@ -32,8 +32,11 @@ def _load(name):
 
 
 @pytest.fixture
-def gate():
-    return _load("test_gate")
+def gate(tmp_path, monkeypatch):
+    module = _load("test_gate")
+    # Tests that call the gate directly keep its output apart from the output of the gate that runs them.
+    monkeypatch.setattr(module, "LOG_DIR", tmp_path / "gate-log")
+    return module
 
 
 @pytest.fixture
@@ -157,6 +160,53 @@ def test_a_commit_is_allowed_when_tests_pass(gate, project):
     assert gate.check_staged(project) == []
 
 
+def test_the_gate_saves_the_full_pytest_output_and_names_the_folder(gate, project, tmp_path, monkeypatch):
+    # The gate printed only test names, so the cause of a failure was lost (BUILD_LOG.md, 29 October).
+    monkeypatch.setattr(gate, "LOG_DIR", tmp_path / "gate-log")
+    _stage(project, "src/mod.py", "def f():\n    return 2\n")
+    problems = gate.check_staged(project)
+    assert "assert 2 == 1" in (tmp_path / "gate-log" / "staged.txt").read_text(encoding="utf-8")
+    assert (tmp_path / "gate-log" / "staged.xml").is_file()
+    assert any(str(tmp_path / "gate-log") in problem for problem in problems)
+
+
+def test_each_checkout_has_its_own_gate_output_folder(gate, tmp_path):
+    # Two worktrees can commit at the same time, so they must not share one folder (review of #26).
+    first, second = gate._default_log_dir(tmp_path / "voc-demo"), gate._default_log_dir(tmp_path / "voc-demo-t015")
+    assert first != second
+    assert first.parent == second.parent and first.parent.name == "voc-gate"
+    assert first == gate._default_log_dir(tmp_path / "voc-demo")
+
+
+def test_a_folder_that_cannot_be_written_leaves_the_decision_unchanged(gate, project, tmp_path, monkeypatch,
+                                                                         capsys):
+    blocked = tmp_path / "a-file-not-a-folder"
+    blocked.write_text("SYN", encoding="utf-8")
+    monkeypatch.setattr(gate, "LOG_DIR", blocked)
+    _stage(project, "src/mod.py", "def f():\n    return 1  # same\n")
+    assert gate.check_staged(project) == []
+    assert "could not save the pytest output" in capsys.readouterr().out
+    _stage(project, "src/mod.py", "def f():\n    return 2\n")
+    problems = gate.check_staged(project)
+    assert any(p.startswith("failing test:") for p in problems)
+
+
+def test_a_new_gate_run_removes_the_last_runs_output(gate, project, tmp_path):
+    folder = tmp_path / "gate-log"
+    folder.mkdir()
+    (folder / "head.txt").write_text("SYN stale output", encoding="utf-8")
+    _stage(project, "src/mod.py", "def f():\n    return 1  # same\n")
+    assert gate.check_staged(project) == []
+    assert not (folder / "head.txt").exists() and (folder / "staged.txt").is_file()
+
+
+def test_a_tests_only_commit_saves_the_output_of_both_runs(gate, project, tmp_path, monkeypatch):
+    monkeypatch.setattr(gate, "LOG_DIR", tmp_path / "gate-log")
+    _stage(project, "tests/test_new.py", "def test_new():\n    assert False\n")
+    assert gate.check_staged(project) == []
+    assert (tmp_path / "gate-log" / "staged.txt").is_file() and (tmp_path / "gate-log" / "head.txt").is_file()
+
+
 def test_only_the_staged_files_are_tested_not_the_working_tree(gate, project):
     _stage(project, "src/mod.py", "def f():\n    return 1  # staged\n")
     _write(project, "src/mod.py", "def f():\n    return 99\n")  # not staged
@@ -276,7 +326,19 @@ def hooked(project, tmp_path):
     _git(project, "config", "core.hooksPath", hooks.as_posix())
     env = dict(os.environ, NAMES_DENYLIST="Qwertyname")
     env["PATH"] = str(fake) + os.pathsep + env["PATH"]
+    # The gate inside these tests keeps its output apart, so it never replaces the output of the gate
+    # that runs these tests.
+    env["VOC_GATE_LOG_DIR"] = str(tmp_path / "inner-gate-log")
     return project, env
+
+
+def test_the_gate_output_folder_comes_from_the_environment(hooked, tmp_path):
+    repo, env = hooked
+    _stage(repo, "src/mod.py", "def f():\n    return 2\n")
+    result = _commit(repo, env, "-m", "break")
+    assert result.returncode != 0
+    assert (tmp_path / "inner-gate-log" / "staged.txt").is_file()
+    assert str(tmp_path / "inner-gate-log") in result.stdout + result.stderr
 
 
 def _commit(repo, env, *args):

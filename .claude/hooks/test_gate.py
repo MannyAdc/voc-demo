@@ -16,6 +16,7 @@ as long as every failing test is new or was already failing before it. It
 may not delete a test, or make an existing passing test skip or fail. Each
 already failing test it carries over is printed as a notice.
 """
+import hashlib
 import json
 import os
 import re
@@ -33,6 +34,21 @@ SEGMENTS = re.compile(r"&&|\|\||[;|&\n]")
 COMMIT = re.compile(r"\bgit\b(?:\s+(?:-C\s+\S+|-c\s+\S+|--?[\w-]+(?:=\S+)?))*\s+commit\b")
 # Short options of `git commit` that take a value, so letters after them are the value.
 VALUE_OPTIONS = set("mFCctSu")
+
+
+def _default_log_dir(checkout):
+    """One folder per checkout, so two worktrees committing at the same time never share one."""
+    checkout = Path(checkout).resolve()
+    key = hashlib.sha256(str(checkout).lower().encode("utf-8")).hexdigest()[:12]
+    return Path(tempfile.gettempdir()) / "voc-gate" / f"{checkout.name}-{key}"
+
+
+# The full pytest output and report of the last run are kept here, to find the cause of a failure.
+# The tests hold synthetic text only, never complaint text. A failing test can still print a fake key
+# it built, and that stays in this folder until the next run (spec, Known limits). The hook tests set
+# VOC_GATE_LOG_DIR, so the gate they run inside a test never replaces the output of the gate that
+# runs them. Git runs the hook from the top of the checkout, so the working folder names it.
+LOG_DIR = Path(os.environ.get("VOC_GATE_LOG_DIR") or _default_log_dir(Path.cwd()))
 
 
 # Claude hook
@@ -142,7 +158,25 @@ def _outcomes(report):
     return outcomes
 
 
-def _run_tests(repo, tree):
+LABELS = ("staged", "head")
+
+
+def _save_output(label, result, report):
+    """Keep the full output and the report of one run in LOG_DIR, replacing the last run's.
+
+    Saving only helps to find a cause. If it fails, the gate says so and its decision stays the same.
+    """
+    try:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        text = (result.stdout + result.stderr).decode("utf-8", errors="replace")
+        (LOG_DIR / f"{label}.txt").write_text(f"{text}\npytest exit code {result.returncode}\n", encoding="utf-8")
+        if report.is_file():
+            shutil.copyfile(report, LOG_DIR / f"{label}.xml")
+    except OSError as err:
+        print(f"pre-commit: notice: could not save the pytest output in {LOG_DIR}: {type(err).__name__}")
+
+
+def _run_tests(repo, tree, label):
     """Run the tests on one git tree in a clean folder. Returns (exit code, outcomes)."""
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         work, report = Path(tmp) / "tree", Path(tmp) / "report.xml"
@@ -159,14 +193,30 @@ def _run_tests(repo, tree):
             [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", "-q",
              "--continue-on-collection-errors", f"--junitxml={report}"],
             cwd=work, env=env, capture_output=True)
+        _save_output(label, result, report)  # label is one of LABELS
         return result.returncode, _outcomes(report)
 
 
 def _test_problems(repo):
+    # A file left from an earlier run would look like this run's output.
+    for label in LABELS:
+        for suffix in (".txt", ".xml"):
+            try:
+                (LOG_DIR / f"{label}{suffix}").unlink(missing_ok=True)
+            except OSError as err:
+                print(f"pre-commit: notice: could not clear the last pytest output in {LOG_DIR}: "
+                      f"{type(err).__name__}")
+    problems = _tree_problems(repo)
+    if problems:
+        problems.append(f"full pytest output in {LOG_DIR}")
+    return problems
+
+
+def _tree_problems(repo):
     head = _head_tree(repo)
     changes = _staged_changes(repo, head)
     tests_only = bool(changes) and all(TESTS_ONLY.match(path) for _, path in changes)
-    code, new = _run_tests(repo, _git(repo, "write-tree").decode().strip())
+    code, new = _run_tests(repo, _git(repo, "write-tree").decode().strip(), "staged")
     failed = sorted(t for t, outcome in new.items() if outcome == "failed")
 
     if not tests_only:
@@ -177,7 +227,7 @@ def _test_problems(repo):
         return []
 
     problems = [f"tests-only commit deletes a test file: {path}" for status, path in changes if status == "D"]
-    old = _run_tests(repo, head)[1] if head else {}
+    old = _run_tests(repo, head, "head")[1] if head else {}
     for test_id, outcome in sorted(old.items()):
         if test_id not in new:
             problems.append(f"tests-only commit removes a test: {test_id}")
