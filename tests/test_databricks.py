@@ -3,6 +3,7 @@
 No test opens a connection. dbt is replaced by a fake child process that records its arguments
 and environment and writes a run_results.json. The live run is the owner's, with their own token.
 """
+import hashlib
 import importlib.util
 import json
 import shutil
@@ -238,3 +239,58 @@ def test_B14_the_databricks_adapter_is_pinned_in_its_own_group():
 
 def test_B14_the_repo_has_no_seed_folder_so_the_databricks_target_always_refuses_here():
     assert not (REPO / SEEDS).exists()
+
+
+# Added in the review of #43
+
+
+def _swap_test_list(work, text):
+    """Replace the work folder's test list, its manifest entry and its seed copy, so only the ID check is left."""
+    data = text.encode("utf-8")
+    (work / "splits" / "test.csv").write_bytes(data)
+    manifest = json.loads((work / "splits" / "manifest.json").read_text(encoding="utf-8"))
+    manifest["lists"]["test"] = {"count": len(text.splitlines()) - 1, "sha256": hashlib.sha256(data).hexdigest()}
+    (work / "splits" / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    (work / SEEDS / "test_list.csv").write_bytes(data)
+
+
+def test_B14_the_databricks_target_refuses_a_test_list_seed_with_an_id_that_is_not_synthetic(work, connected,
+                                                                                            fake_dbt, capfd):
+    _swap_test_list(work, "complaint_id,content_hash\n7654321," + "0" * 64 + "\n")
+    assert _build(work) != 0
+    printed = capfd.readouterr().out
+    assert "test_list.csv" in printed and "SYN-" in printed and "7654321" not in printed
+    assert fake_dbt.calls == []
+
+
+@pytest.mark.parametrize("content", [b"complaint_id,product\n", b"product,complaint_id\nMortgage,SYN-1\n",
+                                     b"complaint_id\n\xff\xfeSYN-1\n"])
+def test_B14_the_databricks_target_refuses_a_staged_seed_with_no_rows_a_wrong_header_or_bad_bytes(
+        work, connected, fake_dbt, capfd, content):
+    (work / SEEDS / "staged_complaints.csv").write_bytes(content)
+    assert _build(work) != 0
+    assert "staged_complaints.csv" in capfd.readouterr().out
+    assert fake_dbt.calls == []
+
+
+def test_B7_the_databricks_target_passes_the_catalog_and_drops_other_databricks_variables(work, connected,
+                                                                                          fake_dbt, monkeypatch):
+    monkeypatch.setenv("DATABRICKS_CATALOG", "synthetic_catalog")
+    monkeypatch.setenv("DATABRICKS_CONFIG_PROFILE", "synthetic")
+    assert _build(work) == 0
+    env = fake_dbt.calls[-1]["env"]
+    assert env["DATABRICKS_CATALOG"] == "synthetic_catalog"
+    assert "DATABRICKS_CONFIG_PROFILE" not in env
+
+
+def test_B14_the_fixture_script_main_prepares_and_runs_the_databricks_build(tmp_path, connected, fake_dbt, capfd):
+    assert _script().main([str(FIXTURE), str(tmp_path / "work")]) == 0
+    printed = capfd.readouterr().out
+    assert "loaded the fixture: 12 rows" in printed and "2 seeds, 2 models" in printed
+    args = fake_dbt.calls[-1]["args"]
+    assert args[args.index("--target") + 1] == "databricks"
+
+
+def test_B14_git_ignores_any_seed_file_so_a_seed_cannot_be_committed_by_accident():
+    result = subprocess.run(["git", "check-ignore", "-q", "dbt/seeds/staged_complaints.csv"], cwd=REPO)
+    assert result.returncode == 0
