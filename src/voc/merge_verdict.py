@@ -6,11 +6,18 @@ with read-only `gh` calls and can try the branches merged together.
 
 Each check ends as PASS, FAIL or FOR CLAUDE. FOR CLAUDE is a judgement the script
 cannot make, so it is never counted as a pass. The last line printed is the
-script's verdict: FIX FIRST with the reasons, or MERGE once Claude has confirmed
-the FOR CLAUDE items. The owner still merges.
+script's verdict, with its exit code:
+
+- MERGE (0): every check passed.
+- FIX FIRST (1): at least one check failed, with the reasons.
+- PENDING (3): nothing failed, but Claude must judge the FOR CLAUDE items.
+- An error (2): the data could not be read, or the script crashed.
+
+The owner still merges.
 
 Only check names, statuses, short commit IDs, file paths and counts are printed.
-Commit messages and comment text are never printed.
+Commit messages and comment text are never printed. An unexpected error is
+printed as its type only.
 """
 import argparse
 import json
@@ -29,12 +36,14 @@ PASS, FAIL, CLAUDE = "PASS", "FAIL", "FOR CLAUDE"
 EXPECTED_CHECKS = ("tests", "repo-checks", "secret-scan")
 GREEN = {"SUCCESS", "NEUTRAL"}
 REVIEW_HEADING = "## Reviewer findings"
-# Phrases a findings comment uses when the reviewer found nothing to fix.
-NOTHING_FOUND = ("no findings", "nothing to fix", "no fix needed")
 BASE = "main"
 GH_WINDOWS = Path(r"C:\Program Files\GitHub CLI\gh.exe")
-PR_FIELDS = ("number,state,isDraft,mergeable,baseRefName,headRefName,headRefOid,"
+PR_FIELDS = ("number,state,isDraft,mergeable,isCrossRepository,baseRefName,headRefName,headRefOid,"
              "statusCheckRollup,commits,files,comments")
+EXIT_MERGE, EXIT_FIX_FIRST, EXIT_ERROR, EXIT_PENDING = 0, 1, 2, 3
+# The trial merge runs a pull request's tests on this machine. These never reach them.
+SECRET_WORDS = ("KEY", "TOKEN", "SECRET")
+DROPPED_VARS = ("VOC_DATA_DIR", "VOC_NEXT_DATA_DIR", "VOC_MOCK_FIXTURES")
 RED_FILE = re.compile(r"tests/test_[^/]*\.py")
 CODE_SUFFIXES = (".py", ".sql", ".sh", ".ps1")
 CODE_FOLDERS = (".githooks/", ".github/workflows/", "dbt/")
@@ -147,12 +156,8 @@ def check_review(pr):
     findings = [c for c in pr.get("comments") or [] if (c.get("body") or "").lstrip().startswith(REVIEW_HEADING)]
     if not findings:
         return Check(number, "review findings", FAIL, f"no comment starts with '{REVIEW_HEADING}'")
+    # Never a pass, even when the comment says it found nothing: only Claude can judge that.
     latest = max(findings, key=lambda c: _when(c["createdAt"]))
-    # Only the first line after the heading counts, so a finding that says "no fix needed" about
-    # one part does not pass the whole review.
-    body = [line.strip().lower() for line in latest["body"].lstrip().splitlines()[1:] if line.strip()]
-    if body and body[0].startswith(NOTHING_FOUND):
-        return Check(number, "review findings", PASS, "the reviewer found nothing to fix")
     posted = _when(latest["createdAt"])
     after = sum(1 for c in pr["commits"] if _when(c["committedDate"]) > posted)
     stamp = latest["createdAt"].replace("T", " ").replace("Z", " UTC")
@@ -245,14 +250,22 @@ def _label(check):
 
 
 def verdict(checks):
-    """One line: FIX FIRST with every failure, or MERGE once Claude confirms the judgement items."""
+    """One line: FIX FIRST with every failure, PENDING with every judgement item, or MERGE."""
     failed = [c for c in checks if c.status == FAIL]
     if failed:
         return "FIX FIRST: " + ". ".join(f"{_label(c)}: {c.detail}" for c in failed)
     judged = [c for c in checks if c.status == CLAUDE]
     if judged:
-        return "MERGE, once Claude confirms: " + ", ".join(_label(c) for c in judged)
+        return "PENDING: Claude must judge: " + ", ".join(_label(c) for c in judged)
     return "MERGE"
+
+
+def exit_code(checks):
+    if any(c.status == FAIL for c in checks):
+        return EXIT_FIX_FIRST
+    if any(c.status == CLAUDE for c in checks):
+        return EXIT_PENDING
+    return EXIT_MERGE
 
 
 def format_report(checks, order):
@@ -300,16 +313,32 @@ def _summary(output):
     return lines[-1] if lines else "no pytest output"
 
 
+def trial_env(environ):
+    """The environment for a trial merge's tests: no git variables, secrets or data folders, and the mock backend.
+
+    A variable is dropped when its name holds KEY, TOKEN or SECRET in any case.
+    """
+    env = {}
+    for name, value in environ.items():
+        upper = name.upper()
+        if upper.startswith("GIT_") or upper in DROPPED_VARS or any(word in upper for word in SECRET_WORDS):
+            continue
+        env[name] = value
+    env["LLM_BACKEND"] = "mock"
+    return env
+
+
 def run_tests_on_tree(repo, tree):
     """Run the tests on one git tree in a clean folder, as the git hook does. Returns (exit code, summary).
 
     The tests use this checkout's Python and packages, so a change to the dependencies is not covered.
-    Only pytest's last line is returned, which holds counts only.
+    They run with `trial_env`. Only pytest's last line is returned, which holds counts only.
     """
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         work = Path(tmp) / "tree"
-        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-        index_env = dict(env, GIT_INDEX_FILE=str(Path(tmp) / "index"))
+        env = trial_env(os.environ)
+        index_env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        index_env["GIT_INDEX_FILE"] = str(Path(tmp) / "index")
         for args in (["read-tree", tree], ["checkout-index", "-a", f"--prefix={work.as_posix()}/"]):
             result = subprocess.run(["git", *args], cwd=repo, env=index_env, capture_output=True)
             if result.returncode != 0:
@@ -340,10 +369,30 @@ def _fetch_commit(repo, ref):
     return _git_out(repo, "rev-parse", "FETCH_HEAD")
 
 
+def refuse_forks(prs):
+    """A FAIL for any pull request from a fork, or with no fork flag, or None when there is none.
+
+    The trial merge runs a branch's tests on this machine, so it is for this repo's own branches only.
+    """
+    forks = [pr["number"] for pr in prs if pr.get("isCrossRepository") is not False]
+    if not forks:
+        return None
+    listed = ", ".join(f"#{n}" for n in forks)
+    return Check(None, "tests on the merge", FAIL,
+                 f"refused, not run: {listed} may come from a fork (head repository is not this repository, "
+                 "or unknown). The trial merge runs only this repo's own branches")
+
+
 def fetch_and_trial_merge(prs, repo=None):
-    """Fetch the base and each pull request head, then run the trial merge. `prs` is in merge order."""
+    """Fetch the base and each pull request head, then run the trial merge. `prs` is in merge order.
+
+    A fork is refused before anything is fetched.
+    """
+    refused = refuse_forks(prs)
+    if refused is not None:
+        return refused
     repo = Path.cwd() if repo is None else Path(repo)
-    base = _fetch_commit(repo, f"refs/heads/{prs[0]['baseRefName']}")
+    base =_fetch_commit(repo, f"refs/heads/{prs[0]['baseRefName']}")
     heads = []
     for pr in prs:
         oid = _fetch_commit(repo, f"refs/pull/{pr['number']}/head")
@@ -397,13 +446,19 @@ def main(argv=None, fetch=fetch_pr, trial=fetch_and_trial_merge):
         merged = None
         if args.test_merge:
             by_number = {pr["number"]: pr for pr in prs}
-            merged = trial([by_number[n] for n in order])
+            ordered = [by_number[n] for n in order]
+            merged = refuse_forks(ordered) or trial(ordered)
+        checks = check_all(prs, merged)
+        report = format_report(checks, order)
     except GhError as err:
         print(f"error: {err}")
-        return 2
-    checks = check_all(prs, merged)
-    print(format_report(checks, order))
-    return 1 if any(c.status == FAIL for c in checks) else 0
+        return EXIT_ERROR
+    # The type only, never the message, which could hold data from GitHub.
+    except Exception as err:
+        print(f"error: {type(err).__name__}")
+        return EXIT_ERROR
+    print(report)
+    return exit_code(checks)
 
 
 if __name__ == "__main__":

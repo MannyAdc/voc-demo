@@ -224,12 +224,6 @@ def test_T006b_findings_with_no_later_commit_are_for_claude(mv):
     assert "no commit after" in check.detail
 
 
-def test_T006b_findings_that_found_nothing_pass(mv):
-    body = "## Reviewer findings\n\nNo findings. Nothing to fix."
-    check = mv.check_review(_pr(comments=[_comment(body, "2026-10-29T03:00:00Z")]))
-    assert check.status == mv.PASS
-
-
 @pytest.mark.parametrize("body", [
     "## Reviewer findings\n\nNo findings.\n\n1. A real synthetic finding.",
     "## Reviewer findings\n\nNo findings. Nothing to fix.",
@@ -314,13 +308,6 @@ def test_T006b_verdict_fix_first_names_the_reason(mv):
     assert "\n" not in line
 
 
-def test_T006b_verdict_waits_for_claude_on_judgement_items(mv):
-    checks = [mv.Check(101, "CI", mv.PASS, "green"), mv.Check(101, "review findings", mv.CLAUDE, "judge")]
-    line = mv.verdict(checks)
-    assert line.startswith("MERGE, once Claude confirms: ")
-    assert "#101 review findings" in line
-
-
 def test_T006b_verdict_is_pending_while_claude_must_judge(mv):
     checks = [mv.Check(101, "CI", mv.PASS, "green"), mv.Check(101, "review findings", mv.CLAUDE, "judge"),
               mv.Check(101, "build log", mv.CLAUDE, "judge")]
@@ -350,10 +337,10 @@ def _fake_fetch(prs):
 def test_T006b_main_prints_each_check_and_the_verdict_last(mv, capsys):
     code = mv.main(["101"], fetch=_fake_fetch([_pr(101)]))
     lines = capsys.readouterr().out.strip().splitlines()
-    assert code == 0
+    assert code == 3
     assert any(line.startswith("PASS") and "CI" in line for line in lines)
     assert any(line.startswith("FOR CLAUDE") for line in lines)
-    assert lines[-1].startswith("MERGE, once Claude confirms: ")
+    assert lines[-1].startswith("PENDING: Claude must judge: ")
 
 
 def test_T006b_main_exits_1_on_fix_first(mv, capsys):

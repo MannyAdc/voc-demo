@@ -296,16 +296,19 @@ Started in the first pull request that adds an entry point (T002b), and extended
 Every test feeds the checks synthetic `gh pr view` JSON. No test runs `gh` or opens the network. The trial merge tests use a small git repo in a temporary folder.
 
 - CI is green only when every check on the latest commit finished with success and every CI job reported (T006b)
-- a failed, skipped or still running check, a failed commit status, or no checks at all is FAIL (T006b)
+- a failed, skipped or still running check, a failed or pending commit status, or no checks at all is FAIL (T006b, pending added in review)
 - the expected check names match the job names in `.github/workflows/ci.yml` (T006b)
 - a commit with only `tests/test_*.py` files must come before the first commit that changes code, and merge commits are left out (T006b)
 - a pull request that changes no code needs no red commit (T006b)
-- a missing `## Reviewer findings` comment is FAIL. Whether each finding is fixed or deferred is FOR CLAUDE, never PASS (T006b)
+- a missing `## Reviewer findings` comment is FAIL. Whether each finding is fixed or deferred is FOR CLAUDE, never PASS, even when the comment starts with "No findings" (T006b, review)
 - the build log check is always FOR CLAUDE (T006b)
 - a pull request that is not open, not against `main` or in conflict is FAIL (T006b)
 - parallel branches that share a file are FAIL, and the merge order is lowest number first (T006b)
 - the trial merge puts the branches together with no work tree, commit or hook, stops on a conflict, and runs the tests on the merged tree (T006b)
-- the verdict is one line: FIX FIRST with every failure, or MERGE once Claude confirms the FOR CLAUDE items (T006b)
+- the trial merge refuses a pull request from a fork, or with no fork flag, before it fetches anything (T006b, review)
+- the trial merge's tests run with `LLM_BACKEND=mock`, and with no variable whose name holds KEY, TOKEN or SECRET and no data folder variable (T006b, review)
+- the verdict is one line: FIX FIRST with every failure (exit 1), PENDING while a FOR CLAUDE item is open and nothing fails (exit 3), or MERGE (exit 0). It never starts with MERGE while an item is open (T006b, review)
+- the script exits 2 when the data cannot be read, and on a crash prints only the error type (T006b, review)
 - the script never prints commit messages or comment text, and makes only read-only `gh` calls (T006b)
 
 ## CI checks, `.github/workflows/ci.yml`

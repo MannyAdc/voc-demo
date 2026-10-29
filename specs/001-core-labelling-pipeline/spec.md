@@ -34,6 +34,8 @@ The guards in this spec (hooks, checks, logs, the spend stop) are built to stop 
 - The test gate keeps the full pytest output of its last run in the system temp folder, one folder per checkout. A failing test can print a fake key it built, and that stays there until the next run. No scan covers that folder.
 - `voc sample` records the pinned file's SHA-256 in `splits/manifest.json`, but it does not check that the staged rows came from that file. `voc load` checks the file against its pin before loading, and the staged table does not keep the file's hash.
 - No CI check yet stops `splits/` from changing compared with `main`. `voc sample` refuses to run while any list file is there, but a deleted folder can be rebuilt. With the same code and seed, the rebuilt lists are the same.
+- The merge verdict's trial merge (`--test-merge`) runs the tests with this checkout's installed packages, so a dependency change in a pull request is not covered.
+- The trial merge runs a pull request's tests on this machine. So it is for this repo's own pull requests only, and it refuses a pull request from a fork.
 
 ## User Scenarios & Testing *(mandatory)*
 
