@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Complaint labels: LLM against TF-IDF</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/web/style.css">
+<script src="/web/app.js" defer></script>
+</head>
+<body>
+<header>
+  <h1>Complaint labels: LLM against TF-IDF</h1>
+  <p class="sub">CFPB complaints, July 2026. An LLM labels each complaint by product and quotes its evidence. A script checks the quote. Failures go to quarantine with a reason.</p>
+  <p class="banner" id="banner">These are tuning figures from the development set. The verdict on the claim comes only from the single test run.</p>
+</header>
+
+<main>
+  <section class="card wide" aria-labelledby="h2h">
+    <h2 id="h2h">Head to head <span class="tag">tuning figure</span></h2>
+    <p class="note">Claim fixed before the first run: the LLM, with its quote check, beats TF-IDF at the same coverage. TF-IDF answers only its most confident complaints, as many as the LLM accepted.</p>
+    <div class="h2h">
+      <table class="figures" aria-label="Figures for both methods">
+        <thead><tr><th></th><th>LLM</th><th>TF-IDF</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Re-weighted strict accuracy</th><td id="llm-acc"></td><td id="tf-acc"></td></tr>
+          <tr><th scope="row">Precision on answered</th><td id="llm-prec"></td><td id="tf-prec"></td></tr>
+          <tr><th scope="row">Coverage</th><td id="llm-cov"></td><td id="tf-cov"></td></tr>
+          <tr><th scope="row">Macro-F1</th><td id="llm-f1"></td><td id="tf-f1"></td></tr>
+        </tbody>
+      </table>
+      <div>
+        <h3>Difference, LLM minus TF-IDF</h3>
+        <svg id="interval" viewBox="0 0 320 90" role="img" aria-label="Difference and its 95 percent interval"></svg>
+        <p class="verdict" id="verdict"></p>
+      </div>
+      <div>
+        <h3>Who was right</h3>
+        <div class="grid2" id="who"></div>
+      </div>
+      <div>
+        <h3>Precision against coverage</h3>
+        <svg id="curve" viewBox="0 0 320 200" role="img" aria-label="TF-IDF precision at each coverage, and the LLM point"></svg>
+        <p class="legend"><span class="key tf"></span>TF-IDF <span class="key llm"></span>LLM</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="speed">
+    <h2 id="speed">Speed</h2>
+    <dl class="stats">
+      <div><dt>LLM cost per 1,000 complaints</dt><dd id="llm-cost"></dd></div>
+      <div><dt>TF-IDF cost per 1,000</dt><dd id="tf-cost"></dd></div>
+      <div><dt>LLM time per 1,000</dt><dd id="llm-time"></dd></div>
+      <div><dt>TF-IDF time per 1,000 (labelling only)</dt><dd id="tf-time"></dd></div>
+      <div><dt>Labelling run</dt><dd id="run-time"></dd></div>
+    </dl>
+    <p class="note" id="speed-note"></p>
+  </section>
+
+  <section class="card" aria-labelledby="safety">
+    <h2 id="safety">Safety</h2>
+    <dl class="stats">
+      <div><dt>Accepted, with a checked quote</dt><dd id="accepted"></dd></div>
+      <div><dt>Quarantined</dt><dd id="quarantined"></dd></div>
+      <div><dt>Audit: re-verified</dt><dd id="audit-verified"></dd></div>
+      <div><dt>Audit: word for word</dt><dd id="audit-exact"></dd></div>
+    </dl>
+    <p class="note">Every quote is checked word for word by a script, never by the model. The audit then checks the results file against the recorded answers and the complaint texts.</p>
+  </section>
+
+  <section class="card" aria-labelledby="scale">
+    <h2 id="scale">Scale</h2>
+    <dl class="stats">
+      <div><dt>July 2026 export</dt><dd id="july"></dd></div>
+      <div><dt>Pool, after copies removed</dt><dd id="pool"></dd></div>
+      <div><dt>Copies removed</dt><dd id="copies"></dd></div>
+      <div><dt>Categories</dt><dd id="categories"></dd></div>
+      <div><dt>Development / test / training</dt><dd id="sets"></dd></div>
+    </dl>
+    <p class="note">Set sizes come from Cochran's formula. The test set is frozen and scored once.</p>
+  </section>
+
+  <section class="card wide" aria-labelledby="queue-h">
+    <h2 id="queue-h">Quarantine queue</h2>
+    <p class="note">The LLM labels that the quote check did not accept, with the reason, the label the LLM proposed and the TF-IDF label. No complaint text is shown.</p>
+    <div class="scroll"><table class="queue" aria-label="Quarantined complaints">
+      <thead><tr><th>Complaint</th><th>Reason</th><th>LLM proposed</th><th>TF-IDF</th></tr></thead>
+      <tbody id="queue"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card wide" aria-labelledby="versions">
+    <h2 id="versions">Prompt versions <span class="tag">tuning figure</span></h2>
+    <div class="scroll"><table class="queue" id="versions-table" aria-label="Evaluation versions"></table></div>
+  </section>
+</main>
+
+<footer>
+  <p>Read-only. This page shows committed results files only. It calls no model.</p>
+</footer>
+</body>
+</html>
