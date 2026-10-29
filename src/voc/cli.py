@@ -19,6 +19,7 @@ from voc.data import SampleMismatch, build_samples, format_summary
 from voc.datafile import DataFileError, find_export, load_pins, sha256_of, verify
 from voc.dbt_run import DbtError
 from voc.env import settings
+from voc.audit import AuditError
 from voc.evaluate import EvaluationError
 from voc.labels import load_labels
 from voc.load import DB_PATH, load_month
@@ -184,6 +185,15 @@ def _label(config, root, args):
         raise stopped
 
 
+def _audit(config, root, args):
+    from voc.audit import AuditError, audit, format_audit
+
+    result = audit(root, args.set, args.prompt)
+    print(format_audit(result))
+    if result["failures"]:
+        raise AuditError(f"{sum(result['failures'].values())} accepted labels failed the audit")
+
+
 def _evaluate(config, root, args):
     from voc.evaluate import evaluate, format_evaluation
 
@@ -191,7 +201,7 @@ def _evaluate(config, root, args):
 
 
 COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample, "label": _label,
-            "evaluate": _evaluate,
+            "evaluate": _evaluate, "audit": _audit,
             ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt,
             ("ledger", "init"): _ledger_init, ("ledger", "raise"): _ledger_raise,
             ("ledger", "status"): _ledger_status, ("ledger", "release"): _ledger_release,
@@ -216,6 +226,10 @@ def main(argv=None, env=None, root=None):
     ev.add_argument("set", choices=("dev",), help="the development set. The test set waits for the final run")
     ev.add_argument("--prompt", default="v1", help="the prompt version whose run is scored")
     ev.add_argument("--note", required=True, help="what changed in this version, for EVAL_VERSIONS.md")
+    au = sub.add_parser("audit", help="re-check every accepted label against its recorded answer and the text, "
+                                      "printing counts only (B1, B21)")
+    au.add_argument("set", choices=("dev", "quick"), help="the set whose labelling run is audited")
+    au.add_argument("--prompt", default="v1", help="the prompt version whose run is audited")
     ld = sub.add_parser("load", help="load one pinned monthly export into the staged DuckDB table (B14)")
     ld.add_argument("month", choices=sorted(MONTHS), help="the month to load, as named in config/data_files.toml")
     dbt = sub.add_parser("dbt", help="run the dbt project, printing counts and check names only (B14, B21)")
@@ -240,7 +254,7 @@ def main(argv=None, env=None, root=None):
         command = (args.command, args.action) if args.command in ("ledger", "dbt") else args.command
         COMMANDS[command](config, root, args)
     except (DataFileError, BudgetError, DbtError, SampleMismatch, BackendError, RecordingMissing,
-            RecordingCorrupt, RunStopped, EvaluationError) as err:
+            RecordingCorrupt, RunStopped, EvaluationError, AuditError) as err:
         print(f"error: {err}")
         return 1
     # B21: the type only, never the message. The spec also asks for the row number and the

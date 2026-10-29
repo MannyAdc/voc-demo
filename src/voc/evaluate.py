@@ -190,8 +190,11 @@ def evaluate(root, set_name, version, note):
                   "settings_sha256": hashlib.sha256(tfidf_path.read_bytes()).hexdigest(),
                   "seconds_per_1000_complaints": round(metrics.per_thousand(tfidf_seconds, n), 3)},
         "per_category": "not reported for the development set (docs/DATA.md, decision 2)",
-        "confusion": {method: sorted([p, q, c] for (p, q), c in metrics.confusion(items, method).items())
-                      for method in ("llm", "tfidf")},
+        "confusion": {**{method: sorted([p, q, c] for (p, q), c in metrics.confusion(items, method).items())
+                         for method in ("llm", "tfidf")},
+                      "note": "[recorded, predicted, count]. The LLM matrix has a 'quarantined' column. The TF-IDF "
+                              "matrix covers every complaint, at full coverage, not the matched coverage of the "
+                              "headline figures"},
         "who_was_right": metrics.who_was_right(items),
         "precision_coverage": {"tfidf": [list(point) for point in curve], "llm": list(llm_point)},
         "review_queue": metrics.review_queue(items),
