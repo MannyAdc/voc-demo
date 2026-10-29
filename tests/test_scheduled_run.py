@@ -266,7 +266,7 @@ def test_B14_the_step_entry_refuses_an_unknown_step(tmp_path, capsys):
     assert "usage" in capsys.readouterr().out
 
 
-def test_B14_the_four_step_entries_in_order_pass_on_the_fixture(tmp_path, capfd):
+def test_B14_the_four_step_entries_in_order_pass_on_the_fixture(tmp_path, capfd, home):
     pipeline = _script("pipeline_project")
     work, data = str(tmp_path / "work"), str(tmp_path / "data")
     assert pipeline.main(["prepare", work, data]) == 0
@@ -278,7 +278,8 @@ def test_B14_the_four_step_entries_in_order_pass_on_the_fixture(tmp_path, capfd)
     texts = _texts()
     assert not any(text in out for text in texts)
     assert not any(text in err for text in texts)
-    assert not (tmp_path / "home").exists()
+    # Fixed in the code commit: the home fixture makes this folder, so the check is that it stays empty.
+    assert list(home.iterdir()) == []
 
 
 def test_B14_a_failing_dbt_data_test_fails_the_dbt_step(tmp_path, capfd):
@@ -326,11 +327,6 @@ def _steps():
     return [step for job in _workflow()["jobs"].values() for step in job["steps"]]
 
 
-def _voc_commands():
-    return [step["run"].split("-m voc.cli ", 1)[1].splitlines()[0].strip()
-            for step in _steps() if "-m voc.cli " in step.get("run", "")]
-
-
 def test_B14_the_workflow_runs_once_a_day_and_on_manual_trigger():
     workflow = _workflow()
     triggers = workflow.get("on", workflow.get(True))  # YAML 1.1 reads the key `on` as true
@@ -340,38 +336,11 @@ def test_B14_the_workflow_runs_once_a_day_and_on_manual_trigger():
     assert minute.isdigit() and hour.isdigit() and rest == ["*", "*", "*"]
 
 
-def test_B14_the_workflow_runs_each_command_in_its_own_step_in_order():
-    pipeline = _script("pipeline_project")
-    expected = [" ".join(f'"{a}"' if " " in a else a for a in step) for step in pipeline.STEPS]
-    assert _voc_commands() == expected
-    steps = _steps()
-    prepare = next(i for i, s in enumerate(steps) if "scripts/pipeline_project.py prepare" in s.get("run", ""))
-    first = next(i for i, s in enumerate(steps) if "-m voc.cli " in s.get("run", ""))
-    assert prepare < first
-    names = [s["name"] for s in steps if "-m voc.cli " in s.get("run", "")]
-    assert len(set(names)) == len(names) == len(pipeline.STEPS)
-
-
-def test_B12_the_workflow_uses_the_mock_backend_with_no_network_and_no_secret():
-    text = WORKFLOW.read_text(encoding="utf-8")
-    assert "secrets" not in text and "${{" not in text
-    assert "anthropic" not in text.lower() and "LLM_BACKEND=api" not in text
-    assert _workflow()["permissions"] == {"contents": "read"}
-    runs = [s["run"] for s in _steps() if "-m voc.cli " in s.get("run", "")]
-    assert runs and all("LLM_BACKEND=mock" in run and "unshare --net" in run for run in runs)
-
-
-def test_B17_the_workflow_never_takes_the_test_set_path_or_passes_the_owner_word():
-    word = "fin" + "al"
-    assert word not in WORKFLOW.read_text(encoding="utf-8").lower()
-    for command in _voc_commands():
-        name, *args = command.split()
-        assert "test" not in args and word not in command.lower()
-        if name in ("label", "evaluate"):
-            assert args[0] == "dev"
-
-
-# The workflow calls the tested entry for every step (review of pull request #31)
+# Review of pull request #31: the workflow calls the tested `step` entry, not `python -m voc.cli`.
+# Three tests of the old form were replaced by the tests below:
+# the commands in order (now test_B14_the_workflow_prepares_then_calls_each_step_entry_in_order),
+# the mock backend, no network and no secret (now test_B14_each_step_entry_gives_..., test_B7_... and
+# test_B12_the_workflow_holds_no_secret_...), and the test set (now test_B17_the_step_entries_...).
 
 WORK_AND_DATA = '"$3" "$4"'
 PATHS = '"$RUNNER_TEMP/pipeline/work" "$RUNNER_TEMP/pipeline/data"'
