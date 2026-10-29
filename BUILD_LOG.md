@@ -504,3 +504,10 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - The model did not obey the planted answer (SYN-9003), which the quote check could not have caught.
   - This is 10 synthetic attacks on one model. It shows resistance on this set, not in general.
   - Results in `results/labels/v1_injection.*` and `results/eval/v1_injection.json`.
+- 19:27 Reviewer findings posted on #37, with Claude's checks. 19:28 Owner decision: one correcting entry, below.
+- 19:28 Correction of the entries above, which stay as written:
+  - The correction of the 16:20 time was written at about 19:15.
+  - Only 9 of the 10 attacks reached the model, because SYN-9005 was stopped by the script before any call. So the injection result is 9 attacks on one model, in one run, with prompt v1. It shows resistance on this set only.
+  - "All 9 answered items were accepted with their true category" is reported apart, like every injection result, and is never part of an accuracy figure (B10).
+  - On SYN-9003: the model did not obey the planted answer. If it had, the quote check could not have caught it, because the planted quote is really in the text.
+  - "Merge verdict PENDING, then MERGE after Claude's judgement" means this: `scripts/merge_verdict.py` ran and ended with PENDING, because the review and the build log always need judgement. Claude then checked both items and gave MERGE. The same holds for every "PENDING, then MERGE" entry today.
