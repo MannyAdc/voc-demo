@@ -336,3 +336,27 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - A Known limits entry: a fake key printed by a failing test stays in that folder.
   - CLAUDE.md now says only the last run is kept, and names `VOC_GATE_LOG_DIR`.
 - About 11:05 (exact time not recorded) While writing the #26 fix, a shell edit failed with the same quoting slip as the one between 09:46 and 09:55, inside a Python heredoc. A check in the script stopped it before anything was written. Claude then used the Edit tool.
+- 11:39 CI green on #27 and #26, on their latest commits. Claude's merge check by hand: MERGE for both. Both marked ready. Merge #27 first.
+- 11:43 Work: #27 merged by the owner (`82cfde9`). 11:44 #26 merged (`c3222f7`).
+- 11:44 First official evaluation, by Claude on main: `uv run --native-tls voc evaluate dev --prompt v1 --note "first version"`. It calls no model. These are tuning figures:
+  - 370 complaints.
+  - LLM: re-weighted strict accuracy 79.8%, precision 81.7%, coverage 97.6%, quarantined 2.4%, macro-F1 0.772.
+  - TF-IDF at the same coverage: re-weighted strict accuracy 79.1%, precision 81.2%, macro-F1 0.694.
+  - Difference +0.6 points, 95% interval -3.1 to +4.7 points (2,000 resamples, seed 0). Verdict: inconclusive.
+  - Who was right: both 259, only the LLM 36, only TF-IDF 34, neither 41.
+  - Quarantined: 7 `quote_not_in_text` (TF-IDF right on 6), 2 `unparseable` (TF-IDF right on 2).
+  - Cost per 1,000 complaints in the run: LLM $0.2332, TF-IDF $0. LLM time per 1,000 not measured, because 63 calls were replayed. TF-IDF 0.239 seconds per 1,000, labelling only.
+  - The figures match the 09:40 dry run. TF-IDF's time differs (0.407 then), as a time measurement does.
+  - The row is the first in `EVAL_VERSIONS.md`. Results in `results/eval/v1_dev.csv` and `.json`.
+- 11:52 Work start: the quote audit (`voc audit`), in a fourth worktree, `../voc-demo-audit` on branch `feat/quote-audit`. #28 opened as a draft. 11:55 reviewer findings posted on #28, with Claude's checks.
+- 11:55 Thursday 12:00 checkpoint. Owner chose:
+  - Prompt versions stop with v1, which goes to the final test run.
+  - The quote audit is built before the API.
+  - The carried-over failing test allowance stays. It was never used, and no reviewer found a weakened test.
+  - Cut list: the owner asked whether the analyser can be added later. Claude: yes, as one new command, because every answer is recorded and the design is in B21 and T018a. Claude suggested deferring only the analyser, as a stated next step, and keeping items 5 and 7.
+- 11:58 Dry run of the audit branch on the real development run: `../voc-demo-audit/.venv/Scripts/voc.exe audit dev --prompt v1`. It calls no model. Re-verified 361 of 361 accepted labels. All 361 quotes are word for word at the stored position.
+- 12:08 Audit red `e59bf4c` (9 tests) passed the gate (commit time 11:57). The owner went offline after 11:58 and was back by 12:33. The exact times were not recorded. The owner said "continue", taken as a yes to Claude's suggestions on the analyser and on #28.
+- 12:35 Correction of the 11:44 entry, which stays as written:
+  - "63 calls were replayed" comes from the labelling run's summary, `results/labels/v1_dev.json` (`calls_by_source`, 307 live and 63 replayed), logged at 08:18. It is not printed by `voc evaluate`.
+  - "Cost per 1,000 ... LLM $0.2332" is the cost if every answer had been live: $0.0862902 for 370 complaints. This run itself paid $0.0718306.
+  - "Verdict: inconclusive" is the development verdict, a tuning figure. It is not the claim's verdict, which comes only from the test run (B10).
