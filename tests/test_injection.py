@@ -38,11 +38,28 @@ def repo(tmp_path):
     for name in ("labels.toml", "prices.toml", "injection.toml"):
         shutil.copy(REPO / "config" / name, root / "config" / name)
     shutil.copytree(REPO / "config" / "prompts", root / "config" / "prompts")
+    # A committed repo, because an uncommitted injection file is refused (B16, review of #33).
+    _git(root, "init", "-q", "-b", "main")
+    _git(root, "config", "user.name", "t")
+    _git(root, "config", "user.email", "t@example.invalid")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "SYN first")
     return root
 
 
+def _git(root, *args):
+    import subprocess
+
+    result = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
+    assert result.returncode == 0, f"git {args[0]} failed:\n{result.stdout}\n{result.stderr}"
+    return result.stdout
+
+
 def _mock(root, answers):
-    """Mock answers keyed by the exact prompt `voc label injection` builds. `answers` maps an ID to (label, quote)."""
+    """Mock answers keyed by the exact prompt `voc label injection` builds.
+
+    `answers` maps an ID to (label, quote), or to a raw answer text.
+    """
     from voc.baselines import cut_text
     from voc.pipeline import definitions, load_prompt_version
 
@@ -53,10 +70,11 @@ def _mock(root, answers):
     for item in _items():
         if item["id"] not in answers:
             continue
-        label, quote = answers[item["id"]]
+        answer = answers[item["id"]]
+        text = answer if isinstance(answer, str) else json.dumps({"label": answer[0], "quote": answer[1]})
         prompt = build_prompt(v1.instructions, names, cut_text(item["text"])[0], complaint_id=item["id"],
                               definitions=definitions(labels)).prompt
-        fixtures.append({"prompt": prompt, "text": json.dumps({"label": label, "quote": quote})})
+        fixtures.append({"prompt": prompt, "text": text})
     path = root / "mock.json"
     path.write_text(json.dumps(fixtures), encoding="utf-8")
     return {"LLM_BACKEND": "mock", "VOC_MOCK_FIXTURES": str(path)}
@@ -144,3 +162,107 @@ def test_B16_a_changed_injection_file_is_refused_at_scoring(repo, capsys):
     capsys.readouterr()
     assert _voc(repo, {}, "evaluate", "injection", "--prompt", "v1", "--note", "SYN") == 1
     assert "injection set changed" in capsys.readouterr().out
+
+
+# Review of #33: every kind of non-answer has its own outcome, and the inputs are checked
+
+
+def _results(root):
+    return root / "results" / "labels" / "v1_injection.csv"
+
+
+def _rewrite(path, change):
+    rows = list(csv.DictReader(path.read_text(encoding="utf-8").splitlines()))
+    rows = change(rows)
+    with open(path, "w", encoding="utf-8", newline="") as out:
+        writer = csv.DictWriter(out, fieldnames=list(rows[0]), lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def test_B10_each_kind_of_non_answer_has_its_own_outcome(repo):
+    answers = {}
+    for item in _items():
+        if item["id"] == "SYN-9005":
+            continue
+        answers[item["id"]] = (item["product"], _first_sentence(item["text"]))
+    first = _items()[0]
+    answers["SYN-9001"] = (first["forced_label"], _first_sentence(first["text"]))
+    answers["SYN-9002"] = (_items()[1]["forced_label"], "the collector called me at work")
+    answers["SYN-9010"] = "SYN this is not an answer in the agreed format"
+    answers["SYN-9004"] = ("SYN a label that is not in the list", _first_sentence(_items()[3]["text"]))
+    assert _voc(repo, _mock(repo, answers), "label", "injection") == 0
+    assert _voc(repo, {}, "evaluate", "injection", "--prompt", "v1", "--note", "SYN") == 0
+    report = json.loads((repo / "results" / "eval" / "v1_injection.json").read_text(encoding="utf-8"))
+    assert report["counts"] == {"obeyed_and_accepted": 1, "obeyed_and_quarantined": 1, "caught_before_call": 1,
+                                "no_usable_answer": 2, "not_obeyed": len(_items()) - 5}
+    by_id = {i["complaint_id"]: i["outcome"] for i in report["items"]}
+    assert by_id["SYN-9005"] == "caught_before_call" and by_id["SYN-9010"] == "no_usable_answer"
+
+
+@pytest.mark.parametrize("reason", ["model_error", "not_run_budget"])
+def test_B7_a_run_where_the_model_never_answered_an_item_is_not_scored(repo, capsys, reason):
+    assert _voc(repo, _planted(repo), "label", "injection") == 0
+
+    def broken(rows):
+        rows[0].update(decision="quarantined", reason=reason, accepted_label="", quote_start="", quote_end="")
+        return rows
+
+    _rewrite(_results(repo), broken)
+    capsys.readouterr()
+    assert _voc(repo, {}, "evaluate", "injection", "--prompt", "v1", "--note", "SYN") == 1
+    assert "never answered" in capsys.readouterr().out
+
+
+def test_B7_a_stopped_injection_run_is_refused(repo, capsys):
+    assert _voc(repo, _planted(repo), "label", "injection") == 0
+    path = repo / "results" / "labels" / "v1_injection.json"
+    summary = json.loads(path.read_text(encoding="utf-8"))
+    summary["stopped"] = "SYN stop"
+    path.write_text(json.dumps(summary), encoding="utf-8")
+    capsys.readouterr()
+    assert _voc(repo, {}, "evaluate", "injection", "--prompt", "v1", "--note", "SYN") == 1
+    assert "stopped early" in capsys.readouterr().out
+
+
+def test_B16_a_results_file_without_exactly_the_set_is_refused(repo, capsys):
+    assert _voc(repo, _planted(repo), "label", "injection") == 0
+    _rewrite(_results(repo), lambda rows: rows[1:])
+    capsys.readouterr()
+    assert _voc(repo, {}, "evaluate", "injection", "--prompt", "v1", "--note", "SYN") == 1
+    assert "exactly the injection set" in capsys.readouterr().out
+
+
+def test_B16_an_uncommitted_injection_file_is_not_labelled(repo, capsys):
+    path = repo / "config" / "injection.toml"
+    path.write_text(path.read_text(encoding="utf-8") + "\n# SYN uncommitted edit\n", encoding="utf-8")
+    capsys.readouterr()
+    assert _voc(repo, _planted(repo), "label", "injection") == 1
+    assert "uncommitted" in capsys.readouterr().out
+
+
+def test_B16_the_loader_refuses_a_repeated_id_or_a_forced_label_equal_to_the_product(repo, capsys):
+    path = repo / "config" / "injection.toml"
+    text = path.read_text(encoding="utf-8")
+    path.write_text(text.replace('id = "SYN-9002"', 'id = "SYN-9001"', 1), encoding="utf-8")
+    _git(repo, "commit", "-q", "-am", "SYN repeated ID")
+    capsys.readouterr()
+    assert _voc(repo, _planted(repo), "label", "injection") == 1
+    assert "repeated" in capsys.readouterr().out
+
+
+def test_B9_the_injection_set_is_labelled_whole_never_with_a_limit(repo, capsys):
+    capsys.readouterr()
+    assert _voc(repo, _planted(repo), "label", "injection", "--limit", "3") == 1
+    assert "limit" in capsys.readouterr().out
+
+
+def test_B10_the_development_results_are_left_unchanged(repo):
+    (repo / "EVAL_VERSIONS.md").write_text("SYN table\n", encoding="utf-8")
+    dev = repo / "results" / "eval" / "v1_dev.json"
+    dev.parent.mkdir(parents=True)
+    dev.write_text('{"SYN": 1}\n', encoding="utf-8")
+    assert _voc(repo, _planted(repo), "label", "injection") == 0
+    assert _voc(repo, {}, "evaluate", "injection", "--prompt", "v1", "--note", "SYN") == 0
+    assert (repo / "EVAL_VERSIONS.md").read_text(encoding="utf-8") == "SYN table\n"
+    assert dev.read_text(encoding="utf-8") == '{"SYN": 1}\n'
