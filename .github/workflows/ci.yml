@@ -70,6 +70,12 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: uv run --locked python -m voc.repo_checks
 
+      - name: The test run log only grows compared with main (B17)
+        run: |
+          base="$RUNNER_TEMP/test_runs_on_main.md"
+          git show origin/main:runs/TEST_RUNS.md > "$base" 2>/dev/null || rm -f "$base"
+          uv run --locked python scripts/check_test_runs.py "$base" runs/TEST_RUNS.md
+
   secret-scan:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

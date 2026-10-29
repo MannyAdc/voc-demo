@@ -21,6 +21,7 @@ from voc.dbt_run import DbtError
 from voc.env import settings
 from voc.audit import AuditError
 from voc.evaluate import EvaluationError
+from voc.testrun import TestRunError
 from voc.labels import load_labels
 from voc.load import DB_PATH, load_month
 from voc.profile import format_profile, profile
@@ -194,6 +195,33 @@ def _audit(config, root, args):
         raise AuditError(f"{sum(result['failures'].values())} accepted labels failed the audit")
 
 
+def _test_run(config, root, args):
+    """B17: the owner's one scored run of the test set, live on the api backend."""
+    from voc import testrun
+    from voc.backends import make_backend
+    from voc.budget import Ledger, effective_cap
+    from voc.costs import load_prices, run_cost
+    from voc.pipeline import load_prompt_version
+    from voc.replay import Caller
+
+    if config.get("LLM_BACKEND") != "api":
+        raise BackendError("the test run needs LLM_BACKEND=api")
+    root = Path(root)
+    version = load_prompt_version(root, args.prompt)
+    model, settings = version.settings["model"], version.settings
+    ledger = Ledger()
+    state = ledger.state()
+    remaining = effective_cap(state) - state["used"] - state["reserved"]
+    call = Caller("api", model, settings, backend=make_backend("api", env=config, model=model), mode="live",
+                  root=root, ledger=ledger).call
+
+    def cost(outcomes):
+        found = run_cost(load_prices(root / "config" / "prices.toml"), model, [o for o in outcomes if o.source])
+        return {"cost": {key: str(value) for key, value in found.items()}}
+
+    print(testrun.format_report(testrun.run(root, args.prompt, args.reason, call, remaining, add_to_summary=cost)))
+
+
 def _evaluate(config, root, args):
     from voc.evaluate import evaluate, format_evaluation
 
@@ -201,7 +229,7 @@ def _evaluate(config, root, args):
 
 
 COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample, "label": _label,
-            "evaluate": _evaluate, "audit": _audit,
+            "evaluate": _evaluate, "final": _test_run, "audit": _audit,
             ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt,
             ("ledger", "init"): _ledger_init, ("ledger", "raise"): _ledger_raise,
             ("ledger", "status"): _ledger_status, ("ledger", "release"): _ledger_release,
@@ -221,6 +249,9 @@ def main(argv=None, env=None, root=None):
     lb.add_argument("--limit", type=int, help="label only the first N complaints, in complaint ID order")
     lb.add_argument("--prompt", default="v1", help="the prompt version, from config/prompts")
     lb.add_argument("--replay", action="store_true", help="serve recorded answers only, never a live call")
+    fr = sub.add_parser("final", help="the owner's one scored run of the frozen test set (B17)")
+    fr.add_argument("--prompt", default="v1", help="the prompt version that goes to the test set")
+    fr.add_argument("--reason", help="why, if a test run is already logged. It goes in the logs and BUILD_LOG.md")
     ev = sub.add_parser("evaluate", help="score a finished development run against TF-IDF, printing figures only "
                                          "(B10, B15, B21)")
     ev.add_argument("set", choices=("dev",), help="the development set. The test set waits for the final run")
@@ -254,7 +285,7 @@ def main(argv=None, env=None, root=None):
         command = (args.command, args.action) if args.command in ("ledger", "dbt") else args.command
         COMMANDS[command](config, root, args)
     except (DataFileError, BudgetError, DbtError, SampleMismatch, BackendError, RecordingMissing,
-            RecordingCorrupt, RunStopped, EvaluationError, AuditError) as err:
+            RecordingCorrupt, RunStopped, EvaluationError, AuditError, TestRunError) as err:
         print(f"error: {err}")
         return 1
     # B21: the type only, never the message. The spec also asks for the row number and the
