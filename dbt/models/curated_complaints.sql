@@ -4,5 +4,5 @@
 
 select complaint_id, source, date_received, product, sub_product, narrative
 from {{ ref('stg_complaints') }}
-where narrative is not null and regexp_matches(narrative, '\S')
+where narrative is not null and {{ has_text('narrative') }}
   and {{ leave_out_test_rows('complaint_id') }}

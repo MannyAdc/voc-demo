@@ -5,6 +5,11 @@ DuckDB can echo raw rows in their messages. What is printed comes from
 `run_results.json` (node names, which are ours, statuses and counts) and from
 row counts of our own models. Usage stats are off (B7), and credentials and
 proxy settings never reach the child process.
+
+T021: `--target databricks` runs the same project on a Databricks SQL warehouse,
+on two synthetic seeds only. It refuses before dbt starts unless the seeds are
+there, every seeded complaint ID is SYN-, and the test list seed is a byte copy
+of the checked splits/test.csv. Only that target gets the connection variables.
 """
 import csv
 import hashlib
@@ -34,6 +39,12 @@ COMMANDS = {"build": ["build"], "docs": ["docs", "generate"]}
 # B17: the models read the test IDs from this list, next to the dbt folder (dbt/macros/test_set.sql).
 TEST_LIST = Path("splits") / "test.csv"
 MANIFEST = Path("splits") / "manifest.json"
+# T021: the Databricks target's profile folder, its connection variables and its seeds.
+DATABRICKS_PROFILES = PROJECT / "databricks"
+CONNECTION_VARS = ("DATABRICKS_HOST", "DATABRICKS_HTTP_PATH", "DATABRICKS_TOKEN")
+SEEDS = PROJECT / "seeds"
+STAGED_SEED, TEST_SEED = "staged_complaints.csv", "test_list.csv"
+TARGETS = ("local", "databricks")
 
 
 class DbtError(Exception):
@@ -41,10 +52,53 @@ class DbtError(Exception):
 
 
 def dbt_env(base):
-    """The child's environment: no credentials, no proxy, usage stats off."""
+    """The child's environment: no credentials, no Databricks settings, no proxy, usage stats off."""
     env = {name: value for name, value in base.items()
-           if name not in CREDENTIAL_VARS and not (name.lower().endswith("_proxy") and name.lower() != "no_proxy")}
+           if name not in CREDENTIAL_VARS and not name.upper().startswith("DATABRICKS_")
+           and not (name.lower().endswith("_proxy") and name.lower() != "no_proxy")}
     env.update(QUIET)
+    return env
+
+
+def check_seeds(root):
+    """T021: the Databricks target gets synthetic rows only. Raises before dbt starts if not.
+
+    The seed folder must hold exactly the two seeds. The test list seed is a byte copy of
+    splits/test.csv, already checked (B17). Every complaint ID in both seeds starts with SYN-.
+    The messages name files, never IDs or values.
+    """
+    folder = Path(root) / SEEDS
+    stop = "so nothing was sent to Databricks"
+    if not folder.is_dir():
+        raise DbtError(f"{SEEDS.as_posix()} is missing: the Databricks target needs the synthetic seeds, "
+                       f"written by scripts/databricks_fixture_build.py, {stop}")
+    found = sorted(path.name for path in folder.iterdir())
+    if found != sorted((STAGED_SEED, TEST_SEED)):
+        raise DbtError(f"{SEEDS.as_posix()} must hold exactly {STAGED_SEED} and {TEST_SEED}, {stop}")
+    try:
+        rows = list(csv.reader(io.StringIO((folder / STAGED_SEED).read_text(encoding="utf-8"))))
+    except (UnicodeDecodeError, csv.Error):
+        raise DbtError(f"{STAGED_SEED} is not a valid seed, {stop}") from None
+    if not rows or rows[0][:1] != ["complaint_id"] or len(rows) < 2:
+        raise DbtError(f"{STAGED_SEED} must start with a complaint_id column and hold rows, {stop}")
+    if any(not row or not row[0].startswith("SYN-") for row in rows[1:]):
+        raise DbtError(f"{STAGED_SEED} holds a complaint ID that is not synthetic (SYN-), {stop}")
+    if (folder / TEST_SEED).read_bytes() != (Path(root) / TEST_LIST).read_bytes():
+        raise DbtError(f"{TEST_SEED} is not a byte copy of {TEST_LIST.as_posix()}, {stop}")
+    # Added in the review of #43: the test list seed holds IDs too, so they must be synthetic as well.
+    # check_test_list has already read it as UTF-8 with a complaint_id column first.
+    test_rows = list(csv.reader(io.StringIO((folder / TEST_SEED).read_text(encoding="utf-8"))))[1:]
+    if any(not row[0].startswith("SYN-") for row in test_rows):
+        raise DbtError(f"{TEST_SEED} holds a complaint ID that is not synthetic (SYN-), {stop}")
+
+
+def databricks_env(base):
+    """T021: the child's environment for the Databricks target: the safe one, plus the connection."""
+    missing = [name for name in CONNECTION_VARS if not base.get(name)]
+    if missing:
+        raise DbtError(f"{', '.join(missing)} not set, so nothing was sent to Databricks")
+    env = dbt_env(base)
+    env.update({name: base[name] for name in (*CONNECTION_VARS, "DATABRICKS_CATALOG") if base.get(name)})
     return env
 
 
@@ -82,19 +136,27 @@ def check_test_list(root):
     return count
 
 
-def _run(root, action, labels):
+def _run(root, action, labels, target_name="local"):
     # B17: without a checked test list the models cannot leave out the test rows, so dbt does not start.
     check_test_list(root)
     project = (Path(root) / PROJECT).resolve()
+    profiles = project
+    if target_name == "databricks":
+        check_seeds(root)
+        env = databricks_env(os.environ)
+        profiles = (Path(root) / DATABRICKS_PROFILES).resolve()
+    else:
+        env = dbt_env(os.environ)
     target = (Path(root) / TARGET).resolve()
     results = target / "run_results.json"
     results.unlink(missing_ok=True)
     args = [sys.executable, "-c", "from dbt.cli.main import cli; cli()", *COMMANDS[action],
-            "--project-dir", str(project), "--profiles-dir", str(project),
+            "--project-dir", str(project), "--profiles-dir", str(profiles),
             "--target-path", str(target), "--log-path", str((Path(root) / LOGS).resolve()),
             # B17: the test-set flag is always passed off. It overrides dbt_project.yml, and no command turns it on.
             "--vars", json.dumps({"labels": labels, "final": False})]
-    env = dbt_env(os.environ)
+    if target_name == "databricks":
+        args += ["--target", "databricks"]
     env["VOC_DBT_DB"] = str((Path(root) / DB_PATH).resolve())
     code = subprocess.run(args, env=env, cwd=project, stdin=subprocess.DEVNULL,
                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
@@ -111,14 +173,14 @@ def _row_counts(root):
         con.close()
 
 
-def build(root, labels):
+def build(root, labels, target_name="local"):
     """Run `dbt build`. Returns the lines to print and whether the build passed."""
-    code, results = _run(root, "build", labels)
+    code, results = _run(root, "build", labels, target_name)
     if not results.is_file():
         raise DbtError(f"dbt exited with code {code} before it wrote any result")
     nodes = json.loads(results.read_text(encoding="utf-8"))["results"]
     tally = {"passed": 0, "failed": 0, "errors": 0, "skipped": 0}
-    kinds = {"model": 0, "test": 0}
+    kinds = {"seed": 0, "model": 0, "test": 0}
     problems = []
     for node in nodes:
         kind, _, name = node["unique_id"].split(".")[:3]
@@ -134,10 +196,12 @@ def build(root, labels):
         else:
             tally["errors"] += 1
             problems.append(f"error: {kind} {name} ({status})")
-    lines = [f"dbt build: {kinds['model']} models, {kinds['test']} data tests. "
+    seeds = f"{kinds['seed']} seeds, " if kinds["seed"] else ""
+    lines = [f"dbt build: {seeds}{kinds['model']} models, {kinds['test']} data tests. "
              + ", ".join(f"{key} {value}" for key, value in tally.items())]
     lines += problems
-    counts = _row_counts(root)
+    # The row counts read the local DuckDB file, so they are for the local target only.
+    counts = _row_counts(root) if target_name == "local" else {}
     if counts:
         lines.append(", ".join(f"{name}: {n} rows" for name, n in counts.items()))
     return lines, code == 0 and not problems

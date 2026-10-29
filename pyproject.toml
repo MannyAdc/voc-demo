@@ -32,6 +32,9 @@ pythonpath = ["src"]
 addopts = "-q"
 
 [dependency-groups]
+databricks = [
+    "dbt-databricks==1.13.0",
+]
 dev = [
     "pytest>=9.1.1",
 ]

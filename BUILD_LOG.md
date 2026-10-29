@@ -614,3 +614,47 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - The long-context price does not apply. The largest prompt in these runs was 2,669 tokens (`token_pairs` in the labels results files), far below the 100,000 threshold.
   - AI error: Claude's comment on #42 said the hard bound was "under US$1 even at the output price". It is US$1.85. Claude caught it when working the numbers out and corrected it on #42.
   - AI error: `docs/HOW_WE_MEASURE.md` kept "about 385" and "about 2,400" after the real sizes, 370 and 1,909, were drawn on 28 October. Claude found it while writing T020b, and logged it at the reviewer's prompt.
+- 02:02 The owner merged #41, and 02:20 #42 (times from GitHub).
+- About 02:25 Claude read the sources for T021 (Databricks):
+  - Free Edition limits (docs.databricks.com, updated 18 October 2026): "Free Edition accounts are meant for non-commercial use." One SQL warehouse, 2X-Small, serverless only.
+  - The dbt Databricks setup page (docs.getdbt.com, updated 26 October 2026): host, HTTP path, schema, an optional catalog and a token. Personal access tokens are supported, but Databricks calls them legacy.
+  - PyPI: `dbt-databricks` 1.13.0 needs `dbt-core<1.12.7,>=1.11.2`, which fits the pin 1.12.6.
+  - Reading `dbt/` showed five DuckDB-only parts: `read_csv` for the test list, `regexp_matches`, the `delete+insert` strategy, the staged table written by `voc load`, and the wrapper's DuckDB row counts.
+  - Claude estimated 1.5 to 2 hours and recommended cutting T021 for a README note.
+- About 02:28 (exact time not recorded) Owner decision: past 12:00 is fine, keep Databricks.
+- About 02:30 Work start on T021, in the worktree `../voc-demo-dbx`, branch `feat/databricks-target`.
+- Between about 02:30 and 02:46 (exact times not recorded) The owner asked how to launch the demo, and whether it is on Azure. Claude's answer: it is not on any cloud. Azure is in the brief's cut order and was never a task. The dashboard runs locally with `uv run --native-tls voc serve`.
+- Between about 02:35 and 02:46 (exact times not recorded) The owner prepared Databricks:
+  - The catalog is `workspace`, from the owner's screenshot.
+  - The token was made with the "BI Tools" scope, for 7 days. Databricks' token page (updated 7 October 2026) says BI Tools is "for tools that connect to Databricks SQL warehouses". It does not name dbt.
+  - The owner stored the token encrypted with Windows DPAPI on their own machine. Claude never saw it.
+- Red `e8f62b0` at 02:34: 19 tests in `tests/test_databricks.py`. 17 failed. 2 passed at once and guard what must stay true: the local profile has only DuckDB targets, and the repo has no seed folder.
+  - The gate passed it with 4 carried-over failing tests in `tests/test_hooks.py`: `test_a_merge_commit_runs_the_same_gate`, `test_the_gate_output_folder_comes_from_the_environment`, `test_the_git_hook_blocks_a_failing_commit_and_allows_a_passing_one` and `test_the_git_hook_checks_commit_a_and_commit_with_a_path`.
+  - AI error: they failed because Claude's repair of this worktree's `.venv`, after an "Access is denied" error, left the `voc` package uninstalled. So the hook tests' own temp repos could not import `voc`, on the old tree and the new one alike. Claude found the cause from the test output and reinstalled the packages. The four pass again.
+- No work between about 02:50 and 08:45. The machine was most likely asleep. Not checked.
+- The green change, at about 08:50:
+  - `dbt-databricks==1.13.0` in its own dependency group, `databricks`. A normal `uv sync` and CI do not install it. But the lock file is shared, so three packages that the normal install also uses moved down: dbt-common 1.39.0 to 1.38.0, packaging 26.3 to 25.0, and pydantic 2.14.1 to 2.12.5. The full suite passes on the result. This is for the owner to decide.
+  - Before the commit, Claude parsed the project with the Databricks target and a fake connection, in a scratch folder. dbt opened no connection. The seeds are on, the staged source is off, and both models depend on the seeds. The parse output went to a file and was not printed.
+- 09:04 Reviewer findings posted on #43, with Claude's checks (time from GitHub). No path for real complaint text or the token to reach Databricks, output or the repo was found. CI was green on `0bc3f97`, with the normal install, which settles whether the suite passes without the Databricks group.
+- Between 09:04 and 09:18 (exact time not recorded) Owner decision: make the fixes first, then the live run. The fixes:
+  - The test list seed's IDs are checked for `SYN-` too. Before, only the staged seed's were, though the README, spec and docstring said "every seeded complaint ID".
+  - `.gitignore` no longer un-ignores `dbt/seeds/*.csv`, so a seed cannot be committed by accident. A seed in the staged format has no CFPB header row, so the raw data checks would not catch it.
+  - New tests: a test list seed with an ID that is not synthetic, a staged seed with no rows, a wrong header or bad bytes, the catalog passed through and other `DATABRICKS_` variables dropped, the script's `main()`, and git ignoring a seed file. 2 of the 7 failed at first. The other 5 pass at once and guard code that was not tested before.
+  - A Known limits line: the seed check trusts the work folder's `dbt_project.yml`.
+  - The comment on `merge` no longer says Databricks has no `delete+insert`, which was not checked.
+  - The README names all four DuckDB-only parts, not two, and says the shared lock moved packages of the normal install.
+- Red `47cf139` at 09:18. The gate passed it with no carried-over failures.
+- 09:38 Correction of the entries above, which stay as written:
+  - Four packages of the normal install moved down, not three. pydantic-core also moved, from 2.50.1 to 2.41.5. AI error: Claude listed the moves by reading the diff for three versions it had noticed. The reviewer caught the fourth.
+  - "The green change, at about 08:50": commit `0bc3f97` is stamped 08:47.
+  - The parse of the Databricks target ran from the scratch work folder's `dbt` folder, with a fake host, HTTP path and token in the environment: `python -c "from dbt.cli.main import cli; cli()" parse --profiles-dir databricks --target databricks` plus the target path, the log path and `--vars '{"labels": [], "final": false}'`.
+- About 09:55 The first try of the green commit was refused by the gate: `test_B14_git_ignores_any_seed_file_so_a_seed_cannot_be_committed_by_accident` failed with git exit code 128.
+  - AI error: the test ran `git check-ignore` in the repo folder. The gate runs the tests on a copy of the staged files, which is not a git checkout. The gate caught it.
+  - The test now checks a copy of `.gitignore` in a new temp repo. It passes with the new `.gitignore` and fails with the old one, checked by hand before the retry. It is changed in this green commit, with a comment.
+- 10:07 Green `706f73a` passed its gate and was pushed.
+- 10:13 First live try of T021, by the owner in their own PowerShell, from `../voc-demo-dbx`: `uv run --native-tls --group databricks python scripts/databricks_fixture_build.py tests/fixtures/dbt/complaints.csv <new work folder>`. The seed check passed. dbt then stopped with exit code 2 before any result.
+  - The owner ran a log filter that Claude wrote. It first checked dbt's log for token-like text (none found), then printed only the error lines, which the owner pasted.
+  - The cause: the host was the placeholder text "paste the Server hostname here". AI error: Claude's run commands asked the owner to edit text inside quote marks, which was easy to misread. Claude rewrote them to ask for each value with `Read-Host`.
+- About 10:18 (exact time not recorded) Second live try, same command: "dbt build: 2 seeds, 2 models, 4 data tests. passed 8, failed 0, errors 0, skipped 0". The same dbt models ran on the owner's Databricks Free Edition SQL warehouse, on the 12 synthetic complaints only.
+- About 10:20 The owner searched every file in the work folder for the token, in their own PowerShell: "files holding the token: 0". The command printed only the count. Claude never saw the token.
+- T021 went past its 1 hour time box: about 20 minutes before 02:50 and about 1 hour 35 minutes from 08:45. The owner had allowed past 12:00 at about 02:28.
