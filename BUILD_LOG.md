@@ -449,3 +449,15 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - About 16:00 The owner's computer rebooted because VS Code crashed. Afterwards:
   - The merge of main into `feat/results-api` had been cut off mid-commit. git no longer recorded it as a merge, but main's changes were still staged. Committing them would have recorded a plain commit instead of a merge. Claude checked that nothing else was staged, unstaged or untracked, discarded the half-done result with `git reset --hard HEAD`, and redid the merge (`8307b82` at 16:18).
   - The dbt-flag helper had saved nothing, so it was restarted from the beginning. The #33 reviewer was resumed and reported. Its findings were posted at 16:14, with Claude's checks.
+- 16:41 CI green on #32. The merge verdict script said PENDING, with the review and the build log for Claude to judge. Claude judged both and said MERGE. #32 marked ready. 16:45 #32 merged by the owner (`68f92eb`).
+- Between 16:41 and 16:46 (exact time not recorded) Owner decision: fix the four #33 findings Claude listed:
+  - separate outcomes for items caught before a call and for no usable answer
+  - fairer wording for SYN-9003 and SYN-9004
+  - refuse an uncommitted injection file and `--limit`
+  - stronger tests
+- 16:46 Official audit of the v1 development run, by Claude on main: `uv run --native-tls voc audit dev --prompt v1`. It calls no model.
+  - Re-verified 361 of 361 accepted labels.
+  - 361 word for word at the stored position.
+  - Re-derived 9 of 9 quarantined decisions. 0 rows had no recorded answer.
+  - 370 of 370 rows checked against the committed list.
+  - It matches the 13:10 dry run. The counts are in `results/audit/v1_dev.json`, so the dashboard can show them (A6).
