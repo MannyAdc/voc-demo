@@ -360,3 +360,71 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - "63 calls were replayed" comes from the labelling run's summary, `results/labels/v1_dev.json` (`calls_by_source`, 307 live and 63 replayed), logged at 08:18. It is not printed by `voc evaluate`.
   - "Cost per 1,000 ... LLM $0.2332" is the cost if every answer had been live: $0.0862902 for 370 complaints. This run itself paid $0.0718306.
   - "Verdict: inconclusive" is the development verdict, a tuning figure. It is not the claim's verdict, which comes only from the test run (B10).
+- 12:39 Audit red `3aa28dc` (1 test: the confusion matrices say what they count, from the review of #28). Green `b32d71a` at 12:48:
+  - The `voc audit` command.
+  - The confusion matrix note.
+  - B1 now describes the audit.
+  - B18 now says the confusion matrices are still given for the development set.
+- 12:42 CI green on #28. Claude's merge check by hand: MERGE. #28 marked ready. 12:44 #28 merged by the owner (`99ce0d8`).
+- Between 12:44 and 13:00 (exact times not recorded) Owner asked how far behind the schedule is. Claude:
+  - About 5 hours late at the Thursday 01:00 checkpoint. Caught up by 10:00. On time at 12:00.
+  - The `final` machinery (T019) is not built yet, and is not in the API estimate.
+  - About 11 hours of work are left from 13:00.
+  - Claude suggested cutting T021, T006b and T014c.
+- Same window: owner decision. Cut T014c and document it as a pending improvement (the human check of whether quotes support their labels). Keep T021, T006b and T015c. At about 13:00 (the owner's own time) the new target became everything by 23:59 on Thursday. The owner has created the Databricks account for T021.
+- Same window: FastAPI and uvicorn versions checked on PyPI, for the API: FastAPI 0.162.0 (uploaded 23 October 2026), uvicorn 0.54.0 (uploaded 25 September 2026). Claude will pin a FastAPI release at least two weeks old, as a supply-chain precaution.
+- 12:53 Main merged into `feat/quote-audit` (`4b3e488`).
+- 13:02 #29 opened as a draft. 13:05 reviewer findings posted on #29, with Claude's checks.
+  - The main finding: the audit reuses the labeller's own quote check, so it is a consistency check, not a second quote check. Claude's earlier wording ("a second check of the quote check") claimed too much.
+  - Gaps: only accepted rows were checked, so a flipped, deleted or duplicated row went unnoticed. A stopped run was not refused.
+- Between 13:05 and 13:10 (exact times not recorded) owner decisions:
+  - Parallel helpers for T015c and T006b, with the extra safeguard that they commit only in their own worktree and never push or open PRs.
+  - Fix #29 as Claude suggested.
+- 13:07 Parallel run started: two helper agents, one for T015c in `../voc-demo-ci` (branch `feat/scheduled-pipeline`) and one for T006b in `../voc-demo-verdict` (branch `feat/merge-verdict`). They do not edit this log. Claude logs their results.
+- About 13:08 AI error: a shell command to add the audit tests was blocked by the read guard, because the test code named the recordings folder. Claude added the tests with the Edit tool instead.
+- 13:08 #29 red `d0d70bf` (10 tests: every row re-derived, a stopped run refused, duplicated, missing and flipped rows, counts against the summary, an unparseable recording, texts over the cut, and counts only on every failure path). 2 of them passed at once and guard working code: the cut text and counts only. Green `3440aaf` at 13:24:
+  - Every row with a recorded answer is decided again, quarantined rows included, and must match.
+  - The file must hold every listed complaint once, and its counts must match the run summary.
+  - A stopped run is refused.
+  - B1, the docstring and the printout now say the audit is a consistency check. The word-for-word count is named as the independent part.
+  - `audit` is in B21's list of entry points. Known limits says the recordings stay outside the repo and carry no signature.
+- 13:10 Dry run of the new audit on the real development run: `../voc-demo-audit/.venv/Scripts/voc.exe audit dev --prompt v1`. Re-verified 361 of 361 accepted labels, 361 word for word. Re-derived 9 of 9 quarantined decisions. 0 rows without a recorded answer. 370 of 370 rows checked against the committed list.
+- 13:36 Correction of the entries above, which stay as written:
+  - The schedule figures in the window after 12:44 ("about 5 hours late", "caught up by 10:00", "about 11 hours of work are left") are Claude's estimates. They come from the checkpoint times in `tasks.md` and the commit times, not from a run.
+  - The PyPI facts came from `https://pypi.org/pypi/fastapi/0.162.0/json` and `https://pypi.org/pypi/uvicorn/0.54.0/json`.
+  - "12:39 Audit red `3aa28dc`" is the red commit for the confusion matrix note, not an audit test.
+  - The 11:52 entry "Work start: the quote audit" is wrong. 11:52 was when #28 was opened. The audit worktree was made after the owner's answer at about 11:55, so the audit work started at about 11:56.
+- Correction of the 13:07 entry, which stays as written: the time the two helpers started was not recorded. They started at about 13:07, after their worktrees were made. The T015c helper reports it started at 13:10.
+- 13:51 CI green on #29. Claude's merge check by hand: MERGE. #29 marked ready. 14:26 #29 merged by the owner (`41036f9`).
+- Parallel run, T006b (`/merge-verdict`), helper agent in `../voc-demo-verdict`:
+  - Red `38b993b` at 13:12 (68 tests). Green `0ee8792` at 13:32. The helper reports it started at about 12:50. That cannot be right, because its worktree was made at about 13:05, so the start is about 13:07.
+  - AI error (helper): one new red test had a wrong fixture. A fake commit ID shortened to the wrong 7 characters, so the assertion could never pass. The helper fixed it in the green commit, with the reason in the commit message.
+  - Claude read the diff before pushing. Every `gh` call is read-only, and the trial merge writes nothing to the work tree. #30 opened as a draft at about 13:48. Reviewer findings posted with Claude's checks.
+    - The reviewer found that a "No findings" first line could hide real findings, and that the trial merge ran the PR's tests with a key in the environment.
+    - Two of its claims were checked and found wrong: `pyproject.toml` sets `pythonpath = ["src"]`, so the merged tree's own code is tested, and the gate strips the git variables.
+  - Owner chose the real gaps. Fix round by the same helper, from 13:58 to 14:22: red `2556e15` (14 tests), green `b16f0b0`.
+    - The review check is always for Claude.
+    - The verdict is PENDING, with exit code 3, while anything needs judgement.
+    - The trial merge drops git variables, secrets and data folders, sets the mock backend, and refuses forks.
+    - Known limits gained two lines.
+  - The green commit removed two old tests and changed one. They checked behaviour the owner chose to remove. Their stronger replacements were committed red first. The gate refuses a tests-only commit that stops a passing test, so the change had to be in the green commit.
+- Parallel run, T015c (scheduled pipeline), helper agent in `../voc-demo-ci`:
+  - Red `77af908` at 13:12 (19 tests). Green `a7af188` at 13:32. The gate passed: 858 tests, 0 failures.
+  - AI error (helper): its first commit try also ran a git command that names the hooks setting. The Claude-side test gate blocked it.
+  - Claude read the workflow before pushing:
+    - no secrets, and `contents: read`
+    - no network for the `voc` steps
+    - the same pinned actions as `ci.yml`
+    - all 92 fixture rows have `SYN-` IDs.
+  - #31 opened as a draft at about 13:48. Reviewer findings posted with Claude's checks. Its main claim, that steps 2 to 4 might run on the real repo, was checked and found wrong: `cli.main` takes the current folder as its root, and each step changes into the work folder first.
+  - Owner chose the real gaps. Fix round by the same helper, from 13:58 to about 14:24: red `8f7b44f` (12 tests), green `da04061`. The gate passed: 867 tests, 0 failures.
+    - Every step name says "synthetic fixture".
+    - Each step runs through a tested script entry, and the prepare step has no network.
+    - The dbt copy skips local DuckDB and profile files.
+    - A failing dbt data test fails the run.
+    - A local run writes no ledger entry and no recording, and a test checks that.
+  - The green commit removed three old workflow tests, replaced by tests committed red first. It also fixed one wrong check in a new red test: the home folder exists, so the test now checks it stays empty.
+  - AI error (helper): a search command that named the home ledger folder was blocked by the read guard. Nothing was read.
+- Owner decisions on names: the `test_T006b_` prefix stays, because no B rule covers the tool. "Synthetic Bank" in the fixtures stays, because it is a made-up placeholder, like the existing dbt fixture's names.
+- Results API (#32): red `b6e3342` at 13:27 (31 tests), green `f7c9628` at 13:52. Draft opened at about 14:00. Reviewer findings posted at 14:11, with Claude's checks.
+- 14:29 Main merged into `feat/merge-verdict`.
