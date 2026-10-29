@@ -428,3 +428,24 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - Owner decisions on names: the `test_T006b_` prefix stays, because no B rule covers the tool. "Synthetic Bank" in the fixtures stays, because it is a made-up placeholder, like the existing dbt fixture's names.
 - Results API (#32): red `b6e3342` at 13:27 (31 tests), green `f7c9628` at 13:52. Draft opened at about 14:00. Reviewer findings posted at 14:11, with Claude's checks.
 - 14:29 Main merged into `feat/merge-verdict`.
+- 14:36 Main merged into `feat/results-api`. It had one conflict in `src/voc/cli.py`, because both branches added a command (`audit` and `serve`) in the same three places. Claude kept both, and the API, audit and evaluate tests passed on the result.
+- Between 14:37 and 14:47 (exact time not recorded) AI error: a Python heredoc that applied the #32 fixes broke on backslash escapes again. Python stopped on a syntax error before writing anything. Claude wrote the whole new `src/voc/api.py` with the Write tool instead.
+- #32 fixes, after the owner's OK:
+  - Red `cd92b0f` at 14:47: 13 new tests. They cover hostile text and wrong types in served fields, count keys and queue labels, the host check, write methods, the full policy header, a missing data file, the page's labels, axis note and cost note, and A6.
+  - Green `17bf2f0` at 15:03:
+    - Every served field is checked by type or against a fixed list.
+    - `/api/versions` serves named columns only.
+    - The API sets the "tuning figures" label itself.
+    - Only `127.0.0.1` and `localhost` are answered.
+    - Every development panel is tagged as a tuning figure, and the page says the precision axis starts at 50%. A point below it is drawn as a hollow ring.
+    - A missing value shows "n/a". The LLM cost says it is the cost if every answer was live. The page uses the last dev row.
+    - `voc audit` writes `results/audit/<version>_<set>.json` (A6).
+  - httpx was not added. The test client uses `httpx2`, which the Anthropic SDK already requires, and pinning it would mean a release only 8 days old.
+- 15:03 #30 merged by the owner (`cc98fd7`). Claude first ran the new merge verdict script on #30 itself: 4 checks PASS, review and build log FOR CLAUDE, verdict PENDING, exit code 3. Claude judged both items, said MERGE and marked #30 ready.
+- 15:23 #31 checked the same way: PENDING, then MERGE after Claude's judgement. Marked ready. 15:24 #31 merged by the owner (`13d736c`).
+- After the merge the owner started the scheduled workflow by hand on GitHub. Run #1 on `main` (`13d736c`) passed in 31 seconds. Source: the owner's screenshot of the Actions page.
+- About 15:45 Owner decision: the dbt test-set flag (B17) is built by a helper agent in parallel, in `../voc-demo-dbtflag`. Before deciding, the owner asked how the gap would look to a technical audience, and Claude gave the pros and cons. A dbt flag is a second layer, because the staged table still holds the test rows.
+- 15:50 #33 (injection set) opened as a draft, with a reviewer.
+- About 16:00 The owner's computer rebooted because VS Code crashed. Afterwards:
+  - The merge of main into `feat/results-api` had been cut off mid-commit. git no longer recorded it as a merge, but main's changes were still staged. Committing them would have recorded a plain commit instead of a merge. Claude checked that nothing else was staged, unstaged or untracked, discarded the half-done result with `git reset --hard HEAD`, and redid the merge (`8307b82` at 16:18).
+  - The dbt-flag helper had saved nothing, so it was restarted from the beginning. The #33 reviewer was resumed and reported. Its findings were posted at 16:14, with Claude's checks.
