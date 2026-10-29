@@ -19,6 +19,7 @@ from voc.data import SampleMismatch, build_samples, format_summary
 from voc.datafile import DataFileError, find_export, load_pins, sha256_of, verify
 from voc.dbt_run import DbtError
 from voc.env import settings
+from voc.evaluate import EvaluationError
 from voc.labels import load_labels
 from voc.load import DB_PATH, load_month
 from voc.profile import format_profile, profile
@@ -183,7 +184,14 @@ def _label(config, root, args):
         raise stopped
 
 
+def _evaluate(config, root, args):
+    from voc.evaluate import evaluate, format_evaluation
+
+    print(format_evaluation(evaluate(root, args.set, args.prompt, args.note), root))
+
+
 COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample, "label": _label,
+            "evaluate": _evaluate,
             ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt,
             ("ledger", "init"): _ledger_init, ("ledger", "raise"): _ledger_raise,
             ("ledger", "status"): _ledger_status, ("ledger", "release"): _ledger_release,
@@ -203,6 +211,11 @@ def main(argv=None, env=None, root=None):
     lb.add_argument("--limit", type=int, help="label only the first N complaints, in complaint ID order")
     lb.add_argument("--prompt", default="v1", help="the prompt version, from config/prompts")
     lb.add_argument("--replay", action="store_true", help="serve recorded answers only, never a live call")
+    ev = sub.add_parser("evaluate", help="score a finished development run against TF-IDF, printing figures only "
+                                         "(B10, B15, B21)")
+    ev.add_argument("set", choices=("dev",), help="the development set. The test set waits for the final run")
+    ev.add_argument("--prompt", default="v1", help="the prompt version whose run is scored")
+    ev.add_argument("--note", required=True, help="what changed in this version, for EVAL_VERSIONS.md")
     ld = sub.add_parser("load", help="load one pinned monthly export into the staged DuckDB table (B14)")
     ld.add_argument("month", choices=sorted(MONTHS), help="the month to load, as named in config/data_files.toml")
     dbt = sub.add_parser("dbt", help="run the dbt project, printing counts and check names only (B14, B21)")
@@ -227,7 +240,7 @@ def main(argv=None, env=None, root=None):
         command = (args.command, args.action) if args.command in ("ledger", "dbt") else args.command
         COMMANDS[command](config, root, args)
     except (DataFileError, BudgetError, DbtError, SampleMismatch, BackendError, RecordingMissing,
-            RecordingCorrupt, RunStopped) as err:
+            RecordingCorrupt, RunStopped, EvaluationError) as err:
         print(f"error: {err}")
         return 1
     # B21: the type only, never the message. The spec also asks for the row number and the

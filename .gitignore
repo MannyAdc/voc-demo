@@ -26,6 +26,8 @@ ledger.json
 !results/*.jsonl
 # Labelling results hold IDs, labels, quote positions and token counts, never complaint text
 !results/labels/*.csv
+# Evaluation results add the TF-IDF label and confidence, never complaint text
+!results/eval/*.csv
 !splits/**
 !config/**
 !tests/fixtures/**/*.jsonl
