@@ -85,7 +85,7 @@ Difference +0.6 points, from the unrounded figures (79.76% against 79.14%), 95% 
 - The July 2026 export holds 672,036 complaints. 10,002 of them (1.5 percent) have a narrative (`uv run --native-tls voc profile --write results/profile_july_2026.json`). `voc sample` removed 623 exact copies and 76 near-copies, so 9,303 remain ([docs/DATA.md](docs/DATA.md)).
 - Sample sizes come from Cochran's formula: 370 for development and 1,909 for the frozen test set. The remaining 7,024 train TF-IDF ([docs/DATA.md](docs/DATA.md)).
 - Loading is incremental and keyed on complaint ID, so loading the same file again adds nothing. dbt builds the models and runs the data tests.
-- A scheduled GitHub Actions workflow runs load, dbt build, label and evaluate every day on a committed synthetic fixture, with the mock backend. Its figures are synthetic, not a result.
+- A scheduled GitHub Actions workflow runs load, dbt build, label and evaluate every day on a committed synthetic fixture, with the mock backend. Its figures are synthetic, not a result. It is one job that runs these four steps in order after its setup steps, and any failing step or data test fails the run (`.github/workflows/scheduled.yml`). A full scheduler such as Airflow would be worth it with many pipelines that depend on each other, retries for each step, or backfills of past months. Airflow is not installed.
 
 ## How it works
 
