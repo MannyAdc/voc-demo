@@ -4,6 +4,7 @@ The staged table is built from the committed synthetic fixture (`SYN-` IDs).
 Bad rows are added to it while the test runs. dbt runs with usage stats off.
 No test touches real data.
 """
+import hashlib
 import importlib.util
 import json
 import os
@@ -41,8 +42,8 @@ def repo(tmp_path):
     shutil.copytree(REPO / "dbt", tmp_path / "dbt", ignore=shutil.ignore_patterns("target", "logs"))
     # Changed in the code commit of the dbt test-set flag (B17): `voc dbt` refuses without splits/test.csv,
     # so the fixture's own test list is copied too. It holds no ID from the fixture, so no count changes.
-    (tmp_path / "splits").mkdir()
-    shutil.copy(FIXTURE.parent / "splits" / "test.csv", tmp_path / "splits" / "test.csv")
+    # Changed in the review of #35: the whole fixture splits folder is copied, so its manifest comes too.
+    shutil.copytree(FIXTURE.parent / "splits", tmp_path / "splits")
     load_month(tmp_path / DB_PATH, FIXTURE, "july_2026", _labels())
     return tmp_path
 
@@ -279,12 +280,27 @@ TEST_IDS = ["SYN-3", "SYN-4"]
 MODELS = ("stg_complaints", "curated_complaints")
 
 
-def _write_test_list(repo, ids):
-    """Write a synthetic test list in the tmp project, in the format of splits/test.csv."""
+def _list_bytes(ids):
+    lines = ["complaint_id,content_hash", *(f"{cid},{'0' * 64}" for cid in ids)]
+    return ("\n".join(lines) + "\n").encode("utf-8")
+
+
+def _write_list_bytes(repo, data, manifest_data=None, count=None):
+    """Write splits/test.csv as these bytes, and a manifest with the hash of `manifest_data` (default: the same)."""
     folder = repo / "splits"
     folder.mkdir(exist_ok=True)
-    lines = ["complaint_id,content_hash", *(f"{cid},{'0' * 64}" for cid in ids)]
-    (folder / "test.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (folder / "test.csv").write_bytes(data)
+    digest = hashlib.sha256(data if manifest_data is None else manifest_data).hexdigest()
+    if count is None:
+        count = max(len(data.decode("utf-8").splitlines()) - 1, 0)
+    manifest = {"lists": {"test": {"count": count, "sha256": digest}}}
+    (folder / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+def _write_test_list(repo, ids):
+    """Write a synthetic test list in the tmp project, in the format of splits/test.csv, and its manifest."""
+    # Changed in the review of #35: a matching manifest is written too, because `voc dbt` checks the hash.
+    _write_list_bytes(repo, _list_bytes(ids))
 
 
 def _ids(repo, model):
@@ -403,21 +419,95 @@ def test_B17_the_fixture_build_script_uses_the_fixture_test_list(tmp_path, capfd
     assert ids and all(cid.startswith("SYN-") for cid in ids)
 
 
+# Review of #35: `voc dbt` checks splits/test.csv against its hash in splits/manifest.json, so an empty,
+# header-only, malformed or swapped list never quietly leaves out nothing.
+
+
+def _refused(repo, capfd, message):
+    for action in ("build", "docs"):
+        assert cli.main(["dbt", action], env={}, root=repo) != 0, action
+        out = capfd.readouterr().out
+        assert out.startswith("error: ") and message in out, action
+    assert not _tables(repo) & set(MODELS)
+    assert not (repo / "data" / "dbt" / "target").exists()
+
+
+@pytest.mark.parametrize("data", [b"", b"complaint_id,content_hash\n"], ids=["empty", "header_only"])
+def test_B17_an_empty_or_header_only_test_list_stops_the_dbt_wrapper_even_with_a_matching_manifest(
+        repo, capfd, data):
+    _write_list_bytes(repo, data)
+    _refused(repo, capfd, "splits/test.csv holds no test IDs")
+
+
+@pytest.mark.parametrize("data", [b"", b"complaint_id,content_hash\n", _list_bytes(["SYN-3"])],
+                         ids=["empty", "header_only", "swapped"])
+def test_B17_a_test_list_that_does_not_match_its_manifest_stops_the_dbt_wrapper(repo, capfd, data):
+    _write_list_bytes(repo, data, manifest_data=_list_bytes(TEST_IDS))
+    _refused(repo, capfd, "splits/test.csv does not match its hash in splits/manifest.json")
+
+
+@pytest.mark.parametrize("data", [b"complaint_id,content_hash\nSYN-3\n", b"id,hash\nSYN-3,00\n",
+                                  b"complaint_id,content_hash\nSYN-3,00,extra\n", b"complaint_id,content_hash\n,00\n"],
+                         ids=["short_row", "wrong_header", "long_row", "no_id"])
+def test_B17_a_malformed_test_list_stops_the_dbt_wrapper_even_with_a_matching_manifest(repo, capfd, data):
+    _write_list_bytes(repo, data, count=1)
+    _refused(repo, capfd, "splits/test.csv is not a valid test list")
+
+
+def test_B17_a_test_list_whose_count_differs_from_the_manifest_stops_the_dbt_wrapper(repo, capfd):
+    _write_list_bytes(repo, _list_bytes(TEST_IDS), count=3)
+    _refused(repo, capfd, "splits/test.csv does not match its count in splits/manifest.json")
+
+
+@pytest.mark.parametrize("manifest", [None, "not json", json.dumps({"lists": {}})], ids=["missing", "bad", "no_test"])
+def test_B17_a_missing_or_broken_manifest_stops_the_dbt_wrapper(repo, capfd, manifest):
+    _write_test_list(repo, TEST_IDS)
+    path = repo / "splits" / "manifest.json"
+    if manifest is None:
+        path.unlink()
+    else:
+        path.write_text(manifest, encoding="utf-8")
+    _refused(repo, capfd, "splits/manifest.json")
+
+
+@pytest.mark.parametrize("root", [REPO, REPO / "tests" / "fixtures" / "dbt", REPO / "tests" / "fixtures" / "pipeline"],
+                         ids=["repo", "dbt_fixture", "pipeline_fixture"])
+def test_B17_each_committed_test_list_passes_the_dbt_wrapper_check(root):
+    from voc.dbt_run import check_test_list
+
+    manifest = json.loads((root / "splits" / "manifest.json").read_text(encoding="utf-8"))
+    assert check_test_list(root) == manifest["lists"]["test"]["count"] > 0
+
+
+def test_B17_the_fixture_build_script_copies_the_fixture_manifest(tmp_path, capfd):
+    spec = importlib.util.spec_from_file_location("dbt_fixture_build", REPO / "scripts" / "dbt_fixture_build.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.main([str(FIXTURE), str(tmp_path / "work")]) == 0
+    committed = FIXTURE.parent / "splits" / "manifest.json"
+    assert (tmp_path / "work" / "splits" / "manifest.json").read_bytes() == committed.read_bytes()
+
+
 # Nothing in the repo turns the flag on. Only a person running dbt by hand can.
 
 TURNED_ON = re.compile(r"""\bfinal\b["']?\s*[:=]\s*["']?(true|yes|on|1)\b""", re.IGNORECASE)
 LAUNCHER = Path("src") / "voc" / "dbt_run.py"
 
 
+SKIPPED_PARTS = {"target", "logs", "__pycache__"}
+
+
 def _repo_files(*folders):
     for folder in folders:
         for path in sorted((REPO / folder).rglob("*")):
-            if path.is_file() and "target" not in path.parts and "logs" not in path.parts:
+            if path.is_file() and not SKIPPED_PARTS & set(path.parts) and path.suffix != ".pyc":
                 yield path
 
 
 def test_B17_no_file_that_runs_dbt_turns_the_flag_on():
-    files = [*_repo_files("dbt", "scripts", "config", ".github"), REPO / LAUNCHER, REPO / "pyproject.toml"]
+    # Widened in the review of #35: all of src/ and .claude/ (hooks, settings and skills) are scanned too.
+    files = [*_repo_files("dbt", "scripts", "config", ".github", "src", ".claude"), REPO / "pyproject.toml"]
+    assert REPO / LAUNCHER in files and REPO / ".claude" / "settings.json" in files
     for path in files:
         text = path.read_text(encoding="utf-8", errors="replace")
         assert not TURNED_ON.search(text), path.relative_to(REPO).as_posix()
