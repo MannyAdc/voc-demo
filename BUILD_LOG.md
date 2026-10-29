@@ -336,3 +336,15 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - A Known limits entry: a fake key printed by a failing test stays in that folder.
   - CLAUDE.md now says only the last run is kept, and names `VOC_GATE_LOG_DIR`.
 - About 11:05 (exact time not recorded) While writing the #26 fix, a shell edit failed with the same quoting slip as the one between 09:46 and 09:55, inside a Python heredoc. A check in the script stopped it before anything was written. Claude then used the Edit tool.
+- 11:39 CI green on #27 and #26, on their latest commits. Claude's merge check by hand: MERGE for both. Both marked ready. Merge #27 first.
+- 11:43 Work: #27 merged by the owner (`82cfde9`). 11:44 #26 merged (`c3222f7`).
+- 11:44 First official evaluation, by Claude on main: `uv run --native-tls voc evaluate dev --prompt v1 --note "first version"`. It calls no model. These are tuning figures:
+  - 370 complaints.
+  - LLM: re-weighted strict accuracy 79.8%, precision 81.7%, coverage 97.6%, quarantined 2.4%, macro-F1 0.772.
+  - TF-IDF at the same coverage: re-weighted strict accuracy 79.1%, precision 81.2%, macro-F1 0.694.
+  - Difference +0.6 points, 95% interval -3.1 to +4.7 points (2,000 resamples, seed 0). Verdict: inconclusive.
+  - Who was right: both 259, only the LLM 36, only TF-IDF 34, neither 41.
+  - Quarantined: 7 `quote_not_in_text` (TF-IDF right on 6), 2 `unparseable` (TF-IDF right on 2).
+  - Cost per 1,000 complaints in the run: LLM $0.2332, TF-IDF $0. LLM time per 1,000 not measured, because 63 calls were replayed. TF-IDF 0.239 seconds per 1,000, labelling only.
+  - The figures match the 09:40 dry run. TF-IDF's time differs (0.407 then), as a time measurement does.
+  - The row is the first in `EVAL_VERSIONS.md`. Results in `results/eval/v1_dev.csv` and `.json`.
