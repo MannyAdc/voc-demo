@@ -16,10 +16,10 @@ A small read-only web app. The API serves the committed results files, and one p
 
 ## Rules
 
-- **A1. Read only, committed files only.** The API reads only committed files: `EVAL_VERSIONS.md`, `results/eval/`, `results/labels/` (the run summaries), `results/audit/`, `config/pool.toml` and `splits/manifest.json`. It has GET routes only. It writes nothing.
-- **A2. No complaint text.** Every response holds IDs, labels, reasons, positions, counts and figures only, as in B21. The API copies only named fields from each file, never a whole row or file, so a field added later is not served by accident. Tests check every route on synthetic files that hold hostile text in a field the API must not serve.
+- **A1. Read only, committed files only.** The API reads only committed files: `EVAL_VERSIONS.md`, `results/eval/`, `results/labels/` (the run summaries), `results/audit/`, `config/pool.toml`, `config/labels.toml` and `splits/manifest.json`. It has GET routes only. It writes nothing.
+- **A2. No complaint text.** Every response holds IDs, labels, reasons, positions, counts and figures only, as in B21. The API copies only named fields from each file, never a whole row or file, so a field added later is not served by accident. Each named field is checked too: a number must be a number, a name such as a verdict or a reason must be one of a fixed list, a label must be in the label list, and a complaint ID must look like one. A field that fails its check is served as empty. Tests check every route on synthetic files that hold hostile text or the wrong kind of value, both in fields the API must not serve and in fields it does serve. *Field checks added after the review of #32.*
 - **A3. Names are checked.** A prompt version in a path must match `v` followed by digits, and its file must exist. Anything else is a 404 with a short message. No path is built from unchecked input.
-- **A4. Local by default.** `voc serve` listens on 127.0.0.1 only. It sends a Content-Security-Policy that allows scripts, styles and data only from the app itself. The page loads nothing from outside.
+- **A4. Local by default.** `voc serve` listens on 127.0.0.1 only. It answers only requests addressed to `127.0.0.1` or `localhost`, so a page on another site cannot reach it through DNS rebinding. It sends a Content-Security-Policy that allows scripts, styles and data only from the app itself. The one exception is an empty `data:` icon, so the browser asks for no icon file. The page loads nothing from outside. *Host check and icon note added after the review of #32.*
 - **A5. The routes.**
   - `/api/health`
   - `/api/versions`: the rows of `EVAL_VERSIONS.md`.

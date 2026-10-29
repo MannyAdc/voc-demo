@@ -50,6 +50,7 @@ svg .zero { stroke: var(--muted); stroke-dasharray: 3 3; }
 svg .tf { stroke: var(--tf); fill: none; stroke-width: 2; }
 svg .tfdot { fill: var(--tf); }
 svg .llm { fill: var(--llm); }
+svg .clip { fill: none; stroke: var(--warn); stroke-width: 1.5; }
 svg .ci { stroke: var(--llm); stroke-width: 3; }
 .legend { font-size: .8rem; color: var(--muted); }
 .key { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; vertical-align: middle; }

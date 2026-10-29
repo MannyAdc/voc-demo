@@ -41,15 +41,15 @@
       <div>
         <h3>Precision against coverage</h3>
         <svg id="curve" viewBox="0 0 320 200" role="img" aria-label="TF-IDF precision at each coverage, and the LLM point"></svg>
-        <p class="legend"><span class="key tf"></span>TF-IDF <span class="key llm"></span>LLM</p>
+        <p class="legend"><span class="key tf"></span>TF-IDF <span class="key llm"></span>LLM. The precision axis starts at 50%. A point below it is drawn on the axis as a hollow ring.</p>
       </div>
     </div>
   </section>
 
   <section class="card" aria-labelledby="speed">
-    <h2 id="speed">Speed</h2>
+    <h2 id="speed">Speed <span class="tag">tuning figure</span></h2>
     <dl class="stats">
-      <div><dt>LLM cost per 1,000 complaints</dt><dd id="llm-cost"></dd></div>
+      <div><dt>LLM cost per 1,000 complaints, if every answer was live</dt><dd id="llm-cost"></dd></div>
       <div><dt>TF-IDF cost per 1,000</dt><dd id="tf-cost"></dd></div>
       <div><dt>LLM time per 1,000</dt><dd id="llm-time"></dd></div>
       <div><dt>TF-IDF time per 1,000 (labelling only)</dt><dd id="tf-time"></dd></div>
@@ -59,7 +59,7 @@
   </section>
 
   <section class="card" aria-labelledby="safety">
-    <h2 id="safety">Safety</h2>
+    <h2 id="safety">Safety <span class="tag">tuning figure</span></h2>
     <dl class="stats">
       <div><dt>Accepted, with a checked quote</dt><dd id="accepted"></dd></div>
       <div><dt>Quarantined</dt><dd id="quarantined"></dd></div>
@@ -82,7 +82,7 @@
   </section>
 
   <section class="card wide" aria-labelledby="queue-h">
-    <h2 id="queue-h">Quarantine queue</h2>
+    <h2 id="queue-h">Quarantine queue <span class="tag">tuning figure</span></h2>
     <p class="note">The LLM labels that the quote check did not accept, with the reason, the label the LLM proposed and the TF-IDF label. No complaint text is shown.</p>
     <div class="scroll"><table class="queue" aria-label="Quarantined complaints">
       <thead><tr><th>Complaint</th><th>Reason</th><th>LLM proposed</th><th>TF-IDF</th></tr></thead>

@@ -12,6 +12,7 @@ function put(id, text, missing) {
 }
 function pct(x) { return typeof x === "number" ? (x * 100).toFixed(1) + "%" : "n/a"; }
 function num(x) { return typeof x === "number" ? x.toLocaleString("en-AU") : "n/a"; }
+function dec(x) { return typeof x === "number" ? x.toFixed(3) : "n/a"; }
 function svgEl(name, attrs) {
   const el = document.createElementNS(SVG, name);
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
@@ -32,7 +33,7 @@ function headToHead(f) {
   put("llm-acc", pct(f.llm.reweighted_accuracy)); put("tf-acc", pct(f.tfidf.reweighted_accuracy));
   put("llm-prec", pct(f.llm.precision)); put("tf-prec", pct(f.tfidf.precision));
   put("llm-cov", pct(f.llm.coverage)); put("tf-cov", pct(f.tfidf.coverage));
-  put("llm-f1", (f.llm.macro_f1 ?? 0).toFixed(3)); put("tf-f1", (f.tfidf.macro_f1 ?? 0).toFixed(3));
+  put("llm-f1", dec(f.llm.macro_f1)); put("tf-f1", dec(f.tfidf.macro_f1));
   const [low, high] = f.interval;
   put("verdict", "Development verdict: " + (f.verdict || "none") + ". " + f.complaints + " complaints, "
       + f.resamples + " paired bootstrap resamples.");
@@ -76,9 +77,11 @@ function drawInterval(diff, low, high) {
 
 function drawCurve(pc) {
   const svg = $("curve");
-  // The precision axis starts at 50 percent, and says so, so the two methods can be told apart.
+  // The precision axis starts at 50 percent, so the two methods can be told apart. The legend says so.
+  // A point below the axis is drawn on it as a hollow ring, never as if it were at 50 percent.
   const floor = 0.5;
   const x = (c) => 34 + c * 276, y = (p) => 180 - ((Math.max(p, floor) - floor) / (1 - floor)) * 165;
+  const dot = (c, p, r, cls) => svgEl("circle", { cx: x(c), cy: y(p), r, class: p < floor ? "clip" : cls });
   svg.appendChild(svgEl("line", { x1: 34, y1: 180, x2: 310, y2: 180, class: "axis" }));
   svg.appendChild(svgEl("line", { x1: 34, y1: 15, x2: 34, y2: 180, class: "axis" }));
   for (const v of [0, 0.5, 1]) label(svg, x(v), 194, pct(v));
@@ -86,10 +89,10 @@ function drawCurve(pc) {
   const points = (pc.tfidf || []).filter((p) => p[0] !== null && p[1] !== null);
   if (points.length) {
     svg.appendChild(svgEl("polyline", { points: points.map((p) => x(p[0]) + "," + y(p[1])).join(" "), class: "tf" }));
-    for (const p of points) svg.appendChild(svgEl("circle", { cx: x(p[0]), cy: y(p[1]), r: 2.5, class: "tfdot" }));
+    for (const p of points) svg.appendChild(dot(p[0], p[1], 2.5, "tfdot"));
   }
-  if (pc.llm && pc.llm.length === 2) {
-    svg.appendChild(svgEl("circle", { cx: x(pc.llm[0]), cy: y(pc.llm[1]), r: 6, class: "llm" }));
+  if (pc.llm && pc.llm.length === 2 && pc.llm[0] !== null && pc.llm[1] !== null) {
+    svg.appendChild(dot(pc.llm[0], pc.llm[1], 6, "llm"));
   }
   label(svg, 172, 12, "coverage across, precision up");
 }
@@ -144,7 +147,8 @@ function versionsTable(rows) {
 async function main() {
   const versions = (await get("/api/versions")) || [];
   versionsTable(versions);
-  const latest = versions.length ? versions[versions.length - 1].Prompt : "v1";
+  const dev = versions.filter((r) => r.Set === "dev");
+  const latest = dev.length ? dev[dev.length - 1].Prompt : "v1";
   const [figures, run, audit, queue, data] = await Promise.all([
     get("/api/eval/" + latest), get("/api/run/" + latest), get("/api/audit/" + latest),
     get("/api/eval/" + latest + "/quarantine"), get("/api/data")]);
