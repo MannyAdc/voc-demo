@@ -174,11 +174,12 @@ def ran(tmp_path_factory):
     folder = tmp_path_factory.mktemp("scheduled")
     work, data = folder / "work", folder / "data"
     eval_versions = (REPO / "EVAL_VERSIONS.md").read_bytes()
-    out = io.StringIO()
-    with pytest.MonkeyPatch.context() as mp, contextlib.redirect_stdout(out):
+    out, err = io.StringIO(), io.StringIO()
+    with (pytest.MonkeyPatch.context() as mp, contextlib.redirect_stdout(out), contextlib.redirect_stderr(err)):
         mp.setattr(Path, "home", staticmethod(lambda: folder / "home"))
         code = _script("pipeline_project").run(work, data)
-    return {"code": code, "out": out.getvalue(), "work": work,
+    return {"code": code, "out": out.getvalue(), "err": err.getvalue(), "work": work,
+            "home_untouched": not (folder / "home").exists(),
             "repo_eval_unchanged": (REPO / "EVAL_VERSIONS.md").read_bytes() == eval_versions}
 
 
@@ -217,11 +218,101 @@ def test_B17_the_scheduled_run_never_labels_or_scores_a_test_complaint(ran):
     assert sorted(p.name for p in (work / "results" / "labels").iterdir()) == ["v1_dev.csv", "v1_dev.json"]
 
 
-def test_B21_the_scheduled_run_prints_no_complaint_text(ran):
+def _texts():
     narratives = [n for n in _column(FIXTURE / EXPORT, "Consumer complaint narrative") if n]
     quotes = [q for q in _column(FIXTURE / "answers.csv", "quote") if q]
     assert narratives and quotes
-    assert not any(text in ran["out"] for text in narratives + quotes)
+    return narratives + quotes
+
+
+def test_B21_the_scheduled_run_prints_no_complaint_text(ran):
+    texts = _texts()
+    assert not any(text in ran["out"] for text in texts)
+    assert not any(text in ran["err"] for text in texts)
+
+
+def test_B21_the_run_says_synthetic_fixture_not_a_real_result_before_the_evaluate_figures(ran):
+    out = ran["out"]
+    assert "synthetic fixture, not a real result" in out.splitlines()
+    assert out.index("step 4 of 4") < out.index("synthetic fixture, not a real result")
+    assert out.index("synthetic fixture, not a real result") < out.index("evaluated prompt v1 on dev")
+
+
+def test_B8_a_local_run_writes_no_ledger_entry_and_no_recording(ran):
+    # The ledger and the recordings live under the home folder. The mock path never makes either.
+    assert ran["code"] == 0 and ran["home_untouched"]
+
+
+# The step entry the workflow calls
+
+
+def test_B14_each_step_entry_gives_the_command_environment_and_root_the_workflow_relies_on(tmp_path):
+    pipeline = _script("pipeline_project")
+    work, data = tmp_path / "work", tmp_path / "data"
+    assert list(pipeline.STEPS) == ["load", "dbt", "label", "evaluate"]
+    for name, command in pipeline.STEPS.items():
+        argv, env, root = pipeline.step_call(name, work, data)
+        assert argv == list(command) and root == work
+        assert env == {"LLM_BACKEND": "mock", "VOC_DATA_DIR": str(data),
+                       "VOC_MOCK_FIXTURES": str(work / "mock" / "answers.json")}
+    assert pipeline.STEPS["load"] == ("load", "july_2026")
+    assert pipeline.STEPS["dbt"] == ("dbt", "build")
+    assert pipeline.STEPS["label"][:2] == ("label", "dev")
+    assert pipeline.STEPS["evaluate"][:2] == ("evaluate", "dev")
+
+
+def test_B14_the_step_entry_refuses_an_unknown_step(tmp_path, capsys):
+    assert _script("pipeline_project").main(["step", "sample", str(tmp_path / "w"), str(tmp_path / "d")]) == 2
+    assert "usage" in capsys.readouterr().out
+
+
+def test_B14_the_four_step_entries_in_order_pass_on_the_fixture(tmp_path, capfd):
+    pipeline = _script("pipeline_project")
+    work, data = str(tmp_path / "work"), str(tmp_path / "data")
+    assert pipeline.main(["prepare", work, data]) == 0
+    for name in ("load", "dbt", "label", "evaluate"):
+        assert pipeline.main(["step", name, work, data]) == 0, name
+    out, err = capfd.readouterr()
+    assert "loaded july_2026:" in out and "failed 0, errors 0" in out and "labelled dev:" in out
+    assert out.index("synthetic fixture, not a real result") < out.index("evaluated prompt v1 on dev")
+    texts = _texts()
+    assert not any(text in out for text in texts)
+    assert not any(text in err for text in texts)
+    assert not (tmp_path / "home").exists()
+
+
+def test_B14_a_failing_dbt_data_test_fails_the_dbt_step(tmp_path, capfd):
+    from voc.db import connect
+    from voc.load import DB_PATH, TABLE
+
+    pipeline = _script("pipeline_project")
+    work, data = tmp_path / "work", tmp_path / "data"
+    assert pipeline.main(["prepare", str(work), str(data)]) == 0
+    assert pipeline.main(["step", "load", str(work), str(data)]) == 0
+    # A repeated complaint ID that skips the load checks, so only the dbt data test can catch it.
+    con = connect(work / DB_PATH)
+    try:
+        con.execute(f"INSERT INTO {TABLE} (date_received, product, narrative, complaint_id, source) "
+                    "VALUES (DATE '2026-07-09', 'Mortgage', 'SYN repeated row.', 'SYN-1', 'july_2026')")
+    finally:
+        con.close()
+    capfd.readouterr()
+    assert pipeline.main(["step", "dbt", str(work), str(data)]) == 1
+    assert "failed: test source_unique_voc_staged_complaints_complaint_id" in capfd.readouterr().out
+
+
+def test_B14_the_dbt_copy_skips_database_files_and_writes_its_own_profile(tmp_path):
+    repo = tmp_path / "repo"
+    shutil.copytree(REPO / "config", repo / "config")
+    shutil.copytree(REPO / "dbt", repo / "dbt", ignore=shutil.ignore_patterns("target", "logs"))
+    for name in ("SYN.duckdb", "SYN.duckdb.wal"):
+        (repo / "dbt" / name).write_bytes(b"SYN")
+    (repo / "dbt" / "profiles.yml").write_text("SYN: a local profile that must not be copied\n", encoding="utf-8")
+    work = tmp_path / "work"
+    _script("pipeline_project").prepare(work, tmp_path / "data", repo=repo)
+    assert not list((work / "dbt").rglob("*.duckdb*"))
+    profile = yaml.safe_load((work / "dbt" / "profiles.yml").read_text(encoding="utf-8"))
+    assert profile == yaml.safe_load((REPO / "dbt" / "profiles.yml").read_text(encoding="utf-8"))
 
 
 # The workflow
@@ -278,3 +369,55 @@ def test_B17_the_workflow_never_takes_the_test_set_path_or_passes_the_owner_word
         assert "test" not in args and word not in command.lower()
         if name in ("label", "evaluate"):
             assert args[0] == "dev"
+
+
+# The workflow calls the tested entry for every step (review of pull request #31)
+
+WORK_AND_DATA = '"$3" "$4"'
+PATHS = '"$RUNNER_TEMP/pipeline/work" "$RUNNER_TEMP/pipeline/data"'
+
+
+def _entry_runs():
+    return [s["run"] for s in _steps() if "scripts/pipeline_project.py" in s.get("run", "")]
+
+
+def test_B21_every_workflow_step_name_says_synthetic_fixture():
+    workflow = _workflow()
+    assert "synthetic fixture" in workflow["name"].lower()
+    names = [s["name"] for s in _steps()]
+    assert names and all("synthetic fixture" in name.lower() for name in names)
+
+
+def test_B14_the_workflow_prepares_then_calls_each_step_entry_in_order():
+    pipeline = _script("pipeline_project")
+    runs = _entry_runs()
+    called = [run.split("scripts/pipeline_project.py ", 1)[1].split()[:2] for run in runs]
+    assert called == [["prepare", WORK_AND_DATA.split()[0]]] + [["step", name] for name in pipeline.STEPS]
+    for run in runs:
+        assert run.split("scripts/pipeline_project.py ", 1)[1].splitlines()[0].rstrip().endswith(WORK_AND_DATA)
+        assert run.rstrip().endswith(PATHS)
+    names = [s["name"] for s in _steps() if "scripts/pipeline_project.py step " in s.get("run", "")]
+    assert len(set(names)) == len(names) == len(pipeline.STEPS)
+
+
+def test_B7_the_workflow_runs_prepare_and_every_step_with_no_network():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert "-m voc.cli" not in text and "voc.cli" not in text
+    runs = _entry_runs()
+    assert len(runs) == 5 and all("unshare --net" in run for run in runs)
+
+
+def test_B12_the_workflow_holds_no_secret_and_no_key_and_reads_only():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert "secrets" not in text and "${{" not in text
+    assert "anthropic" not in text.lower() and "LLM_BACKEND=api" not in text
+    assert _workflow()["permissions"] == {"contents": "read"}
+
+
+def test_B17_the_step_entries_never_take_the_test_set_path_or_the_owner_word():
+    word = "fin" + "al"
+    assert word not in WORKFLOW.read_text(encoding="utf-8").lower()
+    for name, command in _script("pipeline_project").STEPS.items():
+        assert "test" not in command and not any(word in part.lower() for part in command)
+        if name in ("label", "evaluate"):
+            assert command[1] == "dev"
