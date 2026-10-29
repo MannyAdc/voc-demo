@@ -31,6 +31,7 @@ The guards in this spec (hooks, checks, logs, the spend stop) are built to stop 
 - The read guard checks path-like fields and command text. A path built at run time inside a script (for example joined from parts in Python) is not seen.
 - The data guard does not check for complaint text copied into notes or docs (cut on 28 October, cut list item 4). The read guard keeps Claude from reading that text in the first place.
 - A server error or rate limit that lasts is retried, so up to 9 reservations are charged before 3 failed complaints stop the run. A failed call is charged its full reservation, even when the API billed nothing.
+- The test gate keeps the full pytest output of its last run in the system temp folder, one folder per checkout. A failing test can print a fake key it built, and that stays there until the next run. No scan covers that folder.
 - `voc sample` records the pinned file's SHA-256 in `splits/manifest.json`, but it does not check that the staged rows came from that file. `voc load` checks the file against its pin before loading, and the staged table does not keep the file's hash.
 - No CI check yet stops `splits/` from changing compared with `main`. `voc sample` refuses to run while any list file is there, but a deleted folder can be rebuilt. With the same code and seed, the rebuilt lists are the same.
 
