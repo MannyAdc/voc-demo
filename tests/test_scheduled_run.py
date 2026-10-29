@@ -218,6 +218,24 @@ def test_B17_the_scheduled_run_never_labels_or_scores_a_test_complaint(ran):
     assert sorted(p.name for p in (work / "results" / "labels").iterdir()) == ["v1_dev.csv", "v1_dev.json"]
 
 
+def test_B17_the_scheduled_dbt_step_leaves_the_test_rows_out_of_the_models(ran):
+    from voc.db import connect
+    from voc.load import DB_PATH, TABLE
+
+    test = _split_ids(FIXTURE / "splits", "test")
+    con = connect(ran["work"] / DB_PATH)
+    try:
+        staged = {cid for (cid,) in con.execute(f"SELECT complaint_id FROM {TABLE}").fetchall()}
+        assert test & staged
+        for model in ("stg_complaints", "curated_complaints"):
+            ids = {cid for (cid,) in con.execute(f"SELECT complaint_id FROM {model}").fetchall()}
+            assert ids and not ids & test, model
+        built = con.execute("SELECT count(*) FROM stg_complaints").fetchone()[0]
+        assert built == len(staged - test)
+    finally:
+        con.close()
+
+
 def _texts():
     narratives = [n for n in _column(FIXTURE / EXPORT, "Consumer complaint narrative") if n]
     quotes = [q for q in _column(FIXTURE / "answers.csv", "quote") if q]

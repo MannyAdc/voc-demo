@@ -5,8 +5,12 @@ Bad rows are added to it while the test runs. dbt runs with usage stats off.
 No test touches real data.
 """
 import importlib.util
+import json
 import os
+import re
 import shutil
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -262,3 +266,174 @@ def test_B14_the_readme_says_what_the_incremental_load_does_not_cover():
     assert "late or corrected records" in readme
     assert "column" in readme and "incremental" in readme
     assert "lineage graph" in readme and "local paths" in readme
+
+
+# The test set is left out of the dbt models unless the `final` variable is on (B17)
+
+# SYN-3 has a narrative and SYN-4 has none, so both models lose a row.
+TEST_IDS = ["SYN-3", "SYN-4"]
+MODELS = ("stg_complaints", "curated_complaints")
+
+
+def _write_test_list(repo, ids):
+    """Write a synthetic test list in the tmp project, in the format of splits/test.csv."""
+    folder = repo / "splits"
+    folder.mkdir(exist_ok=True)
+    lines = ["complaint_id,content_hash", *(f"{cid},{'0' * 64}" for cid in ids)]
+    (folder / "test.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _ids(repo, model):
+    return {cid for (cid,) in _sql(repo, f"SELECT complaint_id FROM {model}")}
+
+
+def _tables(repo):
+    return {name for (name,) in _sql(repo, "SELECT table_name FROM information_schema.tables")}
+
+
+def _dbt_by_hand(repo, variables):
+    """Run dbt the way a person would by hand, from the dbt folder, with the given variables."""
+    project = repo / "dbt"
+    env = dbt_env(os.environ)
+    env["VOC_DBT_DB"] = str(repo / DB_PATH)
+    args = [sys.executable, "-c", "from dbt.cli.main import cli; cli()", "build",
+            "--project-dir", str(project), "--profiles-dir", str(project),
+            "--target-path", str(repo / "data" / "hand" / "target"), "--log-path", str(repo / "data" / "hand" / "logs"),
+            "--vars", json.dumps({"labels": _labels(), **variables})]
+    return subprocess.run(args, env=env, cwd=project, stdin=subprocess.DEVNULL,
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
+
+
+def test_B17_dbt_models_leave_out_the_test_rows_by_default(repo, capfd):
+    _write_test_list(repo, TEST_IDS)
+    assert _build(repo) == 0
+    for model in MODELS:
+        assert not _ids(repo, model) & set(TEST_IDS), model
+    assert _sql(repo, f"SELECT count(*) FROM {MODEL}") == [(10,)]
+    assert _sql(repo, "SELECT count(*) FROM curated_complaints") == [(6,)]
+    assert f"{MODEL}: 10 rows" in capfd.readouterr().out
+
+
+def test_B17_the_dbt_project_turns_the_flag_off_by_default():
+    project = yaml.safe_load((REPO / "dbt" / "dbt_project.yml").read_text(encoding="utf-8"))
+    assert project["vars"]["final"] is False
+
+
+def test_B17_the_dbt_wrapper_leaves_out_the_test_rows_even_if_the_project_turns_the_flag_on(repo):
+    path = repo / "dbt" / "dbt_project.yml"
+    project = yaml.safe_load(path.read_text(encoding="utf-8"))
+    project.setdefault("vars", {})["final"] = True
+    path.write_text(yaml.safe_dump(project), encoding="utf-8")
+    _write_test_list(repo, TEST_IDS)
+    assert _build(repo) == 0
+    for model in MODELS:
+        assert not _ids(repo, model) & set(TEST_IDS), model
+
+
+def test_B17_only_a_hand_run_with_the_flag_on_keeps_the_test_rows(repo):
+    _write_test_list(repo, TEST_IDS)
+    assert _dbt_by_hand(repo, {"final": True}) == 0
+    assert set(TEST_IDS) <= _ids(repo, MODEL)
+    assert set(TEST_IDS) & _ids(repo, "curated_complaints") == {"SYN-3"}
+
+
+@pytest.mark.parametrize("variables", [{}, {"final": False}, {"final": "true"}, {"final": 1}])
+def test_B17_a_hand_run_without_a_real_true_leaves_out_the_test_rows(repo, variables):
+    _write_test_list(repo, TEST_IDS)
+    assert _dbt_by_hand(repo, variables) == 0
+    for model in MODELS:
+        assert not _ids(repo, model) & set(TEST_IDS), model
+
+
+def test_B17_test_rows_left_in_the_incremental_model_by_a_hand_run_are_removed_by_the_next_build(repo, capfd):
+    # The staged model is incremental, so a row built once stays unless something removes it.
+    _write_test_list(repo, TEST_IDS)
+    assert _dbt_by_hand(repo, {"final": True}) == 0
+    assert set(TEST_IDS) <= _ids(repo, MODEL)
+    assert _build(repo) == 0
+    for model in MODELS:
+        assert not _ids(repo, model) & set(TEST_IDS), model
+    assert f"{MODEL}: 10 rows" in capfd.readouterr().out
+
+
+def test_B17_a_model_that_keeps_test_rows_fails_the_dbt_data_test(repo, capfd):
+    # A model that forgets the filter must fail the build, not pass quietly.
+    (repo / "dbt" / "models" / f"{MODEL}.sql").write_text(
+        "{{ config(materialized='table') }}\nselect * from {{ source('voc', 'staged_complaints') }}\n",
+        encoding="utf-8")
+    _write_test_list(repo, TEST_IDS)
+    assert _build(repo) != 0
+    assert "failed: test no_test_set_rows" in capfd.readouterr().out
+
+
+def test_B17_a_missing_test_list_stops_the_dbt_wrapper_before_dbt_runs(repo, capfd):
+    (repo / "splits" / "test.csv").unlink(missing_ok=True)
+    for action in ("build", "docs"):
+        assert cli.main(["dbt", action], env={}, root=repo) != 0, action
+        out = capfd.readouterr().out
+        assert out.startswith("error: ") and "splits/test.csv is missing" in out
+    assert not _tables(repo) & set(MODELS)
+    assert not (repo / "data" / "dbt" / "target").exists()
+
+
+def test_B17_a_missing_test_list_fails_a_hand_run_too(repo):
+    (repo / "splits" / "test.csv").unlink(missing_ok=True)
+    assert _dbt_by_hand(repo, {}) != 0
+    assert MODEL not in _tables(repo)
+
+
+def test_B17_an_empty_test_list_leaves_out_nothing(repo, capfd):
+    _write_test_list(repo, [])
+    assert _build(repo) == 0
+    assert f"{MODEL}: 12 rows" in capfd.readouterr().out
+
+
+def test_B17_the_fixture_build_script_uses_the_fixture_test_list(tmp_path, capfd):
+    spec = importlib.util.spec_from_file_location("dbt_fixture_build", REPO / "scripts" / "dbt_fixture_build.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.main([str(FIXTURE), str(tmp_path / "work")]) == 0
+    committed = FIXTURE.parent / "splits" / "test.csv"
+    assert (tmp_path / "work" / "splits" / "test.csv").read_bytes() == committed.read_bytes()
+    ids = [line.split(",")[0] for line in committed.read_text(encoding="utf-8").splitlines()[1:]]
+    assert ids and all(cid.startswith("SYN-") for cid in ids)
+
+
+# Nothing in the repo turns the flag on. Only a person running dbt by hand can.
+
+TURNED_ON = re.compile(r"""\bfinal\b["']?\s*[:=]\s*["']?(true|yes|on|1)\b""", re.IGNORECASE)
+LAUNCHER = Path("src") / "voc" / "dbt_run.py"
+
+
+def _repo_files(*folders):
+    for folder in folders:
+        for path in sorted((REPO / folder).rglob("*")):
+            if path.is_file() and "target" not in path.parts and "logs" not in path.parts:
+                yield path
+
+
+def test_B17_no_file_that_runs_dbt_turns_the_flag_on():
+    files = [*_repo_files("dbt", "scripts", "config", ".github"), REPO / LAUNCHER, REPO / "pyproject.toml"]
+    for path in files:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        assert not TURNED_ON.search(text), path.relative_to(REPO).as_posix()
+
+
+def test_B17_only_the_wrapper_starts_dbt_or_passes_dbt_variables():
+    for path in _repo_files("src", "scripts", ".github"):
+        if path.suffix not in (".py", ".yml", ".yaml", ".sh", ".toml") or path == REPO / LAUNCHER:
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        name = path.relative_to(REPO).as_posix()
+        assert "--vars" not in text and "dbt.cli" not in text, name
+        if path.suffix in (".yml", ".yaml") and path.parent.name == "workflows":
+            # A workflow step that calls the dbt command line itself, not through `voc dbt`.
+            workflow = yaml.safe_load(text)
+            runs = [step.get("run", "") for job in workflow["jobs"].values() for step in job["steps"]]
+            for run in runs:
+                assert not re.search(r"(^|[\s;&|])dbt\s+(build|run|test|seed|compile|docs|retry)\b", run), name
+
+
+def test_B17_the_dbt_wrapper_passes_the_flag_off():
+    text = (REPO / LAUNCHER).read_text(encoding="utf-8")
+    assert '"final": False' in text
