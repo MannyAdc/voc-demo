@@ -461,3 +461,14 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - Re-derived 9 of 9 quarantined decisions. 0 rows had no recorded answer.
   - 370 of 370 rows checked against the committed list.
   - It matches the 13:10 dry run. The counts are in `results/audit/v1_dev.json`, so the dashboard can show them (A6).
+- 17:10 AI note: a `git add` in the T019 worktree failed with "Permission denied" on an object file in the shared object store. Nothing was staged. A retry a few minutes later worked. Several worktrees were running git and the test gate at the same time, so the most likely cause is another process holding the file. The intermittent `git init` and `git add` failures (exit 128) seen in the injection test fixture at about 16:55 may have the same cause. That fixture now prints git's own message, so the next one shows why.
+- 17:30 #34 opened as a draft, with a reviewer. Its findings were posted at 17:32, with Claude's checks. #35 (the dbt flag) opened at the same time. Its findings were posted at 17:34.
+- About 17:36 Owner decisions:
+  - #34: a correcting entry, below.
+  - #35: the helper fixes the four real gaps (a hash check of `splits/test.csv`, honest B17 and README wording, a Known limits line, a wider scan test).
+- 17:38 Correction of the 16:46 entry, which stays as written:
+  - The audit is a consistency check, not a second quote check (B1). It decides each complaint again from its recorded answer, with the labeller's own steps, and checks that the results file says the same.
+  - So "re-verified 361 of 361 accepted labels" means the 361 accepted decisions were re-derived and matched. It does not mean the labels are correct.
+  - The one independent part is the plain character comparison at the stored position: 361 of 361.
+  - The command wrote `results/audit/v1_dev.json` itself.
+  - In the line before, read "(exact time not recorded): owner decision".
