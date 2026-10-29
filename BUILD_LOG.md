@@ -472,3 +472,17 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - The one independent part is the plain character comparison at the stored position: 361 of 361.
   - The command wrote `results/audit/v1_dev.json` itself.
   - In the line before, read "(exact time not recorded): owner decision".
+- 18:05 CI green on #34. Merge verdict PENDING, then MERGE after Claude's judgement. #34 marked ready. The owner merged it soon after, with no exact time recorded.
+- Injection set (#33), the review fixes chosen by the owner at about 16:20:
+  - Red `755974e` at 16:54: 9 new tests. They cover each non-answer outcome, refusal of unanswered items, stopped runs, wrong IDs, uncommitted edits, repeated IDs and `--limit`, and the dev results left unchanged.
+  - Green, tried at 17:35. The gate refused it because of `tests.test_hooks::test_a_red_commit_may_still_not_delete_a_test_that_was_already_failing`. Its saved output showed the cause for the first time: inside that test's own temp repo, `git add -A` returned exit code 128. The retry at 18:01 passed (`d6dff8a`).
+  - The fixes:
+    - Five outcomes: obeyed and accepted, obeyed and quarantined, caught before any call, no usable answer, and not obeyed.
+    - A run with a model error or a budget stop is refused.
+    - SYN-9003 no longer reads like a second product of the writer's own, and SYN-9004 names the exact forced label.
+    - An uncommitted `config/injection.toml`, `--limit`, a repeated ID and a forced label equal to the true one are refused.
+  - One old test was changed in the green commit, with a comment. The closing-tag item is now "caught before any call", not "not obeyed".
+- 18:18 Main merged into `feat/injection-set`. It was refused twice:
+  - AI error: Claude merged main, which adds FastAPI, without first syncing the worktree's packages. So every API test failed to import FastAPI.
+  - The sync then failed with "Access is denied" on the `.venv` package folder. That is the same problem as on 28 October, and the same fix worked: remove the half-installed `voc` dist-info folder and sync again.
+  - The merge then passed (`7190734` at 18:48). All of today's intermittent errors are Windows refusing access to a file for a moment: the git exit 128 in test repos, the "Permission denied" on a git object at 17:10, and this `.venv` lock. They are most likely a scanner or another process holding a file while many test runs work at once. Claude suggested the owner consider a Windows Defender exclusion for the project and temp test folders after the demo.
