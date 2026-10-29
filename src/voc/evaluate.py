@@ -6,6 +6,7 @@ development complaint. Both methods are then scored by `voc.metrics`. Everything
 figures, labels, reasons and IDs, never text (B21). The test set is never read here (B17).
 """
 import csv
+import hashlib
 import io
 import json
 import statistics
@@ -64,7 +65,14 @@ def _run(root, set_name, version):
     summary = json.loads(path.read_text(encoding="utf-8"))
     if summary.get("stopped"):
         raise EvaluationError(f"{path.name} records a run that stopped early. A stopped run is not scored (B7)")
-    rows = list(csv.DictReader(io.StringIO((folder / f"{version}_{set_name}.csv").read_text(encoding="utf-8"))))
+    results = folder / f"{version}_{set_name}.csv"
+    if not results.exists():
+        raise EvaluationError(f"{results.name} is missing, so the run cannot be scored")
+    rows = list(csv.DictReader(io.StringIO(results.read_text(encoding="utf-8"))))
+    versions = {summary.get("prompt_version")} | {r["prompt_version"] for r in rows}
+    if versions != {version}:
+        raise EvaluationError(f"the run files hold prompt version {', '.join(sorted(map(str, versions)))}, "
+                              f"not {version}")
     return summary, rows
 
 
@@ -92,9 +100,11 @@ def _rows(db_path, splits_dir, month, name, ids):
 def pool_shares(path, dev_rows, train_rows, test_size):
     """Each Product's share of the pool (B18), from the committed counts, checked against the lists.
 
-    The test counts cannot be checked row by row without the final run (B17). Their total is checked against
-    the test list.
+    The test counts cannot be checked per category before the final run (B17). Only their total is checked
+    against the test list, so counts moved between categories would go unnoticed.
     """
+    if not Path(path).exists():
+        raise EvaluationError("config/pool.toml is missing, so the pool shares are unknown (B18)")
     with open(path, "rb") as f:
         products = tomllib.load(f)["products"]
     seen = {}
@@ -141,8 +151,9 @@ def evaluate(root, set_name, version, note):
     train_rows = _rows(root / DB_PATH, splits_dir, manifest["month"], "train", set(lists["train"]))
     shares = pool_shares(root / "config" / "pool.toml", dev_rows, train_rows, len(lists["test"]))
 
+    tfidf_path = root / "config" / "tfidf.toml"
     model = fit_tfidf([(r.complaint_id, "train", r.narrative, r.product) for r in train_rows],
-                      load_tfidf_config(root / "config" / "tfidf.toml"))
+                      load_tfidf_config(tfidf_path))
     started = time.monotonic()
     predictions = predict_tfidf(model, [r.narrative for r in dev_rows])
     tfidf_seconds = time.monotonic() - started
@@ -155,6 +166,8 @@ def evaluate(root, set_name, version, note):
                                   result["reason"] or None, tfidf_label, confidence,
                                   llm_proposed=result["proposed_label"] or None))
     labels = [label.name for label in load_labels(root / "config" / "labels.toml")]
+    if not any(item.accepted for item in items):
+        raise EvaluationError("the LLM accepted nothing in this run, so there is nothing to compare (B10)")
     compared = metrics.compare(items, shares, resamples=RESAMPLES, seed=SEED)
     curve, llm_point = metrics.precision_coverage(items, COVERAGE_POINTS)
     n = len(items)
@@ -174,9 +187,9 @@ def evaluate(root, set_name, version, note):
         "tfidf": {"reweighted_accuracy": compared["tfidf_reweighted"], "precision": compared["tfidf_precision"],
                   "coverage": compared["coverage"], "macro_f1": metrics.prf(items, "tfidf", labels)["macro_f1"],
                   "cost_per_1000_usd": "0",
+                  "settings_sha256": hashlib.sha256(tfidf_path.read_bytes()).hexdigest(),
                   "seconds_per_1000_complaints": round(metrics.per_thousand(tfidf_seconds, n), 3)},
-        "per_product": {"llm": metrics.prf(items, "llm", labels), "tfidf": metrics.prf(items, "tfidf", labels),
-                        "note": "development figures are not reported per category (docs/DATA.md, decision 2)"},
+        "per_category": "not reported for the development set (docs/DATA.md, decision 2)",
         "confusion": {method: sorted([p, q, c] for (p, q), c in metrics.confusion(items, method).items())
                       for method in ("llm", "tfidf")},
         "who_was_right": metrics.who_was_right(items),
@@ -202,7 +215,8 @@ def _results_csv(rows, predictions, dev_rows):
     writer.writeheader()
     for r in sorted(rows, key=lambda r: _id_number(r["complaint_id"])):
         label, confidence = tfidf[r["complaint_id"]]
-        writer.writerow({**r, "tfidf_label": label, "tfidf_confidence": f"{confidence:.6f}"})
+        # The exact value, so a recompute from this file breaks ties the same way (B19).
+        writer.writerow({**r, "tfidf_label": label, "tfidf_confidence": repr(confidence)})
     return out.getvalue()
 
 
@@ -222,7 +236,8 @@ def _append_row(path, f):
     low, high = f["interval"]
     q = f["quote_length"]
     cells = [datetime.now().strftime("%Y-%m-%d %H:%M"), f["prompt_version"], f["note"], f["set"],
-             f["list_sha256"][:12], f["backend"], f["model"], str(f["settings"].get("effort")), str(f["complaints"]),
+             f["list_sha256"], f["backend"], f["model"], str(f["settings"].get("effort") or "n/a"),
+             str(f["complaints"]),
              _percent(f["llm"]["reweighted_accuracy"]), _percent(f["llm"]["coverage"]),
              _percent(f["llm"]["quarantine_rate"]), _percent(f["tfidf"]["reweighted_accuracy"]),
              _percent(f["tfidf"]["coverage"]), _percent(1 - f["tfidf"]["coverage"]),
@@ -251,9 +266,11 @@ def format_evaluation(f, root):
              "who was right: " + ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in f["who_was_right"].items())]
     lines += [f"  quarantined as {reason}: {q['count']}, TF-IDF right on {q['tfidf_right']}"
               for reason, q in f["review_queue"].items()]
-    lines.append(f"cost per 1,000 complaints: LLM {_money(llm['cost_per_1000_usd'])}, TF-IDF $0 (no API call)")
+    lines.append(f"cost per 1,000 complaints in the run: LLM {_money(llm['cost_per_1000_usd'])}, "
+                 "TF-IDF $0 (no API call)")
     llm_time = (f"{llm['seconds_per_1000_complaints']} seconds" if llm["seconds_per_1000_complaints"] is not None
                 else f"not measured, because {llm['no_time_per_1000_because']}")
-    lines.append(f"time per 1,000 complaints: LLM {llm_time}, TF-IDF {tfidf['seconds_per_1000_complaints']} seconds")
+    lines.append(f"time per 1,000 complaints: LLM {llm_time}, TF-IDF {tfidf['seconds_per_1000_complaints']} "
+                 "seconds (labelling only, training left out)")
     lines.append(f"results: results/eval/{f['prompt_version']}_{f['set']}.csv, row added to {VERSIONS_FILE}")
     return "\n".join(lines)
