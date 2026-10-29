@@ -459,3 +459,11 @@ def test_B10_a_run_with_complaints_not_run_for_the_budget_gets_no_verdict(repo, 
     assert _evaluate(repo) == 0
     assert _summary(repo)["verdict"] is None
     assert "verdict: none" in capsys.readouterr().out
+
+
+def test_B23_the_confusion_matrices_say_what_they_count(repo):
+    # Review of #28: the TF-IDF matrix covers every complaint, not the matched coverage of the headline figures.
+    _labelled(repo)
+    assert _evaluate(repo) == 0
+    note = _summary(repo)["confusion"]["note"]
+    assert "every complaint" in note and "quarantined" in note
