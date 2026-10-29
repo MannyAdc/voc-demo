@@ -98,7 +98,7 @@ Difference +0.6 points, from the unrounded figures (79.76% against 79.14%), 95% 
 7. `voc final --prompt v1`, run once by the owner, commits its log row before any call, then labels and scores the test set.
 8. `voc serve` shows the committed results on a local dashboard at 127.0.0.1, with no complaint text.
 
-**The same models on Databricks (T021).** `voc dbt build --target databricks` runs the dbt models on a Databricks SQL warehouse, on synthetic data only. `scripts/databricks_fixture_build.py` loads the committed synthetic fixture with the same load code, writes it as a dbt seed in a work folder, and runs the build. The command refuses unless every seeded complaint ID starts with `SYN-`. Two DuckDB-only parts have a Databricks branch: the test list is a seed, not a local file, and the text check uses `rlike`. The incremental model uses `merge` there. The connection comes from environment variables, and the adapter is pinned in its own dependency group (`dbt-databricks==1.13.0`), so a normal install does not need it. The first live run is pending.
+**The same models on Databricks (T021).** `voc dbt build --target databricks` runs the dbt models on a Databricks SQL warehouse, on synthetic data only. `scripts/databricks_fixture_build.py` loads the committed synthetic fixture with the same load code, writes it as a dbt seed in a work folder, and runs the build. The command refuses unless every complaint ID in both seeds starts with `SYN-`. Four DuckDB-only parts have a Databricks branch: the staged rows come from the seed, the test list is a seed, not a local file, the text check uses `rlike`, and the incremental model uses `merge`. The connection comes from environment variables. The adapter is pinned in its own dependency group (`dbt-databricks==1.13.0`), so a normal install does not get it. The lock file is shared, though, so adding it moved four packages of the normal install down: dbt-common, packaging, pydantic and pydantic-core. The first live run is pending.
 
 ## Run it yourself
 
@@ -172,6 +172,7 @@ These come from the threat model in the [spec](specs/001-core-labelling-pipeline
 - The trial merge runs a pull request's tests on this machine. So it is for this repo's own pull requests only, and it refuses a pull request from a fork.
 - The Databricks target checks the seed's complaint IDs, not its text. A synthetic ID with real complaint text copied into the seed would pass. The seed is written by the fixture script from the committed synthetic fixture, and the repo has no seed folder.
 - A hand run of dbt with the Databricks profile skips the wrapper's seed check.
+- The seed check trusts the work folder's `dbt_project.yml`. A hand edit of its seed path would point dbt at seeds the check never read.
 - The Databricks run uses the owner's Free Edition workspace, which is for non-commercial use only. Its token is the owner's, kept encrypted on the owner's machine, and never in the repo.
 
 ## How it was built

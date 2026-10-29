@@ -635,3 +635,19 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - The green change, at about 08:50:
   - `dbt-databricks==1.13.0` in its own dependency group, `databricks`. A normal `uv sync` and CI do not install it. But the lock file is shared, so three packages that the normal install also uses moved down: dbt-common 1.39.0 to 1.38.0, packaging 26.3 to 25.0, and pydantic 2.14.1 to 2.12.5. The full suite passes on the result. This is for the owner to decide.
   - Before the commit, Claude parsed the project with the Databricks target and a fake connection, in a scratch folder. dbt opened no connection. The seeds are on, the staged source is off, and both models depend on the seeds. The parse output went to a file and was not printed.
+- 09:04 Reviewer findings posted on #43, with Claude's checks (time from GitHub). No path for real complaint text or the token to reach Databricks, output or the repo was found. CI was green on `0bc3f97`, with the normal install, which settles whether the suite passes without the Databricks group.
+- Between 09:04 and 09:18 (exact time not recorded) Owner decision: make the fixes first, then the live run. The fixes:
+  - The test list seed's IDs are checked for `SYN-` too. Before, only the staged seed's were, though the README, spec and docstring said "every seeded complaint ID".
+  - `.gitignore` no longer un-ignores `dbt/seeds/*.csv`, so a seed cannot be committed by accident. A seed in the staged format has no CFPB header row, so the raw data checks would not catch it.
+  - New tests: a test list seed with an ID that is not synthetic, a staged seed with no rows, a wrong header or bad bytes, the catalog passed through and other `DATABRICKS_` variables dropped, the script's `main()`, and git ignoring a seed file. 2 of the 7 failed at first. The other 5 pass at once and guard code that was not tested before.
+  - A Known limits line: the seed check trusts the work folder's `dbt_project.yml`.
+  - The comment on `merge` no longer says Databricks has no `delete+insert`, which was not checked.
+  - The README names all four DuckDB-only parts, not two, and says the shared lock moved packages of the normal install.
+- Red `47cf139` at 09:18. The gate passed it with no carried-over failures.
+- 09:38 Correction of the entries above, which stay as written:
+  - Four packages of the normal install moved down, not three. pydantic-core also moved, from 2.50.1 to 2.41.5. AI error: Claude listed the moves by reading the diff for three versions it had noticed. The reviewer caught the fourth.
+  - "The green change, at about 08:50": commit `0bc3f97` is stamped 08:47.
+  - The parse of the Databricks target ran from the scratch work folder's `dbt` folder, with a fake host, HTTP path and token in the environment: `python -c "from dbt.cli.main import cli; cli()" parse --profiles-dir databricks --target databricks` plus the target path, the log path and `--vars '{"labels": [], "final": false}'`.
+- About 09:55 The first try of the green commit was refused by the gate: `test_B14_git_ignores_any_seed_file_so_a_seed_cannot_be_committed_by_accident` failed with git exit code 128.
+  - AI error: the test ran `git check-ignore` in the repo folder. The gate runs the tests on a copy of the staged files, which is not a git checkout. The gate caught it.
+  - The test now checks a copy of `.gitignore` in a new temp repo. It passes with the new `.gitignore` and fails with the old one, checked by hand before the retry. It is changed in this green commit, with a comment.

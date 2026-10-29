@@ -20,9 +20,9 @@ __pycache__/
 /recordings/
 ledger.json
 
-# Small synthetic fixtures and dbt seeds are committed (synthetic IDs start with SYN-)
+# Small synthetic fixtures are committed (synthetic IDs start with SYN-).
+# dbt seeds are never committed: the Databricks seeds are written into a work folder only (T021).
 !tests/fixtures/**/*.csv
-!dbt/seeds/*.csv
 !results/*.jsonl
 # Labelling results hold IDs, labels, quote positions and token counts, never complaint text
 !results/labels/*.csv

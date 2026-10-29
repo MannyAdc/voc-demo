@@ -63,8 +63,8 @@ def dbt_env(base):
 def check_seeds(root):
     """T021: the Databricks target gets synthetic rows only. Raises before dbt starts if not.
 
-    The seed folder must hold exactly the two seeds. Every complaint ID in the staged seed starts
-    with SYN-, and the test list seed is a byte copy of splits/test.csv, already checked (B17).
+    The seed folder must hold exactly the two seeds. The test list seed is a byte copy of
+    splits/test.csv, already checked (B17). Every complaint ID in both seeds starts with SYN-.
     The messages name files, never IDs or values.
     """
     folder = Path(root) / SEEDS
@@ -85,6 +85,11 @@ def check_seeds(root):
         raise DbtError(f"{STAGED_SEED} holds a complaint ID that is not synthetic (SYN-), {stop}")
     if (folder / TEST_SEED).read_bytes() != (Path(root) / TEST_LIST).read_bytes():
         raise DbtError(f"{TEST_SEED} is not a byte copy of {TEST_LIST.as_posix()}, {stop}")
+    # Added in the review of #43: the test list seed holds IDs too, so they must be synthetic as well.
+    # check_test_list has already read it as UTF-8 with a complaint_id column first.
+    test_rows = list(csv.reader(io.StringIO((folder / TEST_SEED).read_text(encoding="utf-8"))))[1:]
+    if any(not row[0].startswith("SYN-") for row in test_rows):
+        raise DbtError(f"{TEST_SEED} holds a complaint ID that is not synthetic (SYN-), {stop}")
 
 
 def databricks_env(base):

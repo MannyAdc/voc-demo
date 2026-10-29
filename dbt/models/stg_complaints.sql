@@ -4,8 +4,8 @@
 -- table fails the build (`on_schema_change='fail'`). Both gaps are in the README.
 -- B17: the test rows are left out unless the `final` variable is on (macros/test_set.sql).
 -- The post-hook deletes test rows that an earlier run with the flag on left in the table.
--- T021: on Databricks the rows come from the synthetic seed, and the strategy is merge,
--- because Databricks has no delete+insert (macros/targets.sql).
+-- T021: on Databricks the rows come from the synthetic seed (macros/targets.sql), and the strategy
+-- is merge, the standard one for Delta tables there.
 {{ config(materialized='incremental', unique_key='complaint_id',
           incremental_strategy=('merge' if target.type == 'databricks' else 'delete+insert'),
           on_schema_change='fail', post_hook="{{ remove_test_rows() }}") }}
