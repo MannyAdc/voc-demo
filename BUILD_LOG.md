@@ -348,3 +348,15 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - Cost per 1,000 complaints in the run: LLM $0.2332, TF-IDF $0. LLM time per 1,000 not measured, because 63 calls were replayed. TF-IDF 0.239 seconds per 1,000, labelling only.
   - The figures match the 09:40 dry run. TF-IDF's time differs (0.407 then), as a time measurement does.
   - The row is the first in `EVAL_VERSIONS.md`. Results in `results/eval/v1_dev.csv` and `.json`.
+- 11:52 Work start: the quote audit (`voc audit`), in a fourth worktree, `../voc-demo-audit` on branch `feat/quote-audit`. #28 opened as a draft. 11:55 reviewer findings posted on #28, with Claude's checks.
+- 11:55 Thursday 12:00 checkpoint. Owner chose:
+  - Prompt versions stop with v1, which goes to the final test run.
+  - The quote audit is built before the API.
+  - The carried-over failing test allowance stays. It was never used, and no reviewer found a weakened test.
+  - Cut list: the owner asked whether the analyser can be added later. Claude: yes, as one new command, because every answer is recorded and the design is in B21 and T018a. Claude suggested deferring only the analyser, as a stated next step, and keeping items 5 and 7.
+- 11:58 Dry run of the audit branch on the real development run: `../voc-demo-audit/.venv/Scripts/voc.exe audit dev --prompt v1`. It calls no model. Re-verified 361 of 361 accepted labels. All 361 quotes are word for word at the stored position.
+- 12:08 Audit red `e59bf4c` (9 tests) passed the gate (commit time 11:57). The owner went offline after 11:58 and was back by 12:33. The exact times were not recorded. The owner said "continue", taken as a yes to Claude's suggestions on the analyser and on #28.
+- 12:35 Correction of the 11:44 entry, which stays as written:
+  - "63 calls were replayed" comes from the labelling run's summary, `results/labels/v1_dev.json` (`calls_by_source`, 307 live and 63 replayed), logged at 08:18. It is not printed by `voc evaluate`.
+  - "Cost per 1,000 ... LLM $0.2332" is the cost if every answer had been live: $0.0862902 for 370 complaints. This run itself paid $0.0718306.
+  - "Verdict: inconclusive" is the development verdict, a tuning figure. It is not the claim's verdict, which comes only from the test run (B10).
