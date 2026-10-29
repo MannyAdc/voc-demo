@@ -40,7 +40,7 @@ def _comment(body, date):
 def _pr(number=101, **over):
     pr = {
         "number": number, "state": "OPEN", "isDraft": True, "mergeable": "MERGEABLE",
-        "baseRefName": "main", "headRefName": f"feat/syn-{number}", "headRefOid": f"{number:0>40}",
+        "baseRefName": "main", "headRefName": f"feat/syn-{number}", "headRefOid": f"{number:a<40}",
         "statusCheckRollup": [_run(n) for n in ("tests", "repo-checks", "secret-scan")] * 2,
         "commits": [
             _commit("1" * 40, ["tests/test_syn.py"], "2026-10-29T01:00:00Z"),
@@ -60,7 +60,7 @@ def _pr(number=101, **over):
 def test_T006b_ci_green_when_every_expected_check_succeeded(mv):
     check = mv.check_ci(_pr())
     assert check.status == mv.PASS
-    assert "0000101" in check.detail  # the short head commit
+    assert "101aaaa" in check.detail  # the short head commit
 
 
 def test_T006b_ci_fails_when_a_check_failed(mv):
