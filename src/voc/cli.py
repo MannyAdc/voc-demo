@@ -68,7 +68,7 @@ def _dbt(config, root, args):
     if args.action == "docs":
         print("\n".join(dbt_run.docs(root, labels)))
         return
-    lines, passed = dbt_run.build(root, labels)
+    lines, passed = dbt_run.build(root, labels, args.target)
     print("\n".join(lines))
     if not passed:
         raise DbtError("the dbt build failed, see the checks above")
@@ -295,7 +295,9 @@ def main(argv=None, env=None, root=None):
     ld.add_argument("month", choices=sorted(MONTHS), help="the month to load, as named in config/data_files.toml")
     dbt = sub.add_parser("dbt", help="run the dbt project, printing counts and check names only (B14, B21)")
     dbt_actions = dbt.add_subparsers(dest="action", required=True)
-    dbt_actions.add_parser("build", help="build the models and run the data tests")
+    db = dbt_actions.add_parser("build", help="build the models and run the data tests")
+    db.add_argument("--target", choices=dbt_run.TARGETS, default="local",
+                    help="local DuckDB, or Databricks on the synthetic seeds only (T021)")
     dbt_actions.add_parser("docs", help="write the dbt docs and lineage graph files to dbt/target")
     ledger = sub.add_parser("ledger", help="the token ledger (B8)").add_subparsers(dest="action", required=True)
     init = ledger.add_parser("init", help="create the ledger with the committed cap")

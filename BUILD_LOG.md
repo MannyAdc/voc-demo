@@ -614,3 +614,24 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - The long-context price does not apply. The largest prompt in these runs was 2,669 tokens (`token_pairs` in the labels results files), far below the 100,000 threshold.
   - AI error: Claude's comment on #42 said the hard bound was "under US$1 even at the output price". It is US$1.85. Claude caught it when working the numbers out and corrected it on #42.
   - AI error: `docs/HOW_WE_MEASURE.md` kept "about 385" and "about 2,400" after the real sizes, 370 and 1,909, were drawn on 28 October. Claude found it while writing T020b, and logged it at the reviewer's prompt.
+- 02:02 The owner merged #41, and 02:20 #42 (times from GitHub).
+- About 02:25 Claude read the sources for T021 (Databricks):
+  - Free Edition limits (docs.databricks.com, updated 18 October 2026): "Free Edition accounts are meant for non-commercial use." One SQL warehouse, 2X-Small, serverless only.
+  - The dbt Databricks setup page (docs.getdbt.com, updated 26 October 2026): host, HTTP path, schema, an optional catalog and a token. Personal access tokens are supported, but Databricks calls them legacy.
+  - PyPI: `dbt-databricks` 1.13.0 needs `dbt-core<1.12.7,>=1.11.2`, which fits the pin 1.12.6.
+  - Reading `dbt/` showed five DuckDB-only parts: `read_csv` for the test list, `regexp_matches`, the `delete+insert` strategy, the staged table written by `voc load`, and the wrapper's DuckDB row counts.
+  - Claude estimated 1.5 to 2 hours and recommended cutting T021 for a README note.
+- About 02:28 (exact time not recorded) Owner decision: past 12:00 is fine, keep Databricks.
+- About 02:30 Work start on T021, in the worktree `../voc-demo-dbx`, branch `feat/databricks-target`.
+- Between about 02:30 and 02:46 (exact times not recorded) The owner asked how to launch the demo, and whether it is on Azure. Claude's answer: it is not on any cloud. Azure is in the brief's cut order and was never a task. The dashboard runs locally with `uv run --native-tls voc serve`.
+- Between about 02:35 and 02:46 (exact times not recorded) The owner prepared Databricks:
+  - The catalog is `workspace`, from the owner's screenshot.
+  - The token was made with the "BI Tools" scope, for 7 days. Databricks' token page (updated 7 October 2026) says BI Tools is "for tools that connect to Databricks SQL warehouses". It does not name dbt.
+  - The owner stored the token encrypted with Windows DPAPI on their own machine. Claude never saw it.
+- Red `e8f62b0` at 02:34: 19 tests in `tests/test_databricks.py`. 17 failed. 2 passed at once and guard what must stay true: the local profile has only DuckDB targets, and the repo has no seed folder.
+  - The gate passed it with 4 carried-over failing tests in `tests/test_hooks.py`: `test_a_merge_commit_runs_the_same_gate`, `test_the_gate_output_folder_comes_from_the_environment`, `test_the_git_hook_blocks_a_failing_commit_and_allows_a_passing_one` and `test_the_git_hook_checks_commit_a_and_commit_with_a_path`.
+  - AI error: they failed because Claude's repair of this worktree's `.venv`, after an "Access is denied" error, left the `voc` package uninstalled. So the hook tests' own temp repos could not import `voc`, on the old tree and the new one alike. Claude found the cause from the test output and reinstalled the packages. The four pass again.
+- No work between about 02:50 and 08:45. The machine was most likely asleep. Not checked.
+- The green change, at about 08:50:
+  - `dbt-databricks==1.13.0` in its own dependency group, `databricks`. A normal `uv sync` and CI do not install it. But the lock file is shared, so three packages that the normal install also uses moved down: dbt-common 1.39.0 to 1.38.0, packaging 26.3 to 25.0, and pydantic 2.14.1 to 2.12.5. The full suite passes on the result. This is for the owner to decide.
+  - Before the commit, Claude parsed the project with the Databricks target and a fake connection, in a scratch folder. dbt opened no connection. The seeds are on, the staged source is off, and both models depend on the seeds. The parse output went to a file and was not printed.

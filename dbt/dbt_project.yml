@@ -17,3 +17,35 @@ vars:
   # B17: while this is false, the models leave out every complaint ID in splits/test.csv.
   # `voc dbt` always passes false. Only a person running dbt by hand can set it to true.
   final: false
+
+# T021: on the Databricks target, two synthetic seeds stand in for the staged DuckDB table and for
+# splits/test.csv. `scripts/databricks_fixture_build.py` writes them into a work folder, never into
+# this repo, and `voc dbt build --target databricks` refuses unless every complaint ID is SYN-.
+# They are off on the local DuckDB target.
+seeds:
+  voc:
+    +enabled: "{{ target.type == 'databricks' }}"
+    +quote_columns: false
+    staged_complaints:
+      +column_types:
+        date_received: date
+        date_sent_to_company: date
+        timely_response: boolean
+        complaint_id: string
+        source: string
+        product: string
+        sub_product: string
+        issue: string
+        sub_issue: string
+        narrative: string
+        company_public_response: string
+        company: string
+        state: string
+        zip_code: string
+        tags: string
+        submitted_via: string
+        company_response: string
+    test_list:
+      +column_types:
+        complaint_id: string
+        content_hash: string

@@ -4,6 +4,10 @@ sources:
   - name: voc
     description: Tables written by `voc load` (B14).
     schema: main
+    # T021: on Databricks the synthetic seed takes this table's place (macros/targets.sql).
+    # stg_complaints keeps its own complaint ID tests there.
+    config:
+      enabled: "{{ target.type != 'databricks' }}"
     tables:
       - name: staged_complaints
         description: One row per complaint ID, from the pinned monthly exports, typed and checked on load.

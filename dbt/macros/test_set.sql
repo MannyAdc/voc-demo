@@ -13,9 +13,15 @@
 {{ (project | replace('\\', '/')) ~ '/../splits/test.csv' }}
 {%- endmacro %}
 
+-- T021: Databricks cannot read a local file, so there the list is the `test_list` seed, a byte copy
+-- of splits/test.csv that `voc dbt build --target databricks` checks against the list before dbt starts.
 {% macro test_set_ids() -%}
+{%- if target.type == 'databricks' -%}
+(select complaint_id from {{ ref('test_list') }})
+{%- else -%}
 (select complaint_id from read_csv('{{ test_list_path() | replace("'", "''") }}', header = true,
     columns = {'complaint_id': 'VARCHAR', 'content_hash': 'VARCHAR'}))
+{%- endif -%}
 {%- endmacro %}
 
 {% macro leave_out_test_rows(column) -%}
