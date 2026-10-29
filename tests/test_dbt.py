@@ -402,10 +402,9 @@ def test_B17_a_missing_test_list_fails_a_hand_run_too(repo):
     assert MODEL not in _tables(repo)
 
 
-def test_B17_an_empty_test_list_leaves_out_nothing(repo, capfd):
-    _write_test_list(repo, [])
-    assert _build(repo) == 0
-    assert f"{MODEL}: 12 rows" in capfd.readouterr().out
+# Removed in the code commit of the review of #35: test_B17_an_empty_test_list_leaves_out_nothing.
+# `voc dbt` now refuses an empty or header-only list, even with a matching manifest. That is checked by
+# test_B17_an_empty_or_header_only_test_list_stops_the_dbt_wrapper_even_with_a_matching_manifest below.
 
 
 def test_B17_the_fixture_build_script_uses_the_fixture_test_list(tmp_path, capfd):

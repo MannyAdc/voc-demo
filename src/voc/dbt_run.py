@@ -6,6 +6,9 @@ DuckDB can echo raw rows in their messages. What is printed comes from
 row counts of our own models. Usage stats are off (B7), and credentials and
 proxy settings never reach the child process.
 """
+import csv
+import hashlib
+import io
 import json
 import os
 import subprocess
@@ -30,6 +33,7 @@ QUIET = {
 COMMANDS = {"build": ["build"], "docs": ["docs", "generate"]}
 # B17: the models read the test IDs from this list, next to the dbt folder (dbt/macros/test_set.sql).
 TEST_LIST = Path("splits") / "test.csv"
+MANIFEST = Path("splits") / "manifest.json"
 
 
 class DbtError(Exception):
@@ -44,11 +48,43 @@ def dbt_env(base):
     return env
 
 
+def check_test_list(root):
+    """B17: check splits/test.csv against its SHA-256 and count in splits/manifest.json. Returns the count.
+
+    The hash is of the file's bytes, as in voc.data. A missing, empty, header-only, malformed or swapped
+    list would make the models leave out the wrong rows or none, so each one stops dbt before it starts.
+    """
+    path = Path(root) / TEST_LIST
+    name, manifest_name = TEST_LIST.as_posix(), MANIFEST.as_posix()
+    stop = "(B17). dbt did not run"
+    if not path.is_file():
+        raise DbtError(f"{name} is missing, so the dbt models cannot leave out the test rows {stop}")
+    try:
+        expected = json.loads((Path(root) / MANIFEST).read_text(encoding="utf-8"))["lists"]["test"]
+        digest, count = expected["sha256"], expected["count"]
+    except (OSError, ValueError, KeyError, TypeError):
+        raise DbtError(f"{manifest_name} is missing or has no hash for the test list, so {name} cannot be "
+                       f"checked {stop}") from None
+    data = path.read_bytes()
+    if hashlib.sha256(data).hexdigest() != digest:
+        raise DbtError(f"{name} does not match its hash in {manifest_name} {stop}")
+    try:
+        rows = list(csv.reader(io.StringIO(data.decode("utf-8"))))
+    except (UnicodeDecodeError, csv.Error):
+        raise DbtError(f"{name} is not a valid test list {stop}") from None
+    if rows and (rows[0] != ["complaint_id", "content_hash"]
+                 or any(len(row) != 2 or not row[0].strip() for row in rows[1:])):
+        raise DbtError(f"{name} is not a valid test list {stop}")
+    if len(rows) <= 1:
+        raise DbtError(f"{name} holds no test IDs, so the dbt models would leave out nothing {stop}")
+    if len(rows) - 1 != count:
+        raise DbtError(f"{name} does not match its count in {manifest_name} {stop}")
+    return count
+
+
 def _run(root, action, labels):
-    # B17: without the test list the models cannot leave out the test rows, so dbt does not start.
-    if not (Path(root) / TEST_LIST).is_file():
-        raise DbtError(f"{TEST_LIST.as_posix()} is missing, so the dbt models cannot leave out the test rows "
-                       "(B17). dbt did not run")
+    # B17: without a checked test list the models cannot leave out the test rows, so dbt does not start.
+    check_test_list(root)
     project = (Path(root) / PROJECT).resolve()
     target = (Path(root) / TARGET).resolve()
     results = target / "run_results.json"

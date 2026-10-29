@@ -14,7 +14,7 @@ A Voice of the Customer pipeline on the public US CFPB Consumer Complaint Databa
 ## Loading a new month
 
 - `voc load july_2026` and then `voc load august_2026` put each pinned monthly file into one staged DuckDB table. `voc dbt build` then builds the models and runs the data tests.
-- The dbt models leave out the test set (B17). They read the test IDs from `splits/test.csv`. The dbt variable `final` turns this off, and `voc dbt` always passes it as false. The staged table under the models still holds the test rows.
+- The dbt models leave out the test set (B17). They read the test IDs from `splits/test.csv`. Setting the dbt variable `final` to true turns this off, and `voc dbt` always passes it as false. The staged table under the models still holds the test rows.
 - The load and the staged dbt model are incremental and keyed on complaint ID. A run adds only complaint IDs it has not seen, so loading the same file again adds nothing.
 - What this does not cover yet:
   - Late or corrected records. If a later file holds a complaint ID that is already loaded with changed values, the first row is kept and the change is ignored.
