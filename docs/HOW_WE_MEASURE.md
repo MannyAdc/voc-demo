@@ -34,7 +34,22 @@ We use two samples:
 - **Development set, about 385 complaints.** We use it to find mistakes and improve the LLM's instructions. About 5 points of precision is enough for that.
 - **Test set, about 2,400 complaints.** It is put aside at the start, used once at the very end, and never used for tuning. This gives a fair final score, accurate to about 2 points at most.
 
+These are the sizes before one correction. The pool holds only 9,303 complaints, and a sample that takes a large part of a small pool needs fewer complaints for the same precision. With that correction, the real sizes are 370 and 1,909 ([DATA.md](DATA.md), "Sample sizes").
+
 Both samples keep the same mix of categories as the whole data. If a category makes up 40 percent of all complaints, it makes up about 40 percent of each sample too. A category with fewer than 30 complaints in a sample is shown as "too few to judge", rather than given a shaky score.
+
+## Small categories: labelled, but not measured
+
+Classifying and measuring are two different things.
+
+- **Classifying** is what each method does to one complaint: it picks a category. Both methods do this for every complaint, in every category, however small. In the test run, the LLM accepted the label "prepaid card" 24 times and "debt or credit management" 15 times (`results/labels/v1_test.json`).
+- **Measuring** is how we find out how often those labels are right. That needs enough complaints of each category with a known answer. With 28 prepaid card complaints in the test set, each one is 3.6 percent of them, so one more right or wrong answer moves their accuracy by 3.6 points. So a score from so few would mostly show luck.
+
+So the small categories are labelled like all the others, and they count in the overall score. We just cannot say how good the labels are for each of them on its own.
+
+Could we take more of them into the test set? Only a little. The whole pool has 134 prepaid card and 91 debt or credit management complaints. Every one taken for testing is one fewer for TF-IDF to learn from, and TF-IDF learns only from examples. Taking most of them would make the contest unfair to TF-IDF in exactly these categories. The overall score would stay fair, because it is re-weighted by each category's share of the pool. But the per-category scores would still rest on fewer than 135 complaints each. [DATA.md](DATA.md) gives the numbers.
+
+A fair measurement of the small categories needs more data, for example several months of complaints, not a bigger slice of one month.
 
 ## How we decide who wins
 

@@ -148,6 +148,7 @@ Split across categories in proportion to the pool:
 
 - In the **test set**, two categories fall below 30: prepaid card (28) and debt or credit management (19). Their per-category scores are shown as "too few to judge". They still count in the overall score.
 - In the **development set**, 7 of 11 categories are below 30. The development set is used to find error patterns, not to score categories, so no per-category score is reported from it.
+- **Why they were not over-sampled.** The pool has only 134 prepaid card and 91 debt or credit management complaints. Proportional sampling leaves 101 and 68 of them to train TF-IDF. Each extra one taken for the test set comes out of that. Even taking every one would give fewer than 135 test complaints per category, so the scores would still be rough. The overall figure would not need over-sampling to stay fair, because it is re-weighted by pool shares (B10). So the small categories stay at their proportional share, and the honest answer is "too few to judge". [How we measure](HOW_WE_MEASURE.md) explains the difference between labelling a category and measuring it.
 
 ## Decisions (owner, 28 October)
 
