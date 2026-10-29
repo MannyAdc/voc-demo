@@ -309,3 +309,30 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - 10:13 Claude found a gap in the gate PR: the hook tests that call the gate directly still wrote to the real folder, and left a stale `head.txt`. A second red and green pair fixes it (the tests' `gate` fixture uses a temp folder, and each run clears the last run's files).
 - 10:23 That red commit was refused by a test new to the flaky list, `tests.test_budget::test_B8_a_failed_ledger_write_after_the_log_line_is_logged_as_failed`. It passed alone. Its saved output was lost too: the "head" run still had the old fixture, so its hook tests wrote over `staged.txt`. That cannot happen once the fixture fix is in "head". The retry passed (red `a2f67f5` at 10:25). Green `d5b53bb` at 10:34.
 - 10:40 Main merged into `feat/evaluate` (`a522123`).
+- 10:45 Gate PR opened as #26. Its number came first because the T015 PR was still in the gate, so the #26 description says "Merge #26 first" by mistake. Corrected by a comment on #26: merge #27 first.
+- 10:48 Reviewer findings posted on #26, with Claude's checks.
+- 10:49 T015 PR opened as #27. 10:53 reviewer findings posted on #27, with Claude's checks.
+- 10:56 Owner chose:
+  - The development set gives no per-category figures (`docs/DATA.md` decision 2 wins over B18, and B18 now says so).
+  - Fix all the real gaps in #27.
+  - Fix #26 findings 1 to 4.
+- 10:58 Red `412abc2` (11 new tests for the #27 findings).
+  - 3 of them passed at once: the test-count check, matched coverage below 100%, and the no-verdict path. That code already worked. The tests guard it.
+  - The full-confidence test passed at first too, because the tiny synthetic training set gives round confidences. Claude changed it to compare the exact text, and then it failed as it should.
+- 11:00 Owner question: can the system classify the small categories at all? Claude's answer: yes. The LLM labels all 11 from their definitions. What the development set cannot do is measure each small category, because some have only 4 or 5 complaints. Over-sampling would help the measurement, but the pool has only 91 and 134 of the two smallest, and taking more would cut TF-IDF's training data. Owner: write this up as a stated limit, not for the video. Added as T020b in `tasks.md`.
+- 11:10 Corrections of entries above, which stay as written:
+  - The 09:33 entry "All 13 new tests passed" was from `uv run --native-tls pytest tests/test_evaluate.py -q -p no:cacheprovider` in the T015 worktree.
+  - AI error, not labelled as one at 10:13: the first gate output design let the hook tests that call the gate directly write to the real folder. Claude found it from a stale `head.txt`.
+- 11:10 #27 green `53d8209`. The fixes:
+  - No per-category figures for the development set.
+  - The exact TF-IDF confidence in the results file.
+  - A check that the run's prompt version matches `--prompt`.
+  - Plain reasons when the LLM accepted nothing or a file is missing.
+  - The full list hash in the row, and the TF-IDF settings hash in the figures.
+  - Printout labels that say what each cost and time counts.
+- 11:15 #26 red `9b339be` (2 tests). Green `c09d55f` at 11:25. The fixes:
+  - Each checkout has its own gate output folder.
+  - A failure to save or clear the output prints a notice and leaves the gate's decision unchanged.
+  - A Known limits entry: a fake key printed by a failing test stays in that folder.
+  - CLAUDE.md now says only the last run is kept, and names `VOC_GATE_LOG_DIR`.
+- About 11:05 (exact time not recorded) While writing the #26 fix, a shell edit failed with the same quoting slip as the one between 09:46 and 09:55, inside a Python heredoc. A check in the script stopped it before anything was written. Claude then used the Edit tool.
