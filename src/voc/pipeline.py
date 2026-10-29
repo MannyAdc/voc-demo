@@ -183,7 +183,7 @@ def results_csv(outcomes, set_name, version, names):
     for o in outcomes:
         d = o.decision
         writer.writerow({
-            "complaint_id": d.complaint_id, "split": "test" if set_name == "test" else "dev",
+            "complaint_id": d.complaint_id, "split": set_name if set_name in ("test", "injection") else "dev",
             "prompt_version": version.name,
             "proposed_label": _proposed(d, names), "quote_start": "" if d.quote_start is None else d.quote_start,
             "quote_end": "" if d.quote_end is None else d.quote_end,

@@ -130,10 +130,15 @@ def audit(root, set_name, version_name):
             word_for_word += text[derived.quote_start:derived.quote_end] == derived.proposed_quote
         else:
             rederived += 1
-    return {"set": set_name, "prompt_version": version_name, "listed": len(complaints), "rows_listed": listed,
-            "accepted": accepted_rows, "verified": verified, "word_for_word": word_for_word,
-            "quarantined": quarantined, "rederived": rederived, "no_answer": no_answer,
-            "failures": {k: failures[k] for k in FAILURES if failures[k]}}
+    result = {"set": set_name, "prompt_version": version_name, "listed": len(complaints), "rows_listed": listed,
+              "accepted": accepted_rows, "verified": verified, "word_for_word": word_for_word,
+              "quarantined": quarantined, "rederived": rederived, "no_answer": no_answer,
+              "failures": {k: failures[k] for k in FAILURES if failures[k]}}
+    # A6: the counts are committed, so the dashboard can show them without the recordings.
+    out = root / "results" / "audit" / f"{version_name}_{set_name}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="")
+    return result
 
 
 def format_audit(result):

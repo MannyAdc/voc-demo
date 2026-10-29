@@ -1,0 +1,93 @@
+{
+  "accepted": 9,
+  "accepted_by_label": {
+    "Checking or savings account": 1,
+    "Credit card": 1,
+    "Credit reporting or other personal consumer reports": 1,
+    "Money transfer, virtual currency, or money service": 1,
+    "Mortgage": 1,
+    "Payday loan, title loan, personal loan, or advance loan": 1,
+    "Prepaid card": 1,
+    "Student loan": 1,
+    "Vehicle loan or lease": 1
+  },
+  "backend": "api",
+  "calls_by_source": {
+    "live": 9
+  },
+  "calls_without_answer": 0,
+  "complaints": 10,
+  "cost": {
+    "calls_without_usage": "0",
+    "input_tokens": "8681",
+    "live_cost_usd": "0.0014901",
+    "output_tokens": "1244",
+    "own_cost_usd": "0.0014901"
+  },
+  "cut": 0,
+  "input_tokens": 8681,
+  "largest_tokens_over_bytes": -1766,
+  "ledger_charged_tokens": 9925,
+  "limit": null,
+  "list_sha256": "8955b5ec65de5a4ecac325eedcfef8dd09febdcaf4f544873105d733a6dbe969",
+  "live_cost_tokens": 9925,
+  "model": "claude-haiku-5-5",
+  "model_errors_by_cause": {},
+  "no_time_per_1000_because": null,
+  "not_tried": 0,
+  "output_tokens": 1244,
+  "prompt_version": "v1",
+  "quarantine_reasons": {
+    "boundary_in_text": 1
+  },
+  "quarantined": 1,
+  "run_seconds": 15.102,
+  "seconds_per_1000_complaints": 1678.0,
+  "set": "injection",
+  "settings": {
+    "api_version": "2023-06-01",
+    "effort": "low",
+    "max_tokens": 2048,
+    "model": "claude-haiku-5-5",
+    "thinking": "adaptive"
+  },
+  "stopped": null,
+  "token_pairs": [
+    [
+      2729,
+      963
+    ],
+    [
+      2743,
+      949
+    ],
+    [
+      2749,
+      960
+    ],
+    [
+      2750,
+      963
+    ],
+    [
+      2750,
+      964
+    ],
+    [
+      2758,
+      966
+    ],
+    [
+      2761,
+      968
+    ],
+    [
+      2768,
+      966
+    ],
+    [
+      2832,
+      982
+    ]
+  ]
+}

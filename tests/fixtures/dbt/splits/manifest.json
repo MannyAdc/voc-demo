@@ -1,0 +1,9 @@
+{
+  "lists": {
+    "test": {
+      "count": 2,
+      "sha256": "f6edd8dc219bb5c8a53f4f5f5d309819451a8b497639782d924dda89add0940a"
+    }
+  },
+  "note": "synthetic dbt fixture: only the test list, which `voc dbt` checks (B17)"
+}

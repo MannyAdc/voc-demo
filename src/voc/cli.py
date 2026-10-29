@@ -21,6 +21,7 @@ from voc.dbt_run import DbtError
 from voc.env import settings
 from voc.audit import AuditError
 from voc.evaluate import EvaluationError
+from voc.injection import InjectionError
 from voc.testrun import TestRunError
 from voc.labels import load_labels
 from voc.load import DB_PATH, load_month
@@ -139,7 +140,14 @@ def _label(config, root, args):
     root = Path(root)
     version = pipeline.load_prompt_version(root, args.prompt)
     labels = load_labels(root / "config" / "labels.toml")
-    complaints = pipeline.load_complaints(root / DB_PATH, root / "splits", args.set)
+    if args.set == "injection":  # B5: the synthetic injection set, tied to its file by the file's hash
+        from voc import injection
+
+        if args.limit is not None:
+            raise injection.InjectionError("the injection set is labelled whole, never with --limit")
+        complaints, list_hash = injection.complaints(root)
+    else:
+        complaints, list_hash = pipeline.load_complaints(root / DB_PATH, root / "splits", args.set), None
     complaints = sorted(complaints, key=lambda c: pipeline._id_number(c.complaint_id))
     if args.limit is not None:
         complaints = complaints[:args.limit]
@@ -169,8 +177,9 @@ def _label(config, root, args):
         stopped, outcomes = err, err.outcomes
     run_seconds = time.monotonic() - started
     names = [label.name for label in labels]
-    summary = pipeline.summarise(outcomes, args.set, version, backend_name,
-                                 pipeline.list_sha256(root / "splits", args.set, complaints), limit=args.limit,
+    if list_hash is None:
+        list_hash = pipeline.list_sha256(root / "splits", args.set, complaints)
+    summary = pipeline.summarise(outcomes, args.set, version, backend_name, list_hash, limit=args.limit,
                                  stopped=stopped, run_seconds=run_seconds)
     if backend_name == "api":
         cost = run_cost(load_prices(root / "config" / "prices.toml"), model, [o for o in outcomes if o.source])
@@ -224,14 +233,29 @@ def _test_run(config, root, args):
     print(testrun.format_report(report))
 
 
+def _serve(config, root, args):
+    """A4: the results API and dashboard, on this computer only."""
+    import uvicorn
+
+    from voc.api import create_app
+
+    print(f"dashboard on http://127.0.0.1:{args.port}/ (results files only, no complaint text). Ctrl+C stops it")
+    uvicorn.run(create_app(root), host="127.0.0.1", port=args.port, log_level="warning")
+
+
 def _evaluate(config, root, args):
+    if args.set == "injection":  # B10: scored apart, never in an accuracy figure or EVAL_VERSIONS.md
+        from voc.injection import format_score, score
+
+        print(format_score(score(root, args.prompt, args.note)))
+        return
     from voc.evaluate import evaluate, format_evaluation
 
     print(format_evaluation(evaluate(root, args.set, args.prompt, args.note), root))
 
 
 COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample, "label": _label,
-            "evaluate": _evaluate, "final": _test_run, "audit": _audit,
+            "evaluate": _evaluate, "final": _test_run, "audit": _audit, "serve": _serve,
             ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt,
             ("ledger", "init"): _ledger_init, ("ledger", "raise"): _ledger_raise,
             ("ledger", "status"): _ledger_status, ("ledger", "release"): _ledger_release,
@@ -247,7 +271,8 @@ def main(argv=None, env=None, root=None):
     p.add_argument("--write", help="also write the facts as JSON to this file")
     sub.add_parser("sample", help="build and freeze the samples from the staged July rows (B9, B16, B25)")
     lb = sub.add_parser("label", help="label development complaints with the LLM, printing counts only (B3, B21)")
-    lb.add_argument("set", choices=("dev", "quick"), help="the development set, or its fixed 50-complaint part")
+    lb.add_argument("set", choices=("dev", "quick", "injection"),
+                    help="the development set, its fixed 50-complaint part, or the synthetic injection set")
     lb.add_argument("--limit", type=int, help="label only the first N complaints, in complaint ID order")
     lb.add_argument("--prompt", default="v1", help="the prompt version, from config/prompts")
     lb.add_argument("--replay", action="store_true", help="serve recorded answers only, never a live call")
@@ -256,13 +281,16 @@ def main(argv=None, env=None, root=None):
     fr.add_argument("--reason", help="why, if a test run is already logged. It goes in the logs and BUILD_LOG.md")
     ev = sub.add_parser("evaluate", help="score a finished development run against TF-IDF, printing figures only "
                                          "(B10, B15, B21)")
-    ev.add_argument("set", choices=("dev",), help="the development set. The test set waits for the final run")
+    ev.add_argument("set", choices=("dev", "injection"),
+                    help="the development set, or the synthetic injection set. The test set waits for the final run")
     ev.add_argument("--prompt", default="v1", help="the prompt version whose run is scored")
     ev.add_argument("--note", required=True, help="what changed in this version, for EVAL_VERSIONS.md")
     au = sub.add_parser("audit", help="re-check every accepted label against its recorded answer and the text, "
                                       "printing counts only (B1, B21)")
     au.add_argument("set", choices=("dev", "quick"), help="the set whose labelling run is audited")
     au.add_argument("--prompt", default="v1", help="the prompt version whose run is audited")
+    sv = sub.add_parser("serve", help="the results API and dashboard on 127.0.0.1, committed results only (A1 to A8)")
+    sv.add_argument("--port", type=int, default=8000, help="the local port")
     ld = sub.add_parser("load", help="load one pinned monthly export into the staged DuckDB table (B14)")
     ld.add_argument("month", choices=sorted(MONTHS), help="the month to load, as named in config/data_files.toml")
     dbt = sub.add_parser("dbt", help="run the dbt project, printing counts and check names only (B14, B21)")
@@ -287,7 +315,7 @@ def main(argv=None, env=None, root=None):
         command = (args.command, args.action) if args.command in ("ledger", "dbt") else args.command
         COMMANDS[command](config, root, args)
     except (DataFileError, BudgetError, DbtError, SampleMismatch, BackendError, RecordingMissing,
-            RecordingCorrupt, RunStopped, EvaluationError, AuditError, TestRunError) as err:
+            RecordingCorrupt, RunStopped, EvaluationError, AuditError, InjectionError, TestRunError) as err:
         print(f"error: {err}")
         return 1
     # B21: the type only, never the message. The spec also asks for the row number and the
