@@ -730,3 +730,18 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - The browser check entry sits under the red commit `3438541`, but it checked the green code.
 - The gate of `cf4c49d` listed the 5 still-failing tests of `76af932` as carried over, as the gate rules say. They pass in the green commit.
 - 15:12 CI failed on `ceeb4db`: `test_A10_a_complaint_outside_the_development_results_is_a_404_even_if_it_is_staged` opened the fixture file without closing it, and CI turns that warning into an error. AI error in Claude's test, caught by CI, not by the local gate. Fixed with a `with` block, with a comment.
+- Parallel run, the helper's fixes on #47 and #48, in `../voc-demo-helper`:
+  - #47: `0af6918` at 13:46, README only. Each quote was checked on the page's HTML: dbt's "Generally available" with DuckDB's "(CLI only)", and three DuckDB sentences on its concurrency page.
+  - #48: tests `9887986` at 14:01, then `67f2685` at 14:33, then green `95c4cbe` at 15:05. Every gate passed on the first try.
+  - AI error, caught by the helper itself: in `9887986` the fake project for the new refusal tests had no label file, so `voc dbt` stopped on a missing file before the name check. The refusal tests passed for the wrong reason. `67f2685` gives the fake project its label file, and the tests now also check the refusal message.
+- 15:33 Merge verdicts on #47 and #48: PENDING, then MERGE after Claude's judgement. Both touch README.md, in different sections. `git merge-tree` showed they merge cleanly. Both marked ready. 15:35 The owner merged #47, then #48 (times from GitHub).
+- 15:39 #46 marked ready, after Claude checked the lock and correction flow in a browser on synthetic data only. 15:39 The owner merged #46 (time from GitHub). A small leftover: the "hidden while you decide" note stays on screen after saving. It is fixed in the public copy's pull request.
+- About 15:10 (exact time not recorded) Owner decision: start the Azure deployment as soon as #49 is merged, today, not on Saturday.
+- About 15:15 to 15:30 The owner installed the Azure command line with winget, and logged in with `az login`. The first `az login` failed in the same PowerShell window, because a window only finds a newly installed program after it is restarted. The owner kept the account IDs out of the chat.
+- Facts checked for the deployment, on Microsoft's pages:
+  - App Service pricing for Linux: Free (F1) is "Shared (60 CPU minutes / day)", 1 GB RAM, 1 GB storage. The page does not say if F1 runs Python.
+  - The Python quickstart (updated 27 July 2026): a ZIP deploy builds from `requirements.txt` when `SCM_DO_BUILD_DURING_DEPLOYMENT` is true, and FastAPI on Python 3.13 or earlier needs a startup command.
+  - The app settings reference (updated 10 September 2026): `WEBSITE_HOSTNAME` is "Primary host name for the app".
+- #49's review fixes:
+  - Red `ffaa933` at 15:08: 3 tests. 2 failed. The request body test passed at once and guards that no body is logged.
+  - Green: a full match of path and method wins over a path-only match, and a request cancelled before any answer is logged as "(no response)" and counted, but not as an error. A9 lists the fixed methods and says that uvicorn's own tracebacks can still reach the terminal.

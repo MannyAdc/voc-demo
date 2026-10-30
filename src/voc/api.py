@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from voc import analyst
+from voc import api_log
 from voc.audit import FAILURES
 from voc.labels import load_labels
 
@@ -105,6 +106,7 @@ def create_app(root, with_text=False):
     root = Path(root)
     app = FastAPI(title="voc-demo results", docs_url=None, redoc_url=None, openapi_url=None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=LOCAL_HOSTS)
+    monitor = api_log.install(app)  # A9: one log line per request, and the counters for /api/health
 
     @app.middleware("http")
     async def headers(request, call_next):
@@ -160,7 +162,7 @@ def create_app(root, with_text=False):
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok"}
+        return monitor.health()
 
     @app.get("/api/versions")
     def versions():
