@@ -413,3 +413,42 @@ def test_A7_the_page_asks_which_version_was_tested_and_claims_no_run_in_its_stat
     page = (WEB / "index.html").read_text(encoding="utf-8")
     card = page[page.index('id="verdict-h"'):page.index('id="h2h"')]
     assert "was scored once" not in card and "logged in runs/TEST_RUNS.md" not in card
+
+
+# A14: the "Data as of" strip (owner decision, 30 October). Facts from committed files only. The app calls nothing.
+
+PROFILE = {"date_range": ["2026-07-01", "2026-07-31"], "rows": 12, "narratives": 10, "hidden": HOSTILE}
+SCHEDULE = 'on:\n  schedule:\n    - cron: "17 5 * * *"\n'
+
+
+@pytest.fixture
+def fresh(tested):
+    _write(tested / "results" / "profile_july_2026.json", json.dumps(PROFILE))
+    _write(tested / ".github" / "workflows" / "scheduled.yml", SCHEDULE)
+    return tested
+
+
+def test_A14_freshness_names_the_data_month_the_test_run_and_the_schedule(fresh, client):
+    response = client.get("/api/freshness")
+    assert response.status_code == 200 and "SYNHOSTILE" not in response.text
+    assert response.json() == {
+        "data": {"from": "2026-07-01", "to": "2026-07-31", "complaints": 12, "narratives": 10},
+        "test_run": {"date": "2026-10-29 21:48", "prompt_version": "v1", "model": "synthetic-model", "complaints": 6},
+        "schedule_utc": "05:17"}
+
+
+def test_A14_freshness_drops_what_it_cannot_check(fresh, client):
+    _write(fresh / "results" / "profile_july_2026.json",
+           json.dumps({"date_range": [HOSTILE, "2026-07-31"], "rows": "12", "narratives": 10}))
+    _write(fresh / ".github" / "workflows" / "scheduled.yml", 'cron: "' + HOSTILE + '"\n')
+    response = client.get("/api/freshness")
+    assert response.status_code == 200 and "SYNHOSTILE" not in response.text
+    got = response.json()
+    assert got["data"] == {"from": None, "to": "2026-07-31", "complaints": None, "narratives": 10}
+    assert got["schedule_utc"] is None
+
+
+def test_A14_freshness_says_what_is_missing_instead_of_failing(root, client):
+    got = client.get("/api/freshness").json()
+    assert got == {"data": {"from": None, "to": None, "complaints": None, "narratives": None},
+                   "test_run": None, "schedule_utc": None}

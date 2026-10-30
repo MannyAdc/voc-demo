@@ -160,3 +160,40 @@ def test_A12_a_saved_decision_refreshes_the_queue_and_the_count():
 
 def test_A13_the_form_appears_only_where_a_review_can_be_saved():
     assert re.search(r"c\.can_review\)\s*decisionForm\(c\)", _function("complaintView"))
+
+
+# A14 and the owner's review of the live page (30 October): a "Data as of" strip, larger text, and the narrow layout
+# only on narrow screens.
+
+def _css():
+    return (WEB / "style.css").read_text(encoding="utf-8")
+
+
+def _rem(value):
+    number = re.fullmatch(r"([0-9.]+)rem", value.strip())
+    return float(number.group(1)) if number else None
+
+
+def test_A14_the_overview_has_a_data_as_of_strip_filled_from_the_api():
+    page = _page()
+    overview = page[page.index('id="tab-overview"'):page.index('id="tab-browse"')]
+    assert 'id="freshness"' in overview
+    assert '"/api/freshness"' in _script()
+
+
+def test_A7_normal_text_is_as_large_as_the_verdict_line():
+    # Owner decision: nothing smaller than the verdict line, except footnotes, captions and small marks.
+    css = _css()
+    verdict = _rem(re.search(r"\.verdict\.big \{[^}]*font-size: ([^;]+);", css).group(1))
+    body = re.search(r"body \{[^}]*font-size: ([^;]+);", css)
+    assert body and _rem(body.group(1)) == verdict
+    small_ok = (".note", ".small", ".legend", "footer", ".tag", "svg text", "button.term", ".bar-count", ".grid2 span")
+    for selector, size in re.findall(r"([^{}]+)\{[^}]*font-size: ([0-9.]+rem)", css):
+        if _rem(size) < verdict:
+            assert any(ok in selector for ok in small_ok), selector.strip()
+
+
+def test_A7_the_narrow_layout_starts_below_720_pixels():
+    css = _css()
+    assert "max-width: 900px" not in css
+    assert "max-width: 720px" in css
