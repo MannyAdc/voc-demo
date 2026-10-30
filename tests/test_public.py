@@ -217,3 +217,50 @@ def test_A13_the_readme_links_the_live_copy_and_says_what_it_hides():
     top = readme[:readme.index("## The result")]
     assert "https://voc-demo-20261030.azurewebsites.net" in top
     assert "no complaint text" in top
+
+
+# Second review of #50: the redeploy script and the guide.
+
+
+def _script_lines():
+    # The code lines only: the help block between <# and #> is prose.
+    script = (REPO / "scripts" / "deploy_azure.ps1").read_text(encoding="utf-8")
+    return re.sub(r"<#.*?#>", "", script, flags=re.S).splitlines()
+
+
+def test_A13_the_redeploy_script_packs_the_whole_repo_from_any_folder():
+    lines = _script_lines()
+    archive = next(i for i, line in enumerate(lines) if line.lstrip().startswith("git archive"))
+    root = [i for i, line in enumerate(lines) if "Set-Location" in line and "$PSScriptRoot" in line]
+    assert root and root[0] < archive, "the script must move to the repo root before it packs"
+
+
+def test_A13_each_step_of_the_redeploy_is_checked_before_the_next():
+    lines = [line.strip() for line in _script_lines()]
+    steps = [i for i, line in enumerate(lines) if line.startswith(("git ", "az "))]
+    assert len(steps) >= 3
+    for i in steps:
+        assert "$LASTEXITCODE" in lines[i + 1], lines[i]
+
+
+def test_A13_the_redeploy_adds_no_untracked_file_passes_no_secret_and_cleans_up():
+    script = "\n".join(_script_lines())
+    assert "--add-file" not in script and "--worktree-attributes" not in script
+    assert not re.search(r"(?i)-(password|secret|token|key)\b", script)
+    assert "Remove-Item" in script
+
+
+def test_A13_every_az_command_keeps_account_ids_off_the_screen():
+    # az prints resource IDs, which hold the subscription ID. The log tail streams the app's own log instead.
+    guide = (REPO / "docs" / "DEPLOY.md").read_text(encoding="utf-8").splitlines()
+    commands = [line.strip() for line in guide + _script_lines() if line.strip().startswith("az ")]
+    assert len(commands) >= 8
+    for command in commands:
+        if command.startswith("az webapp log tail"):
+            continue
+        assert "-o none" in command, command
+
+
+def test_A13_the_guide_says_how_to_run_the_script_where_scripts_are_blocked():
+    guide = (REPO / "docs" / "DEPLOY.md").read_text(encoding="utf-8")
+    assert "-ExecutionPolicy Bypass -File .\\scripts\\deploy_azure.ps1" in guide
