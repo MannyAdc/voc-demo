@@ -56,9 +56,41 @@ and the counters are at `https://<app name>.azurewebsites.net/api/health`.
 
 The owner ran the setup commands above, each with `-o none`, with the app name `voc-demo-20261030`. Creating the plan printed "Creating App Service Plan 'voc-demo-plan' (Linux, SKU: F1)", then, because the account was new, "Resource provider 'Microsoft.Web' used by this operation is not registered. We are registering for you." and "Registration succeeded." Before the code was uploaded, the address answered 503, because the start command had nothing to start. The owner then uploaded the `feat/public-mode` branch (pull request #50) with `git archive` and `az webapp deploy`, and the dashboard loaded at https://voc-demo-20261030.azurewebsites.net. So F1 does run this Python app on Linux.
 
+## Automatic deploy (A15)
+
+After CI passes on a push to `main`, the workflow `.github/workflows/deploy.yml` uploads the same ZIP as the script below and checks `https://<app name>.azurewebsites.net/api/health`. Nobody runs anything after a merge.
+
+It signs in to Azure with OpenID Connect: GitHub gives the workflow a short-lived token, and Azure trusts it only for this repo's `main` branch and only for this one web app. No password or key is stored. Facts checked on Microsoft's page [Deploy by using GitHub Actions](https://learn.microsoft.com/en-us/azure/app-service/deploy-github-actions) (dated 28 November 2025, read 31 October 2026): the role "Website Contributor" on the web app, the issuer `https://token.actions.githubusercontent.com`, a subject of the form `repo:<owner>/<repo>:ref:refs/heads/main`, the audience `api://AzureADTokenExchange`, and the three secrets below. GitHub's page [Events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows) says a `workflow_run` workflow runs with the default branch as its ref, so the subject is `main`'s. The workflow checks out the exact commit CI tested.
+
+One-time setup, by the owner, in their own PowerShell, after `az login -o none` and `gh auth login`. Every ID stays in a variable and goes straight into a GitHub secret, so none is printed:
+
+```powershell
+cd <your clone of this repo>
+$app = "voc-demo-20261030"
+$rg = "voc-demo-rg"
+$repo = gh repo view --json nameWithOwner --jq .nameWithOwner
+$sub = az account show --query id -o tsv
+$tenant = az account show --query tenantId -o tsv
+$clientId = az ad app create --display-name "voc-demo-deploy" --query appId -o tsv
+$appObjectId = az ad app show --id $clientId --query id -o tsv
+$spObjectId = az ad sp create --id $clientId --query id -o tsv
+az role assignment create --role "Website Contributor" --assignee-object-id $spObjectId --assignee-principal-type ServicePrincipal --scope "/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/sites/$app" -o none
+$credential = '{"name": "voc-demo-main", "issuer": "https://token.actions.githubusercontent.com", "subject": "repo:' + $repo + ':ref:refs/heads/main", "audiences": ["api://AzureADTokenExchange"]}'
+[System.IO.File]::WriteAllText("$env:TEMP\voc-credential.json", $credential)
+az ad app federated-credential create --id $appObjectId --parameters "$env:TEMP\voc-credential.json" -o none
+Remove-Item "$env:TEMP\voc-credential.json"
+$clientId | gh secret set AZURE_CLIENT_ID --repo $repo
+$tenant | gh secret set AZURE_TENANT_ID --repo $repo
+$sub | gh secret set AZURE_SUBSCRIPTION_ID --repo $repo
+```
+
+`WriteAllText` writes the file without a byte order mark, which Windows PowerShell 5.1's `Set-Content` would add. `gh secret set` reads the value from standard input when no `--body` is given.
+
+To stop automatic deploys, delete the federated credential or the three secrets. The script below still works by hand.
+
 ## Redeploying after a change
 
-One line, after `az login`, from the repo folder:
+By hand, for example before the automatic deploy is set up: one line, after `az login`, from the repo folder:
 
 ```powershell
 .\scripts\deploy_azure.ps1 -App voc-demo-20261030

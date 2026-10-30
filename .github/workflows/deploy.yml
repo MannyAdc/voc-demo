@@ -1,0 +1,64 @@
+# A15 (specs/002-results-api-dashboard): the automatic deploy of the public copy (owner decision, 31 October 2026).
+#
+# After CI passes on a push to main, it uploads the same ZIP as scripts/deploy_azure.ps1 and checks the live
+# health route. It signs in to Azure with OpenID Connect, so no password or key is stored anywhere. Azure trusts
+# only this repo's main branch, and only for this one web app (docs/DEPLOY.md, "Automatic deploy").
+# GitHub starts a workflow_run workflow from the file on the default branch, with main as its ref.
+name: Deploy the public copy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+# One deploy at a time. A newer one waits for the one running, and is not cancelled.
+concurrency:
+  group: deploy-public-copy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Azure App Service
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      APP: voc-demo-20261030
+      GROUP: voc-demo-rg
+    steps:
+      - name: Check out the commit CI tested
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Pack the committed files without the lock files, as scripts/deploy_azure.ps1 does
+        run: git archive --format=zip -o "$RUNNER_TEMP/voc-site.zip" HEAD -- . ":!uv.lock" ":!pyproject.toml"
+
+      - name: Sign in to Azure with OpenID Connect
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Upload the ZIP, printing no resource ID
+        run: az webapp deploy --name "$APP" --resource-group "$GROUP" --src-path "$RUNNER_TEMP/voc-site.zip" --type zip -o none
+
+      - name: Check the live health route
+        # Azure builds and starts the app after the upload, and a cold start can be slow, so it tries for 5 minutes.
+        run: |
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent --max-time 30 -o /dev/null "https://$APP.azurewebsites.net/api/health"; then
+              echo "The live app answered /api/health."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "The live app did not answer /api/health within 5 minutes."
+          exit 1

@@ -890,3 +890,14 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - AI error caught before the commit: Claude first wrote "All 12 failed" here. It checked the test output, stopped the commit and corrected the count.
 - `main` (with #52) merged into `feat/data-freshness` for #54. Both blocks of log lines are kept as written: #52's first, then #54's. Their times overlap, because the pull requests were worked on at once.
 - `main` (with #53) merged into `feat/data-freshness` for #54. Both blocks of log lines are kept as written: #53's first, then #54's. The tests of both kept, and spec rule A7 holds both additions.
+- About 01:35 (exact time not recorded) The owner asked whether every merge needs a manual redeploy. Claude offered (1) an automatic deploy from GitHub Actions with OpenID Connect, or (2) Claude running the script with the owner's Azure sign-in. Claude advised against (2): `docs/DEPLOY.md` says Claude holds no Azure credential, and a deploy changes something outside this machine.
+- Before 01:42 (exact time not recorded) Owner decision: (1). Then the README restructured for readers who skim, with diagrams and icons.
+- 01:42 Work start on the automatic deploy, in `../voc-demo-ui`, branch `feat/auto-deploy`, from `main` at `50e1475`.
+- Facts checked before writing:
+  - Microsoft's page "Deploy by using GitHub Actions" (dated 28 November 2025): the app registration, the service principal, the role "Website Contributor" scoped to the web app, the federated credential (issuer, subject, audience), and the three secrets.
+  - GitHub's page "Events that trigger workflows": for `workflow_run`, `GITHUB_REF` is the default branch and `GITHUB_SHA` is the last commit on it. So the workflow checks out `workflow_run.head_sha`, the commit CI tested.
+  - `azure/login` releases (`gh api`): v3.1.0 of 10 September 2026 is the latest, at commit `a641126d1b8aa4d1fa005f4f92df94a3a4c4c906`, with the same three inputs as the v2 on Microsoft's page.
+- The deploy is a workflow of its own, not a job in `ci.yml`: a job skipped on every pull request would count as a failed check in the merge check.
+- Red `2833f79` at 01:43: 8 tests in `tests/test_deploy_workflow.py`. All 8 failed, because the workflow did not exist yet.
+- The change: `.github/workflows/deploy.yml`, spec 002 rule A15, and a section in `docs/DEPLOY.md` with the owner's one-time setup. The commands keep every ID in a variable and pass it straight to `gh secret set`, so none is printed. The repo's name is read with `gh repo view` at run time, so no file names the GitHub account.
+- Not done by Claude: the Azure identity, the role, the federated credential and the three secrets. They are account and repo settings, so the owner sets them up. Until then the workflow fails at the sign-in step, and nothing is deployed.
