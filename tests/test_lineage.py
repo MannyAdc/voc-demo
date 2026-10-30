@@ -6,11 +6,13 @@ committed synthetic fixture (`SYN-` IDs), as in tests/test_dbt.py.
 """
 import contextlib
 import io
+import json
 import re
 import shutil
 from pathlib import Path
 
 import pytest
+import yaml
 
 from voc import cli
 from voc.labels import load_labels
@@ -74,12 +76,16 @@ def _edges(text):
 
 
 def test_B14_dbt_lineage_draws_the_edges_between_nodes(lineage):
-    edges = _edges(lineage[0])
-    assert ("source: voc.staged_complaints", "model: stg_complaints") in edges
-    assert ("model: stg_complaints", "model: curated_complaints") in edges
-    assert ("model: curated_complaints", "test: no_test_set_rows") in edges
-    assert ("model: stg_complaints", "test: no_test_set_rows") in edges
-    assert ("source: voc.staged_complaints", "test: source_unique_voc_staged_complaints_complaint_id") in edges
+    # Changed in the review of #48: the full edge set, exactly, not 5 of the 9 edges.
+    source, stg, curated = "source: voc.staged_complaints", "model: stg_complaints", "model: curated_complaints"
+    assert _edges(lineage[0]) == {
+        (source, stg), (stg, curated),
+        (stg, "test: no_test_set_rows"), (curated, "test: no_test_set_rows"),
+        (stg, "test: not_null_stg_complaints_complaint_id"), (stg, "test: unique_stg_complaints_complaint_id"),
+        (stg, "test: product_in_label_list"),
+        (source, "test: source_not_null_voc_staged_complaints_complaint_id"),
+        (source, "test: source_unique_voc_staged_complaints_complaint_id"),
+    }
 
 
 def test_B14_dbt_lineage_holds_no_local_path(lineage):
@@ -96,6 +102,27 @@ def test_B14_dbt_lineage_holds_no_sql_or_description(lineage):
     sql = (REPO / "dbt" / "models" / "stg_complaints.sql").read_text(encoding="utf-8")
     assert "select" not in text.lower()
     assert not any(line.strip() and line.strip() in text for line in sql.splitlines() if len(line.strip()) > 12)
+    # Added in the review of #48: no description text from the dbt YAML files either.
+    descriptions = []
+
+    def collect(item):
+        if isinstance(item, dict):
+            for key, value in item.items():
+                if key == "description" and isinstance(value, str):
+                    descriptions.append(value)
+                collect(value)
+        elif isinstance(item, list):
+            for value in item:
+                collect(value)
+
+    for path in (REPO / "dbt" / "models").glob("*.yml"):
+        collect(yaml.safe_load(path.read_text(encoding="utf-8")))
+    assert descriptions
+    for description in descriptions:
+        words = description.split()
+        # Any run of 4 words from a description, so a shortened copy is caught too.
+        for start in range(max(1, len(words) - 3)):
+            assert " ".join(words[start:start + 4]) not in text, description
 
 
 def test_B21_dbt_lineage_prints_only_one_count_line(lineage):
@@ -121,3 +148,68 @@ def test_B14_dbt_lineage_refuses_without_the_checked_test_list(repo, capfd):
     out = capfd.readouterr().out
     assert out.startswith("error: ") and "splits/test.csv is missing" in out
     assert not (repo / LINEAGE).exists()
+
+
+# Added in the review of #48: the safe-name refusal, the seed sentence and the inputs dbt does not track.
+
+
+def _fake_manifest(names, seeds=0):
+    """A manifest with one source, one model per name, and `seeds` seeds, all depending on the source."""
+    source = "source.voc.voc.staged_complaints"
+    nodes = {f"model.voc.m{i}": {"resource_type": "model", "name": name, "depends_on": {"nodes": [source]}}
+             for i, name in enumerate(names)}
+    nodes.update({f"seed.voc.s{i}": {"resource_type": "seed", "name": f"seed_{i}", "depends_on": {"nodes": []}}
+                  for i in range(seeds)})
+    return {"sources": {source: {"source_name": "voc", "name": "staged_complaints"}}, "nodes": nodes}
+
+
+@pytest.fixture
+def fake_parse(tmp_path, monkeypatch):
+    """A project root where `dbt parse` is replaced by writing a given manifest, so no dbt runs."""
+    from voc import dbt_run
+
+    def use(manifest):
+        def parse(root, action, labels, target_name="local"):
+            assert action == "parse"
+            target = Path(root) / dbt_run.TARGET
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+            return 0, target / "run_results.json"
+
+        monkeypatch.setattr(dbt_run, "_run", parse)
+        return tmp_path
+
+    return use
+
+
+@pytest.mark.parametrize("name", ["C:/Users/x", 'stg"complaints', "a b", "..\\x"])
+def test_B14_dbt_lineage_refuses_an_unsafe_name_and_writes_nothing(fake_parse, capsys, name):
+    root = fake_parse(_fake_manifest(["stg_complaints", name]))
+    assert cli.main(["dbt", "lineage"], env={}, root=root) == 1
+    out = capsys.readouterr().out
+    assert out.startswith("error: ") and name not in out
+    assert not (root / LINEAGE).exists()
+
+
+def test_B14_dbt_lineage_refusing_leaves_the_committed_file_unchanged(fake_parse, capsys):
+    root = fake_parse(_fake_manifest(["C:/Users/x"]))
+    (root / LINEAGE).parent.mkdir(parents=True)
+    (root / LINEAGE).write_text("SYN earlier graph\n", encoding="utf-8")
+    assert cli.main(["dbt", "lineage"], env={}, root=root) == 1
+    assert (root / LINEAGE).read_text(encoding="utf-8") == "SYN earlier graph\n"
+
+
+def test_B14_dbt_lineage_names_the_seed_note_only_when_no_seed_is_drawn(fake_parse, capsys):
+    root = fake_parse(_fake_manifest(["stg_complaints"]))
+    assert cli.main(["dbt", "lineage"], env={}, root=root) == 0
+    assert "Databricks" in (root / LINEAGE).read_text(encoding="utf-8")
+    root = fake_parse(_fake_manifest(["stg_complaints"], seeds=2))
+    assert cli.main(["dbt", "lineage"], env={}, root=root) == 0
+    text = (root / LINEAGE).read_text(encoding="utf-8")
+    assert "Databricks" not in text and "seed: seed_0" in text
+    assert "2 seeds" in capsys.readouterr().out
+
+
+def test_B14_dbt_lineage_says_which_inputs_dbt_does_not_track(lineage):
+    text, _, _ = lineage
+    assert "`splits/test.csv`" in text and "`labels`" in text
