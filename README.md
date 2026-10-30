@@ -1,10 +1,24 @@
 # voc-demo
 
-A Voice of the Customer pipeline on the public US CFPB Consumer Complaint Database. An LLM labels each complaint by product and quotes the sentence that supports the label. A script checks that the quote really appears in the complaint. A label that fails a check goes to quarantine with a reason. It is never dropped and never counted as correct. A simple TF-IDF classifier is scored on the same complaints, head to head.
+A Voice of the Customer pipeline on the public Consumer Complaint Database of the US Consumer Financial Protection Bureau (CFPB). An LLM labels each complaint by product and quotes the sentence that supports the label. A script checks that the quote really appears in the complaint. A label that fails a check goes to quarantine with a reason. It is never dropped and never counted as correct. A simple TF-IDF (term frequency, inverse document frequency) classifier is scored on the same complaints, head to head.
 
 Built in three days, with every step recorded: the spec, the tests written before the code, the reviews, the decisions and the mistakes. See [BUILD_LOG.md](BUILD_LOG.md).
 
+## In one minute
+
+- **The result.** The claim was fixed before the first run: the LLM, with its quote check, beats TF-IDF at the same coverage. On a frozen test set of 1,909 complaints, scored once, it did: 80.3% against 77.9%, a difference of +2.4 points with a 95% interval of +0.5 to +4.1. The LLM cost $0.2373 per 1,000 complaints (details under "The result").
+- **The analyst's tool.** A dashboard with four tabs: the overview with the verdict and a bar per product, browsing by product, the review queue where a person decides each quarantined complaint, and the method. The analyst sees the quoted sentence highlighted in the complaint's own text, on their own machine.
+- **Safety.** No label is trusted without a quote that a script found in the text. Failures go to a person, never into the figures as correct. Complaint text is untrusted data, sent with no tools. Spend has a hard cap.
+- **How it was built.** From the first commit on 27 October 2026 at 23:53 to 31 October: 53 merged pull requests. The rules: failing tests committed before the code, a fresh reviewer agent on each pull request, and the owner's merge. `main` holds 1,275 tests (`pytest --collect-only` on commit `b01c0be`). Every decision and every AI mistake is in [BUILD_LOG.md](BUILD_LOG.md). The owner's main decisions are under "Decisions the owner made".
+
 **Live public copy:** https://voc-demo-20261030.azurewebsites.net, on Azure App Service, free tier. It holds what this repo holds: IDs, labels, reasons and figures. It has no complaint text and saves no review decision. The analyst screens with the complaint text run only on the analyst's own machine ([docs/DEPLOY.md](docs/DEPLOY.md), spec 002 rule A13). The first visit after a quiet spell can be slow: App Service unloads an idle app after 20 minutes, and this one does not set Always On.
+
+Why the public copy has no complaint text, although the dashboard is the analyst's main tool:
+- The copy is built only from the files in this repo, and by rule the repo holds no raw data. So there is no text to serve without uploading data separately.
+- It is open to anyone, with no sign-in. The CFPB publishes these narratives for anyone to use, so this is not a privacy problem for this data. The pattern is what matters: for customer data such as sales calls, text must never sit on an open page.
+- With no sign-in, anyone could write a review, so the copy stores none.
+
+The next step for analysts, not built: a signed-in analyst copy. App Service's built-in sign-in would let only named people in, the data would sit in a private store, and each decision would be saved with the reviewer's name. The public copy would stay as it is (owner decision, 31 October).
 
 ## The result
 
@@ -192,6 +206,21 @@ These come from the threat model in the [spec](specs/001-core-labelling-pipeline
 - A hand run of dbt with the Databricks profile skips the wrapper's seed check.
 - The seed check trusts the work folder's `dbt_project.yml`. A hand edit of its seed path would point dbt at seeds the check never read.
 - The Databricks run uses the owner's Free Edition workspace, which is for non-commercial use only. Its token is the owner's, kept encrypted on the owner's machine, and never in the repo.
+
+## Decisions the owner made
+
+Claude proposed, the owner decided. Each line is in [BUILD_LOG.md](BUILD_LOG.md) on its day.
+
+- **28 October, overruled: the headline measure.** Claude recommended the quote-only view alone as the headline, with the two methods' agreement as a side report. The owner pushed back: the point is how the two methods work together for better precision, not choosing one.
+- **28 October, overruled: the sample sizes.** The owner asked whether Claude was really confident in its sample size rule. It was not: the rule ignored that the decision compares two methods on the same complaints. The owner then chose a simpler method: Cochran's formula for the sizes and a paired bootstrap for the verdict, both explained in plain words in [docs/HOW_WE_MEASURE.md](docs/HOW_WE_MEASURE.md).
+- **28 October: the labels.** All 11 CFPB products as they are, with no merging. The two small products are kept, and their limits are written down.
+- **29 October: scope.** The human spot check of whether quotes support their labels was cut, and listed as a pending improvement. Databricks was kept.
+- **29 October: the spend cap.** When the cap refused the scored run, it was raised to 40,000,000 tokens. Changing the prompt's output limit after tuning, or relaxing the cap check, was turned down.
+- **30 October: the analyst screens use the development set.** The test set stays sealed. Complaint text appears only when the owner starts the app with `--with-text`.
+- **30 October: deploy to Azure the same day,** not on Saturday.
+- **30 October, overruled: the title.** Claude proposed plain words in place of "LLM" and "TF-IDF". The owner kept the technical terms, with an explanation beside each, because a technical reader looks for them.
+- **30 October: readability.** On the dashboard, every abbreviation except AI, LLM and API is spelled out. Normal text is no smaller than the old verdict line (pull request #54).
+- **31 October: the public copy stays without complaint text.** A signed-in analyst copy is named as the next step instead.
 
 ## How it was built
 

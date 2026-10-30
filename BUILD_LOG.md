@@ -859,3 +859,12 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - Two earlier tests are changed in the green commit, each with a comment: the cache test no longer lists `/api/health`, and the tiles start as "not yet".
 - Red `3169695` at 00:11: 7 tests for the review. 6 failed. The "US" test passed at once, because the header already said "US", and it stays as a guard.
 - `main` (with #52) merged into `fix/spell-out-abbreviations` for #53. Both blocks of log lines are kept as written: #52's first, then #53's. Their times overlap, because the two pull requests were worked on at once.
+
+## Saturday 31 October 2026
+
+- Note: the entries above from 00:01 on (#53 and #54) sit under Friday's heading, because they were written in their branches before this heading existed. The log is not reordered.
+- 01:06 #53 merged by the owner (time from git).
+- About 01:13 (exact time not recorded) The owner asked why the Azure copy shows no complaint text, since the dashboard will be the analyst's main tool. Claude gave the reasons from spec rule A13 and three options: (a) keep it as it is, (b) upload the texts to Azure publicly, (c) a signed-in analyst copy on Azure. The owner asked whether (c) covers anything the reviewers explicitly asked for. Claude checked the brief's list: no.
+- Before 01:24 (exact time not recorded) Owner decision: (a). The README gives the reasons and names (c) as the next step.
+- 01:24 Work start on the README, in `../voc-demo-public`, branch `docs/readme-summary`, from `main` at `b01c0be`: a one-minute summary, the public copy's reasons, and a section on the owner's decisions, each line taken from this log. The counts come from `gh pr list --state merged` (53), `pytest --collect-only` on `b01c0be` (1,275 tests) and `git log` (first commit 27 October 2026 at 23:53).
+- The README also spells out CFPB and TF-IDF at their first use, as the dashboard does.
