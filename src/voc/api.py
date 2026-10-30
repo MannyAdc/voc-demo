@@ -102,10 +102,13 @@ def _counts(mapping, allowed):
     return {k: v for k, v in _dict(mapping).items() if k in allowed and _number(v) is not None}
 
 
-def create_app(root, with_text=False):
+def create_app(root, with_text=False, public_host=None):
+    """The app. With `public_host` it is the public copy (A13): it answers only to that host name, never reads
+    the local staged table, never serves complaint text or the consumer's own choice, and stores no review."""
     root = Path(root)
+    public = public_host is not None
     app = FastAPI(title="voc-demo results", docs_url=None, redoc_url=None, openapi_url=None)
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=LOCAL_HOSTS)
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[public_host] if public else LOCAL_HOSTS)
     monitor = api_log.install(app)  # A9: one log line per request, and the counters for /api/health
 
     @app.middleware("http")
@@ -271,7 +274,7 @@ def create_app(root, with_text=False):
             raise HTTPException(404, "unknown prompt version")
 
     # A10 to A12: the analyst screens (docs/USER.md tasks 2 and 3), on the development set.
-    analyst.add_routes(app, root, _checked_version, COMPLAINT_ID, with_text=with_text)
+    analyst.add_routes(app, root, _checked_version, COMPLAINT_ID, with_text=with_text and not public, public=public)
 
     @app.get("/api/audit/{version}")
     def audit(version: str):

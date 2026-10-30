@@ -292,7 +292,12 @@ async function complaintView(id) {
       box.append(document.createTextNode(c.text.slice(0, q.start)), mark, document.createTextNode(c.text.slice(q.end)));
     } else { box.textContent = c.text; }
   }
-  if (c.decision === "quarantined") decisionForm(c);
+  if (c.decision === "quarantined" && c.can_review) decisionForm(c);
+  else if (c.decision === "quarantined") {
+    // The public copy (A13) stores no review, so it offers no form.
+    status("d-status", "");
+    put("c-text-note", "Reviews are made on the analyst's own machine. This public copy stores no review.");
+  }
 }
 
 function decisionForm(c) {
@@ -312,6 +317,7 @@ function decisionForm(c) {
   // Review of #46: a saved decision is locked. The form then sends a correction, a new entry.
   const locked = !!c.review;
   $("d-locked").hidden = !locked; $("d-reasons").hidden = locked;
+  $("d-hidden-note").hidden = locked;  // once decided, the consumer's choice is no longer hidden
   $("d-save").textContent = locked ? "Save a correction" : "Save decision";
   if (locked) {
     select.disabled = false;

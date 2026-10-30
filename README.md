@@ -4,6 +4,8 @@ A Voice of the Customer pipeline on the public US CFPB Consumer Complaint Databa
 
 Built in three days, with every step recorded: the spec, the tests written before the code, the reviews, the decisions and the mistakes. See [BUILD_LOG.md](BUILD_LOG.md).
 
+**Live public copy:** https://voc-demo-20261030.azurewebsites.net, on Azure App Service, free tier. It holds what this repo holds: IDs, labels, reasons and figures. It has no complaint text and saves no review decision. The analyst screens with the complaint text run only on the analyst's own machine ([docs/DEPLOY.md](docs/DEPLOY.md), spec 002 rule A13). The first visit after a quiet spell can be slow: App Service unloads an idle app after 20 minutes, and this one does not set Always On.
+
 ## The result
 
 The claim was fixed before the first run: **the LLM, with its quote check, beats TF-IDF at the same coverage** (rule B10 in the [spec](specs/001-core-labelling-pipeline/spec.md)). It was judged once, on a frozen test set of 1,909 complaints. [How we measure](docs/HOW_WE_MEASURE.md) explains the method in plain words.
@@ -156,7 +158,7 @@ Versions are the pins in `pyproject.toml`.
   - The analyser for error analysis (T018a): a tool-less model call that names one cause from a fixed list for each wrong label.
   - A human spot check of whether quotes support their labels (T014c, the `show` command for the owner).
   - Catching a crash in the middle of the scored run.
-- What a cloud deployment would need: authentication on the API, keys in a secrets manager, the ledger in a shared database, the recordings in protected storage, and branch protection with required checks.
+- The public copy on Azure App Service (spec 002, A13, and [docs/DEPLOY.md](docs/DEPLOY.md)) serves only what this repo already holds: the results files, with no complaint text, no consumer's choice and no review saving. It needs no login for that reason. A deployment that labels or reviews in the cloud would need more: authentication on the API, keys in a secrets manager, the ledger in a shared database, the recordings in protected storage, and branch protection with required checks.
 
 ### Known limits
 
