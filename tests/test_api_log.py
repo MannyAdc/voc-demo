@@ -147,3 +147,49 @@ def test_A9_the_counters_start_at_zero_for_each_app(tmp_path):
     first.get("/api/health")
     second = TestClient(create_app(tmp_path), base_url="http://127.0.0.1")
     assert second.get("/api/health").json()["requests"] == 0
+
+
+# Review of #49
+
+
+def test_A9_a_request_body_is_never_logged(client, capsys):
+    capsys.readouterr()
+    client.post("/api/health", content=b"SYNBODY payload")
+    err = capsys.readouterr().err
+    assert "SYNBODY" not in err and "POST /api/health 405" in err
+
+
+def test_A9_a_full_match_wins_over_a_path_only_match():
+    from starlette.routing import Route, Router
+
+    from voc.api_log import route_pattern
+
+    async def endpoint(request):
+        return None
+
+    router = Router(routes=[Route("/api/thing/{name}", endpoint, methods=["GET"]),
+                            Route("/api/thing/{other}", endpoint, methods=["POST"])])
+    scope = {"type": "http", "method": "POST", "path": "/api/thing/x", "root_path": ""}
+    assert route_pattern(router, scope) == "/api/thing/{other}"
+
+
+def test_A9_a_request_cancelled_before_any_answer_is_not_a_server_error(capsys):
+    import asyncio
+
+    from voc.api_log import Monitor, RequestLog
+
+    async def cancelled(scope, receive, send):
+        raise asyncio.CancelledError
+
+    monitor = Monitor()
+    middleware = RequestLog(cancelled, monitor, router=type("R", (), {"routes": []})())
+    scope = {"type": "http", "method": "GET", "path": "/api/health", "root_path": ""}
+
+    async def run():
+        with pytest.raises(asyncio.CancelledError):
+            await middleware(scope, None, None)
+
+    capsys.readouterr()
+    asyncio.run(run())
+    assert monitor.server_errors == 0 and monitor.requests == 1
+    assert "(no response)" in capsys.readouterr().err
