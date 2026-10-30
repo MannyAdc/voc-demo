@@ -4,6 +4,9 @@ Written by `voc dbt lineage` from dbt's `manifest.json` (`dbt parse`). Do not ed
 It holds node names and edges only: no paths, no SQL and no descriptions.
 It shows the local DuckDB target. The two seeds of the Databricks target (T021) are off there,
 so they are not drawn.
+dbt does not track two inputs, so the graph does not draw them: `splits/test.csv`, read by the
+test set macro, and the label list, passed in the `labels` variable and read by the
+`product_in_label_list` data test.
 
 1 sources, 0 seeds, 2 models, 6 data tests, 9 edges.
 

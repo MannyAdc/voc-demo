@@ -225,7 +225,8 @@ def docs(root, labels):
     if code != 0:
         raise DbtError(f"dbt docs exited with code {code}")
     return [f"dbt docs: {', '.join(written)} written to {TARGET.as_posix()}. "
-            "They hold local paths: strip them before the lineage graph is published."]
+            "They hold local paths, so do not commit them. For a lineage graph with no paths, "
+            "run `voc dbt lineage`."]
 
 
 def _lineage_nodes(manifest):
@@ -265,10 +266,15 @@ def lineage(root, labels):
     counts = {kind: sum(1 for k, _ in nodes.values() if k == kind) for kind in KINDS}
     lines = ["# dbt lineage", "",
              "Written by `voc dbt lineage` from dbt's `manifest.json` (`dbt parse`). Do not edit it by hand.",
-             "It holds node names and edges only: no paths, no SQL and no descriptions.",
-             "It shows the local DuckDB target. The two seeds of the Databricks target (T021) are off there,",
-             "so they are not drawn.", "",
-             f"{counts['source']} sources, {counts['seed']} seeds, {counts['model']} models, "
+             "It holds node names and edges only: no paths, no SQL and no descriptions."]
+    if counts["seed"] == 0:
+        lines += ["It shows the local DuckDB target. The two seeds of the Databricks target (T021) are off there,",
+                  "so they are not drawn."]
+    # Added in the review of #48: the inputs dbt reads without tracking them as nodes.
+    lines += ["dbt does not track two inputs, so the graph does not draw them: `splits/test.csv`, read by the",
+              "test set macro, and the label list, passed in the `labels` variable and read by the",
+              "`product_in_label_list` data test.", "",
+              f"{counts['source']} sources, {counts['seed']} seeds, {counts['model']} models, "
              f"{counts['test']} data tests, {len(edges)} edges.", "",
              "```mermaid", "graph LR"]
     for uid in ordered:
