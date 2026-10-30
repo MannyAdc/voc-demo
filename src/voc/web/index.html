@@ -12,12 +12,41 @@
 <header>
   <h1>Complaint labels: LLM against TF-IDF</h1>
   <p class="sub">CFPB complaints, July 2026. An LLM labels each complaint by product and quotes its evidence. A script checks the quote. Failures go to quarantine with a reason.</p>
-  <p class="banner" id="banner">These are tuning figures from the development set. The verdict on the claim comes only from the single test run.</p>
+  <p class="banner" id="banner">The verdict comes from the single logged run of the frozen test set. The panels after it are tuning figures from the development set.</p>
 </header>
 
 <main>
+  <section class="card wide verdict-card" aria-labelledby="verdict-h">
+    <h2 id="verdict-h">Verdict on the frozen test set</h2>
+    <p class="note">Claim fixed before the first run: the LLM, with its quote check, beats TF-IDF at the same coverage. The test set was scored once, after its run was logged in runs/TEST_RUNS.md.</p>
+    <p class="verdict big" id="test-verdict">Loading the test run...</p>
+    <div class="h2h">
+      <table class="figures" aria-label="Test set figures for both methods">
+        <thead><tr><th></th><th>LLM</th><th>TF-IDF</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Re-weighted strict accuracy</th><td id="t-llm-acc"></td><td id="t-tf-acc"></td></tr>
+          <tr><th scope="row">Precision on answered</th><td id="t-llm-prec"></td><td id="t-tf-prec"></td></tr>
+          <tr><th scope="row">Coverage</th><td id="t-llm-cov"></td><td id="t-tf-cov"></td></tr>
+          <tr><th scope="row">Cost per 1,000 complaints</th><td id="t-llm-cost"></td><td id="t-tf-cost"></td></tr>
+          <tr><th scope="row">Time per 1,000 complaints</th><td id="t-llm-time"></td><td id="t-tf-time"></td></tr>
+        </tbody>
+      </table>
+      <div>
+        <h3>Difference, LLM minus TF-IDF</h3>
+        <svg id="test-interval" viewBox="0 0 320 90" role="img" aria-label="Test set difference and its 95 percent interval"></svg>
+        <p class="note" id="test-run"></p>
+      </div>
+    </div>
+    <h3>Per product</h3>
+    <p class="note" id="per-note"></p>
+    <div class="scroll"><table class="queue" aria-label="F1 per product on the test set">
+      <thead><tr><th>Product</th><th>Test complaints</th><th>F1, LLM</th><th>F1, TF-IDF</th></tr></thead>
+      <tbody id="per-product"></tbody>
+    </table></div>
+  </section>
+
   <section class="card wide" aria-labelledby="h2h">
-    <h2 id="h2h">Head to head <span class="tag">tuning figure</span></h2>
+    <h2 id="h2h">Development head to head <span class="tag">tuning figure</span></h2>
     <p class="note">Claim fixed before the first run: the LLM, with its quote check, beats TF-IDF at the same coverage. TF-IDF answers only its most confident complaints, as many as the LLM accepted.</p>
     <div class="h2h">
       <table class="figures" aria-label="Figures for both methods">

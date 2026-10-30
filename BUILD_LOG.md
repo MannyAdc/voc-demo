@@ -658,3 +658,19 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - About 10:18 (exact time not recorded) Second live try, same command: "dbt build: 2 seeds, 2 models, 4 data tests. passed 8, failed 0, errors 0, skipped 0". The same dbt models ran on the owner's Databricks Free Edition SQL warehouse, on the 12 synthetic complaints only.
 - About 10:20 The owner searched every file in the work folder for the token, in their own PowerShell: "files holding the token: 0". The command printed only the count. Claude never saw the token.
 - T021 went past its 1 hour time box: about 20 minutes before 02:50 and about 1 hour 35 minutes from 08:45. The owner had allowed past 12:00 at about 02:28.
+- 10:35 Merge verdict on #43 PENDING, then MERGE after Claude's judgement. #43 marked ready. 10:43 The owner merged #43 (time from GitHub), before reading the open question on the lock file. Owner decision: keep the four lowered packages as they are.
+- About 10:45 Owner question: does the build answer what the reviewers asked for? Claude checked the original brief, kept in this session's own history, against `main`. The gaps it found:
+  - The dashboard had only the development figures, not the test verdict.
+  - The repo is still private.
+  - The front end "with user design in mind" (USER.md, wireframes, drill-down, quarantine review) was not built. The owner had chosen "results only" on 28 October without knowing what it left out.
+  - No request logging or monitoring.
+  - "Why this stack" lacked the brief's six points.
+  - Not built: prompt versions after v1, the synthetic sales calls, the lineage graph on screen.
+- About 10:50 (exact time not recorded) Owner decision: build the verdict on the dashboard, the user-designed front end with the quoted sentence on the analyst's own machine only, and, with a helper, "Why this stack", the lineage graph and request logging. Azure on Saturday morning.
+- About 10:55 to 11:05 The owner was offline. Nothing ran.
+- About 11:08 Parallel run: a helper agent started in `../voc-demo-helper` on three branches in order: `docs/why-this-stack`, `feat/lineage`, `feat/request-logging`. It commits only in its own worktree and does not edit this log. Claude reviews and pushes.
+- About 11:10 Work start on the dashboard verdict, in `../voc-demo-dash`, branch `feat/dashboard-verdict`.
+  - Red `3c6d85d` at 11:42: 9 tests in `tests/test_api.py`. 4 failed. 5 passed at once: the 404 cases, which hold before the route exists and guard it after.
+  - Its gate took 26 minutes, with the helper's gates running at the same time.
+  - Green: a new route `/api/test/{version}`, which answers only when `runs/TEST_RUNS.md` holds a logged row for that version (B17). The page puts the verdict card first, with the per-product table. The development panels keep their "tuning figure" tags.
+  - Claude checked the page in a local browser on the committed results files, which hold no complaint text. One fix came from that check: Mortgage was marked as an LLM win, though both F1 scores read 0.910. The page now compares the values as displayed, at 3 decimals.
