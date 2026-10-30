@@ -83,6 +83,7 @@ function noVerdict(text) {
   const card = $("verdict-h").closest("section");
   card.classList.remove("has-verdict");
   $("verdict-body").hidden = true; $("per-product-block").hidden = true;
+  for (const tile of ["tile-complaints", "tile-accuracy", "tile-cost"]) put(tile, "n/a");
   put("verdict-note", "");
   put("test-verdict", text, true);
 }
@@ -130,6 +131,40 @@ function testVerdict(t) {
       if (a !== null && b !== null && a > b) llm.classList.add("better");
       if (a !== null && b !== null && b > a) tf.classList.add("better");
     }
+  }
+  put("tile-complaints", num(t.complaints));
+  put("tile-accuracy", pct(t.llm.reweighted_accuracy));
+  put("tile-cost", t.llm.cost_per_1000_usd ? "$" + t.llm.cost_per_1000_usd : "n/a");
+  productBars(rows);
+}
+
+function productBars(rows) {
+  // One bar per product: its test complaints, with the F1 of the LLM and of TF-IDF. A "!" marks a product where
+  // TF-IDF does better at 3 decimals, so the analyst checks those labels before reporting them.
+  const list = $("product-bars"); clear(list);
+  const most = Math.max(1, ...rows.map(([, c]) => c.complaints));
+  for (const [name, c] of rows) {
+    const item = document.createElement("li");
+    const label = document.createElement("span"); label.className = "bar-name"; label.textContent = name;
+    const track = document.createElement("span"); track.className = "bar-track";
+    const bar = document.createElement("span"); bar.className = "bar"; bar.style.width = (100 * c.complaints / most) + "%";
+    track.appendChild(bar);
+    const count = document.createElement("span"); count.className = "bar-count"; count.textContent = num(c.complaints);
+    const f1 = document.createElement("span"); f1.className = "bar-f1";
+    if (c.too_few_to_judge) {
+      f1.textContent = "too few to judge";
+    } else {
+      const a = round3(c.llm_f1), b = round3(c.tfidf_f1);
+      f1.textContent = "LLM " + dec(c.llm_f1) + " / TF-IDF " + dec(c.tfidf_f1);
+      if (a !== null && b !== null && b > a) {
+        const flag = document.createElement("span"); flag.className = "flag"; flag.textContent = " !";
+        flag.title = "TF-IDF does better here: check before you report";
+        f1.appendChild(flag);
+        item.classList.add("weak");
+      }
+    }
+    item.append(label, track, count, f1);
+    list.appendChild(item);
   }
 }
 
@@ -211,19 +246,39 @@ const REASONS = { quote_not_in_text: "the quoted sentence is not in the text", i
   quote_empty: "the AI gave no quote", quote_redaction_only: "the quote is only redaction marks", other: "another reason" };
 const DECISIONS = { ai_right: "the AI's label is right", word_model_right: "the word-based model is right",
   other_product: "another product fits better", no_product: "it fits no product clearly", correction: "a correction" };
-const listState = { product: null, show: "all", page: 1 };
+const listState = { product: null, show: "all", page: 1, loaded: null, keepFocus: false };
+// Review of #51: each fetch takes a ticket. An answer that arrives after a newer request is dropped, so two quick
+// clicks never put one complaint's facts under another's heading.
+const latest = { list: 0, complaint: 0, review: 0 };
+let reviewLoaded = false;
+let currentTab = null;
 
 function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
 function link(href, text) { const a = document.createElement("a"); a.href = href; a.textContent = text; return a; }
 function status(id, text, kind) {
   const el = $(id); el.textContent = text || ""; el.className = "status" + (kind ? " " + kind : "");
 }
-function viewOnly(id) {
-  for (const el of document.querySelectorAll(".ov")) el.hidden = id !== null;
-  for (const el of document.querySelectorAll(".view")) el.hidden = el.id !== id;
-  $("banner").hidden = id !== null;
-  if (id) { const h = $(id).querySelector("h2"); if (h) h.focus(); }
-  window.scrollTo(0, 0);
+const TABS = ["overview", "browse", "review", "measured"];
+
+function showTab(name, withDetail) {
+  // One tab at a time. The complaint pane sits beside the Browse or Review list when a complaint is open.
+  currentTab = name;
+  for (const tab of TABS) $("tab-" + tab).hidden = tab !== name;
+  for (const a of document.querySelectorAll("nav.tabs a")) {
+    if (a.dataset.tab === name) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  }
+  const detail = $("view-complaint");
+  if (withDetail && (name === "browse" || name === "review")) $("tab-" + name).appendChild(detail);
+  detail.hidden = !withDetail;
+  $("tab-" + name).classList.toggle("with-detail", !!withDetail);
+}
+
+function toggleTerm(button) {
+  // A (?) note opens in place and closes again. It works with a mouse, the keyboard and a screen reader.
+  const note = $(button.getAttribute("aria-controls"));
+  const open = button.getAttribute("aria-expanded") !== "true";
+  button.setAttribute("aria-expanded", open ? "true" : "false");
+  note.hidden = !open;
 }
 async function fetchJson(path, options) {
   // Returns [data, null] or [null, a short message]. Never shows a raw error to the analyst.
@@ -236,19 +291,39 @@ async function fetchJson(path, options) {
 
 async function reviewCount() {
   const [q] = await fetchJson("/api/review/" + version + "/queue");
-  put("review-count", q ? q.total + " complaints of the development set wait for a person. Reviewed " + q.reviewed + " of " + q.total + "."
-    : "The review queue could not be loaded.");
+  put("tile-waiting", q ? num(q.total - q.reviewed) : "n/a");
+  $("tab-review-link").textContent = q ? "Review (" + (q.total - q.reviewed) + ")" : "Review";
 }
 
-async function listView(product) {
+async function listView(product, openId) {
+  // The list is fetched again only when the product, the filter or the page changes. Opening a complaint beside
+  // it keeps the analyst's place. Paging keeps the focus on the pager.
   if (listState.product !== product) { listState.product = product; listState.page = 1; }
-  viewOnly("view-list");
+  const keepFocus = listState.keepFocus; listState.keepFocus = false;
+  showTab("browse", !!openId);
+  if (openId) complaintView(openId);
+  const body = $("list-rows");
+  $("browse-product").value = product || "";
+  if (!product) {
+    $("list-h").textContent = "Browse the development complaints";
+    clear(body); put("list-note", ""); put("list-page", ""); listState.loaded = null;
+    status("list-status", "Choose a product above to see its complaints.");
+    $("list-prev").disabled = true; $("list-next").disabled = true;
+    $("list-h").focus();
+    return;
+  }
   $("list-h").textContent = product + ": development complaints";
-  const body = $("list-rows"); clear(body);
+  if (!openId && !keepFocus) $("list-h").focus();
+  const key = [product, listState.show, listState.page].join("|");
+  if (listState.loaded === key) return;
+  clear(body);
   status("list-status", "Loading...");
+  const ticket = ++latest.list;
   const q = new URLSearchParams({ product, show: listState.show, page: listState.page });
   const [d, err] = await fetchJson("/api/review/" + version + "/complaints?" + q);
+  if (ticket !== latest.list) return;
   if (!d) { status("list-status", "The complaints " + err + ". Go back and try again.", "error"); return; }
+  listState.loaded = key;
   status("list-status", d.total ? "" : "No complaints here for the filter \"" + listState.show + "\".");
   const notes = [];
   if (!d.local) notes.push("The consumer's own choice and the text are available only on the analyst's own machine, so this list groups by the AI's label and the right or wrong filter is empty.");
@@ -256,8 +331,9 @@ async function listView(product) {
   put("list-note", notes.join(" "));
   for (const r of d.rows) {
     const tr = body.insertRow();
-    tr.insertCell().appendChild(link("#/complaint/" + encodeURIComponent(r.complaint_id), r.complaint_id));
-    tr.insertCell().textContent = r.ai_label || "(quarantined)";
+    tr.insertCell().appendChild(link("#/product/" + encodeURIComponent(product) + "/" + encodeURIComponent(r.complaint_id),
+                                      r.complaint_id));
+    tr.insertCell().textContent = r.ai_label || "(waiting for a person)";
     tr.insertCell().textContent = r.consumer_choice || (d.local ? "hidden until reviewed" : "only on the analyst's machine");
     tr.insertCell().textContent = r.decision === "accepted" ? "found" : (REASONS[r.reason] || "not accepted");
   }
@@ -266,12 +342,15 @@ async function listView(product) {
 }
 
 async function complaintView(id) {
-  viewOnly("view-complaint");
+  const ticket = ++latest.complaint;
+  $("view-complaint").hidden = false;
   $("complaint-h").textContent = "Complaint " + id;
+  $("complaint-h").focus();
   for (const k of ["c-ai", "c-check", "c-tfidf", "c-consumer", "c-text-note"]) put(k, "");
   clear($("c-text")); $("decision").hidden = true; status("d-status", "");
   status("complaint-status", "Loading...");
   const [c, err] = await fetchJson("/api/review/" + version + "/complaint/" + encodeURIComponent(id));
+  if (ticket !== latest.complaint) return;
   if (!c) { status("complaint-status", "This complaint " + err + ".", "error"); return; }
   status("complaint-status", "");
   put("c-ai", c.ai_label || (c.proposed_label ? "proposed " + c.proposed_label + ", not accepted" : "none"));
@@ -335,22 +414,34 @@ function decisionForm(c) {
     const [saved] = await fetchJson("/api/review/" + version + "/decision/" + encodeURIComponent(c.complaint_id),
       { method: "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "voc" }, body: JSON.stringify(body) });
     if (!saved) { status("d-status", "The decision could not be saved. Check the choice and try again.", "error"); return; }
+    // The queue, the counts and the browse list change with a decision, so they are loaded again.
+    reviewLoaded = false; listState.loaded = null;
+    reviewCount();
+    if (currentTab === "review") reviewView(c.complaint_id, true);
     await complaintView(c.complaint_id);
     status("d-status", "Saved: " + (saved.review.label || "no product") + ", "
       + (DECISIONS[saved.review.reason] || "a correction") + ". The decision is locked.", "ok");
   };
 }
 
-async function reviewView() {
-  viewOnly("view-review");
-  const body = $("review-rows"); clear(body);
-  status("review-status", "Loading...");
+async function reviewView(openId, queueOnly) {
+  // queueOnly reloads the list on the left after a decision, and leaves the open complaint alone.
+  if (!queueOnly) {
+    showTab("review", !!openId);
+    if (openId) complaintView(openId); else $("review-h").focus();
+    if (reviewLoaded) return;
+  }
+  const body = $("review-rows");
+  if (!queueOnly) { clear(body); status("review-status", "Loading..."); }
+  const ticket = ++latest.review;
   const [q, err] = await fetchJson("/api/review/" + version + "/queue");
+  if (ticket !== latest.review) return;
   if (!q) { status("review-status", "The review queue " + err + ".", "error"); return; }
+  clear(body); reviewLoaded = true;
   status("review-status", q.total ? "Reviewed " + q.reviewed + " of " + q.total + "." : "No complaint is waiting for review.");
   for (const r of q.rows) {
     const tr = body.insertRow();
-    tr.insertCell().appendChild(link("#/complaint/" + encodeURIComponent(r.complaint_id), r.complaint_id));
+    tr.insertCell().appendChild(link("#/review/" + encodeURIComponent(r.complaint_id), r.complaint_id));
     tr.insertCell().textContent = REASONS[r.reason] || "another reason";
     tr.insertCell().textContent = r.proposed_label || "none";
     tr.insertCell().textContent = r.tfidf_label || "none";
@@ -359,33 +450,49 @@ async function reviewView() {
 }
 
 function productLinks() {
-  // Browse by product (task 2): the development set's complaints, one link per product.
-  const box = $("product-links"); clear(box);
+  // Browse (task 2): the product chooser holds the 11 products, from the "What is being labelled" list.
+  const select = $("browse-product");
   for (const li of document.querySelectorAll("#product-list li")) {
-    const item = document.createElement("li");
-    item.appendChild(link("#/product/" + encodeURIComponent(li.textContent), li.textContent));
-    box.appendChild(item);
+    const option = document.createElement("option"); option.value = li.textContent; option.textContent = li.textContent;
+    select.appendChild(option);
   }
 }
 
 function route() {
   let hash = "";
   try { hash = decodeURIComponent(location.hash.replace(/^#/, "")); } catch (e) { hash = ""; }
-  const [, kind, ...rest] = hash.split("/");
-  const arg = rest.join("/");
-  if (kind === "product" && arg) listView(arg);
-  else if (kind === "complaint" && arg) complaintView(arg);
-  else if (kind === "review") reviewView();
-  else { viewOnly(null); reviewCount(); }
+  const [, kind, first, second] = hash.split("/");
+  // The old complaint address (before the tabs) opens the same complaint in the review queue.
+  if (kind === "complaint" && first) { location.replace("#/review/" + encodeURIComponent(first)); return; }
+  const before = currentTab;
+  if (kind === "product" && first) listView(first, second);
+  else if (kind === "browse") listView(null);
+  else if (kind === "review") reviewView(first);
+  else if (kind === "measured") { showTab("measured", false); }
+  else showTab("overview", false);
+  reviewCount();
+  if (currentTab !== before) window.scrollTo(0, 0);
+}
+
+function refreshList() {
+  // Paging and the filter go through the address, so the address and the screen stay in step: an open complaint
+  // closes, and its link opens it again.
+  if (!listState.product) return;
+  listState.keepFocus = true;
+  const target = "#/product/" + encodeURIComponent(listState.product);
+  if (location.hash !== target) location.hash = target; else route();
 }
 
 function wire() {
   for (const r of document.querySelectorAll("input[name=show]")) {
-    r.onchange = () => { listState.show = r.value; listState.page = 1; listView(listState.product); };
+    r.onchange = () => { listState.show = r.value; listState.page = 1; refreshList(); };
   }
-  $("list-prev").onclick = () => { listState.page -= 1; listView(listState.product); };
-  $("list-next").onclick = () => { listState.page += 1; listView(listState.product); };
-  $("complaint-back").onclick = (event) => { event.preventDefault(); history.back(); };
+  $("list-prev").onclick = () => { listState.page -= 1; refreshList(); };
+  $("list-next").onclick = () => { listState.page += 1; refreshList(); };
+  $("browse-product").onchange = (event) => {
+    if (event.target.value) location.hash = "#/product/" + encodeURIComponent(event.target.value);
+  };
+  for (const button of document.querySelectorAll("button.term")) button.onclick = () => toggleTerm(button);
   window.addEventListener("hashchange", route);
 }
 

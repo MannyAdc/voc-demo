@@ -31,7 +31,7 @@ A small web app. The API serves the committed results files, and one page shows 
   - `/api/audit/{version}`: the counts of `results/audit/{version}_dev.json`.
   - `/api/data`: the pool and set sizes, and the copy counts, from `splits/manifest.json` and `config/pool.toml`.
 - **A6. The audit writes its counts.** `voc audit` also writes its counts to `results/audit/{version}_{set}.json`, so the dashboard can show them without the recordings.
-- **A7. The page.** One page, served by the app. First, the verdict on the frozen test set, with its interval and the F1 per product. It is not marked as a tuning figure. *Added on 30 October.* Then three panels of development figures.
+- **A7. The page.** One page, served by the app. First, the verdict on the frozen test set, with its interval and the F1 per product. It is not marked as a tuning figure. *Added on 30 October.* Then three panels of development figures. *Changed on 30 October (owner decision, docs/WIREFRAMES.md version 2):* the page has four tabs. Overview holds the test verdict, figure tiles and a bar per product. Browse and Review hold the analyst screens (A10 to A12). How we measured holds the development panels below, off the analyst's screens.
   - **Speed:** cost and time per 1,000 complaints, for the LLM and for TF-IDF, with what each figure counts.
   - **Safety:** the quote check (accepted, and quarantined by reason), the quarantine queue, and the audit counts.
   - **Scale:** the July export (672,036 complaints), the pool after copies are removed, and the three set sizes.

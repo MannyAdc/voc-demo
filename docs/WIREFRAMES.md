@@ -90,3 +90,60 @@ Opened from screen 2 or from the review list. The text is shown only when the ow
 - Loading: "Loading..." where the data will appear, never an empty table.
 - Empty: "No complaints here" with what the filter was.
 - Error: "The results could not be loaded" with what to try, never a raw error.
+
+# Version 2: tabs for the analyst's tasks (approved by the owner on 30 October 2026)
+
+After the first screens were built, the owner judged that they read like a results report, not a tool for the analyst. Version 2 keeps every screen above and its rules. It changes the layout. The figures below are the real test-set figures. Every complaint is made up (SYN- IDs).
+
+## The top bar, on every screen
+
+```
++--------------------------------------------------------------------------+
+| Complaint labels: LLM against TF-IDF                                      |
+| ... An LLM (?) labels each complaint ... scored against TF-IDF (?) ...    |
+| [Overview] [Browse] [Review (9)] [How we measured]                        |
++--------------------------------------------------------------------------+
+```
+
+The title keeps the technical names (owner decision). Each (?) opens a short note in place.
+
+## Tab 1, Overview (task 1)
+
+```
+| +-------------+ +-----------------+ +--------------+ +----------------+ |
+| | 1,909       | | 80.3%           | | 9            | | $0.2373        | |
+| | complaints  | | of all test     | | wait for a   | | LLM cost per   | |
+| | in the test | | complaints right| | person       | | 1,000          | |
+| +-------------+ +-----------------+ +--------------+ +----------------+ |
+| VERDICT: The LLM beats TF-IDF: +2.4 points, 95% interval +0.5 to +4.1   |
+| COMPLAINTS BY PRODUCT                          F1 (?): LLM / TF-IDF      |
+| Debt collection      ##################  452   0.833 / 0.863 !          |
+| Credit reporting     ###                  64   0.500 / 0.697 !          |
+| Prepaid card         #                    28   too few to judge         |
+| ! = TF-IDF does better here: check before you report                    |
+| > All test figures, as a table                                          |
+| > What is being labelled (the 11 products, the 3 answers, a glossary)   |
+```
+
+## Tabs 2 and 3, Browse and Review (tasks 2 and 3)
+
+The list on the left, and the open complaint beside it, as screens 2 and 3 above.
+
+```
+| Product [Debt collection v]  Filter (o) all ( ) right ( ) wrong         |
+| +----------------------------+  +-----------------------------------+  |
+| | SYN-101  Debt collection   |  | Complaint SYN-102                 |  |
+| | SYN-102  Credit reporting  |  | facts, the text with the quote,   |  |
+| +----------------------------+  | and the decision form if waiting  |  |
+|                                 +-----------------------------------+  |
+```
+
+## Tab 4, How we measured
+
+The development figures (tuning figures), the interval chart, precision against coverage, who was right, Speed, Safety, Scale and the prompt versions. Everything technical for a reviewer, off the analyst's screens.
+
+## Keyboard, contrast and width
+
+- Every link, button, field, select and summary has a visible focus ring.
+- Text contrast is at least 4.5 to 1 in both light and dark mode, measured on the page.
+- Below 900 px wide, the tiles go two by two, each bar stacks under its name, and the complaint opens below its list.
