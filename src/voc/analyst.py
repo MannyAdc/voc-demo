@@ -205,7 +205,7 @@ def add_routes(app, root, checked_version, complaint_id_pattern, with_text=False
         if quote is not None and text is not None and quote["end"] > len(text):
             quote = None
         return out | {"local": local is not None, "with_text": with_text, "text": text, "cut": cut, "quote": quote,
-                      "labels": _labels()}
+                      "labels": _labels(), "can_review": not public}
 
     @app.get("/api/review/{version}/queue")
     def review_queue(version: str):

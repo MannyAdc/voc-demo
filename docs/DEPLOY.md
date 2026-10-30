@@ -6,14 +6,15 @@ The owner runs every command here, in their own PowerShell, after `az login`. Cl
 
 ## Facts checked on Microsoft's pages (30 October 2026)
 
-- App Service pricing for Linux: the Free (F1) tier is "Shared (60 CPU minutes / day)", with 1 GB RAM and 1 GB storage. The page does not say whether F1 runs Python on Linux, so the first command may need the Basic (B1) tier instead, which the free account's credit covers. ([App Service pricing](https://azure.microsoft.com/en-us/pricing/details/app-service/linux/))
+- App Service pricing for Linux: the Free (F1) tier is "Shared (60 CPU minutes / day)", with 1 GB RAM and 1 GB storage. The page does not say whether F1 runs Python on Linux, so the first command may need the Basic (B1) tier instead, which the free account's credit covers. The Python quickstart recommends B1 "for better performance over the Free F1 plan". ([App Service pricing](https://azure.microsoft.com/en-us/pricing/details/app-service/linux/))
 - A ZIP deploy runs the build, including `pip install -r requirements.txt`, only when `SCM_DO_BUILD_DURING_DEPLOYMENT` is `true`. For Python 3.13 and earlier, a FastAPI app needs a startup command. ([Python quickstart](https://learn.microsoft.com/en-us/azure/app-service/quickstart-python), updated 27 July 2026)
 - `WEBSITE_HOSTNAME` is set by App Service: "Primary host name for the app". ([App settings reference](https://learn.microsoft.com/en-us/azure/app-service/reference-app-settings), updated 10 September 2026)
 
 ## What is deployed
 
 - A ZIP of the committed files on `main`, made with `git archive`, so nothing git ignores (data, `.env`, the deny list) can be in it.
-- `requirements.txt`, the runtime packages pinned from `uv.lock`, made with `uv export --frozen --no-default-groups --no-hashes --no-emit-project --format requirements-txt`. A test checks it pins every runtime dependency and no test or Databricks package.
+- `requirements.txt`, the public copy's packages only, pinned from `uv.lock`: the `public` dependency group (fastapi, starlette, uvicorn and duckdb) and what they need. It is made with `uv export --native-tls --frozen --only-group public --no-hashes --no-emit-project --format requirements-txt > requirements.txt`. Tests check each pin matches `uv.lock`, and that every package the public app loads is pinned.
+- The ZIP leaves out `pyproject.toml` and `uv.lock`. Microsoft lists both a `requirements.txt` build and a `uv` build, and does not say which wins when both are there. Without them, the build can only use `requirements.txt`.
 - The startup command `python -m uvicorn voc.public:app --host 0.0.0.0 --port 8000 --app-dir src`.
 
 ## The commands
@@ -21,7 +22,7 @@ The owner runs every command here, in their own PowerShell, after `az login`. Cl
 Pick an app name that nobody else uses, with no personal name in it, for example `voc-demo-` and four digits. It becomes `https://<app name>.azurewebsites.net`.
 
 ```powershell
-cd C:\Users\x13yr\Desktop\dev\voc-demo
+cd <your clone of this repo>
 git switch main
 git pull
 $app = "voc-demo-1234"   # change the digits
@@ -32,7 +33,7 @@ az webapp create --name $app --resource-group $rg --plan voc-demo-plan --runtime
 az webapp config appsettings set --name $app --resource-group $rg --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true
 az webapp config set --name $app --resource-group $rg --startup-file "python -m uvicorn voc.public:app --host 0.0.0.0 --port 8000 --app-dir src"
 az webapp log config --name $app --resource-group $rg --docker-container-logging filesystem
-git archive --format=zip -o "$env:TEMP\voc-site.zip" main
+git archive --format=zip -o "$env:TEMP\voc-site.zip" main -- . ":!uv.lock" ":!pyproject.toml"
 az webapp deploy --name $app --resource-group $rg --src-path "$env:TEMP\voc-site.zip" --type zip
 ```
 

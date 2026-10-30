@@ -91,26 +91,26 @@ def test_A13_the_public_module_needs_the_host_name_from_the_platform(monkeypatch
 
 
 def test_A13_the_public_module_builds_the_public_app_from_the_platform_host(monkeypatch, root):
+    # Changed in the green commit of the review of #50: the module is removed in `finally`, so a failure here
+    # cannot leave it cached for other tests.
     monkeypatch.setenv("WEBSITE_HOSTNAME", HOST)
     monkeypatch.chdir(root)
     sys.modules.pop("voc.public", None)
-    public = importlib.import_module("voc.public")
-    assert _client(public.app).post("/api/review/v1/decision/SYN-3", headers=HEADER,
-                                    json={"label": "Credit card", "reason": "word_model_right"}).status_code == 403
-    assert _client(public.app, "127.0.0.1").get("/api/health").status_code == 400
-    sys.modules.pop("voc.public", None)
+    try:
+        public = importlib.import_module("voc.public")
+        assert _client(public.app).post("/api/review/v1/decision/SYN-3", headers=HEADER,
+                                        json={"label": "Credit card", "reason": "word_model_right"}).status_code == 403
+        assert _client(public.app, "127.0.0.1").get("/api/health").status_code == 400
+    finally:
+        sys.modules.pop("voc.public", None)
 
 
-def test_A13_requirements_txt_pins_the_runtime_packages_only():
+def test_A13_requirements_txt_lines_are_pinned():
+    # Changed in the green commit of the review of #50: requirements.txt now holds the public copy's packages
+    # only, so it no longer pins every project dependency. What it must hold is checked below, against uv.lock.
     lines = [line.strip() for line in (REPO / "requirements.txt").read_text(encoding="utf-8").splitlines()
              if line.strip() and not line.startswith("#") and not line.startswith(" ")]
-    names = {re.split(r"==", line)[0].lower() for line in lines}
-    assert all(re.fullmatch(r"[A-Za-z0-9_.\-\[\]]+==[0-9][^ ;]*( ; .*)?", line) for line in lines), lines
-    with open(REPO / "pyproject.toml", "rb") as f:
-        project = tomllib.load(f)
-    for dependency in project["project"]["dependencies"]:
-        assert dependency.split("==")[0].lower() in names, dependency
-    assert "pytest" not in names and "dbt-databricks" not in names and "voc" not in names
+    assert lines and all(re.fullmatch(r"[A-Za-z0-9_.\-\[\]]+==[0-9][^ ;]*( ; .*)?", line) for line in lines), lines
 
 
 # Review of #50

@@ -750,3 +750,24 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - Green: `create_app(root, public_host=...)`, `src/voc/public.py` (the app for App Service, which needs `WEBSITE_HOSTNAME`), a `requirements.txt` from `uv export --frozen --no-default-groups --no-hashes --no-emit-project`, spec A13, `docs/DEPLOY.md` with the owner's commands, and a README line. The public copy answers only to its own host, never reads the local staged table, and stores no review.
   - Writing `requirements.txt` with `uv export -o` failed with "Access is denied", most likely the same Windows file lock. A plain redirect worked.
   - Also the leftover from #46: the "hidden while you decide" note now hides once a decision is saved.
+- 16:07 #49's merge of main pushed (`a949031`). 16:13 Merge verdict PENDING, then MERGE after Claude's judgement. One review item was deferred with its reason: a log test for #46's review routes, because the general test already covers routes with values in their path. #49 marked ready. 16:14 The owner merged #49 (time from GitHub).
+- 16:08 Public copy green `6ce3132`. Then `feat/request-logging` merged in (`bc72671`), keeping this branch's host check and #49's request log. 16:19 #50 opened (time from GitHub), with a reviewer.
+- About 16:15 to 16:25 The owner started the Azure setup with Claude's commands. `az` was not found in an old PowerShell window, and a query of Claude's was wrong for the current Azure CLI output. Claude gave a simpler table command instead. AI error: the query was written from memory, not checked against the current CLI.
+- 16:22 Reviewer findings posted on #50, with Claude's proposed fixes (time from GitHub). Nothing could leak text or store a review. The real ones:
+  - With `uv.lock` in the ZIP, Azure might build with uv and ignore `requirements.txt`.
+  - `requirements.txt` pinned about 80 packages, though the public copy loads about a dozen.
+  - The data folder came from the working folder, so a wrong start folder would fail silently.
+  - The review form showed on the public copy, and every save failed with a misleading message.
+  - `docs/DEPLOY.md` had a `cd` line with the owner's Windows account name, in a tracked file for the first time. AI error: Claude wrote its own folder path into a doc. The reviewer caught it before merge. It stays in this branch's history, which is never rewritten. It is a login handle, not a real name.
+  - Merge commits made with `git commit --no-edit` (`dae520e`, `9439a72`, `a949031`, `bc72671`) have no Co-Authored-By line. They are pushed, so they stay. From now on a merge commit gets the line.
+- About 16:24 (exact time not recorded) Owner decision: fix all of them.
+- Red `4f54618` at 16:34: 7 tests in `tests/test_public.py`. 5 failed. 2 passed at once and guard: every package the public app loads is pinned, and an empty host name is refused.
+- The fixes for #50:
+  - A `public` dependency group: duckdb, fastapi, sniffio, starlette and uvicorn, at their locked versions. `requirements.txt` is exported from it and now holds 16 pinned packages. sniffio is pinned because the public app loads it here, though no package in the group declares it. A test found that.
+  - Tests: every pin matches `uv.lock`, and every package the public app loads in a fresh process is pinned.
+  - The ZIP leaves out `uv.lock` and `pyproject.toml`, checked with a local `git archive`: 241 files, `requirements.txt` in, both left out.
+  - `voc.public` finds the project folder from its own path.
+  - The complaint view says whether a review can be saved, and the public copy says "Reviews are made on the analyst's own machine" instead of the form.
+  - DEPLOY.md: a placeholder for the folder, the exact export command, and the quickstart's note on B1.
+  - Known limits: App Service's warm-up ping is counted as a 400.
+  - AI error during the fix: Claude's `sed` edit added sniffio to the main dependency list too, because the FastAPI line appears twice in `pyproject.toml`. Claude saw it in the diff and removed it before the commit.
