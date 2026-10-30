@@ -4,7 +4,7 @@ A Voice of the Customer pipeline on the public US CFPB Consumer Complaint Databa
 
 Built in three days, with every step recorded: the spec, the tests written before the code, the reviews, the decisions and the mistakes. See [BUILD_LOG.md](BUILD_LOG.md).
 
-**Live public copy:** https://voc-demo-20261030.azurewebsites.net, on Azure App Service (free tier, with no "Always On", so the first visit after a quiet spell can be slow while the app starts). It holds what this repo holds: IDs, labels, reasons and figures, with no complaint text and no saving of review decisions. The full analyst screens, with the complaint text and the quote highlighted, run only on the analyst's own machine ([docs/DEPLOY.md](docs/DEPLOY.md), spec 002 rule A13).
+**Live public copy:** https://voc-demo-20261030.azurewebsites.net, on Azure App Service, free tier. It holds what this repo holds: IDs, labels, reasons and figures. It has no complaint text and saves no review decision. The analyst screens with the complaint text run only on the analyst's own machine ([docs/DEPLOY.md](docs/DEPLOY.md), spec 002 rule A13). The first visit after a quiet spell can be slow: App Service unloads an idle app after 20 minutes, and this one does not set Always On.
 
 ## The result
 
