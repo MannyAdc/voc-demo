@@ -238,6 +238,12 @@ def test_A4_only_the_local_host_names_are_answered(client):
     assert client.get("/api/health", headers={"host": "localhost:8000"}).status_code == 200
 
 
+def test_A4_browsers_check_for_a_newer_page_on_every_visit(client):
+    # Found after the first redeploy: with no cache header, a browser kept the old script and style for the new page.
+    for route in ("/", "/web/app.js", "/web/style.css", "/api/health"):
+        assert client.get(route).headers["cache-control"] == "no-cache", route
+
+
 def test_A4_the_policy_names_every_source(client):
     policy = client.get("/").headers["content-security-policy"]
     for part in ("default-src 'self'", "script-src 'self'", "style-src 'self'", "connect-src 'self'",
