@@ -64,7 +64,7 @@ A Voice of the Customer analyst at a financial-services company.
 
 ## What they need from every screen
 
-- Plain words. "The AI's label", "the word-based model's suggestion" and "the consumer's own choice", with the technical name (LLM, TF-IDF, recorded product) in small print.
+- Plain words by default, such as "the consumer's own choice" and "waiting for a person". *Changed on 30 October (owner decision):* the core technical terms a technical reader looks for stay as the label, with a plain explanation right beside them: LLM, TF-IDF, F1, re-weighted strict accuracy and coverage. Each has a (?) button that opens a one-line note in place, and a glossary lists them all. Other terms are decided case by case.
 - A short "What is being labelled" box on the first screen, with the 11 products and the three names above.
 - Clear empty, loading and error states. "No complaints in this product" is not the same as "the data did not load".
 - Keyboard use for every action, readable contrast, and a label on every control.

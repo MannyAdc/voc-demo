@@ -771,3 +771,10 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - DEPLOY.md: a placeholder for the folder, the exact export command, and the quickstart's note on B1.
   - Known limits: App Service's warm-up ping is counted as a 400.
   - AI error during the fix: Claude's `sed` edit added sniffio to the main dependency list too, because the FastAPI line appears twice in `pyproject.toml`. Claude saw it in the diff and removed it before the commit.
+- Red `1a51a81` at 17:23: 8 tests in `tests/test_ui.py`, on the page files. 7 failed. The title test passed at once, because the old title already said "LLM against TF-IDF".
+- About 17:10 to 17:20 (exact times not recorded) UI rework, owner decisions on the wireframes (`docs/WIREFRAMES.md`, version 2):
+  - Tabs for the analyst's three tasks, plus one tab for the method. Figure tiles and a bar per product on the overview.
+  - Overruled suggestion: Claude proposed plain words in place of "LLM" and "TF-IDF" in the title. The owner kept the technical terms, with an explanation beside each, because a technical reader looks for them. Core terms keep their name with a (?) note and a glossary. Other terms are decided case by case. Recorded in `docs/USER.md`.
+- The page was checked in a browser on synthetic data only (`SYN-` IDs, served with a scratchpad script), never on real data.
+- AI error caught in that check: the "How we measured" tab showed on the overview too. The CSS rule `.tab.grid{display:grid}` beat the `hidden` attribute. Fixed with `[hidden]{display:none !important}`.
+- Contrast, measured on the page with the WCAG formula: two pairs failed 4.5 to 1: the TF-IDF orange in light mode, and the button text in dark mode. Both fixed, with a darker orange and a new `--on-llm` colour for text on buttons. After the fix every pair measured passes: light TF-IDF on card 5.12, on the background 4.78, light button 4.75, dark button 7.28.
