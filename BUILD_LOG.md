@@ -822,3 +822,7 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - The work on #51 started in `../voc-demo-ui`, branch `feat/ui-tabs`, from `a2d65da` (#50's branch), after the owner approved the wireframes and before the first red commit at 17:23. The exact start time was not recorded. This line is written late, at about 21:35.
 - About 21:35 Owner decision: add these entries to #51 before it is marked ready.
 - AI error caught before the commit: Claude first wrote these entries with three times it had not checked (21:28, 21:38, 21:40). It stopped the commit and checked them against GitHub and the clock.
+- 21:52 #51 merged by the owner (time from git).
+- 21:54 Work start on the merge check gap found on #51, in `../voc-demo-ui`, branch `fix/merge-check-web`, from `main` at `c4f7d0b`.
+- The fix: `.js`, `.html` and `.css` join the code suffixes, so a pull request that changes the page needs a red commit first. `docs/TEST_LIST.md` has the new line.
+- Red `2c8432e` at 21:55: `test_T006b_the_page_files_are_code`, 3 cases. All 3 failed.

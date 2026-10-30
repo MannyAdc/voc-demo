@@ -45,7 +45,8 @@ EXIT_MERGE, EXIT_FIX_FIRST, EXIT_ERROR, EXIT_PENDING = 0, 1, 2, 3
 SECRET_WORDS = ("KEY", "TOKEN", "SECRET")
 DROPPED_VARS = ("VOC_DATA_DIR", "VOC_NEXT_DATA_DIR", "VOC_MOCK_FIXTURES")
 RED_FILE = re.compile(r"tests/test_[^/]*\.py")
-CODE_SUFFIXES = (".py", ".sql", ".sh", ".ps1")
+# The page's script, markup and styles count too: their tests read them (found on #51).
+CODE_SUFFIXES = (".py", ".sql", ".sh", ".ps1", ".js", ".html", ".css")
 CODE_FOLDERS = (".githooks/", ".github/workflows/", "dbt/")
 CODE_FILES = ("pyproject.toml", "uv.lock", ".claude/settings.json")
 
