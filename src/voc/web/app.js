@@ -506,17 +506,25 @@ function wire() {
 
 async function freshness() {
   // A14: the "Data as of" strip, from committed files only. A fact the files do not hold is said to be missing.
-  const f = await get("/api/freshness");
+  const [f, s] = await Promise.all([get("/api/freshness"), get("/api/data")]);
   if (!f) { put("fresh-data", "The data facts could not be loaded.", true); return; }
   const d = f.data;
+  // Review of #54: both narrative counts on the page, and how one becomes the other (docs/DATA.md).
+  const copies = s && s.copies_removed && typeof s.copies_removed.exact === "number" && typeof s.copies_removed.near === "number"
+    ? s.copies_removed.exact + s.copies_removed.near : null;
+  const pool = s && typeof s.pool === "number" && copies !== null
+    ? " " + num(d.narratives) + " have the consumer's own description, and " + num(s.pool) + " of them form the pool after "
+      + num(copies) + " copies were removed."
+    : " " + num(d.narratives) + " have the consumer's own description.";
   put("fresh-data", d.from && d.to
-    ? "Data: the CFPB export from " + day(d.from) + " to " + day(d.to) + ", " + num(d.complaints) + " complaints, "
-      + num(d.narratives) + " with the consumer's own description."
+    ? "Data: the CFPB export from " + day(d.from) + " to " + day(d.to) + ", " + num(d.complaints) + " complaints." + pool
     : "Data: the export's dates are not recorded.", !(d.from && d.to));
   const t = f.test_run;
+  // The test run's row is written in the owner's local time, just before the scoring starts.
   put("fresh-test", t
-    ? "Test set scored once, on " + day(t.date.slice(0, 10)) + " at " + t.date.slice(11) + ": " + num(t.complaints)
-      + " complaints, prompt " + t.prompt_version + " on " + t.model + "."
+    ? "Test set: " + (t.runs === 1 ? "one scored run, logged on " : t.runs + " scored runs, the last logged on ")
+      + day(t.date.slice(0, 10)) + " at " + t.date.slice(11) + " Australian Eastern Daylight Time (AEDT), as it started: "
+      + num(t.complaints) + " complaints, prompt " + t.prompt_version + " on " + t.model + "."
     : "No test run is logged yet.", !t);
   put("fresh-schedule", f.schedule_utc
     ? "Pipeline check: the whole pipeline runs by itself every day at " + f.schedule_utc

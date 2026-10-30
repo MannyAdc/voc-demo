@@ -30,7 +30,7 @@ main { padding-top: 16px; }
 .wide { grid-column: 1 / -1; }
 .tag { font-size: .7rem; font-weight: 600; background: var(--tag); color: var(--muted); padding: 2px 8px;
   border-radius: 999px; text-transform: uppercase; letter-spacing: .03em; }
-.note { color: var(--muted); font-size: 1rem; }
+.note { color: var(--muted); }
 .h2h { display: grid; grid-template-columns: 1.3fr 1.1fr .9fr 1.2fr; gap: 20px; align-items: start; }
 .figures th, .figures td { white-space: nowrap; }
 .figures tbody th { white-space: normal; }
@@ -70,6 +70,17 @@ svg .ci { stroke: var(--llm); stroke-width: 3; }
 .key.tf { background: var(--tf); } .key.llm { background: var(--llm); }
 .missing { color: var(--muted); font-weight: 400; font-style: italic; }
 footer { color: var(--muted); font-size: 1rem; padding: 24px 16px 40px; }
+/* With the larger text, four tiles need about 1000 px. Below that they go two by two, and a tile's note may wrap. */
+.tile .term-wrap { white-space: normal; }
+@media (max-width: 1000px) {
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Name, count and F1 on one line, the bar on its own full line below. */
+  .bars li { grid-template-columns: minmax(0, 1fr) 4rem auto; row-gap: 4px; }
+  .bar-track { grid-column: 1 / -1; order: 4; }
+  /* The method tab: two cards a row, and its tables in two columns. */
+  .tab.grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .h2h { grid-template-columns: 1fr 1fr; }
+}
 @media (max-width: 720px) {
   .tab.grid { grid-template-columns: 1fr; }
   .h2h { grid-template-columns: 1fr; }
@@ -144,14 +155,6 @@ summary h2 { display: inline; }
   .split.with-detail { grid-template-columns: 1fr; }
   .detail { position: static; }
   .glossary { grid-template-columns: 1fr; }
-}
-/* With the larger text, four tiles need about 1000 px. Below that they go two by two, and a tile's note may wrap. */
-.tile .term-wrap { white-space: normal; }
-@media (max-width: 1000px) {
-  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  /* Name, count and F1 on one line, the bar on its own full line below. */
-  .bars li { grid-template-columns: minmax(0, 1fr) 4rem auto; row-gap: 4px; }
-  .bar-track { grid-column: 1 / -1; order: 4; }
 }
 /* A14: the "Data as of" strip under the tiles */
 .fresh { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px;

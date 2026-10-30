@@ -433,7 +433,9 @@ def test_A14_freshness_names_the_data_month_the_test_run_and_the_schedule(fresh,
     assert response.status_code == 200 and "SYNHOSTILE" not in response.text
     assert response.json() == {
         "data": {"from": "2026-07-01", "to": "2026-07-31", "complaints": 12, "narratives": 10},
-        "test_run": {"date": "2026-10-29 21:48", "prompt_version": "v1", "model": "synthetic-model", "complaints": 6},
+        # Changed in the green commit of the review of #54: the strip also counts the logged runs.
+        "test_run": {"date": "2026-10-29 21:48", "prompt_version": "v1", "model": "synthetic-model", "complaints": 6,
+                     "runs": 1},
         "schedule_utc": "05:17"}
 
 

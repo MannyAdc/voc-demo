@@ -832,3 +832,22 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - AI error in a red test: the font test required normal text to equal the verdict line. But the verdict line had to grow to stay prominent. Changed in the green commit, with a comment, to compare against the fixed 1.15rem the owner chose.
 - Checked in a browser on synthetic data at 760 px (dark) and 1280 px (light). At 760 px the larger text cut off a tile and squeezed the bars. Fixed: tiles go two by two below 1000 px, and each bar gets its own line there. On the real repo files `/api/freshness` returns 1 to 31 July 2026, 672,036 complaints, 10,002 with a narrative, the test run of 29 October at 21:48, and 05:17 UTC.
 - 23:55 #52 merged by the owner (time from git).
+- Green `2db6f2b` at 00:09: all page, API, public copy and analyst tests pass. 00:23 #54 opened as a draft, with a reviewer (time from GitHub).
+- 00:27 Reviewer findings posted on #54 (time from GitHub). The real ones:
+  - AI error by Claude: it put `.note` on the small-text list, but `.note` holds normal paragraphs, so the owner's font rule was not met. The test allowed it by substring.
+  - The test run line said "scored once" at "21:48" with no time zone. The row is written in local time, as the run starts, and only the last row was read.
+  - `/api/freshness` gave a 500 on malformed JSON, NaN or non-UTF-8 bytes, and let "2026-13-45", -5 and 1.5 through.
+  - Two narrative counts on the overview (10,002 and 9,303), with no explanation.
+  - "dbt" not spelled out, the workflow's name not exact, the phone rules undone by the later 1000 px block, and the branch behind `main`.
+- About 00:28 Owner decision: fix all of them.
+- The fixes for #54:
+  - `.note` is normal size. Only the footer, chart legends, captions and small marks are smaller.
+  - "Test set: one scored run, logged on 29 October 2026 at 21:48 Australian Eastern Daylight Time (AEDT), as it started." The route counts the logged runs.
+  - A broken file gives nulls. Dates must be real dates, and counts whole numbers of 0 or more.
+  - "10,002 have the consumer's own description, and 9,303 of them form the pool after 699 copies were removed", from `/api/data` (623 exact and 76 near copies, `docs/DATA.md`).
+  - "dbt (data build tool)", and the workflow named "Scheduled pipeline run (synthetic fixture)", as GitHub lists it.
+  - The 1000 px block comes before the 720 px blocks. The method tab's cards and tables go two a row below 1000 px.
+  - Spec A7 and A14 record the changes. One earlier test changed in the green commit, with a comment: the route's answer now holds the run count.
+  - Checked in a browser on synthetic data, with the committed public fact files copied in: 375 px (dark, no sideways scroll), 900 px (the method tab, no sideways scroll), and 1280 px (light).
+- Red `aee7801` at 00:29: 12 cases for the review (6 for `/api/freshness`, 6 for the page). 11 failed. The test that the verdict line stays larger passed at once, and stays as a guard.
+- AI error caught before the commit: Claude first wrote "All 12 failed" here. It checked the test output, stopped the commit and corrected the count.
