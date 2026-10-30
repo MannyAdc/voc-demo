@@ -452,3 +452,36 @@ def test_A14_freshness_says_what_is_missing_instead_of_failing(root, client):
     got = client.get("/api/freshness").json()
     assert got == {"data": {"from": None, "to": None, "complaints": None, "narratives": None},
                    "test_run": None, "schedule_utc": None}
+
+
+# Review of #54: a broken or odd file gives nulls, never an error, and the strip counts the logged runs.
+
+@pytest.mark.parametrize("raw", [b"{not json", b'{"rows": NaN}', b"\xff\xfe\x00bad"])
+def test_A14_a_broken_profile_gives_nulls_not_an_error(fresh, client, raw):
+    (fresh / "results" / "profile_july_2026.json").write_bytes(raw)
+    response = client.get("/api/freshness")
+    assert response.status_code == 200
+    assert response.json()["data"] == {"from": None, "to": None, "complaints": None, "narratives": None}
+
+
+def test_A14_dates_and_counts_are_checked_for_sense(fresh, client):
+    _write(fresh / "results" / "profile_july_2026.json",
+           json.dumps({"date_range": ["2026-13-45", "2026-07-31"], "rows": -5, "narratives": 1.5}))
+    got = client.get("/api/freshness").json()["data"]
+    assert got == {"from": None, "to": "2026-07-31", "complaints": None, "narratives": None}
+
+
+def test_A14_the_strip_counts_the_logged_test_runs(fresh, client):
+    runs = fresh / "runs" / "TEST_RUNS.md"
+    row = "| 2026-10-30 09:00 | v1 | " + "b" * 64 + " | synthetic-model | 6 | SYN second run |\n"
+    runs.write_text(runs.read_text(encoding="utf-8") + row, encoding="utf-8")
+    got = client.get("/api/freshness").json()["test_run"]
+    assert got["runs"] == 2 and got["date"] == "2026-10-30 09:00"
+
+
+def test_A14_a_broken_runs_log_or_workflow_gives_nulls(fresh, client):
+    (fresh / "runs" / "TEST_RUNS.md").write_bytes(b"\xff\xfe\x00bad")
+    (fresh / ".github" / "workflows" / "scheduled.yml").write_bytes(b"\xff\xfe\x00bad")
+    response = client.get("/api/freshness")
+    assert response.status_code == 200
+    assert response.json()["test_run"] is None and response.json()["schedule_utc"] is None

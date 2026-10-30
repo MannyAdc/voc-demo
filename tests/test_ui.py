@@ -199,3 +199,48 @@ def test_A7_the_narrow_layout_starts_below_720_pixels():
     css = _css()
     assert "max-width: 900px" not in css
     assert "max-width: 720px" in css
+
+
+# Review of #54.
+
+def _font_sizes():
+    return re.findall(r"([^{}]+)\{[^}]*font-size: ([0-9.]+)(rem|px|em)", _css())
+
+
+def test_A7_only_footnotes_captions_and_marks_are_smaller_than_normal_text():
+    # Normal paragraphs (class "note") are normal text. The allowed list is matched by whole selector.
+    small_ok = {"footer", ".legend", ".small", ".tag", "svg text", "button.term", ".bar-count", ".grid2 span"}
+    for selector, size, unit in _font_sizes():
+        too_small = (unit == "rem" and float(size) < 1.15) or unit == "em" and float(size) < 1
+        if too_small:
+            assert selector.strip() in small_ok, selector.strip()
+
+
+def test_A7_the_verdict_line_stays_larger_than_normal_text():
+    verdict = re.search(r"\.verdict\.big \{[^}]*font-size: ([0-9.]+)rem", _css())
+    assert verdict and float(verdict.group(1)) > 1.15
+
+
+def test_A7_the_wide_screen_rules_come_before_the_narrow_ones():
+    # In CSS the later rule wins, so the 1000 px rules must come first, or they undo the phone layout.
+    css = _css()
+    assert css.index("max-width: 1000px") < min(m.start() for m in re.finditer(r"max-width: 720px", css))
+
+
+def test_A14_the_strip_says_when_the_run_was_logged_and_in_which_time_zone():
+    body = _function("freshness")
+    assert "scored once" not in body
+    assert "logged" in body and "Australian Eastern Daylight Time (AEDT)" in body
+
+
+def test_A14_the_strip_explains_both_narrative_counts():
+    body = _function("freshness")
+    assert "copies" in body and "pool" in body
+
+
+def test_A14_the_strip_spells_out_dbt_and_names_the_workflow_as_github_does():
+    workflow = (REPO / ".github" / "workflows" / "scheduled.yml").read_text(encoding="utf-8")
+    name = re.search(r"^name: (.+)$", workflow, re.M).group(1).strip()
+    page = _page()
+    assert "dbt (data build tool)" in page
+    assert f'"{name}"' in page
