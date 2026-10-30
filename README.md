@@ -96,17 +96,18 @@ Difference +0.6 points, from the unrounded figures (79.76% against 79.14%), 95% 
 5. A script checks each quote. A failure is quarantined with its reason.
 6. `voc evaluate dev` scores both methods on the same complaints and adds a row to `EVAL_VERSIONS.md`.
 7. `voc final --prompt v1`, run once by the owner, commits its log row before any call, then labels and scores the test set.
-8. `voc serve` shows the committed results on a local dashboard at 127.0.0.1, with no complaint text.
+8. `voc serve` shows the committed results on a local dashboard at 127.0.0.1, with no complaint text. It logs each request in the terminal as one line (time, method, route pattern, status and milliseconds, never the query string or the client address), and `/api/health` counts the requests and the 4xx and 5xx answers since start (A9 in [specs/002-results-api-dashboard/spec.md](specs/002-results-api-dashboard/spec.md)).
 
 **The same models on Databricks (T021).** `voc dbt build --target databricks` runs the dbt models on a Databricks SQL warehouse, on synthetic data only. `scripts/databricks_fixture_build.py` loads the committed synthetic fixture with the same load code, writes it as a dbt seed in a work folder, and runs the build. The command refuses unless every complaint ID in both seeds starts with `SYN-`. Four DuckDB-only parts have a Databricks branch: the staged rows come from the seed, the test list is a seed, not a local file, the text check uses `rlike`, and the incremental model uses `merge`. The connection comes from environment variables. The adapter is pinned in its own dependency group (`dbt-databricks==1.13.0`), so a normal install does not get it. The lock file is shared, though, so adding it moved four packages of the normal install down: dbt-common, packaging, pydantic and pydantic-core. First live run, by the owner on 30 October 2026, on a Databricks Free Edition SQL warehouse: `uv run --native-tls --group databricks python scripts/databricks_fixture_build.py tests/fixtures/dbt/complaints.csv <new work folder>`, with the connection in environment variables. It printed "dbt build: 2 seeds, 2 models, 4 data tests. passed 8, failed 0, errors 0, skipped 0". A search of the work folder afterwards found the token in none of its files.
 
 ## Run it yourself
 
-Without any data or key, you can run the tests and the dashboard:
+Without any data or key, you can run the tests, the dbt build on the synthetic fixture and the dashboard:
 
 ```
 uv sync
 uv run pytest
+uv run python scripts/dbt_fixture_build.py tests/fixtures/dbt/complaints.csv <empty work folder>
 uv run voc serve
 ```
 
@@ -115,6 +116,21 @@ Then open http://127.0.0.1:8000. The tests never open a network connection or ca
 To label real complaints you need the pinned July 2026 export. The CFPB serves only its current export, updated about daily, so that exact file cannot be downloaded again. `python scripts/download.py <empty folder>` fetches today's file, a zip archive, and prints the archive's SHA-256. The pins in `config/data_files.toml` are on the CSV inside, so a new file must be unzipped and given its own pin. The data folder is given by an environment variable. The API key goes in an environment variable too, never in a file in the repo. Contributors also install gitleaks and run `git config core.hooksPath .githooks` (see [CLAUDE.md](CLAUDE.md)).
 
 ## Why this stack
+
+The judgement here is to use the simplest tool that does the job. No tool was added for show. The one optional demonstration is Databricks (T021), added to show that the dbt models carry over to another platform.
+
+**Size.** The July 2026 export holds 672,036 complaints ([docs/DATA.md](docs/DATA.md), `results/profile_july_2026.json`). The file is 216,250,982 bytes (`config/data_files.toml`). That fits on one laptop. A Spark cluster or a cloud warehouse would add setup time, cost and accounts, with no gain at this size.
+
+**dbt is the part that carries over.** The SQL models and the data tests are dbt code, and dbt draws the lineage and writes the docs from them. dbt's documentation says: "dbt connects with data platforms by using a dedicated adapter plugin for each". Its table lists Databricks as "Generally available", and DuckDB as "Generally available" with the note "(CLI only)" ([Supported data platforms](https://docs.getdbt.com/docs/connect-adapters), read 30 October 2026). In this repo the same models ran on a Databricks SQL warehouse, on synthetic data. The run printed "dbt build: 2 seeds, 2 models, 4 data tests. passed 8, failed 0, errors 0, skipped 0" (see "The same models on Databricks (T021)" above, and [BUILD_LOG.md](BUILD_LOG.md), 30 October). Four DuckDB-only parts needed a Databricks branch to get there.
+
+**Anyone can run it.** The tests, the dbt build on the synthetic fixture and the dashboard need no account, no key and no money. After `uv sync`, each is one command (see "Run it yourself"). CI runs the same dbt build, with its data tests, on the committed synthetic fixture with no network (`.github/workflows/ci.yml`).
+
+**Time goes to verification, not infrastructure.** With no cluster or warehouse to set up, the time went to the quote check (`src/voc/evidence.py`), the evaluation against TF-IDF with a paired bootstrap ([docs/HOW_WE_MEASURE.md](docs/HOW_WE_MEASURE.md)), and the tests written before the code.
+
+**When to switch.**
+- The data no longer fits on one machine. Then the dbt models can move to a warehouse through its adapter. The Databricks run showed this on synthetic data, through another adapter. It did not show how a large load would move.
+- Many people write at once. DuckDB's documentation says that in its in-process mode "one process can both read and write to the database". It also says: "Writing to DuckDB's native database format from multiple processes is supported through the Quack remote protocol, which turns DuckDB into a client-server database." And: "Alternatively, consider using the DuckLake format with PostgreSQL as the catalog database." ([Concurrency](https://duckdb.org/docs/2.0/connect/concurrency.html), the DuckDB 2.0 docs, read 30 October 2026. This repo pins DuckDB 1.5.6 and uses neither option.)
+- There are many pipelines that depend on each other, retries for each step, or backfills of past months. Then a scheduler such as Airflow earns its cost (see the scheduler note under Scale). For the synthetic run, one scheduled GitHub Actions job is enough.
 
 Versions are the pins in `pyproject.toml`.
 
@@ -198,7 +214,8 @@ These come from the threat model in the [spec](specs/001-core-labelling-pipeline
 - What this does not cover yet:
   - Late or corrected records. If a later file holds a complaint ID that is already loaded with changed values, the first row is kept and the change is ignored.
   - Column changes. A file with a missing or extra column fails the load. A new or removed column in the staged table fails the incremental dbt build (`on_schema_change='fail'`). Neither is migrated automatically.
-- `voc dbt docs` writes the dbt docs and the lineage graph to the git-ignored `data/dbt/target` folder. Those files hold local paths, including the user folder. Strip the local paths before the lineage graph is published.
+- `voc dbt docs` writes the dbt docs and the lineage graph to the git-ignored `data/dbt/target` folder. Those files hold local paths, including the user folder, so they are not committed.
+- `voc dbt lineage` writes [docs/LINEAGE.md](docs/LINEAGE.md): the lineage graph of the source, the models and the data tests, with node names and edges only, and no paths. It printed "dbt lineage: 1 sources, 0 seeds, 2 models, 6 data tests, 9 edges. Written to docs/LINEAGE.md." (`uv run --native-tls voc dbt lineage`, 30 October 2026). A test fails if the committed file no longer matches the dbt project.
 
 ## Where to start
 
