@@ -890,3 +890,39 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - AI error caught before the commit: Claude first wrote "All 12 failed" here. It checked the test output, stopped the commit and corrected the count.
 - `main` (with #52) merged into `feat/data-freshness` for #54. Both blocks of log lines are kept as written: #52's first, then #54's. Their times overlap, because the pull requests were worked on at once.
 - `main` (with #53) merged into `feat/data-freshness` for #54. Both blocks of log lines are kept as written: #53's first, then #54's. The tests of both kept, and spec rule A7 holds both additions.
+
+## Saturday 31 October 2026
+
+- Note: the entries above from 00:01 on (#53 and #54) sit under Friday's heading, because they were written in their branches before this heading existed. The log is not reordered.
+- 01:06 #53 merged by the owner (time from git).
+- About 01:13 (exact time not recorded) The owner asked why the Azure copy shows no complaint text, since the dashboard will be the analyst's main tool. Claude gave the reasons from spec rule A13 and three options: (a) keep it as it is, (b) upload the texts to Azure publicly, (c) a signed-in analyst copy on Azure. The owner asked whether (c) covers anything the reviewers explicitly asked for. Claude checked the brief's list: no.
+- Before 01:24 (exact time not recorded) Owner decision: (a). The README gives the reasons and names (c) as the next step.
+- 01:24 Work start on the README, in `../voc-demo-public`, branch `docs/readme-summary`, from `main` at `b01c0be`: a one-minute summary, the public copy's reasons, and a section on the owner's decisions, each line taken from this log. The counts come from `gh pr list --state merged` (53), `pytest --collect-only` on `b01c0be` (1,275 tests) and `git log` (first commit 27 October 2026 at 23:53).
+- The README also spells out CFPB and TF-IDF at their first use, as the dashboard does.
+- Green `aa3ed4f` at 01:41 for the README summary, after one refusal by the test gate: a Windows file lock inside a hook test's own temporary repo ("Permission denied" while writing a git object). Retried unchanged.
+- About 01:45 (exact time not recorded) The owner approved the README restructure for readers who skim: diagrams, icons, about two screens, with the long sections moved to `docs/`. The owner passed on two points from another review thread, which is helping with the video script. Claude checked both in the repo:
+  - "No verification diagram exists." True: the only diagram was dbt's lineage (`docs/LINEAGE.md`). Claude corrected one phrase for the slide: TF-IDF does not "check the label". It is the bar to beat, and a second opinion in the review queue.
+  - "The improvement loop was not run." True: `EVAL_VERSIONS.md` has one row, prompt v1. The README now says the loop is ready but was not run beyond v1. No claim of iterations.
+- Before 01:50 (exact time not recorded) Owner decision: build the restructure, with a "Who checks what" diagram at its centre.
+- The restructure, in the same branch:
+  - The README keeps the story: the question, "In one minute", two Mermaid diagrams ("How one complaint is labelled" and "Who checks what"), the headline results table, the dashboard and why the public copy has no complaint text, three points each for Speed, Safety and Scale, the owner's decisions, the limits in short, and how to run it.
+  - Four new pages hold the long sections, moved word for word: `docs/RESULTS.md`, `docs/PIPELINE.md`, `docs/STACK.md` and `docs/LIMITS.md`. Only the relative links changed, and six references to sections now on other pages became links. A script checked that every relative link in the five files resolves.
+  - Spec 001: the known limits are copied to `docs/LIMITS.md`, which the README links. Two tests changed, each with a comment: the B14 notes are read from the README and `docs/PIPELINE.md`, and the A13 test finds the result heading with its icon.
+  - AI error caught before the commit: the first draft of "In one minute" said each of the 53 pull requests was reviewed. Claude could not check that for the earliest ones, and removed "each reviewed".
+- Green `a8d02b6` at 01:54 for the restructure. 02:08 #55 opened as a draft, with a reviewer (time from GitHub).
+- 02:13 Reviewer findings posted on #55 (time from GitHub). A line-by-line script found the moved text word for word, and every figure matched its source. The real findings:
+  - AI error by Claude: the README overstated human review. A person decides only the development set's quarantined complaints (9). The test set's 45 count as wrong. The first diagram named only one of the quarantine checks: of the 45, 24 had other causes (invalid label 15, unreadable 6, too short 3).
+  - AI error by Claude: the second diagram put CI after the owner's merge. CI runs on every pull request, before it.
+  - The diagram said a reviewer agent read "every code change". That cannot be checked for the earliest pull requests.
+  - AI error by Claude: the restructure broke the constitution. Every number in the README must come with its command, and the README must state when to switch to bigger tools. Both had moved to `docs/`.
+  - The counts were stale after #54. The spec and the dbt model still said these notes were "in the README". The `--with-text` safeguard was Claude's, not an owner decision. "CI", "ID" and "dbt" were not spelled out. The sign-in had no source.
+- About 02:14 (exact time not recorded) Owner decision: fix all of them. "US" stays short, as on the dashboard.
+- 02:14 `main` merged in after #54 (`89d0a11`). Only `BUILD_LOG.md` conflicted, and both blocks are kept as written, with #54's lines before this day's heading.
+- Red `b23a7b5` at 02:24: a test that the staged dbt model names `docs/PIPELINE.md` for its two gaps. It failed.
+- The fixes for #55:
+  - "Failures are held back and never counted as correct: on the development set a person decides each one (9 complaints), and on the test set they count as wrong (45 of 1,909)." The first diagram's check names all three things, and its person box says "development set".
+  - The second diagram: "Each pull request, under the rules in CLAUDE.md", with CI before the merge check and the owner's merge.
+  - A source line with its command under the results table and next to each Speed, Safety and Scale figure, and one line on when to switch.
+  - Recounted on `b23a7b5`: 54 merged pull requests (`gh pr list --state merged`) and 1,294 tests (`pytest --collect-only`).
+  - The spec line, the dbt model comment, and the moved "How it was built" line ("The rule: a fresh reviewer agent reads each pull request") fixed. The four pages' notes say so.
+  - "Continuous integration (CI)", "identifier (ID)", "dbt (data build tool)", and Microsoft's page cited for the built-in sign-in (dated 28 March 2025).
