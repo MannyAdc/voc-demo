@@ -210,7 +210,7 @@ const REASONS = { quote_not_in_text: "the quoted sentence is not in the text", i
   unparseable: "the AI's answer could not be read", quote_too_short: "the quote is too short to show anything",
   quote_empty: "the AI gave no quote", quote_redaction_only: "the quote is only redaction marks", other: "another reason" };
 const DECISIONS = { ai_right: "the AI's label is right", word_model_right: "the word-based model is right",
-  other_product: "another product fits better", no_product: "it fits no product clearly" };
+  other_product: "another product fits better", no_product: "it fits no product clearly", correction: "a correction" };
 const listState = { product: null, show: "all", page: 1 };
 
 function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
@@ -309,14 +309,20 @@ function decisionForm(c) {
       select.disabled = select.disabled || r.value in pick;
     };
   }
-  if (c.review) {
+  // Review of #46: a saved decision is locked. The form then sends a correction, a new entry.
+  const locked = !!c.review;
+  $("d-locked").hidden = !locked; $("d-reasons").hidden = locked;
+  $("d-save").textContent = locked ? "Save a correction" : "Save decision";
+  if (locked) {
+    select.disabled = false;
     select.value = c.review.label || c.labels[0];
-    select.disabled = c.review.reason !== "other_product";
-    status("d-status", "Saved: " + (c.review.label || "no product") + ", " + DECISIONS[c.review.reason] + ".");
+    const first = c.review.first;
+    status("d-status", "Decision: " + (first.label || "no product") + ", " + DECISIONS[first.reason] + "."
+      + (c.review.reason === "correction" ? " Corrected to: " + (c.review.label || "no product") + "." : ""));
   }
   form.onsubmit = async (event) => {
     event.preventDefault();
-    const chosen = form.querySelector("input[name=reason]:checked");
+    const chosen = locked ? { value: "correction" } : form.querySelector("input[name=reason]:checked");
     if (!chosen) { status("d-status", "Choose a reason first.", "error"); return; }
     const body = { label: chosen.value === "no_product" ? null : select.value, reason: chosen.value };
     status("d-status", "Saving...");
@@ -324,7 +330,8 @@ function decisionForm(c) {
       { method: "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "voc" }, body: JSON.stringify(body) });
     if (!saved) { status("d-status", "The decision could not be saved. Check the choice and try again.", "error"); return; }
     await complaintView(c.complaint_id);
-    status("d-status", "Saved: " + (saved.review.label || "no product") + ", " + DECISIONS[saved.review.reason] + ".", "ok");
+    status("d-status", "Saved: " + (saved.review.label || "no product") + ", "
+      + (DECISIONS[saved.review.reason] || "a correction") + ". The decision is locked.", "ok");
   };
 }
 
@@ -356,7 +363,8 @@ function productLinks() {
 }
 
 function route() {
-  const hash = decodeURIComponent(location.hash.replace(/^#/, ""));
+  let hash = "";
+  try { hash = decodeURIComponent(location.hash.replace(/^#/, "")); } catch (e) { hash = ""; }
   const [, kind, ...rest] = hash.split("/");
   const arg = rest.join("/");
   if (kind === "product" && arg) listView(arg);

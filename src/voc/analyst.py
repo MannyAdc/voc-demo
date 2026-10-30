@@ -18,6 +18,9 @@ import csv
 import datetime
 import io
 import math
+import os
+import re
+import threading
 from typing import Literal, Optional
 
 import duckdb
@@ -31,7 +34,15 @@ from voc.load import DB_PATH, TABLE
 
 PER_PAGE = 25
 REVIEW_REASONS = ("ai_right", "word_model_right", "other_product", "no_product")
+# Review of #46: a saved decision is locked. A change is stored as a new entry with this reason, and the first
+# decision is the one that is scored.
+CORRECTION = "correction"
 REVIEW_COLUMNS = ("complaint_id", "label", "reason", "decided_at")
+# B3: every reason a complaint can be quarantined with, as in voc.api. Any other value is served as "other" (A2).
+QUARANTINE_REASONS = ("no_narrative", "boundary_in_text", "unparseable", "invalid_label", "quote_empty",
+                      "quote_redaction_only", "quote_too_short", "quote_not_in_text", "model_error", "not_run_budget")
+DECIDED_AT = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}:[0-9]{2}")
+WRITE_LOCK = threading.Lock()
 # A12: a review must come from this app's own page. Another site's form cannot set a custom header.
 PAGE_HEADER = "voc"
 
@@ -45,7 +56,13 @@ def _order(complaint_id):
 class Review(BaseModel):
     model_config = ConfigDict(extra="forbid")
     label: Optional[str]
-    reason: str
+    reason: Literal["ai_right", "word_model_right", "other_product", "no_product", "correction"]
+
+
+def _ids(path):
+    if not path.is_file():
+        return set()
+    return {row.get("complaint_id") for row in csv.DictReader(io.StringIO(path.read_text(encoding="utf-8")))}
 
 
 def add_routes(app, root, checked_version, complaint_id_pattern, with_text=False):
@@ -60,14 +77,18 @@ def add_routes(app, root, checked_version, complaint_id_pattern, with_text=False
         if not path.is_file():
             raise HTTPException(404, "no committed development results for this version")
         names = set(_labels())
+        # B17, review of #46: only IDs on the frozen development list, and never one on the test list, so an
+        # edited results file cannot let a test row through to the staged table lookup.
+        dev, test = _ids(root / "splits" / "dev.csv"), _ids(root / "splits" / "test.csv")
         rows = {}
         for row in csv.DictReader(io.StringIO(path.read_text(encoding="utf-8"))):
             cid = row.get("complaint_id") or ""
-            if not complaint_id_pattern.fullmatch(cid):
+            if not complaint_id_pattern.fullmatch(cid) or cid not in dev or cid in test:
                 continue
             accepted = row.get("decision") == "accepted"
+            reason = row.get("reason") if row.get("reason") in QUARANTINE_REASONS else "other"
             rows[cid] = {"complaint_id": cid, "decision": "accepted" if accepted else "quarantined",
-                         "reason": None if accepted else (row.get("reason") or "other"),
+                         "reason": None if accepted else reason,
                          "ai_label": row.get("accepted_label") if accepted and row.get("accepted_label") in names
                          else None,
                          "proposed_label": row.get("proposed_label") if row.get("proposed_label") in names else None,
@@ -78,16 +99,33 @@ def add_routes(app, root, checked_version, complaint_id_pattern, with_text=False
     def _reviews_path(version):
         return root / "results" / "reviews" / f"{version}_dev.csv"
 
-    def _reviews(version):
+    def _review_rows(version):
+        """The stored rows, each field checked (A2). A broken row is skipped, never an error."""
         path = _reviews_path(version)
         if not path.is_file():
-            return {}
+            return []
         names = set(_labels())
-        out = {}
+        out = []
         for row in csv.DictReader(io.StringIO(path.read_text(encoding="utf-8"))):
-            if row.get("reason") in REVIEW_REASONS and (row.get("label") in names or row.get("label") == ""):
-                out[row["complaint_id"]] = {"label": row["label"] or None, "reason": row["reason"],
-                                            "decided_at": row.get("decided_at") or None}
+            cid, label, reason = row.get("complaint_id") or "", row.get("label"), row.get("reason")
+            if (complaint_id_pattern.fullmatch(cid) and reason in (*REVIEW_REASONS, CORRECTION)
+                    and (label in names or label == "")):
+                decided = row.get("decided_at") or ""
+                out.append({"complaint_id": cid, "label": label or None, "reason": reason,
+                            "decided_at": decided if DECIDED_AT.fullmatch(decided) else None})
+        return out
+
+    def _reviews(version):
+        """For each ID: the latest entry, with the first decision under "first". The first one is scored."""
+        out = {}
+        for row in _review_rows(version):
+            entry = {k: row[k] for k in ("label", "reason", "decided_at")}
+            if row["complaint_id"] not in out:
+                if row["reason"] == CORRECTION:
+                    continue
+                out[row["complaint_id"]] = entry | {"first": entry}
+            else:
+                out[row["complaint_id"]] = entry | {"first": out[row["complaint_id"]]["first"]}
         return out
 
     def _local(ids):
@@ -99,8 +137,10 @@ def add_routes(app, root, checked_version, complaint_id_pattern, with_text=False
             con = duckdb.connect(str(path), read_only=True, config=SAFE_CONFIG)
         except duckdb.Error:
             return None
+        # Review of #46: the narrative column is read only when the owner started the app with --with-text.
+        text = "narrative" if with_text else "NULL"
         try:
-            found = con.execute(f"SELECT complaint_id, product, narrative FROM {TABLE} "
+            found = con.execute(f"SELECT complaint_id, product, {text} FROM {TABLE} "
                                 "WHERE list_contains(?::VARCHAR[], complaint_id)", [sorted(ids)]).fetchall()
         except duckdb.Error:
             return None
@@ -184,9 +224,15 @@ def add_routes(app, root, checked_version, complaint_id_pattern, with_text=False
         row = rows[complaint_id]
         if row["decision"] != "quarantined":
             raise HTTPException(409, "only a quarantined complaint is reviewed")
-        if body.reason not in REVIEW_REASONS:
-            raise HTTPException(422, "the reason must be one of the fixed list")
-        if body.reason == "no_product":
+        existing = _reviews(version).get(complaint_id)
+        if body.reason == CORRECTION:
+            if existing is None:
+                raise HTTPException(409, "there is no decision to correct yet")
+            if body.label is not None and body.label not in _labels():
+                raise HTTPException(422, "the label must be one of the 11 products, or none")
+        elif existing is not None:
+            raise HTTPException(409, "a saved decision is locked. Send a correction instead")
+        elif body.reason == "no_product":
             if body.label is not None:
                 raise HTTPException(422, "no product fits, so the label is left empty")
         elif body.label not in _labels():
@@ -195,19 +241,25 @@ def add_routes(app, root, checked_version, complaint_id_pattern, with_text=False
             raise HTTPException(422, "the label is not the AI's proposed label")
         if body.reason == "word_model_right" and body.label != row["tfidf_label"]:
             raise HTTPException(422, "the label is not the word-based model's suggestion")
+        if body.reason == "other_product" and body.label in (row["proposed_label"], row["tfidf_label"]):
+            raise HTTPException(422, "that product belongs to another reason")
         decided = {"label": body.label, "reason": body.reason,
                    "decided_at": datetime.datetime.now().astimezone().isoformat(timespec="seconds")}
-        stored = _reviews(version) | {complaint_id: decided}
         path = _reviews_path(version)
         path.parent.mkdir(parents=True, exist_ok=True)
-        out = io.StringIO()
-        writer = csv.DictWriter(out, fieldnames=REVIEW_COLUMNS, lineterminator="\n")
-        writer.writeheader()
-        for cid in sorted(stored, key=_order):
-            writer.writerow({"complaint_id": cid, "label": stored[cid]["label"] or "",
-                             "reason": stored[cid]["reason"], "decided_at": stored[cid]["decided_at"] or ""})
-        path.write_text(out.getvalue(), encoding="utf-8")
-        return {"saved": True, "complaint_id": complaint_id, "review": decided}
+        # Review of #46: one save at a time, and the file is swapped in whole, so a crash cannot truncate it.
+        with WRITE_LOCK:
+            stored = _review_rows(version) + [{"complaint_id": complaint_id, **decided}]
+            out = io.StringIO()
+            writer = csv.DictWriter(out, fieldnames=REVIEW_COLUMNS, lineterminator="\n")
+            writer.writeheader()
+            for entry in stored:
+                writer.writerow({"complaint_id": entry["complaint_id"], "label": entry["label"] or "",
+                                 "reason": entry["reason"], "decided_at": entry["decided_at"] or ""})
+            temp = path.with_name(path.name + ".tmp")
+            temp.write_text(out.getvalue(), encoding="utf-8")
+            os.replace(temp, path)
+        return {"saved": True, "complaint_id": complaint_id, "review": _reviews(version)[complaint_id]}
 
 
 def _quote(row):

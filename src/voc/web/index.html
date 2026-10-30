@@ -184,7 +184,8 @@
       <p class="note">The consumer's own choice is hidden while you decide, so the decision is yours. It is used to score the decisions later.</p>
       <label for="d-label">Product</label>
       <select id="d-label"></select>
-      <fieldset>
+      <p class="note" id="d-locked" hidden>Your decision is saved and locked. It is the one that is scored. A change is stored as a new entry, a correction, and both stay in the file.</p>
+      <fieldset id="d-reasons">
         <legend>Reason</legend>
         <span class="choice"><input type="radio" name="reason" value="ai_right" id="r-ai"> <label for="r-ai">The AI's label is right (its quote failed the check)</label></span>
         <span class="choice"><input type="radio" name="reason" value="word_model_right" id="r-word"> <label for="r-word">The word-based model's suggestion is right</label></span>
@@ -196,7 +197,7 @@
     </form>
   </section>
 
-  <!-- Task 3: the review queue of the test set's quarantined complaints. -->
+  <!-- Task 3: the review queue of the development set's quarantined complaints. -->
   <section class="view card wide" id="view-review" aria-labelledby="review-h" hidden>
     <p><a href="#">&lt; Overview</a></p>
     <h2 id="review-h" tabindex="-1">Quarantined development complaints, waiting for a person</h2>

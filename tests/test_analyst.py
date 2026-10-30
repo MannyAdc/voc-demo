@@ -183,13 +183,15 @@ def test_A12_a_review_is_stored_in_the_results_folder_and_served(root, client, r
     assert client.get(f"/api/review/v1/complaint/{cid}").json()["review"]["label"] == "Credit card"
 
 
-def test_A12_a_second_decision_replaces_the_first(root, client, rows):
+def test_A12_a_second_decision_is_refused_and_the_first_stays(root, client, rows):
+    # Changed in the green commit of the review of #46: a saved decision is locked (it used to be replaced).
     cid = rows[2]["Complaint ID"]
-    for label, reason in (("Credit card", "other_product"), (None, "no_product")):
-        assert client.post(f"/api/review/v1/decision/{cid}", headers=HEADER,
-                           json={"label": label, "reason": reason}).status_code == 200
+    assert client.post(f"/api/review/v1/decision/{cid}", headers=HEADER,
+                       json={"label": "Credit card", "reason": "other_product"}).status_code == 200
+    assert client.post(f"/api/review/v1/decision/{cid}", headers=HEADER,
+                       json={"label": None, "reason": "no_product"}).status_code == 409
     text = (root / "results" / "reviews" / "v1_dev.csv").read_text(encoding="utf-8")
-    assert text.count(cid) == 1 and ",no_product," in text
+    assert text.count(cid) == 1 and ",other_product," in text
 
 
 @pytest.mark.parametrize("body", [
