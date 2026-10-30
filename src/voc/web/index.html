@@ -18,9 +18,9 @@
 <main>
   <section class="card wide verdict-card" aria-labelledby="verdict-h">
     <h2 id="verdict-h">Verdict on the frozen test set</h2>
-    <p class="note">Claim fixed before the first run: the LLM, with its quote check, beats TF-IDF at the same coverage. The test set was scored once, after its run was logged in runs/TEST_RUNS.md.</p>
+    <p class="note">Claim fixed before the first run: the LLM, with its quote check, beats TF-IDF at the same coverage. <span id="verdict-note"></span></p>
     <p class="verdict big" id="test-verdict">Loading the test run...</p>
-    <div class="h2h">
+    <div class="h2h" id="verdict-body">
       <table class="figures" aria-label="Test set figures for both methods">
         <thead><tr><th></th><th>LLM</th><th>TF-IDF</th></tr></thead>
         <tbody>
@@ -37,12 +37,14 @@
         <p class="note" id="test-run"></p>
       </div>
     </div>
+    <div id="per-product-block">
     <h3>Per product</h3>
     <p class="note" id="per-note"></p>
     <div class="scroll"><table class="queue" aria-label="F1 per product on the test set">
       <thead><tr><th>Product</th><th>Test complaints</th><th>F1, LLM</th><th>F1, TF-IDF</th></tr></thead>
       <tbody id="per-product"></tbody>
     </table></div>
+    </div>
   </section>
 
   <section class="card wide" aria-labelledby="h2h">

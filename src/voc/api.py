@@ -38,6 +38,10 @@ VERDICT = "the claim's verdict, from the single logged test run (B10, B17)"
 PER_CATEGORY_NOTE = ("the LLM's quarantined labels count as wrong. TF-IDF here labels every complaint, at full "
                      "coverage, not the matched coverage of the headline figures (B10)")
 TEST_RUN_NUMBERS = ("complaints", "accepted", "quarantined", "run_seconds", "input_tokens", "output_tokens")
+# A row of runs/TEST_RUNS.md: | Date | Prompt | Test list hash | Model | Complaints | Reason |
+LOG_DATE = r"\| [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:]+"
+LOG_ROW = re.compile(LOG_DATE + r" \| (?P<version>v[0-9]+) \| (?P<hash>[0-9a-f]{64}) \| "
+                     r"(?P<model>[a-z0-9][a-z0-9.\-]{0,63}) \| (?P<count>[0-9]+) \|")
 VERDICTS = ("beats", "inconclusive", "does_not_beat")
 BACKENDS = ("api", "mock")
 SETS = ("dev", "quick")
@@ -120,12 +124,23 @@ def create_app(root):
     def _json(folder, version, set_name="dev"):
         return _dict(json.loads(_file(folder, version, ".json", set_name).read_text(encoding="utf-8")))
 
-    def _logged_test_run(version):
-        # B17: the test figures are served only for a version with a row in the committed test run log.
+    def _log_rows():
         path = root / "runs" / "TEST_RUNS.md"
-        rows = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
-        if not any(re.match(rf"\| [0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}} [0-9:]+ \| {version} \|", row) for row in rows):
+        return path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
+
+    def _logged_test_run(version, data=None):
+        # B17: the test figures are served only for a version with a row in the committed test run log.
+        rows = [row for row in _log_rows() if re.match(rf"{LOG_DATE} \| {version} \|", row)]
+        if not rows:
             raise HTTPException(404, "no logged test run for this version")
+        if data is None:
+            return
+        # Review of #44: and only for the file that row scored, matched by list hash, model and count.
+        matched = [m for m in (LOG_ROW.match(row) for row in rows) if m]
+        if data.get("set") != "test" or not any(
+                m["hash"] == data.get("list_sha256") and m["model"] == data.get("model")
+                and _number(data.get("complaints")) == int(m["count"]) for m in matched):
+            raise HTTPException(404, "the scored file does not match its logged test run")
 
     def _methods(data):
         out = {}
@@ -180,6 +195,16 @@ def create_app(root):
         out["replay_cost_usd"] = _money(data.get("replay_cost_usd"))
         return out
 
+    @app.get("/api/tested")
+    def tested():
+        """The prompt versions with a logged test run, in log order, so the page asks for the right one."""
+        found = []
+        for row in _log_rows():
+            m = re.match(rf"{LOG_DATE} \| (v[0-9]+) \|", row)
+            if m and m.group(1) not in found:
+                found.append(m.group(1))
+        return {"versions": found}
+
     @app.get("/api/test/{version}")
     def verdict(version: str):
         """The claim's verdict, from the single logged test run (B10, B17). Named and checked fields only (A2)."""
@@ -187,6 +212,7 @@ def create_app(root):
             raise HTTPException(404, "unknown prompt version")
         _logged_test_run(version)
         data, run = _json("eval", version, "test"), _json("labels", version, "test")
+        _logged_test_run(version, data)
         labels = {label.name for label in load_labels(root / "config" / "labels.toml")}
         categories = {}
         for name, entry in _dict(_dict(data.get("per_category")).get("categories")).items():
