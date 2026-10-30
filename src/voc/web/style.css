@@ -39,9 +39,11 @@ th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line
 .stats dt { color: var(--muted); }
 .stats dd { margin: 0; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 .verdict { font-weight: 600; }
-.verdict.big { font-size: 1.15rem; color: var(--good); margin: 4px 0 8px; }
-.verdict.big.not-beats { color: var(--warn); }
-.verdict-card { border-left: 4px solid var(--good); }
+.verdict.big { font-size: 1.15rem; margin: 4px 0 8px; }
+.has-verdict .verdict.big { color: var(--good); }
+.has-verdict .verdict.big.not-beats { color: var(--warn); }
+.verdict-card { border-left: 4px solid var(--line); }
+.verdict-card.has-verdict { border-left-color: var(--good); }
 .verdict-card .h2h { grid-template-columns: 1.3fr 1fr; }
 td.better { color: var(--good); font-weight: 600; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }

@@ -24,7 +24,8 @@ A small web app. The API serves the committed results files, and one page shows 
   - `/api/health`
   - `/api/versions`: the rows of `EVAL_VERSIONS.md`.
   - `/api/eval/{version}`: the figures of `results/eval/{version}_dev.json`, labelled as tuning figures.
-  - `/api/test/{version}`: the claim's verdict, from `results/eval/{version}_test.json` and `results/labels/{version}_test.json`. It answers only when `runs/TEST_RUNS.md` has a logged row for that version (B17). Named fields only: the verdict, the interval, both methods' figures, cost and time per 1,000, the run counts, and the F1 of each product in the label list, or "too few to judge". *Added on 30 October (owner decision): the dashboard showed only development figures.*
+  - `/api/test/{version}`: the claim's verdict, from `results/eval/{version}_test.json` and `results/labels/{version}_test.json`. It answers only when `runs/TEST_RUNS.md` has a logged row for that version, and the scored file matches that row by list hash, model and count, with `set` equal to "test" (B17). Named and checked fields only: the prompt version, backend and model, the verdict, the difference, the interval, resamples and seed, both methods' figures (re-weighted strict accuracy, precision, coverage, macro-F1, quarantine rate, cost and time per 1,000), who was right, the precision against coverage points, the run counts, tokens, live cost and quarantine reasons, and the F1 of each product in the label list, or "too few to judge". *Changed in the review of #44: the match to the logged row, and the full field list.* *Added on 30 October (owner decision): the dashboard showed only development figures.*
+  - `/api/tested`: the prompt versions with a logged test run, in log order. The page asks for the last one. *Added in the review of #44.*
   - `/api/eval/{version}/quarantine`: the quarantine queue. For each quarantined complaint: its ID, its reason, the LLM's proposed label and the TF-IDF label.
   - `/api/run/{version}`: named fields of the labelling run summary: counts, cut, calls by source, tokens, cost, run time and time per 1,000.
   - `/api/audit/{version}`: the counts of `results/audit/{version}_dev.json`.
@@ -51,3 +52,4 @@ A small web app. The API serves the committed results files, and one page shows 
 
 - The dashboard shows what is committed. A figure that was not committed cannot be shown.
 - No test drives the page in a browser. The owner checks it by eye before the demo.
+- If a second test run is ever logged for the same version (B17 allows it only with a reason), the route serves the file that matches one of the rows, and the page still says "the single logged test run".

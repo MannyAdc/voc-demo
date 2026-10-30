@@ -674,6 +674,24 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - Its gate took 26 minutes, with the helper's gates running at the same time.
   - Green: a new route `/api/test/{version}`, which answers only when `runs/TEST_RUNS.md` holds a logged row for that version (B17). The page puts the verdict card first, with the per-product table. The development panels keep their "tuning figure" tags.
   - Claude checked the page in a local browser on the committed results files, which hold no complaint text. One fix came from that check: Mortgage was marked as an LLM win, though both F1 scores read 0.910. The page now compares the values as displayed, at 3 decimals.
+- 12:10 Green `d527e22`. #44 opened at about 12:27, with a reviewer.
+- 12:34 Reviewer findings posted on #44, with Claude's checks (time from GitHub). The real ones:
+  - When no test run is logged, the card still looked green and its static text claimed a logged run.
+  - The card asked for the last development version, so the v1 verdict would vanish once a v2 exists.
+  - The logged row was not matched to the scored file.
+  - A missing F1 could be marked as the better one, and missing values could read "NaN".
+  - The spec's field list for the route was short.
+  - Missing tests for these cases.
+- About 12:36 (exact time not recorded) Owner decision: fix them all. The owner also said they had clicked through the page in the browser themselves, so Claude checks the browser tab fresh before using it.
+- 12:39 Correction of the 11:42 entry, which stays as written: the red commit `3c6d85d` held 8 tests, not 9. 4 failed and 4 passed. The read-only test failed too, because before the route existed a POST to it was a 404, not a 405. AI error: Claude counted the test functions by eye, not from pytest's output. The reviewer caught it.
+- The fixes for #44:
+  - The route answers only when the scored file matches its logged row by list hash, model and count, with set "test".
+  - A new route, `/api/tested`, lists the versions with a logged run, and the page asks for the last one.
+  - With no logged run, the card is neutral and has no figures and no claim of a run.
+  - "Better" is marked only when both F1 values exist, compared at 3 decimals. Missing values read "n/a".
+  - The spec lists every served field, and Known limits says what a second logged run would do.
+- Red `46398b7` at 12:37: 11 new tests in `tests/test_api.py`, counted from the test file and the red run. 6 failed. 5 passed at once and guard the route: a v2 or v10 row, a missing log or run summary, and wrong kinds in served fields.
+  - AI error: the first draft of this line said 12 tests and 6 passed, written before counting. Claude stopped the commit, counted, and fixed the draft.
 - About 11:50 to 12:15 `docs/USER.md` and `docs/WIREFRAMES.md` drafted for the owner, before any screen was built, as the brief asks. The owner asked what exactly is labelled, and asked for that to be written down. Claude added "What is being labelled", and the three names used on every screen: the AI's label, the word-based model's suggestion, and the consumer's own choice.
 - Owner decisions on the drafts (exact times not recorded, between about 11:55 and 12:15):
   - The four review reasons.
