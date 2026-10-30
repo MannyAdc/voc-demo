@@ -117,6 +117,9 @@ def create_app(root, with_text=False, public_host=None):
         response.headers["Content-Security-Policy"] = CSP
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
+        # A browser checks for a newer copy on every visit, so a redeploy never pairs the new page with an old script.
+        # An unchanged file costs one short "not modified" answer.
+        response.headers["Cache-Control"] = "no-cache"
         return response
 
     def _file(folder, version, suffix, set_name="dev"):

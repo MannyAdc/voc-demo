@@ -12,13 +12,13 @@
 <header>
   <div class="masthead">
     <h1>Complaint labels: LLM against TF-IDF</h1>
-    <p class="sub">CFPB complaints, July 2026. An
+    <p class="sub">Complaints to the US Consumer Financial Protection Bureau (CFPB), July 2026. An
       <span class="term-wrap">LLM <button type="button" class="term" aria-expanded="false" aria-controls="term-llm" aria-label="What is an LLM?">?</button></span>
       labels each complaint by product and quotes its evidence, and a script checks the quote. It is scored against
-      <span class="term-wrap">TF-IDF <button type="button" class="term" aria-expanded="false" aria-controls="term-tfidf" aria-label="What is TF-IDF?">?</button></span>,
+      <span class="term-wrap">TF-IDF (term frequency, inverse document frequency) <button type="button" class="term" aria-expanded="false" aria-controls="term-tfidf" aria-label="What is TF-IDF?">?</button></span>,
       a simple word-based model.</p>
     <p class="term-note" id="term-llm" hidden><b>LLM</b>, a large language model (here claude-haiku-5-5). It reads the complaint, picks one of the 11 products and copies the sentence that shows why. A script checks that the sentence is really in the complaint.</p>
-    <p class="term-note" id="term-tfidf" hidden><b>TF-IDF</b>, a simple word-based model. It learned which words go with each product from 7,024 other complaints, and suggests a product for every complaint. It is the baseline the LLM must beat.</p>
+    <p class="term-note" id="term-tfidf" hidden><b>TF-IDF</b> (term frequency, inverse document frequency), a simple word-based model. It learned which words go with each product from 7,024 other complaints, and suggests a product for every complaint. It is the baseline the LLM must beat.</p>
   </div>
   <nav class="tabs" aria-label="Sections">
     <a href="#/" data-tab="overview">Overview</a>
@@ -47,8 +47,8 @@
 
       <div id="per-product-block">
         <h3>Complaints by product, and how good each label is</h3>
-        <p class="note">Bars: test complaints per product. Figures: <span class="term-wrap">F1 <button type="button" class="term" aria-expanded="false" aria-controls="term-f1" aria-label="What is F1?">?</button></span>, from 0 to 1, for the LLM and for TF-IDF. <span class="flag">!</span> marks a product where TF-IDF does better: check those labels before you report them.</p>
-        <p class="term-note" id="term-f1" hidden><b>F1</b> balances two things for one product: how often the label is right when the model names that product, and how many of that product's complaints it finds. 1 is perfect.</p>
+        <p class="note">Bars: test complaints per product. Figures: <span class="term-wrap">F1 score <button type="button" class="term" aria-expanded="false" aria-controls="term-f1" aria-label="What is F1?">?</button></span>, from 0 to 1, for the LLM and for TF-IDF. <span class="flag">!</span> marks a product where TF-IDF does better: check those labels before you report them.</p>
+        <p class="term-note" id="term-f1" hidden><b>F1 score</b> balances two things for one product: how often the label is right when the model names that product, and how many of that product's complaints it finds. 1 is perfect.</p>
         <ul class="bars" id="product-bars"></ul>
         <p class="note" id="per-note"></p>
         <details class="more">
@@ -91,9 +91,10 @@
         </dl>
         <h3>Glossary</h3>
         <dl class="glossary" id="glossary">
+          <dt>CFPB</dt><dd>The US Consumer Financial Protection Bureau. It publishes the complaints, and its 11 products are the labels.</dd>
           <dt>LLM</dt><dd>A large language model, here claude-haiku-5-5. It labels each complaint and quotes its evidence.</dd>
-          <dt>TF-IDF</dt><dd>A simple word-based model, trained on 7,024 other complaints. The baseline the LLM must beat.</dd>
-          <dt>F1</dt><dd>For one product: a balance of how often its label is right and how many of its complaints are found. From 0 to 1.</dd>
+          <dt>TF-IDF</dt><dd>Short for term frequency, inverse document frequency. A simple word-based model, trained on 7,024 other complaints. The baseline the LLM must beat.</dd>
+          <dt>F1 score</dt><dd>For one product: a balance of how often its label is right and how many of its complaints are found. From 0 to 1.</dd>
           <dt>Re-weighted strict accuracy</dt><dd>Right labels over all complaints, with a quarantined complaint counted as wrong, averaged by each product's share.</dd>
           <dt>Coverage</dt><dd>The share of complaints that got a label.</dd>
           <dt>Quarantine</dt><dd>Where a label waits for a person when the script could not confirm its quote.</dd>

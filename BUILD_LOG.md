@@ -822,3 +822,11 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - The work on #51 started in `../voc-demo-ui`, branch `feat/ui-tabs`, from `a2d65da` (#50's branch), after the owner approved the wireframes and before the first red commit at 17:23. The exact start time was not recorded. This line is written late, at about 21:35.
 - About 21:35 Owner decision: add these entries to #51 before it is marked ready.
 - AI error caught before the commit: Claude first wrote these entries with three times it had not checked (21:28, 21:38, 21:40). It stopped the commit and checked them against GitHub and the clock.
+- Before 22:49 (exact time not recorded) Owner decision: the page must spell out abbreviations, or readers stop reading. Most people know AI, LLM and API. CFPB, TF-IDF and F1 get spelled out.
+- About 22:57 Work start on the abbreviations, in `../voc-demo-public`, branch `fix/spell-out-abbreviations`, from `main` at `c4f7d0b`.
+- Red `6decd79` at 22:58: 4 tests in `tests/test_ui.py`. All 4 failed.
+- About 22:59 The owner redeployed `main` (#50 and #51) with the new script. The live files are dated 22:59:49 by the server.
+- The owner's screenshot of the live page showed the new page with the old style sheet and script: plain links for tabs, unstyled tiles, every figure "n/a", and "Loading the test run..." that never finished. Claude checked the live server with `curl`: it sent the new files, with no `Cache-Control` header. So the browser reused its copies from the earlier visit. Ctrl+F5 loads the new ones.
+- Fix, in this pull request: every response says `Cache-Control: no-cache`, so a browser checks for a newer copy on every visit. An unchanged file costs a short "not modified" answer.
+- The page change: "Complaints to the US Consumer Financial Protection Bureau (CFPB)", "TF-IDF (term frequency, inverse document frequency)" and "F1 score" at their first use, and in the glossary, with a CFPB entry. The title keeps the short names (owner decision, wireframes version 2). Checked in a browser on synthetic data.
+- Red `c22e99d` at 23:22: `test_A4_browsers_check_for_a_newer_page_on_every_visit`. It failed.
