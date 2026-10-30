@@ -1,7 +1,7 @@
 -- The staged complaints, incremental and keyed on complaint ID (T011 add-on 1).
 -- A run adds only complaint IDs it has not seen. A row already built is never changed,
 -- so late or corrected records are not picked up. A new or removed column in the staged
--- table fails the build (`on_schema_change='fail'`). Both gaps are in the README.
+-- table fails the build (`on_schema_change='fail'`). Both gaps are written down in docs/PIPELINE.md.
 -- B17: the test rows are left out unless the `final` variable is on (macros/test_set.sql).
 -- The post-hook deletes test rows that an earlier run with the flag on left in the table.
 -- T021: on Databricks the rows come from the synthetic seed (macros/targets.sql), and the strategy

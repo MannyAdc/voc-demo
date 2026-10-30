@@ -1,6 +1,6 @@
 # How the pipeline works
 
-Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links. Back to the [README](../README.md).
+Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. Back to the [README](../README.md).
 
 ## How it works
 
@@ -49,5 +49,5 @@ To label real complaints you need the pinned July 2026 export. The CFPB serves o
 - Every rule is in the [spec](../specs/001-core-labelling-pipeline/spec.md), and the API's rules are in [specs/002-results-api-dashboard/spec.md](../specs/002-results-api-dashboard/spec.md). Every test is named after its rule.
 - Tests come first. Each pull request that changes code has a commit with failing tests only, then the code.
 - A git hook runs gitleaks, a names check and the full test suite on exactly the staged files, for every commit in a clone where the hook is switched on. Known limits in [LIMITS.md](LIMITS.md) lists the ways around it.
-- A fresh reviewer agent reads every pull request. Its findings and Claude's check of each are posted on the pull request. The owner decides what to fix, and the owner merges.
+- The rule: a fresh reviewer agent reads each pull request. Its findings and Claude's check of each are posted on the pull request. The owner decides what to fix, and the owner merges.
 - `scripts/merge_verdict.py` runs the mechanical merge checks and leaves the judgement items to Claude.

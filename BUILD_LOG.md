@@ -909,3 +909,20 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - Four new pages hold the long sections, moved word for word: `docs/RESULTS.md`, `docs/PIPELINE.md`, `docs/STACK.md` and `docs/LIMITS.md`. Only the relative links changed, and six references to sections now on other pages became links. A script checked that every relative link in the five files resolves.
   - Spec 001: the known limits are copied to `docs/LIMITS.md`, which the README links. Two tests changed, each with a comment: the B14 notes are read from the README and `docs/PIPELINE.md`, and the A13 test finds the result heading with its icon.
   - AI error caught before the commit: the first draft of "In one minute" said each of the 53 pull requests was reviewed. Claude could not check that for the earliest ones, and removed "each reviewed".
+- Green `a8d02b6` at 01:54 for the restructure. 02:08 #55 opened as a draft, with a reviewer (time from GitHub).
+- 02:13 Reviewer findings posted on #55 (time from GitHub). A line-by-line script found the moved text word for word, and every figure matched its source. The real findings:
+  - AI error by Claude: the README overstated human review. A person decides only the development set's quarantined complaints (9). The test set's 45 count as wrong. The first diagram named only one of the quarantine checks: of the 45, 24 had other causes (invalid label 15, unreadable 6, too short 3).
+  - AI error by Claude: the second diagram put CI after the owner's merge. CI runs on every pull request, before it.
+  - The diagram said a reviewer agent read "every code change". That cannot be checked for the earliest pull requests.
+  - AI error by Claude: the restructure broke the constitution. Every number in the README must come with its command, and the README must state when to switch to bigger tools. Both had moved to `docs/`.
+  - The counts were stale after #54. The spec and the dbt model still said these notes were "in the README". The `--with-text` safeguard was Claude's, not an owner decision. "CI", "ID" and "dbt" were not spelled out. The sign-in had no source.
+- About 02:14 (exact time not recorded) Owner decision: fix all of them. "US" stays short, as on the dashboard.
+- 02:14 `main` merged in after #54 (`89d0a11`). Only `BUILD_LOG.md` conflicted, and both blocks are kept as written, with #54's lines before this day's heading.
+- Red `b23a7b5` at 02:24: a test that the staged dbt model names `docs/PIPELINE.md` for its two gaps. It failed.
+- The fixes for #55:
+  - "Failures are held back and never counted as correct: on the development set a person decides each one (9 complaints), and on the test set they count as wrong (45 of 1,909)." The first diagram's check names all three things, and its person box says "development set".
+  - The second diagram: "Each pull request, under the rules in CLAUDE.md", with CI before the merge check and the owner's merge.
+  - A source line with its command under the results table and next to each Speed, Safety and Scale figure, and one line on when to switch.
+  - Recounted on `b23a7b5`: 54 merged pull requests (`gh pr list --state merged`) and 1,294 tests (`pytest --collect-only`).
+  - The spec line, the dbt model comment, and the moved "How it was built" line ("The rule: a fresh reviewer agent reads each pull request") fixed. The four pages' notes say so.
+  - "Continuous integration (CI)", "identifier (ID)", "dbt (data build tool)", and Microsoft's page cited for the built-in sign-in (dated 28 March 2025).
