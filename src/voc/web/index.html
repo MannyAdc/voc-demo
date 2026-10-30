@@ -38,6 +38,15 @@
       <div class="tile"><a href="#/review"><b id="tile-waiting">not yet</b></a><span>development complaints wait for a person</span></div>
       <div class="tile"><b id="tile-cost">not yet</b><span>LLM cost per 1,000 complaints</span></div>
     </section>
+    <section class="fresh" id="freshness" aria-labelledby="fresh-h">
+      <h2 id="fresh-h">Data as of</h2>
+      <ul>
+        <li id="fresh-data">Loading...</li>
+        <li id="fresh-test"></li>
+        <li><span id="fresh-schedule"></span> Its runs are listed on the repo's GitHub Actions page, as "Scheduled pipeline run (synthetic fixture)".</li>
+        <li>How it updates: the owner runs four steps on their own machine (load, dbt (data build tool) build, label, evaluate). The new results go in through a pull request, and one command redeploys this page.</li>
+      </ul>
+    </section>
     <p class="term-note" id="term-accuracy" hidden><b>Re-weighted strict accuracy</b>: right labels divided by all complaints, so a complaint left in quarantine counts as wrong. It is worked out for each product, then averaged with each product's share of all 9,303 complaints with a narrative.</p>
 
     <section class="card wide verdict-card" aria-labelledby="verdict-h">
