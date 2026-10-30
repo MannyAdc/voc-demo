@@ -830,3 +830,20 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - Fix, in this pull request: every response says `Cache-Control: no-cache`, so a browser checks for a newer copy on every visit. An unchanged file costs a short "not modified" answer.
 - The page change: "Complaints to the US Consumer Financial Protection Bureau (CFPB)", "TF-IDF (term frequency, inverse document frequency)" and "F1 score" at their first use, and in the glossary, with a CFPB entry. The title keeps the short names (owner decision, wireframes version 2). Checked in a browser on synthetic data.
 - Red `c22e99d` at 23:22: `test_A4_browsers_check_for_a_newer_page_on_every_visit`. It failed.
+- Green `5a00f57` at 23:45: the page, API and public copy tests pass. 23:58 #53 opened as a draft, with a reviewer (time from GitHub).
+- 00:01 Reviewer findings posted on #53 (time from GitHub). The real ones:
+  - The TF-IDF expansion sat inside the span that cannot wrap, so it would run off a phone screen. AI error by Claude: it put the long text inside that span.
+  - Shortened words and codes were still on screen: "Macro-F1", the rule number "(B10)" in the overview note, "n/a", " s" for seconds, and raw reason codes such as `quote_not_in_text`.
+  - The spec did not record the decision or the cache header.
+  - AI error by Claude: its comment and log line said every unchanged file gets a short "not modified" answer. Only the files under `/web/` do. The page itself is sent again.
+  - `no-cache` lets the browser keep a copy on disk, which on the analyst's machine can hold complaint text.
+- About 00:10 Owner decision: fix them as proposed. The footer keeps `--with-text` and `results/reviews/`, because they are names a technical reader types.
+- The fixes for #53:
+  - The expansion is outside the span. Only "frequency)" stays next to its button.
+  - "Macro F1 score (the average over products)". "n/a" becomes "not available", or "not yet" on a tile. " s" becomes " seconds", shown only next to a number.
+  - Reason codes show as the plain names the page already had, with the four missing ones added.
+  - The overview note names no rule.
+  - API answers are `no-store`. The page and its files stay `no-cache`.
+  - Spec A4 and A7 record both changes.
+  - Two earlier tests are changed in the green commit, each with a comment: the cache test no longer lists `/api/health`, and the tiles start as "not yet".
+- Red `3169695` at 00:11: 7 tests for the review. 6 failed. The "US" test passed at once, because the header already said "US", and it stays as a guard.

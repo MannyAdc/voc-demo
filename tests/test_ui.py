@@ -111,7 +111,8 @@ def test_A7_the_tiles_sit_in_the_overview_and_hold_no_figure_before_a_run_is_loa
     page = _page()
     overview = page[page.index('id="tab-overview"'):page.index('id="tab-browse"')]
     for tile in ("tile-complaints", "tile-accuracy", "tile-waiting", "tile-cost"):
-        assert re.search(rf'id="{tile}">n/a<', overview), tile
+        # Changed in the green commit of the review of #53: "n/a" became "not yet" (owner decision on abbreviations).
+        assert re.search(rf'id="{tile}">not yet<', overview), tile
         assert f'put("{tile}"' in _script(), tile
     for tile in ("tile-complaints", "tile-accuracy", "tile-cost"):
         assert tile in _function("noVerdict"), tile

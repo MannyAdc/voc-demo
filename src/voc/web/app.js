@@ -10,9 +10,9 @@ function put(id, text, missing) {
   el.textContent = text;
   if (missing) el.classList.add("missing");
 }
-function pct(x) { return typeof x === "number" ? (x * 100).toFixed(1) + "%" : "n/a"; }
-function num(x) { return typeof x === "number" ? x.toLocaleString("en-AU") : "n/a"; }
-function dec(x) { return typeof x === "number" ? x.toFixed(3) : "n/a"; }
+function pct(x) { return typeof x === "number" ? (x * 100).toFixed(1) + "%" : "not available"; }
+function num(x) { return typeof x === "number" ? x.toLocaleString("en-AU") : "not available"; }
+function dec(x) { return typeof x === "number" ? x.toFixed(3) : "not available"; }
 function svgEl(name, attrs) {
   const el = document.createElementNS(SVG, name);
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
@@ -47,17 +47,17 @@ function headToHead(f) {
     cell.append(b, s); who.appendChild(cell);
   }
   drawCurve(f.precision_coverage);
-  put("llm-cost", f.llm.cost_per_1000_usd ? "$" + f.llm.cost_per_1000_usd : "n/a");
+  put("llm-cost", f.llm.cost_per_1000_usd ? "$" + f.llm.cost_per_1000_usd : "not available");
   put("tf-cost", "$0 (no API call)");
   if (typeof f.llm.seconds_per_1000_complaints === "number") {
-    put("llm-time", f.llm.seconds_per_1000_complaints + " s");
+    put("llm-time", f.llm.seconds_per_1000_complaints + " seconds");
   } else {
     put("llm-time", "not measured", true);
     put("speed-note", "LLM time per 1,000 is given only for a finished run where every call was live. "
         + "This run: " + (f.llm.no_time_per_1000_because || "no reason given") + ".");
   }
   put("tf-time", typeof f.tfidf.seconds_per_1000_complaints === "number"
-      ? f.tfidf.seconds_per_1000_complaints + " s" : "n/a");
+      ? f.tfidf.seconds_per_1000_complaints + " seconds" : "not available");
 }
 
 function drawInterval(diff, low, high, id) {
@@ -75,7 +75,7 @@ function drawInterval(diff, low, high, id) {
   label(svg, x(0), 82, "0");
 }
 
-function points(v) { return typeof v === "number" ? (v >= 0 ? "+" : "") + (v * 100).toFixed(1) : "n/a"; }
+function points(v) { return typeof v === "number" ? (v >= 0 ? "+" : "") + (v * 100).toFixed(1) : "not available"; }
 function round3(v) { return typeof v === "number" ? Math.round(v * 1000) : null; }
 
 function noVerdict(text) {
@@ -83,7 +83,7 @@ function noVerdict(text) {
   const card = $("verdict-h").closest("section");
   card.classList.remove("has-verdict");
   $("verdict-body").hidden = true; $("per-product-block").hidden = true;
-  for (const tile of ["tile-complaints", "tile-accuracy", "tile-cost"]) put(tile, "n/a");
+  for (const tile of ["tile-complaints", "tile-accuracy", "tile-cost"]) put(tile, "not yet");
   put("verdict-note", "");
   put("test-verdict", text, true);
 }
@@ -101,18 +101,19 @@ function testVerdict(t) {
   put("t-llm-acc", pct(t.llm.reweighted_accuracy)); put("t-tf-acc", pct(t.tfidf.reweighted_accuracy));
   put("t-llm-prec", pct(t.llm.precision)); put("t-tf-prec", pct(t.tfidf.precision));
   put("t-llm-cov", pct(t.llm.coverage)); put("t-tf-cov", pct(t.tfidf.coverage));
-  put("t-llm-cost", t.llm.cost_per_1000_usd ? "$" + t.llm.cost_per_1000_usd : "n/a");
+  put("t-llm-cost", t.llm.cost_per_1000_usd ? "$" + t.llm.cost_per_1000_usd : "not available");
   put("t-tf-cost", "$0 (no API call)");
   put("t-llm-time", typeof t.llm.seconds_per_1000_complaints === "number"
-      ? t.llm.seconds_per_1000_complaints + " s (one call at a time)" : "not measured");
+      ? t.llm.seconds_per_1000_complaints + " seconds (one call at a time)" : "not measured");
   put("t-tf-time", typeof t.tfidf.seconds_per_1000_complaints === "number"
-      ? t.tfidf.seconds_per_1000_complaints + " s (labelling only)" : "n/a");
+      ? t.tfidf.seconds_per_1000_complaints + " seconds (labelling only)" : "not available");
   if ([t.difference, low, high].every((v) => typeof v === "number")) drawInterval(t.difference, low, high, "test-interval");
   const r = t.run || {};
-  const reasons = Object.entries(r.quarantine_reasons || {}).map(([k, n]) => k + " " + n).join(", ");
+  const reasons = Object.entries(r.quarantine_reasons || {}).map(([k, n]) => (REASONS[k] || REASONS.other) + ": " + n)
+    .join(", ");
   put("test-run", num(r.accepted) + " accepted, " + num(r.quarantined) + " quarantined"
       + (reasons ? " (" + reasons + ")" : "") + ". " + num(r.input_tokens) + " input and " + num(r.output_tokens)
-      + " output tokens, " + (r.live_cost_usd ? "$" + r.live_cost_usd : "cost n/a") + ", " + (r.run_seconds ?? "n/a") + " s.");
+      + " output tokens, " + (r.live_cost_usd ? "$" + r.live_cost_usd : "cost not available") + ", " + (typeof r.run_seconds === "number" ? r.run_seconds + " seconds" : "time not available") + ".");
   put("per-note", "In this table " + t.per_category.note + ".");
   const body = $("per-product");
   const rows = Object.entries(t.per_category.categories).sort((a, b) => b[1].complaints - a[1].complaints);
@@ -134,7 +135,7 @@ function testVerdict(t) {
   }
   put("tile-complaints", num(t.complaints));
   put("tile-accuracy", pct(t.llm.reweighted_accuracy));
-  put("tile-cost", t.llm.cost_per_1000_usd ? "$" + t.llm.cost_per_1000_usd : "n/a");
+  put("tile-cost", t.llm.cost_per_1000_usd ? "$" + t.llm.cost_per_1000_usd : "not available");
   productBars(rows);
 }
 
@@ -193,10 +194,11 @@ function drawCurve(pc) {
 function safety(run, audit, queue) {
   if (run) {
     put("accepted", num(run.accepted) + " of " + num(run.complaints));
-    const reasons = Object.entries(run.quarantine_reasons || {}).map(([r, n]) => r + " " + n).join(", ");
+    const reasons = Object.entries(run.quarantine_reasons || {}).map(([r, n]) => (REASONS[r] || REASONS.other) + ": " + n)
+      .join(", ");
     put("quarantined", num(run.quarantined) + (reasons ? " (" + reasons + ")" : ""));
     const calls = Object.entries(run.calls_by_source || {}).map(([s, n]) => n + " " + s).join(", ");
-    put("run-time", (run.run_seconds ?? "n/a") + " s, " + calls);
+    put("run-time", (typeof run.run_seconds === "number" ? run.run_seconds + " seconds" : "time not available") + ", " + calls);
   }
   if (audit) {
     put("audit-verified", num(audit.verified) + " of " + num(audit.accepted));
@@ -243,7 +245,9 @@ function versionsTable(rows) {
 let version = "v1";
 const REASONS = { quote_not_in_text: "the quoted sentence is not in the text", invalid_label: "the AI named a product not in the list",
   unparseable: "the AI's answer could not be read", quote_too_short: "the quote is too short to show anything",
-  quote_empty: "the AI gave no quote", quote_redaction_only: "the quote is only redaction marks", other: "another reason" };
+  quote_empty: "the AI gave no quote", quote_redaction_only: "the quote is only redaction marks",
+  no_narrative: "the complaint has no text", boundary_in_text: "the text holds the marker that fences it off from the instructions",
+  model_error: "the model call failed", not_run_budget: "not run, because the spend cap was reached", other: "another reason" };
 const DECISIONS = { ai_right: "the AI's label is right", word_model_right: "the word-based model is right",
   other_product: "another product fits better", no_product: "it fits no product clearly", correction: "a correction" };
 const listState = { product: null, show: "all", page: 1, loaded: null, keepFocus: false };
@@ -291,7 +295,7 @@ async function fetchJson(path, options) {
 
 async function reviewCount() {
   const [q] = await fetchJson("/api/review/" + version + "/queue");
-  put("tile-waiting", q ? num(q.total - q.reviewed) : "n/a");
+  put("tile-waiting", q ? num(q.total - q.reviewed) : "not available");
   $("tab-review-link").textContent = q ? "Review (" + (q.total - q.reviewed) + ")" : "Review";
 }
 

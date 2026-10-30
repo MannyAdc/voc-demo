@@ -240,7 +240,8 @@ def test_A4_only_the_local_host_names_are_answered(client):
 
 def test_A4_browsers_check_for_a_newer_page_on_every_visit(client):
     # Found after the first redeploy: with no cache header, a browser kept the old script and style for the new page.
-    for route in ("/", "/web/app.js", "/web/style.css", "/api/health"):
+    # Changed in the green commit of the review of #53: API answers are now "no-store", tested on their own.
+    for route in ("/", "/web/app.js", "/web/style.css"):
         assert client.get(route).headers["cache-control"] == "no-cache", route
 
 
