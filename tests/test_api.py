@@ -296,7 +296,9 @@ TEST_FIGURES = {
                      "tfidf": {"f1": 0.9, "precision": 0.93, "recall": 0.88}},
         "Prepaid card": {"complaints": 2, "too_few_to_judge": True, "note": HOSTILE},
         HOSTILE: {"complaints": 1, "llm": {"f1": 1.0}, "tfidf": {"f1": 1.0}}}},
-    "live_cost_usd": "0.4530015", "narrative": HOSTILE}
+    "live_cost_usd": "0.4530015", "narrative": HOSTILE,
+    # Changed in the review of #44: the scored file is matched to its logged row by hash, model and count.
+    "list_sha256": "a" * 64}
 TEST_RUN = {"complaints": 6, "accepted": 5, "quarantined": 1, "quarantine_reasons": {"quote_not_in_text": 1},
             "cut": 0, "calls_by_source": {"live": 6}, "input_tokens": 300, "output_tokens": 40,
             "cost": {"live_cost_usd": "0.0011", "own_cost_usd": "0.0011"}, "run_seconds": 12.0,
@@ -355,3 +357,59 @@ def test_A7_the_page_shows_the_test_verdict_first_and_not_as_a_tuning_figure():
     assert page.index('id="verdict-h"') < page.index('id="h2h"')
     script = (WEB / "app.js").read_text(encoding="utf-8")
     assert '"/api/test/"' in script
+
+
+# Review of #44: the verdict is served only for the scored file of a logged row, and checked like every field
+
+
+def _figures_file(root):
+    return root / "results" / "eval" / "v1_test.json"
+
+
+@pytest.mark.parametrize("change", [{"list_sha256": "b" * 64}, {"model": "other-model"}, {"complaints": 7},
+                                    {"set": "dev"}])
+def test_A5_the_test_route_is_a_404_when_the_scored_file_does_not_match_its_logged_row(tested, client, change):
+    _figures_file(tested).write_text(json.dumps({**TEST_FIGURES, **change}), encoding="utf-8")
+    assert client.get("/api/test/v1").status_code == 404
+
+
+@pytest.mark.parametrize("rows", [TEST_RUNS.replace("| v1 |", "| v2 |"), TEST_RUNS.replace("| v1 |", "| v10 |")])
+def test_A5_the_test_route_needs_a_row_for_exactly_this_version(tested, client, rows):
+    (tested / "runs" / "TEST_RUNS.md").write_text(rows, encoding="utf-8")
+    assert client.get("/api/test/v1").status_code == 404
+
+
+@pytest.mark.parametrize("missing", [Path("runs") / "TEST_RUNS.md", Path("results") / "labels" / "v1_test.json"])
+def test_A5_the_test_route_is_a_404_when_the_log_or_the_run_summary_is_missing(tested, client, missing):
+    (tested / missing).unlink()
+    assert client.get("/api/test/v1").status_code == 404
+
+
+def test_A2_wrong_kinds_in_served_test_fields_are_not_served(tested, client):
+    bad = {**TEST_FIGURES, "verdict": HOSTILE, "live_cost_usd": HOSTILE,
+           "per_category": {"categories": {
+               "Mortgage": {"complaints": 4, "llm": {"f1": HOSTILE}, "tfidf": {"f1": "0.9"}},
+               "Credit card": {"complaints": "4", "llm": {"f1": 0.8}, "tfidf": {"f1": 0.7}},
+               "Prepaid card": {"complaints": 2, "too_few_to_judge": "true"}}}}
+    _figures_file(tested).write_text(json.dumps(bad), encoding="utf-8")
+    response = client.get("/api/test/v1")
+    assert response.status_code == 200 and "SYNHOSTILE" not in response.text
+    got = response.json()
+    assert got["verdict"] is None
+    assert got["per_category"]["categories"]["Mortgage"] == {"complaints": 4, "llm_f1": None, "tfidf_f1": None}
+    assert "Credit card" not in got["per_category"]["categories"]
+    assert got["per_category"]["categories"]["Prepaid card"] == {"complaints": 2, "llm_f1": None, "tfidf_f1": None}
+
+
+def test_A5_the_tested_route_lists_the_versions_with_a_logged_test_run(tested, client):
+    assert client.get("/api/tested").json() == {"versions": ["v1"]}
+    (tested / "runs" / "TEST_RUNS.md").unlink()
+    assert client.get("/api/tested").json() == {"versions": []}
+
+
+def test_A7_the_page_asks_which_version_was_tested_and_claims_no_run_in_its_static_text():
+    script = (WEB / "app.js").read_text(encoding="utf-8")
+    assert '"/api/tested"' in script
+    page = (WEB / "index.html").read_text(encoding="utf-8")
+    card = page[page.index('id="verdict-h"'):page.index('id="h2h"')]
+    assert "was scored once" not in card and "logged in runs/TEST_RUNS.md" not in card
