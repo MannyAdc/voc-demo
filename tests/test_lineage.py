@@ -168,6 +168,11 @@ def fake_parse(tmp_path, monkeypatch):
     """A project root where `dbt parse` is replaced by writing a given manifest, so no dbt runs."""
     from voc import dbt_run
 
+    # Fixed after the first tests commit of the #48 review: without the label file, `voc dbt` stopped
+    # on a missing file before the name check, so the refusal tests passed for the wrong reason.
+    (tmp_path / "config").mkdir()
+    shutil.copy(REPO / "config" / "labels.toml", tmp_path / "config" / "labels.toml")
+
     def use(manifest):
         def parse(root, action, labels, target_name="local"):
             assert action == "parse"
@@ -188,6 +193,7 @@ def test_B14_dbt_lineage_refuses_an_unsafe_name_and_writes_nothing(fake_parse, c
     assert cli.main(["dbt", "lineage"], env={}, root=root) == 1
     out = capsys.readouterr().out
     assert out.startswith("error: ") and name not in out
+    assert "a dbt model name holds characters the lineage graph does not allow" in out
     assert not (root / LINEAGE).exists()
 
 
@@ -196,6 +202,7 @@ def test_B14_dbt_lineage_refusing_leaves_the_committed_file_unchanged(fake_parse
     (root / LINEAGE).parent.mkdir(parents=True)
     (root / LINEAGE).write_text("SYN earlier graph\n", encoding="utf-8")
     assert cli.main(["dbt", "lineage"], env={}, root=root) == 1
+    assert "the lineage graph does not allow" in capsys.readouterr().out
     assert (root / LINEAGE).read_text(encoding="utf-8") == "SYN earlier graph\n"
 
 
