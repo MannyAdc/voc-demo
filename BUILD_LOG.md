@@ -692,3 +692,41 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - The spec lists every served field, and Known limits says what a second logged run would do.
 - Red `46398b7` at 12:37: 11 new tests in `tests/test_api.py`, counted from the test file and the red run. 6 failed. 5 passed at once and guard the route: a v2 or v10 row, a missing log or run summary, and wrong kinds in served fields.
   - AI error: the first draft of this line said 12 tests and 6 passed, written before counting. Claude stopped the commit, counted, and fixed the draft.
+- About 11:50 to 12:15 `docs/USER.md` and `docs/WIREFRAMES.md` drafted for the owner, before any screen was built, as the brief asks. The owner asked what exactly is labelled, and asked for that to be written down. Claude added "What is being labelled", and the three names used on every screen: the AI's label, the word-based model's suggestion, and the consumer's own choice.
+- Owner decisions on the drafts (exact times not recorded, between about 11:55 and 12:15):
+  - The four review reasons.
+  - The consumer's own choice is hidden while a person decides, and the docs say why.
+  - Decisions are stored in a file the repo can commit.
+- About 12:15 The owner approved both. Commit `f68e8f9` at 12:16.
+- About 12:20 Work start on the analyst screens, in `../voc-demo-analyst`, branch `feat/analyst-screens`, started from `feat/dashboard-verdict` (#44).
+  - Red `3438541` at 12:27: `tests/test_analyst.py`. Its gate took about 30 minutes, with three other gates running.
+  - Claude checked the screens in a local browser on a temp project built from the synthetic fixture only (SYN- IDs), never on real data. The review queue, one complaint with its quote highlighted, a saved decision and a product list all worked. Two fixes came from that check: IDs now sort by number (SYN-3 before SYN-10), and the held-back note says it counts all products.
+- 12:39 #45 opened (time from GitHub). 12:43 Reviewer findings posted on #45, with Claude's checks.
+  - The main one: reading the test set's complaint text and its consumer's choices breaks B17, which seals the test set ("the same guard covers reading test rows from the staged table"). It also strains B20.
+  - AI error: Claude had agreed to review the test set's 45 quarantined complaints without checking B17 and B20. The reviewer caught it.
+  - Also: the screens would put real complaint text in a browser that Claude can drive.
+- About 12:45 (exact time not recorded) Owner decision A: the browsing and review screens use the development set (370 complaints, 9 quarantined). B17 and B20 stay as they are. The verdict card still has the test set's figures, which come from the logged run. Claude added a safeguard: the text is served only with `voc serve --with-text`, which only the owner passes. CLAUDE.md says Claude never passes it and never opens a page served with it.
+- The green change: the routes, now `/api/review/{version}/...` on the development results, the page, spec 002 (A1, A2, A10 to A12, Not in scope), CLAUDE.md, `.gitignore` for `results/reviews/*.csv`, and the docs. The tests moved to the development set in this green commit, with a comment, because a tests-only commit may not rename a test.
+- The read guard blocked three of Claude's shell commands today because their text held the word it guards against, in a commit message, a help string and a log entry. Each time Claude used the file tools instead. The guard worked as designed. Known limits already says it also blocks harmless commands.
+- 12:59 Green `af8f710` on the analyst screens. 13:22 main's #44 branch merged in (`9439a72`), keeping both sides of `app.js` and of this log. 13:26 #44 marked ready. 13:32 The owner merged #44, and 13:35 #45 (times from GitHub).
+- Parallel run result, the helper agent in `../voc-demo-helper`, all three branches from `b41e7e8`:
+  - `docs/why-this-stack`: `bea048d` at 11:42. Its gate passed at once.
+  - `feat/lineage`: red `17854de` at 11:59 (9 tests), green `77948a7` at 12:43. The green gate was first refused by an unrelated ledger test, "the ledger cannot be read" in its temp folder, most likely the known Windows file lock. The retry passed. Real run: `uv run --native-tls voc dbt lineage` printed "dbt lineage: 1 sources, 0 seeds, 2 models, 6 data tests, 9 edges."
+  - `feat/request-logging`: red `5ea75e8` at 12:59 (12 tests), green `aefb9d5` at 13:27.
+  - Claude reviewed the diffs and pushed them. 13:42 #47, #48 and #49 opened (times from GitHub), each with a fresh reviewer.
+- 13:38 #46 opened (time from GitHub). 13:42 Reviewer findings posted on #46, with Claude's checks. The main ones:
+  - The quarantine reason and the review file's fields were served unchecked.
+  - After saving a decision, the consumer's own choice is revealed, and the decision could then be replaced, so an analyst could peek and decide again.
+  - Nothing checked the IDs against the frozen development list.
+  - The reviews file was not written safely.
+  - The rule "Claude never passes --with-text" had no hook behind it.
+- 13:44, 13:44 and 13:45 Reviewer findings posted on #47, #48 and #49, with Claude's proposed fixes (times from GitHub). No blocking finding on any of them.
+- About 13:46 (exact time not recorded) Owner decision: fix all of them. On #46, a saved decision is locked and the first one is scored, a change is stored as a new entry with the reason "correction", and the read guard refuses any command of Claude's with `--with-text`. The helper fixes #47 and #48 in its own worktree, and Claude fixes #46.
+- Red `76af932` at 13:47: 11 new tests in `tests/test_analyst.py`, with the fixture's frozen lists. 7 failed. The other 4 passed at once, among them the hold-back test that now really checks it.
+- Red `cf4c49d` for the hook, at 14:17: 4 tests in `tests/test_hooks.py`. 3 failed. The fourth (a serve command without the flag is allowed) passed at once.
+- The green change for #46: checked fields, the development list check, the text column read only with the flag, the lock and correction, the safe write, the label rule for "another product", a stale comment, the address fix, spec A10 and A12, CLAUDE.md, and the hook rule. The hook file edit is the owner's decision of about 13:46. One older test, "a second decision replaces the first", now checks that it is refused. It is changed in the green commit, with a comment.
+- Correction of entries above, which stay as written:
+  - The entry "The green change: ... and the docs" is wrong about the docs. They are in #45, not in this pull request.
+  - The browser check entry sits under the red commit `3438541`, but it checked the green code.
+- The gate of `cf4c49d` listed the 5 still-failing tests of `76af932` as carried over, as the gate rules say. They pass in the green commit.
+- 15:12 CI failed on `ceeb4db`: `test_A10_a_complaint_outside_the_development_results_is_a_404_even_if_it_is_staged` opened the fixture file without closing it, and CI turns that warning into an error. AI error in Claude's test, caught by CI, not by the local gate. Fixed with a `with` block, with a comment.

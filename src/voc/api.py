@@ -19,6 +19,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from voc import analyst
 from voc.audit import FAILURES
 from voc.labels import load_labels
 
@@ -100,7 +101,7 @@ def _counts(mapping, allowed):
     return {k: v for k, v in _dict(mapping).items() if k in allowed and _number(v) is not None}
 
 
-def create_app(root):
+def create_app(root, with_text=False):
     root = Path(root)
     app = FastAPI(title="voc-demo results", docs_url=None, redoc_url=None, openapi_url=None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=LOCAL_HOSTS)
@@ -262,6 +263,13 @@ def create_app(root):
         out["cost"] = {"live_cost_usd": _money(cost.get("live_cost_usd")),
                        "own_cost_usd": _money(cost.get("own_cost_usd"))}
         return out
+
+    def _checked_version(version):
+        if not VERSION.fullmatch(version):
+            raise HTTPException(404, "unknown prompt version")
+
+    # A10 to A12: the analyst screens (docs/USER.md tasks 2 and 3), on the development set.
+    analyst.add_routes(app, root, _checked_version, COMPLAINT_ID, with_text=with_text)
 
     @app.get("/api/audit/{version}")
     def audit(version: str):
