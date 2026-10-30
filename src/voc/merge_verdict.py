@@ -45,10 +45,11 @@ EXIT_MERGE, EXIT_FIX_FIRST, EXIT_ERROR, EXIT_PENDING = 0, 1, 2, 3
 SECRET_WORDS = ("KEY", "TOKEN", "SECRET")
 DROPPED_VARS = ("VOC_DATA_DIR", "VOC_NEXT_DATA_DIR", "VOC_MOCK_FIXTURES")
 RED_FILE = re.compile(r"tests/test_[^/]*\.py")
-# The page's script, markup and styles count too: their tests read them (found on #51).
-CODE_SUFFIXES = (".py", ".sql", ".sh", ".ps1", ".js", ".html", ".css")
-CODE_FOLDERS = (".githooks/", ".github/workflows/", "dbt/")
-CODE_FILES = ("pyproject.toml", "uv.lock", ".claude/settings.json")
+CODE_SUFFIXES = (".py", ".sql", ".sh", ".ps1")
+# The dashboard page is its folder, whatever the file type (found on #51). requirements.txt is what Azure builds from.
+# config/ (labels and prompts) is left out on purpose: a prompt or label change is judged by /eval and the spec.
+CODE_FOLDERS = (".githooks/", ".github/workflows/", "dbt/", "src/voc/web/")
+CODE_FILES = ("pyproject.toml", "uv.lock", "requirements.txt", ".claude/settings.json")
 
 
 @dataclass(frozen=True)

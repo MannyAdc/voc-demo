@@ -826,3 +826,8 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - 21:54 Work start on the merge check gap found on #51, in `../voc-demo-ui`, branch `fix/merge-check-web`, from `main` at `c4f7d0b`.
 - The fix: `.js`, `.html` and `.css` join the code suffixes, so a pull request that changes the page needs a red commit first. `docs/TEST_LIST.md` has the new line.
 - Red `2c8432e` at 21:55: `test_T006b_the_page_files_are_code`, 3 cases. All 3 failed.
+- Green `a3023f6` at 22:16: the merge check tests pass. 22:25 #52 opened as a draft (time from GitHub), with a reviewer.
+- 22:26 Reviewer findings posted on #52 (time from GitHub). The real ones: `requirements.txt` still not code, the suffix match wider than the page, a narrow test, and missing log lines. `config/` not being code is a design question.
+- Before 22:49 (exact time not recorded) Owner decision: go ahead with the fixes as proposed.
+- Red `c844fd7` at 22:50: 4 cases for the page folder, `requirements.txt`, and `.html` or `.css` outside the page. All 4 failed.
+- The fixes for #52: the page folder `src/voc/web/` replaces the three suffixes, `requirements.txt` joins the code files, and a comment says `config/` stays out on purpose, because a prompt or label change is judged by `/eval` and the spec.
