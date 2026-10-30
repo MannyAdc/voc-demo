@@ -35,6 +35,7 @@ A small read-only web app. The API serves the committed results files, and one p
   - **Scale:** the July export (672,036 complaints), the pool after copies are removed, and the three set sizes.
   - Above them, the head-to-head: re-weighted strict accuracy, precision and coverage for both methods, the interval and the verdict. Every development figure says "tuning figure". Charts are drawn in the page as SVG, with no chart library.
 - **A8. Tests.** The API is tested with FastAPI's in-process test client, so no socket is opened. The page is checked by a test that reads the HTML and finds no outside script or style.
+- **A9. Request log and counters.** Every request is logged as one line on stderr, so `voc serve` shows it in the terminal: the time (UTC), the method, the path, the status code and the duration in milliseconds. A line never holds the query string, a header, the body or the client address. The path is logged as the pattern of the route it matched, such as `/api/eval/{version}` or `/web/{path}`, and any other path as `(unknown path)`. A method outside the standard ones is logged as `(other method)`. So nothing a caller typed reaches the log. `/api/health` serves `{"status": "ok", "requests": n, "client_errors": n, "server_errors": n, "started": "<ISO time>"}`: the requests answered since the app started, and how many of them got a 4xx or a 5xx status. A request is counted after its answer, so a health request does not count itself. The code is in `src/voc/api_log.py`. *Added on 30 October.*
 
 ## Not in scope
 
@@ -46,3 +47,6 @@ A small read-only web app. The API serves the committed results files, and one p
 
 - The dashboard shows what is committed. A figure that was not committed cannot be shown.
 - No test drives the page in a browser. The owner checks it by eye before the demo.
+- The request counters live in memory. They start again at zero when `voc serve` restarts, and they are not stored anywhere.
+- The request log goes to the terminal only. It is not written to a file, so it is gone when the terminal closes.
+- `/api/health` is open to anyone who can reach the app. With the A4 host check and the 127.0.0.1 listener, that is this computer only.
