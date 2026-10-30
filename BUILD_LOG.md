@@ -822,6 +822,17 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - The work on #51 started in `../voc-demo-ui`, branch `feat/ui-tabs`, from `a2d65da` (#50's branch), after the owner approved the wireframes and before the first red commit at 17:23. The exact start time was not recorded. This line is written late, at about 21:35.
 - About 21:35 Owner decision: add these entries to #51 before it is marked ready.
 - AI error caught before the commit: Claude first wrote these entries with three times it had not checked (21:28, 21:38, 21:40). It stopped the commit and checked them against GitHub and the clock.
+- 21:52 #51 merged by the owner (time from git).
+- 21:54 Work start on the merge check gap found on #51, in `../voc-demo-ui`, branch `fix/merge-check-web`, from `main` at `c4f7d0b`.
+- The fix: `.js`, `.html` and `.css` join the code suffixes, so a pull request that changes the page needs a red commit first. `docs/TEST_LIST.md` has the new line.
+- Red `2c8432e` at 21:55: `test_T006b_the_page_files_are_code`, 3 cases. All 3 failed.
+- Green `a3023f6` at 22:16: the merge check tests pass. 22:25 #52 opened as a draft (time from GitHub), with a reviewer.
+- 22:26 Reviewer findings posted on #52 (time from GitHub). The real ones: `requirements.txt` still not code, the suffix match wider than the page, a narrow test, and missing log lines. `config/` not being code is a design question.
+- Before 22:49 (exact time not recorded) Owner decision: go ahead with the fixes as proposed.
+- Red `c844fd7` at 22:50: 4 cases for the page folder, `requirements.txt`, and `.html` or `.css` outside the page. All 4 failed.
+- The fixes for #52: the page folder `src/voc/web/` replaces the three suffixes, `requirements.txt` joins the code files, and a comment says `config/` stays out on purpose, because a prompt or label change is judged by `/eval` and the spec.
+- AI error, by the reviewer agent on #52: to rerun the red state, it tried `git checkout 2c8432e -- src/voc/merge_verdict.py`, which would have changed the worktree. Its brief said to edit nothing. Auto mode refused the command, and `git status` showed the tree unchanged. The agent reported it itself, and Claude posted it on #52.
+- Green `676c2f8` at 23:11: all merge check tests pass. CI green. Merge verdict PENDING. Claude found this entry missing, and added it before marking #52 ready (the same choice the owner made for #51).
 - Before 22:49 (exact time not recorded) Owner decision: the page must spell out abbreviations, or readers stop reading. Most people know AI, LLM and API. CFPB, TF-IDF and F1 get spelled out.
 - About 22:57 Work start on the abbreviations, in `../voc-demo-public`, branch `fix/spell-out-abbreviations`, from `main` at `c4f7d0b`.
 - Red `6decd79` at 22:58: 4 tests in `tests/test_ui.py`. All 4 failed.
@@ -847,3 +858,4 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - Spec A4 and A7 record both changes.
   - Two earlier tests are changed in the green commit, each with a comment: the cache test no longer lists `/api/health`, and the tiles start as "not yet".
 - Red `3169695` at 00:11: 7 tests for the review. 6 failed. The "US" test passed at once, because the header already said "US", and it stays as a guard.
+- `main` (with #52) merged into `fix/spell-out-abbreviations` for #53. Both blocks of log lines are kept as written: #52's first, then #53's. Their times overlap, because the two pull requests were worked on at once.
