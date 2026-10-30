@@ -275,3 +275,141 @@ def test_A7_the_page_reads_the_last_development_row():
     script = (WEB / "app.js").read_text(encoding="utf-8")
     assert 'r.Set === "dev"' in script
     assert "?? 0" not in script
+
+
+# The verdict from the single logged test run (A5, A7), added on 30 October
+
+
+TEST_FIGURES = {
+    "set": "test", "prompt_version": "v1", "complaints": 6, "backend": "api", "model": "synthetic-model",
+    "figures_are": "SYN anything", "verdict": "beats", "difference": 0.024, "interval": [0.005, 0.041],
+    "resamples": 2000, "seed": 0,
+    "llm": {"reweighted_accuracy": 0.803, "precision": 0.822, "coverage": 0.976, "quarantine_rate": 0.024,
+            "macro_f1": 0.76, "cost_per_1000_usd": "0.2373", "seconds_per_1000_complaints": 2015.2,
+            "no_time_per_1000_because": None, "hidden": HOSTILE},
+    "tfidf": {"reweighted_accuracy": 0.779, "precision": 0.797, "coverage": 0.976, "macro_f1": 0.654,
+              "cost_per_1000_usd": "0", "seconds_per_1000_complaints": 0.707},
+    "who_was_right": {"both": 3, "only_llm": 1, "only_tfidf": 1, "neither": 1, HOSTILE: 9},
+    "precision_coverage": {"tfidf": [[0.5, 0.97], [1.0, 0.79]], "llm": [0.976, 0.822]},
+    "per_category": {"note": HOSTILE, "categories": {
+        "Mortgage": {"complaints": 4, "llm": {"f1": 0.91, "precision": 0.97, "recall": 0.85, "x": HOSTILE},
+                     "tfidf": {"f1": 0.9, "precision": 0.93, "recall": 0.88}},
+        "Prepaid card": {"complaints": 2, "too_few_to_judge": True, "note": HOSTILE},
+        HOSTILE: {"complaints": 1, "llm": {"f1": 1.0}, "tfidf": {"f1": 1.0}}}},
+    "live_cost_usd": "0.4530015", "narrative": HOSTILE,
+    # Changed in the review of #44: the scored file is matched to its logged row by hash, model and count.
+    "list_sha256": "a" * 64}
+TEST_RUN = {"complaints": 6, "accepted": 5, "quarantined": 1, "quarantine_reasons": {"quote_not_in_text": 1},
+            "cut": 0, "calls_by_source": {"live": 6}, "input_tokens": 300, "output_tokens": 40,
+            "cost": {"live_cost_usd": "0.0011", "own_cost_usd": "0.0011"}, "run_seconds": 12.0,
+            "seconds_per_1000_complaints": 2000.0, "token_pairs": [[1, 2]], "settings": {"secret": HOSTILE}}
+TEST_RUNS = ("# Test runs\n\n| Date | Prompt | Test list hash | Model | Complaints | Reason |\n|---|---|---|---|---|---|\n"
+             "| 2026-10-29 21:48 | v1 | " + "a" * 64 + " | synthetic-model | 6 | SYN first test run |\n")
+
+
+@pytest.fixture
+def tested(root):
+    _write(root / "results" / "eval" / "v1_test.json", json.dumps(TEST_FIGURES))
+    _write(root / "results" / "labels" / "v1_test.json", json.dumps(TEST_RUN))
+    _write(root / "runs" / "TEST_RUNS.md", TEST_RUNS)
+    return root
+
+
+def test_A5_the_test_route_serves_the_verdict_of_the_logged_test_run(tested, client):
+    response = client.get("/api/test/v1")
+    assert response.status_code == 200 and "SYNHOSTILE" not in response.text
+    got = response.json()
+    assert got["figures_are"] == "the claim's verdict, from the single logged test run (B10, B17)"
+    assert got["set"] == "test" and got["verdict"] == "beats" and got["interval"] == [0.005, 0.041]
+    assert got["llm"]["reweighted_accuracy"] == 0.803 and got["tfidf"]["reweighted_accuracy"] == 0.779
+    assert got["llm"]["cost_per_1000_usd"] == "0.2373" and got["llm"]["seconds_per_1000_complaints"] == 2015.2
+    assert got["who_was_right"] == {"both": 3, "only_llm": 1, "only_tfidf": 1, "neither": 1}
+    assert got["run"] == {"complaints": 6, "accepted": 5, "quarantined": 1, "run_seconds": 12.0,
+                          "input_tokens": 300, "output_tokens": 40, "live_cost_usd": "0.0011",
+                          "quarantine_reasons": {"quote_not_in_text": 1}}
+
+
+def test_A5_the_test_route_serves_per_product_figures_for_known_products_only(tested, client):
+    per = client.get("/api/test/v1").json()["per_category"]
+    assert per["note"].startswith("the LLM's quarantined labels count as wrong")
+    assert per["categories"] == {"Mortgage": {"complaints": 4, "llm_f1": 0.91, "tfidf_f1": 0.9},
+                                 "Prepaid card": {"complaints": 2, "too_few_to_judge": True}}
+
+
+@pytest.mark.parametrize("path", ["/api/test/v9", "/api/test/1", "/api/test/V1"])
+def test_A3_an_unknown_or_bad_test_version_is_a_404(tested, client, path):
+    assert client.get(path).status_code == 404
+
+
+def test_A5_the_test_route_is_a_404_without_a_logged_test_run(tested, client):
+    (tested / "runs" / "TEST_RUNS.md").write_text(TEST_RUNS.splitlines()[0] + "\n", encoding="utf-8")
+    assert client.get("/api/test/v1").status_code == 404
+
+
+def test_A1_the_test_route_is_read_only(tested, client):
+    assert client.post("/api/test/v1").status_code == 405
+
+
+def test_A7_the_page_shows_the_test_verdict_first_and_not_as_a_tuning_figure():
+    page = (WEB / "index.html").read_text(encoding="utf-8")
+    heading = re.search(r'<h2 id="verdict-h">(.*?)</h2>', page, re.S)
+    assert heading and "test set" in heading.group(1).lower() and "tuning figure" not in heading.group(1)
+    assert page.index('id="verdict-h"') < page.index('id="h2h"')
+    script = (WEB / "app.js").read_text(encoding="utf-8")
+    assert '"/api/test/"' in script
+
+
+# Review of #44: the verdict is served only for the scored file of a logged row, and checked like every field
+
+
+def _figures_file(root):
+    return root / "results" / "eval" / "v1_test.json"
+
+
+@pytest.mark.parametrize("change", [{"list_sha256": "b" * 64}, {"model": "other-model"}, {"complaints": 7},
+                                    {"set": "dev"}])
+def test_A5_the_test_route_is_a_404_when_the_scored_file_does_not_match_its_logged_row(tested, client, change):
+    _figures_file(tested).write_text(json.dumps({**TEST_FIGURES, **change}), encoding="utf-8")
+    assert client.get("/api/test/v1").status_code == 404
+
+
+@pytest.mark.parametrize("rows", [TEST_RUNS.replace("| v1 |", "| v2 |"), TEST_RUNS.replace("| v1 |", "| v10 |")])
+def test_A5_the_test_route_needs_a_row_for_exactly_this_version(tested, client, rows):
+    (tested / "runs" / "TEST_RUNS.md").write_text(rows, encoding="utf-8")
+    assert client.get("/api/test/v1").status_code == 404
+
+
+@pytest.mark.parametrize("missing", [Path("runs") / "TEST_RUNS.md", Path("results") / "labels" / "v1_test.json"])
+def test_A5_the_test_route_is_a_404_when_the_log_or_the_run_summary_is_missing(tested, client, missing):
+    (tested / missing).unlink()
+    assert client.get("/api/test/v1").status_code == 404
+
+
+def test_A2_wrong_kinds_in_served_test_fields_are_not_served(tested, client):
+    bad = {**TEST_FIGURES, "verdict": HOSTILE, "live_cost_usd": HOSTILE,
+           "per_category": {"categories": {
+               "Mortgage": {"complaints": 4, "llm": {"f1": HOSTILE}, "tfidf": {"f1": "0.9"}},
+               "Credit card": {"complaints": "4", "llm": {"f1": 0.8}, "tfidf": {"f1": 0.7}},
+               "Prepaid card": {"complaints": 2, "too_few_to_judge": "true"}}}}
+    _figures_file(tested).write_text(json.dumps(bad), encoding="utf-8")
+    response = client.get("/api/test/v1")
+    assert response.status_code == 200 and "SYNHOSTILE" not in response.text
+    got = response.json()
+    assert got["verdict"] is None
+    assert got["per_category"]["categories"]["Mortgage"] == {"complaints": 4, "llm_f1": None, "tfidf_f1": None}
+    assert "Credit card" not in got["per_category"]["categories"]
+    assert got["per_category"]["categories"]["Prepaid card"] == {"complaints": 2, "llm_f1": None, "tfidf_f1": None}
+
+
+def test_A5_the_tested_route_lists_the_versions_with_a_logged_test_run(tested, client):
+    assert client.get("/api/tested").json() == {"versions": ["v1"]}
+    (tested / "runs" / "TEST_RUNS.md").unlink()
+    assert client.get("/api/tested").json() == {"versions": []}
+
+
+def test_A7_the_page_asks_which_version_was_tested_and_claims_no_run_in_its_static_text():
+    script = (WEB / "app.js").read_text(encoding="utf-8")
+    assert '"/api/tested"' in script
+    page = (WEB / "index.html").read_text(encoding="utf-8")
+    card = page[page.index('id="verdict-h"'):page.index('id="h2h"')]
+    assert "was scored once" not in card and "logged in runs/TEST_RUNS.md" not in card

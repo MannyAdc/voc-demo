@@ -12,12 +12,63 @@
 <header>
   <h1>Complaint labels: LLM against TF-IDF</h1>
   <p class="sub">CFPB complaints, July 2026. An LLM labels each complaint by product and quotes its evidence. A script checks the quote. Failures go to quarantine with a reason.</p>
-  <p class="banner" id="banner">These are tuning figures from the development set. The verdict on the claim comes only from the single test run.</p>
+  <p class="banner" id="banner">The verdict comes from the single logged run of the frozen test set. The panels after it are tuning figures from the development set.</p>
 </header>
 
 <main>
-  <section class="card wide" aria-labelledby="h2h">
-    <h2 id="h2h">Head to head <span class="tag">tuning figure</span></h2>
+  <section class="ov card wide" aria-labelledby="what-h">
+    <h2 id="what-h">What is being labelled</h2>
+    <p>Each complaint is a consumer's own description of a problem. The label is <b>the product the complaint is about</b>: one of the CFPB's 11 products.</p>
+    <ul class="products" id="product-list"><li>Checking or savings account</li><li>Credit card</li><li>Credit reporting or other personal consumer reports</li><li>Debt collection</li><li>Debt or credit management</li><li>Money transfer, virtual currency, or money service</li><li>Mortgage</li><li>Payday loan, title loan, personal loan, or advance loan</li><li>Prepaid card</li><li>Student loan</li><li>Vehicle loan or lease</li></ul>
+    <dl class="names">
+      <div><dt>The AI's label</dt><dd>An LLM picks a product and copies the sentence that shows why. A script checks the sentence is really in the complaint. If not, the complaint waits in quarantine for a person. <span class="small">(LLM, claude-haiku-5-5)</span></dd></div>
+      <div><dt>The word-based model's suggestion</dt><dd>A simple model that learned which words go with each product from 7,024 other complaints. It is the comparison the AI must beat. <span class="small">(TF-IDF)</span></dd></div>
+      <div><dt>The consumer's own choice</dt><dd>The product the consumer picked when filing. It is the answer key for scoring, and it is never shown to the AI. <span class="small">(recorded product)</span></dd></div>
+    </dl>
+  </section>
+
+  <section class="ov card wide review-box" aria-labelledby="review-box-h">
+    <h2 id="review-box-h">Review and browse: the development set</h2>
+    <p class="note">These screens use the development set (370 complaints). The test set stays sealed: its text and its consumer's choices are read only by the one scored run (B17), and review never touches its results (B20).</p>
+    <p id="review-count">Loading the review queue...</p>
+    <p><a class="button" href="#/review">Review the quarantined complaints</a></p>
+    <h3>Browse the development complaints by product</h3>
+    <ul class="products" id="product-links"></ul>
+  </section>
+
+  <section class="ov card wide verdict-card" aria-labelledby="verdict-h">
+    <h2 id="verdict-h">Verdict on the frozen test set</h2>
+    <p class="note">Claim fixed before the first run: the LLM, with its quote check, beats TF-IDF at the same coverage. <span id="verdict-note"></span></p>
+    <p class="verdict big" id="test-verdict">Loading the test run...</p>
+    <div class="h2h" id="verdict-body">
+      <table class="figures" aria-label="Test set figures for both methods">
+        <thead><tr><th></th><th>LLM</th><th>TF-IDF</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Re-weighted strict accuracy</th><td id="t-llm-acc"></td><td id="t-tf-acc"></td></tr>
+          <tr><th scope="row">Precision on answered</th><td id="t-llm-prec"></td><td id="t-tf-prec"></td></tr>
+          <tr><th scope="row">Coverage</th><td id="t-llm-cov"></td><td id="t-tf-cov"></td></tr>
+          <tr><th scope="row">Cost per 1,000 complaints</th><td id="t-llm-cost"></td><td id="t-tf-cost"></td></tr>
+          <tr><th scope="row">Time per 1,000 complaints</th><td id="t-llm-time"></td><td id="t-tf-time"></td></tr>
+        </tbody>
+      </table>
+      <div>
+        <h3>Difference, LLM minus TF-IDF</h3>
+        <svg id="test-interval" viewBox="0 0 320 90" role="img" aria-label="Test set difference and its 95 percent interval"></svg>
+        <p class="note" id="test-run"></p>
+      </div>
+    </div>
+    <div id="per-product-block">
+    <h3>Per product</h3>
+    <p class="note" id="per-note"></p>
+    <div class="scroll"><table class="queue" aria-label="F1 per product on the test set">
+      <thead><tr><th>Product</th><th>Test complaints</th><th>F1, LLM</th><th>F1, TF-IDF</th></tr></thead>
+      <tbody id="per-product"></tbody>
+    </table></div>
+    </div>
+  </section>
+
+  <section class="ov card wide" aria-labelledby="h2h">
+    <h2 id="h2h">Development head to head <span class="tag">tuning figure</span></h2>
     <p class="note">Claim fixed before the first run: the LLM, with its quote check, beats TF-IDF at the same coverage. TF-IDF answers only its most confident complaints, as many as the LLM accepted.</p>
     <div class="h2h">
       <table class="figures" aria-label="Figures for both methods">
@@ -46,7 +97,7 @@
     </div>
   </section>
 
-  <section class="card" aria-labelledby="speed">
+  <section class="ov card" aria-labelledby="speed">
     <h2 id="speed">Speed <span class="tag">tuning figure</span></h2>
     <dl class="stats">
       <div><dt>LLM cost per 1,000 complaints, if every answer was live</dt><dd id="llm-cost"></dd></div>
@@ -58,7 +109,7 @@
     <p class="note" id="speed-note"></p>
   </section>
 
-  <section class="card" aria-labelledby="safety">
+  <section class="ov card" aria-labelledby="safety">
     <h2 id="safety">Safety <span class="tag">tuning figure</span></h2>
     <dl class="stats">
       <div><dt>Accepted, with a checked quote</dt><dd id="accepted"></dd></div>
@@ -69,7 +120,7 @@
     <p class="note">Every quote is checked word for word by a script, never by the model. The audit then checks the results file against the recorded answers and the complaint texts.</p>
   </section>
 
-  <section class="card" aria-labelledby="scale">
+  <section class="ov card" aria-labelledby="scale">
     <h2 id="scale">Scale</h2>
     <dl class="stats">
       <div><dt>July 2026 export</dt><dd id="july"></dd></div>
@@ -81,7 +132,7 @@
     <p class="note">Set sizes come from Cochran's formula. The test set is frozen and scored once.</p>
   </section>
 
-  <section class="card wide" aria-labelledby="queue-h">
+  <section class="ov card wide" aria-labelledby="queue-h">
     <h2 id="queue-h">Quarantine queue <span class="tag">tuning figure</span></h2>
     <p class="note">The LLM labels that the quote check did not accept, with the reason, the label the LLM proposed and the TF-IDF label. No complaint text is shown.</p>
     <div class="scroll"><table class="queue" aria-label="Quarantined complaints">
@@ -90,14 +141,77 @@
     </table></div>
   </section>
 
-  <section class="card wide" aria-labelledby="versions">
+  <section class="ov card wide" aria-labelledby="versions">
     <h2 id="versions">Prompt versions <span class="tag">tuning figure</span></h2>
     <div class="scroll"><table class="queue" id="versions-table" aria-label="Evaluation versions"></table></div>
+  </section>
+
+  <!-- Screen 2 (docs/WIREFRAMES.md): the development complaints of one product. -->
+  <section class="view card wide" id="view-list" aria-labelledby="list-h" hidden>
+    <p><a href="#">&lt; Overview</a></p>
+    <h2 id="list-h" tabindex="-1">Complaints</h2>
+    <fieldset class="filters">
+      <legend>Show</legend>
+      <span class="choice"><input type="radio" name="show" value="all" id="show-all" checked> <label for="show-all">all</label></span>
+      <span class="choice"><input type="radio" name="show" value="right" id="show-right"> <label for="show-right">the AI was right</label></span>
+      <span class="choice"><input type="radio" name="show" value="wrong" id="show-wrong"> <label for="show-wrong">the AI was wrong</label></span>
+    </fieldset>
+    <p class="note" id="list-note"></p>
+    <p class="status" id="list-status" role="status" aria-live="polite"></p>
+    <div class="scroll"><table class="queue" aria-label="Development complaints of this product">
+      <thead><tr><th>Complaint</th><th>The AI's label</th><th>The consumer's own choice</th><th>Quote check</th></tr></thead>
+      <tbody id="list-rows"></tbody>
+    </table></div>
+    <p class="pager"><button type="button" id="list-prev">&lt; Previous</button> <span id="list-page"></span> <button type="button" id="list-next">Next &gt;</button></p>
+  </section>
+
+  <!-- Screen 3: one complaint, its quoted sentence, and the decision form for a quarantined one. -->
+  <section class="view card wide" id="view-complaint" aria-labelledby="complaint-h" hidden>
+    <p><a href="#" id="complaint-back">&lt; Back</a></p>
+    <h2 id="complaint-h" tabindex="-1">Complaint</h2>
+    <p class="status" id="complaint-status" role="status" aria-live="polite"></p>
+    <dl class="stats" id="complaint-facts">
+      <div><dt>The AI's label</dt><dd id="c-ai"></dd></div>
+      <div><dt>Quote check</dt><dd id="c-check"></dd></div>
+      <div><dt>The word-based model's suggestion</dt><dd id="c-tfidf"></dd></div>
+      <div><dt>The consumer's own choice</dt><dd id="c-consumer"></dd></div>
+    </dl>
+    <h3>Complaint text</h3>
+    <p class="note" id="c-text-note"></p>
+    <div class="complaint-text" id="c-text"></div>
+    <form id="decision" hidden>
+      <h3>Your decision</h3>
+      <p class="note">The consumer's own choice is hidden while you decide, so the decision is yours. It is used to score the decisions later.</p>
+      <label for="d-label">Product</label>
+      <select id="d-label"></select>
+      <p class="note" id="d-locked" hidden>Your decision is saved and locked. It is the one that is scored. A change is stored as a new entry, a correction, and both stay in the file.</p>
+      <fieldset id="d-reasons">
+        <legend>Reason</legend>
+        <span class="choice"><input type="radio" name="reason" value="ai_right" id="r-ai"> <label for="r-ai">The AI's label is right (its quote failed the check)</label></span>
+        <span class="choice"><input type="radio" name="reason" value="word_model_right" id="r-word"> <label for="r-word">The word-based model's suggestion is right</label></span>
+        <span class="choice"><input type="radio" name="reason" value="other_product" id="r-other"> <label for="r-other">Another product fits better</label></span>
+        <span class="choice"><input type="radio" name="reason" value="no_product" id="r-none"> <label for="r-none">It fits no product clearly (the product is left empty)</label></span>
+      </fieldset>
+      <p><button type="submit" id="d-save">Save decision</button></p>
+      <p class="status" id="d-status" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <!-- Task 3: the review queue of the development set's quarantined complaints. -->
+  <section class="view card wide" id="view-review" aria-labelledby="review-h" hidden>
+    <p><a href="#">&lt; Overview</a></p>
+    <h2 id="review-h" tabindex="-1">Quarantined development complaints, waiting for a person</h2>
+    <p class="note">The quote check did not accept the AI's label for these complaints, so none has a label until a person decides. The consumer's own choice is hidden while you decide.</p>
+    <p class="status" id="review-status" role="status" aria-live="polite"></p>
+    <div class="scroll"><table class="queue" aria-label="Quarantined development complaints">
+      <thead><tr><th>Complaint</th><th>Why it was quarantined</th><th>The AI proposed</th><th>The word-based model</th><th>Your decision</th></tr></thead>
+      <tbody id="review-rows"></tbody>
+    </table></div>
   </section>
 </main>
 
 <footer>
-  <p>Read-only. This page shows committed results files only. It calls no model.</p>
+  <p>This page shows committed results files. It calls no model. The consumer's own choice appears only on the analyst's own machine, with the local data. The complaint text appears only when the owner starts it with --with-text. Review decisions are saved to results/reviews/ and never change a scored result.</p>
 </footer>
 </body>
 </html>

@@ -1,5 +1,7 @@
 """A1 to A6 (specs/002-results-api-dashboard): a read-only API over the committed results files.
 
+The test set's verdict is served only for a version with a row in runs/TEST_RUNS.md (B17).
+
 It reads only committed files. It copies only the fields it names, and checks each one: a number must be a
 number, a name must be one of a fixed list, and a label must be in the label list. So a field added to a file
 later, or a field holding something unexpected, is never served, and no complaint text can reach a response
@@ -17,6 +19,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from voc import analyst
 from voc import api_log
 from voc.audit import FAILURES
 from voc.labels import load_labels
@@ -33,6 +36,14 @@ CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' 
 # A4: the names the app answers to, so a page on another site cannot reach it through DNS rebinding.
 LOCAL_HOSTS = ["127.0.0.1", "localhost"]
 TUNING = "tuning figures. The verdict comes only from the single test run"
+VERDICT = "the claim's verdict, from the single logged test run (B10, B17)"
+PER_CATEGORY_NOTE = ("the LLM's quarantined labels count as wrong. TF-IDF here labels every complaint, at full "
+                     "coverage, not the matched coverage of the headline figures (B10)")
+TEST_RUN_NUMBERS = ("complaints", "accepted", "quarantined", "run_seconds", "input_tokens", "output_tokens")
+# A row of runs/TEST_RUNS.md: | Date | Prompt | Test list hash | Model | Complaints | Reason |
+LOG_DATE = r"\| [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:]+"
+LOG_ROW = re.compile(LOG_DATE + r" \| (?P<version>v[0-9]+) \| (?P<hash>[0-9a-f]{64}) \| "
+                     r"(?P<model>[a-z0-9][a-z0-9.\-]{0,63}) \| (?P<count>[0-9]+) \|")
 VERDICTS = ("beats", "inconclusive", "does_not_beat")
 BACKENDS = ("api", "mock")
 SETS = ("dev", "quick")
@@ -91,7 +102,7 @@ def _counts(mapping, allowed):
     return {k: v for k, v in _dict(mapping).items() if k in allowed and _number(v) is not None}
 
 
-def create_app(root):
+def create_app(root, with_text=False):
     root = Path(root)
     app = FastAPI(title="voc-demo results", docs_url=None, redoc_url=None, openapi_url=None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=LOCAL_HOSTS)
@@ -105,16 +116,49 @@ def create_app(root):
         response.headers["Referrer-Policy"] = "no-referrer"
         return response
 
-    def _file(folder, version, suffix):
+    def _file(folder, version, suffix, set_name="dev"):
         if not VERSION.fullmatch(version):
             raise HTTPException(404, "unknown prompt version")
-        path = root / "results" / folder / f"{version}_dev{suffix}"
+        path = root / "results" / folder / f"{version}_{set_name}{suffix}"
         if not path.is_file():
             raise HTTPException(404, "no committed results for this version")
         return path
 
-    def _json(folder, version):
-        return _dict(json.loads(_file(folder, version, ".json").read_text(encoding="utf-8")))
+    def _json(folder, version, set_name="dev"):
+        return _dict(json.loads(_file(folder, version, ".json", set_name).read_text(encoding="utf-8")))
+
+    def _log_rows():
+        path = root / "runs" / "TEST_RUNS.md"
+        return path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
+
+    def _logged_test_run(version, data=None):
+        # B17: the test figures are served only for a version with a row in the committed test run log.
+        rows = [row for row in _log_rows() if re.match(rf"{LOG_DATE} \| {version} \|", row)]
+        if not rows:
+            raise HTTPException(404, "no logged test run for this version")
+        if data is None:
+            return
+        # Review of #44: and only for the file that row scored, matched by list hash, model and count.
+        matched = [m for m in (LOG_ROW.match(row) for row in rows) if m]
+        if data.get("set") != "test" or not any(
+                m["hash"] == data.get("list_sha256") and m["model"] == data.get("model")
+                and _number(data.get("complaints")) == int(m["count"]) for m in matched):
+            raise HTTPException(404, "the scored file does not match its logged test run")
+
+    def _methods(data):
+        out = {}
+        for method, fields in METHOD_NUMBERS.items():
+            given = _dict(data.get(method))
+            out[method] = {**_numbers(given, fields), "cost_per_1000_usd": _money(given.get("cost_per_1000_usd"))}
+        out["llm"]["no_time_per_1000_because"] = _one_of(_dict(data.get("llm")).get("no_time_per_1000_because"),
+                                                          NO_TIME_REASONS)
+        return out
+
+    def _curve(data):
+        curve = _dict(data.get("precision_coverage"))
+        return {"tfidf": [[_number(p[0]), _number(p[1])] for p in _list(curve.get("tfidf"))
+                          if isinstance(p, list) and len(p) == 2],
+                "llm": [_number(v) for v in _list(curve.get("llm"))][:2]}
 
     @app.get("/api/health")
     def health():
@@ -144,24 +188,57 @@ def create_app(root):
                "backend": _one_of(data.get("backend"), BACKENDS), "model": _matches(data.get("model"), MODEL),
                "verdict": _one_of(data.get("verdict"), VERDICTS),
                "interval": [_number(v) for v in _list(data.get("interval"))][:2],
-               **_numbers(data, ("complaints", "difference", "resamples", "seed"))}
-        for method, fields in METHOD_NUMBERS.items():
-            given = _dict(data.get(method))
-            out[method] = {**_numbers(given, fields), "cost_per_1000_usd": _money(given.get("cost_per_1000_usd"))}
-        out["llm"]["no_time_per_1000_because"] = _one_of(_dict(data.get("llm")).get("no_time_per_1000_because"),
-                                                          NO_TIME_REASONS)
+               **_numbers(data, ("complaints", "difference", "resamples", "seed")), **_methods(data)}
         out["who_was_right"] = _counts(data.get("who_was_right"), WHO)
-        curve = _dict(data.get("precision_coverage"))
-        out["precision_coverage"] = {
-            "tfidf": [[_number(p[0]), _number(p[1])] for p in _list(curve.get("tfidf"))
-                      if isinstance(p, list) and len(p) == 2],
-            "llm": [_number(v) for v in _list(curve.get("llm"))][:2]}
+        out["precision_coverage"] = _curve(data)
         out["review_queue"] = {reason: _counts(entry, ("count", "tfidf_right"))
                                for reason, entry in _dict(data.get("review_queue")).items() if reason in REASONS}
         out["quote_length"] = _counts(data.get("quote_length"), ("median", "min", "max"))
         out["live_cost_usd"] = _money(data.get("live_cost_usd"))
         out["replay_cost_usd"] = _money(data.get("replay_cost_usd"))
         return out
+
+    @app.get("/api/tested")
+    def tested():
+        """The prompt versions with a logged test run, in log order, so the page asks for the right one."""
+        found = []
+        for row in _log_rows():
+            m = re.match(rf"{LOG_DATE} \| (v[0-9]+) \|", row)
+            if m and m.group(1) not in found:
+                found.append(m.group(1))
+        return {"versions": found}
+
+    @app.get("/api/test/{version}")
+    def verdict(version: str):
+        """The claim's verdict, from the single logged test run (B10, B17). Named and checked fields only (A2)."""
+        if not VERSION.fullmatch(version):
+            raise HTTPException(404, "unknown prompt version")
+        _logged_test_run(version)
+        data, run = _json("eval", version, "test"), _json("labels", version, "test")
+        _logged_test_run(version, data)
+        labels = {label.name for label in load_labels(root / "config" / "labels.toml")}
+        categories = {}
+        for name, entry in _dict(_dict(data.get("per_category")).get("categories")).items():
+            entry = _dict(entry)
+            if name not in labels or _number(entry.get("complaints")) is None:
+                continue
+            if entry.get("too_few_to_judge") is True:
+                categories[name] = {"complaints": entry["complaints"], "too_few_to_judge": True}
+            else:
+                categories[name] = {"complaints": entry["complaints"],
+                                    "llm_f1": _number(_dict(entry.get("llm")).get("f1")),
+                                    "tfidf_f1": _number(_dict(entry.get("tfidf")).get("f1"))}
+        return {"figures_are": VERDICT, "set": "test" if data.get("set") == "test" else None,
+                "prompt_version": _matches(data.get("prompt_version"), VERSION),
+                "backend": _one_of(data.get("backend"), BACKENDS), "model": _matches(data.get("model"), MODEL),
+                "verdict": _one_of(data.get("verdict"), VERDICTS),
+                "interval": [_number(v) for v in _list(data.get("interval"))][:2],
+                **_numbers(data, ("complaints", "difference", "resamples", "seed")), **_methods(data),
+                "who_was_right": _counts(data.get("who_was_right"), WHO), "precision_coverage": _curve(data),
+                "per_category": {"note": PER_CATEGORY_NOTE, "categories": categories},
+                "run": {**_numbers(run, TEST_RUN_NUMBERS),
+                        "live_cost_usd": _money(_dict(run.get("cost")).get("live_cost_usd")),
+                        "quarantine_reasons": _counts(run.get("quarantine_reasons"), REASONS)}}
 
     @app.get("/api/eval/{version}/quarantine")
     def quarantine(version: str):
@@ -188,6 +265,13 @@ def create_app(root):
         out["cost"] = {"live_cost_usd": _money(cost.get("live_cost_usd")),
                        "own_cost_usd": _money(cost.get("own_cost_usd"))}
         return out
+
+    def _checked_version(version):
+        if not VERSION.fullmatch(version):
+            raise HTTPException(404, "unknown prompt version")
+
+    # A10 to A12: the analyst screens (docs/USER.md tasks 2 and 3), on the development set.
+    analyst.add_routes(app, root, _checked_version, COMPLAINT_ID, with_text=with_text)
 
     @app.get("/api/audit/{version}")
     def audit(version: str):

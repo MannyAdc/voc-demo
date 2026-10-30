@@ -28,6 +28,8 @@ ledger.json
 !results/labels/*.csv
 # Evaluation results add the TF-IDF label and confidence, never complaint text
 !results/eval/*.csv
+# Review decisions hold IDs, labels and a reason from a fixed list, never complaint text (A12)
+!results/reviews/*.csv
 !splits/**
 !config/**
 !tests/fixtures/**/*.jsonl

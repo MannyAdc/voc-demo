@@ -658,6 +658,78 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - About 10:18 (exact time not recorded) Second live try, same command: "dbt build: 2 seeds, 2 models, 4 data tests. passed 8, failed 0, errors 0, skipped 0". The same dbt models ran on the owner's Databricks Free Edition SQL warehouse, on the 12 synthetic complaints only.
 - About 10:20 The owner searched every file in the work folder for the token, in their own PowerShell: "files holding the token: 0". The command printed only the count. Claude never saw the token.
 - T021 went past its 1 hour time box: about 20 minutes before 02:50 and about 1 hour 35 minutes from 08:45. The owner had allowed past 12:00 at about 02:28.
+- 10:35 Merge verdict on #43 PENDING, then MERGE after Claude's judgement. #43 marked ready. 10:43 The owner merged #43 (time from GitHub), before reading the open question on the lock file. Owner decision: keep the four lowered packages as they are.
+- About 10:45 Owner question: does the build answer what the reviewers asked for? Claude checked the original brief, kept in this session's own history, against `main`. The gaps it found:
+  - The dashboard had only the development figures, not the test verdict.
+  - The repo is still private.
+  - The front end "with user design in mind" (USER.md, wireframes, drill-down, quarantine review) was not built. The owner had chosen "results only" on 28 October without knowing what it left out.
+  - No request logging or monitoring.
+  - "Why this stack" lacked the brief's six points.
+  - Not built: prompt versions after v1, the synthetic sales calls, the lineage graph on screen.
+- About 10:50 (exact time not recorded) Owner decision: build the verdict on the dashboard, the user-designed front end with the quoted sentence on the analyst's own machine only, and, with a helper, "Why this stack", the lineage graph and request logging. Azure on Saturday morning.
+- About 10:55 to 11:05 The owner was offline. Nothing ran.
+- About 11:08 Parallel run: a helper agent started in `../voc-demo-helper` on three branches in order: `docs/why-this-stack`, `feat/lineage`, `feat/request-logging`. It commits only in its own worktree and does not edit this log. Claude reviews and pushes.
+- About 11:10 Work start on the dashboard verdict, in `../voc-demo-dash`, branch `feat/dashboard-verdict`.
+  - Red `3c6d85d` at 11:42: 9 tests in `tests/test_api.py`. 4 failed. 5 passed at once: the 404 cases, which hold before the route exists and guard it after.
+  - Its gate took 26 minutes, with the helper's gates running at the same time.
+  - Green: a new route `/api/test/{version}`, which answers only when `runs/TEST_RUNS.md` holds a logged row for that version (B17). The page puts the verdict card first, with the per-product table. The development panels keep their "tuning figure" tags.
+  - Claude checked the page in a local browser on the committed results files, which hold no complaint text. One fix came from that check: Mortgage was marked as an LLM win, though both F1 scores read 0.910. The page now compares the values as displayed, at 3 decimals.
+- 12:10 Green `d527e22`. #44 opened at about 12:27, with a reviewer.
+- 12:34 Reviewer findings posted on #44, with Claude's checks (time from GitHub). The real ones:
+  - When no test run is logged, the card still looked green and its static text claimed a logged run.
+  - The card asked for the last development version, so the v1 verdict would vanish once a v2 exists.
+  - The logged row was not matched to the scored file.
+  - A missing F1 could be marked as the better one, and missing values could read "NaN".
+  - The spec's field list for the route was short.
+  - Missing tests for these cases.
+- About 12:36 (exact time not recorded) Owner decision: fix them all. The owner also said they had clicked through the page in the browser themselves, so Claude checks the browser tab fresh before using it.
+- 12:39 Correction of the 11:42 entry, which stays as written: the red commit `3c6d85d` held 8 tests, not 9. 4 failed and 4 passed. The read-only test failed too, because before the route existed a POST to it was a 404, not a 405. AI error: Claude counted the test functions by eye, not from pytest's output. The reviewer caught it.
+- The fixes for #44:
+  - The route answers only when the scored file matches its logged row by list hash, model and count, with set "test".
+  - A new route, `/api/tested`, lists the versions with a logged run, and the page asks for the last one.
+  - With no logged run, the card is neutral and has no figures and no claim of a run.
+  - "Better" is marked only when both F1 values exist, compared at 3 decimals. Missing values read "n/a".
+  - The spec lists every served field, and Known limits says what a second logged run would do.
+- Red `46398b7` at 12:37: 11 new tests in `tests/test_api.py`, counted from the test file and the red run. 6 failed. 5 passed at once and guard the route: a v2 or v10 row, a missing log or run summary, and wrong kinds in served fields.
+  - AI error: the first draft of this line said 12 tests and 6 passed, written before counting. Claude stopped the commit, counted, and fixed the draft.
+- About 11:50 to 12:15 `docs/USER.md` and `docs/WIREFRAMES.md` drafted for the owner, before any screen was built, as the brief asks. The owner asked what exactly is labelled, and asked for that to be written down. Claude added "What is being labelled", and the three names used on every screen: the AI's label, the word-based model's suggestion, and the consumer's own choice.
+- Owner decisions on the drafts (exact times not recorded, between about 11:55 and 12:15):
+  - The four review reasons.
+  - The consumer's own choice is hidden while a person decides, and the docs say why.
+  - Decisions are stored in a file the repo can commit.
+- About 12:15 The owner approved both. Commit `f68e8f9` at 12:16.
+- About 12:20 Work start on the analyst screens, in `../voc-demo-analyst`, branch `feat/analyst-screens`, started from `feat/dashboard-verdict` (#44).
+  - Red `3438541` at 12:27: `tests/test_analyst.py`. Its gate took about 30 minutes, with three other gates running.
+  - Claude checked the screens in a local browser on a temp project built from the synthetic fixture only (SYN- IDs), never on real data. The review queue, one complaint with its quote highlighted, a saved decision and a product list all worked. Two fixes came from that check: IDs now sort by number (SYN-3 before SYN-10), and the held-back note says it counts all products.
+- 12:39 #45 opened (time from GitHub). 12:43 Reviewer findings posted on #45, with Claude's checks.
+  - The main one: reading the test set's complaint text and its consumer's choices breaks B17, which seals the test set ("the same guard covers reading test rows from the staged table"). It also strains B20.
+  - AI error: Claude had agreed to review the test set's 45 quarantined complaints without checking B17 and B20. The reviewer caught it.
+  - Also: the screens would put real complaint text in a browser that Claude can drive.
+- About 12:45 (exact time not recorded) Owner decision A: the browsing and review screens use the development set (370 complaints, 9 quarantined). B17 and B20 stay as they are. The verdict card still has the test set's figures, which come from the logged run. Claude added a safeguard: the text is served only with `voc serve --with-text`, which only the owner passes. CLAUDE.md says Claude never passes it and never opens a page served with it.
+- The green change: the routes, now `/api/review/{version}/...` on the development results, the page, spec 002 (A1, A2, A10 to A12, Not in scope), CLAUDE.md, `.gitignore` for `results/reviews/*.csv`, and the docs. The tests moved to the development set in this green commit, with a comment, because a tests-only commit may not rename a test.
+- The read guard blocked three of Claude's shell commands today because their text held the word it guards against, in a commit message, a help string and a log entry. Each time Claude used the file tools instead. The guard worked as designed. Known limits already says it also blocks harmless commands.
+- 12:59 Green `af8f710` on the analyst screens. 13:22 main's #44 branch merged in (`9439a72`), keeping both sides of `app.js` and of this log. 13:26 #44 marked ready. 13:32 The owner merged #44, and 13:35 #45 (times from GitHub).
+- Parallel run result, the helper agent in `../voc-demo-helper`, all three branches from `b41e7e8`:
+  - `docs/why-this-stack`: `bea048d` at 11:42. Its gate passed at once.
+  - `feat/lineage`: red `17854de` at 11:59 (9 tests), green `77948a7` at 12:43. The green gate was first refused by an unrelated ledger test, "the ledger cannot be read" in its temp folder, most likely the known Windows file lock. The retry passed. Real run: `uv run --native-tls voc dbt lineage` printed "dbt lineage: 1 sources, 0 seeds, 2 models, 6 data tests, 9 edges."
+  - `feat/request-logging`: red `5ea75e8` at 12:59 (12 tests), green `aefb9d5` at 13:27.
+  - Claude reviewed the diffs and pushed them. 13:42 #47, #48 and #49 opened (times from GitHub), each with a fresh reviewer.
+- 13:38 #46 opened (time from GitHub). 13:42 Reviewer findings posted on #46, with Claude's checks. The main ones:
+  - The quarantine reason and the review file's fields were served unchecked.
+  - After saving a decision, the consumer's own choice is revealed, and the decision could then be replaced, so an analyst could peek and decide again.
+  - Nothing checked the IDs against the frozen development list.
+  - The reviews file was not written safely.
+  - The rule "Claude never passes --with-text" had no hook behind it.
+- 13:44, 13:44 and 13:45 Reviewer findings posted on #47, #48 and #49, with Claude's proposed fixes (times from GitHub). No blocking finding on any of them.
+- About 13:46 (exact time not recorded) Owner decision: fix all of them. On #46, a saved decision is locked and the first one is scored, a change is stored as a new entry with the reason "correction", and the read guard refuses any command of Claude's with `--with-text`. The helper fixes #47 and #48 in its own worktree, and Claude fixes #46.
+- Red `76af932` at 13:47: 11 new tests in `tests/test_analyst.py`, with the fixture's frozen lists. 7 failed. The other 4 passed at once, among them the hold-back test that now really checks it.
+- Red `cf4c49d` for the hook, at 14:17: 4 tests in `tests/test_hooks.py`. 3 failed. The fourth (a serve command without the flag is allowed) passed at once.
+- The green change for #46: checked fields, the development list check, the text column read only with the flag, the lock and correction, the safe write, the label rule for "another product", a stale comment, the address fix, spec A10 and A12, CLAUDE.md, and the hook rule. The hook file edit is the owner's decision of about 13:46. One older test, "a second decision replaces the first", now checks that it is refused. It is changed in the green commit, with a comment.
+- Correction of entries above, which stay as written:
+  - The entry "The green change: ... and the docs" is wrong about the docs. They are in #45, not in this pull request.
+  - The browser check entry sits under the red commit `3438541`, but it checked the green code.
+- The gate of `cf4c49d` listed the 5 still-failing tests of `76af932` as carried over, as the gate rules say. They pass in the green commit.
+- 15:12 CI failed on `ceeb4db`: `test_A10_a_complaint_outside_the_development_results_is_a_404_even_if_it_is_staged` opened the fixture file without closing it, and CI turns that warning into an error. AI error in Claude's test, caught by CI, not by the local gate. Fixed with a `with` block, with a comment.
 - Parallel run, the helper's fixes on #47 and #48, in `../voc-demo-helper`:
   - #47: `0af6918` at 13:46, README only. Each quote was checked on the page's HTML: dbt's "Generally available" with DuckDB's "(CLI only)", and three DuckDB sentences on its concurrency page.
   - #48: tests `9887986` at 14:01, then `67f2685` at 14:33, then green `95c4cbe` at 15:05. Every gate passed on the first try.

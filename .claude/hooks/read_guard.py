@@ -15,7 +15,8 @@ Any tool input with a `command` field (Bash, PowerShell, Monitor) is checked
 as a shell command. That is a text check, so it also covers `cat`,
 `Get-Content` and the like. `show` and `dbt show` are denied outright: only
 the owner runs `show`, in the owner's own terminal. `git show` is allowed.
-A command containing the word `final` asks the owner.
+A command containing the word `final` asks the owner. A command containing
+`--with-text` is denied: only the owner starts the app with complaint text (A10).
 """
 import json
 import os
@@ -30,6 +31,8 @@ SEARCH_TOOLS = {"Grep", "Glob"}
 SEGMENTS = re.compile(r"&&|\|\||[;|&\n]")
 SHOW = re.compile(r"(?<![\w.-])show(?![\w-])", re.IGNORECASE)
 FINAL = re.compile(r"(?<![a-z])final(?![a-z])", re.IGNORECASE)
+# A10: the dashboard's text flag. Claude never passes it, so it never sees real complaint text there.
+WITH_TEXT = re.compile(r"--with-text\b", re.IGNORECASE)
 ASSIGNMENT = re.compile(r"^\w+=\S*$")
 DRIVE = re.compile(r"^([a-z]):/")
 # Checked on command text after lower-casing and turning backslashes into slashes.
@@ -172,6 +175,8 @@ def decide(tool_name, tool_input, env, home, root):
             return ("deny", DENIED)
         if _runs_show(command):
             return ("deny", "read guard: only the owner runs `show`, in the owner's own terminal.")
+        if WITH_TEXT.search(command):
+            return ("deny", "text guard: only the owner passes --with-text, in the owner's own terminal (A10).")
         if FINAL.search(command):
             return ("ask", "final guard: this command contains `final`. Only the owner decides a final run.")
     search = tool_name in SEARCH_TOOLS

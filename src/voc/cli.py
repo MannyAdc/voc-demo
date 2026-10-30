@@ -68,6 +68,9 @@ def _dbt(config, root, args):
     if args.action == "docs":
         print("\n".join(dbt_run.docs(root, labels)))
         return
+    if args.action == "lineage":
+        print("\n".join(dbt_run.lineage(root, labels)))
+        return
     lines, passed = dbt_run.build(root, labels, args.target)
     print("\n".join(lines))
     if not passed:
@@ -239,8 +242,10 @@ def _serve(config, root, args):
 
     from voc.api import create_app
 
-    print(f"dashboard on http://127.0.0.1:{args.port}/ (results files only, no complaint text). Ctrl+C stops it")
-    uvicorn.run(create_app(root), host="127.0.0.1", port=args.port, log_level="warning")
+    # A10: complaint text only when the owner asks for it. The coding agent never passes --with-text (CLAUDE.md).
+    what = "with complaint text from the local data" if args.with_text else "no complaint text"
+    print(f"dashboard on http://127.0.0.1:{args.port}/ ({what}). Ctrl+C stops it")
+    uvicorn.run(create_app(root, with_text=args.with_text), host="127.0.0.1", port=args.port, log_level="warning")
 
 
 def _evaluate(config, root, args):
@@ -256,7 +261,7 @@ def _evaluate(config, root, args):
 
 COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample, "label": _label,
             "evaluate": _evaluate, "final": _test_run, "audit": _audit, "serve": _serve,
-            ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt,
+            ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt, ("dbt", "lineage"): _dbt,
             ("ledger", "init"): _ledger_init, ("ledger", "raise"): _ledger_raise,
             ("ledger", "status"): _ledger_status, ("ledger", "release"): _ledger_release,
             ("ledger", "clear-overrun"): _ledger_clear_overrun}
@@ -291,6 +296,8 @@ def main(argv=None, env=None, root=None):
     au.add_argument("--prompt", default="v1", help="the prompt version whose run is audited")
     sv = sub.add_parser("serve", help="the results API and dashboard on 127.0.0.1, committed results only (A1 to A8)")
     sv.add_argument("--port", type=int, default=8000, help="the local port")
+    sv.add_argument("--with-text", action="store_true",
+                    help="include complaint text from the local data, for the owner only (A10). Claude never passes it")
     ld = sub.add_parser("load", help="load one pinned monthly export into the staged DuckDB table (B14)")
     ld.add_argument("month", choices=sorted(MONTHS), help="the month to load, as named in config/data_files.toml")
     dbt = sub.add_parser("dbt", help="run the dbt project, printing counts and check names only (B14, B21)")
@@ -299,6 +306,7 @@ def main(argv=None, env=None, root=None):
     db.add_argument("--target", choices=dbt_run.TARGETS, default="local",
                     help="local DuckDB, or Databricks on the synthetic seeds only (T021)")
     dbt_actions.add_parser("docs", help="write the dbt docs and lineage graph files to dbt/target")
+    dbt_actions.add_parser("lineage", help="write docs/LINEAGE.md, a lineage graph of node names only (T017)")
     ledger = sub.add_parser("ledger", help="the token ledger (B8)").add_subparsers(dest="action", required=True)
     init = ledger.add_parser("init", help="create the ledger with the committed cap")
     init.add_argument("--cap", type=int, help="a lower cap than the committed one")

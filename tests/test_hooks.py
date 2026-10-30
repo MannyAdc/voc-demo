@@ -637,6 +637,21 @@ def test_B17_a_word_that_only_contains_final_is_not_asked(read_guard, places):
     assert _read_decision(read_guard, places, "Bash", {"command": "echo finally finalise"}) is None
 
 
+# A10, review of #46 (owner decision): Claude never starts the app with real complaint text
+
+
+@pytest.mark.parametrize("tool,command", [("Bash", "uv run --native-tls voc serve --with-text"),
+                                          ("PowerShell", "uv run voc serve --port 8001 --with-text"),
+                                          ("Bash", "python -c \"from voc import cli; cli.main(['serve', '--with-text'])\"")])
+def test_A10_a_command_with_the_text_flag_is_refused(read_guard, places, tool, command):
+    decision = _read_decision(read_guard, places, tool, {"command": command})
+    assert decision and decision[0] == "deny" and "--with-text" in decision[1]
+
+
+def test_A10_a_serve_command_without_the_text_flag_is_allowed(read_guard, places):
+    assert _read_decision(read_guard, places, "Bash", {"command": "uv run --native-tls voc serve --port 8001"}) is None
+
+
 # T010 add-on 1: the next month's data folder (`VOC_NEXT_DATA_DIR`) is protected like July's
 
 
