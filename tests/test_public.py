@@ -198,3 +198,22 @@ def test_A13_the_deploy_guide_names_no_local_folder_and_uploads_no_lock_file():
     assert not re.search(r"[A-Za-z]:\\Users\\", guide)
     archive = next(line for line in guide.splitlines() if line.startswith("git archive"))
     assert ":!uv.lock" in archive and ":!pyproject.toml" in archive
+
+
+# The one-line redeploy (owner decision of 30 October, after the first deploy worked)
+
+
+def test_A13_the_redeploy_script_packs_committed_files_only_and_holds_no_secret():
+    script = (REPO / "scripts" / "deploy_azure.ps1").read_text(encoding="utf-8")
+    archive = next(line for line in script.splitlines() if line.lstrip().startswith("git archive"))
+    assert '"origin/$Ref"' in archive and ":!uv.lock" in archive and ":!pyproject.toml" in archive
+    assert "az webapp deploy" in script and "az login" not in script.replace("`az login`", "")
+    assert not re.search(r"(?i)(password|secret|token|key)\s*=", script)
+    assert "$LASTEXITCODE" in script
+
+
+def test_A13_the_readme_links_the_live_copy_and_says_what_it_hides():
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    top = readme[:readme.index("## The result")]
+    assert "https://voc-demo-20261030.azurewebsites.net" in top
+    assert "no complaint text" in top
