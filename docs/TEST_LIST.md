@@ -299,6 +299,7 @@ Every test feeds the checks synthetic `gh pr view` JSON. No test runs `gh` or op
 - a failed, skipped or still running check, a failed or pending commit status, or no checks at all is FAIL (T006b, pending added in review)
 - the expected check names match the job names in `.github/workflows/ci.yml` (T006b)
 - a commit with only `tests/test_*.py` files must come before the first commit that changes code, and merge commits are left out (T006b)
+- every file in the page folder `src/voc/web/` counts as code, and `requirements.txt` too. An `.html` or `.css` file elsewhere does not. `config/` stays out on purpose (T006b, found on #51, changed in review of #52)
 - a pull request that changes no code needs no red commit (T006b)
 - a missing `## Reviewer findings` comment is FAIL. Whether each finding is fixed or deferred is FOR CLAUDE, never PASS, even when the comment starts with "No findings" (T006b, review)
 - the build log check is always FOR CLAUDE (T006b)
