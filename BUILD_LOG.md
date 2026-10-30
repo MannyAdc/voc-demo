@@ -771,6 +771,29 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - DEPLOY.md: a placeholder for the folder, the exact export command, and the quickstart's note on B1.
   - Known limits: App Service's warm-up ping is counted as a 400.
   - AI error during the fix: Claude's `sed` edit added sniffio to the main dependency list too, because the FastAPI line appears twice in `pyproject.toml`. Claude saw it in the diff and removed it before the commit.
+- 17:01 Green `a2d65da` for #50's review pushed.
+- About 16:45 to 17:00 (exact times not recorded) The owner ran the Azure setup in their own PowerShell, with the app name `voc-demo-20261030` (the owner chose the date). The F1 plan for Linux was created, so F1 does run a Python app on Linux. Azure registered its `Microsoft.Web` provider by itself. Before the upload, the address answered 503, because the start command had nothing to start. The commands used `-o none`, so no account ID reached the screen or the chat.
+- About 17:05 (exact time not recorded) The owner uploaded the #50 branch with `git archive` and `az webapp deploy`, before the merge, as a test. The dashboard loaded at https://voc-demo-20261030.azurewebsites.net: the "What is being labelled" box, the review box with 9 waiting, and the product links.
+- About 17:08 Owner decisions:
+  - A one-line redeploy script and the live link at the top of the README.
+  - A UI rework, so the screens look designed for the analyst, not like a results report. Wireframes first, for approval.
+  - An outside review of the repo, run by the owner in another chat, was pasted in as a list of six leads. Claude checked them against the repo. It agreed with most: a screenshot from a synthetic demo mode, the deploy, a browser test, focus and contrast, a README summary, and checks before going public. It noted that `CLAUDE.md` forbids Claude to delete branches, and that "only one focus rule" is one rule covering all controls.
+  - About 17:18: the browser test is option (a), one smoke test in a separate CI job with network, after the UI rework.
+- The #50 change for this: `scripts/deploy_azure.ps1`, which packs `origin/<branch>` the same way and uploads it, and stops at the first failing step. The README top links the live copy and says what it holds and hides. `docs/DEPLOY.md` records what happened on the first deploy and how to redeploy.
+- Red `6632a5a` at 17:17: 2 tests in `tests/test_public.py`, for the redeploy script and the README link. Both failed, checked by running them on the commit's own files.
+- About 17:50 AI error: to check the red tests, Claude ran `uv run` in this worktree. It stopped on a Windows file lock part-way through reinstalling the `voc` package, so `voc` could not be imported. The gate then refused the green commit: 6 hook tests failed with "No module named 'voc'". The same repair as before (remove the half-removed package folder, then `uv sync`) fixed it. The commit was made again.
+- 18:10 Green `9d881ae` landed after two refusals: the broken `voc` install (above), then a Windows file lock inside a hook test's own temporary repo ("Permission denied" while writing a git object). Retried unchanged.
+- Note on the entries above: the entries from "about 16:45" to "about 17:08" sit after the 17:01 entry. They were written at about 17:40, from the chat. The log is not reordered.
+- About 18:20 (exact time not recorded) A second fresh reviewer agent read `a2d65da..9d881ae`. It found 11 points, posted on #50 with Claude's checks.
+- AI error caught by that review: Claude gave the owner the Azure commands in chat with `-o none`, and the owner ran them that way. But Claude wrote them into `docs/DEPLOY.md`, and the deploy line into the script, without it. `az` prints resource IDs, which hold the subscription ID. The deploy command Claude gave the owner for the first upload had no `-o none` either. Whatever it printed stayed on the owner's screen, not in the chat.
+- 18:27 Owner decision: fix all of them, tests first.
+- The fixes for #50:
+  - The script moves to the repo folder, packs, uploads with `-o none`, deletes the ZIP and goes back to the folder it started in, even when a step fails. Checked by a dry run from `scripts\`, with `az` replaced by a stub that only reads the ZIP: 242 entries, `requirements.txt` and `src/voc/public.py` in, `uv.lock` out, `-o none` passed, the ZIP gone afterwards.
+  - Every `az` command in `docs/DEPLOY.md` ends with `-o none`, except the log tail. A test checks it.
+  - DEPLOY.md: how to run the script where Windows blocks scripts, the plan creation and provider messages quoted from the owner's output, the branch named, and the F1 question answered.
+  - The README says only what Microsoft's page says about Always On, with the page added to DEPLOY.md's checked facts. Shorter sentences.
+  - Spec A13 now names the script and the README link.
+- Red `ff118f9` at 18:28: 5 tests in `tests/test_public.py` for the second review. 4 failed. The step check passed at once, because every step already checked its exit code. It stays as a guard.
 - Red `1a51a81` at 17:23: 8 tests in `tests/test_ui.py`, on the page files. 7 failed. The title test passed at once, because the old title already said "LLM against TF-IDF".
 - About 17:10 to 17:20 (exact times not recorded) UI rework, owner decisions on the wireframes (`docs/WIREFRAMES.md`, version 2):
   - Tabs for the analyst's three tasks, plus one tab for the method. Figure tiles and a bar per product on the overview.
@@ -792,3 +815,4 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - Spec A7 now describes the tabs. `USER.md` and the wireframes say "a short note", not "a one-line note".
   - Not changed: the title test, which passed before the change. It guards the owner's decision on the title, and a red commit may not delete a test.
 - Red `0649e80` at 18:10: 10 tests in `tests/test_ui.py` for the review points. 7 failed. 3 passed at once and guard what was already right: the tab links, the term buttons, and no form on the public copy.
+- 21:14 #50 merged by the owner (time from git). 21:15 `main` merged into `feat/ui-tabs` for #51. The two branches' log lines are kept as written: #50's first, then the UI's. Their times overlap, because both pull requests were worked on at once.
