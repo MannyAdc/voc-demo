@@ -833,6 +833,32 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - The fixes for #52: the page folder `src/voc/web/` replaces the three suffixes, `requirements.txt` joins the code files, and a comment says `config/` stays out on purpose, because a prompt or label change is judged by `/eval` and the spec.
 - AI error, by the reviewer agent on #52: to rerun the red state, it tried `git checkout 2c8432e -- src/voc/merge_verdict.py`, which would have changed the worktree. Its brief said to edit nothing. Auto mode refused the command, and `git status` showed the tree unchanged. The agent reported it itself, and Claude posted it on #52.
 - Green `676c2f8` at 23:11: all merge check tests pass. CI green. Merge verdict PENDING. Claude found this entry missing, and added it before marking #52 ready (the same choice the owner made for #51).
+- Before 22:49 (exact time not recorded) Owner decision: the page must spell out abbreviations, or readers stop reading. Most people know AI, LLM and API. CFPB, TF-IDF and F1 get spelled out.
+- About 22:57 Work start on the abbreviations, in `../voc-demo-public`, branch `fix/spell-out-abbreviations`, from `main` at `c4f7d0b`.
+- Red `6decd79` at 22:58: 4 tests in `tests/test_ui.py`. All 4 failed.
+- About 22:59 The owner redeployed `main` (#50 and #51) with the new script. The live files are dated 22:59:49 by the server.
+- The owner's screenshot of the live page showed the new page with the old style sheet and script: plain links for tabs, unstyled tiles, every figure "n/a", and "Loading the test run..." that never finished. Claude checked the live server with `curl`: it sent the new files, with no `Cache-Control` header. So the browser reused its copies from the earlier visit. Ctrl+F5 loads the new ones.
+- Fix, in this pull request: every response says `Cache-Control: no-cache`, so a browser checks for a newer copy on every visit. An unchanged file costs a short "not modified" answer.
+- The page change: "Complaints to the US Consumer Financial Protection Bureau (CFPB)", "TF-IDF (term frequency, inverse document frequency)" and "F1 score" at their first use, and in the glossary, with a CFPB entry. The title keeps the short names (owner decision, wireframes version 2). Checked in a browser on synthetic data.
+- Red `c22e99d` at 23:22: `test_A4_browsers_check_for_a_newer_page_on_every_visit`. It failed.
+- Green `5a00f57` at 23:45: the page, API and public copy tests pass. 23:58 #53 opened as a draft, with a reviewer (time from GitHub).
+- 00:01 Reviewer findings posted on #53 (time from GitHub). The real ones:
+  - The TF-IDF expansion sat inside the span that cannot wrap, so it would run off a phone screen. AI error by Claude: it put the long text inside that span.
+  - Shortened words and codes were still on screen: "Macro-F1", the rule number "(B10)" in the overview note, "n/a", " s" for seconds, and raw reason codes such as `quote_not_in_text`.
+  - The spec did not record the decision or the cache header.
+  - AI error by Claude: its comment and log line said every unchanged file gets a short "not modified" answer. Only the files under `/web/` do. The page itself is sent again.
+  - `no-cache` lets the browser keep a copy on disk, which on the analyst's machine can hold complaint text.
+- About 00:10 Owner decision: fix them as proposed. The footer keeps `--with-text` and `results/reviews/`, because they are names a technical reader types.
+- The fixes for #53:
+  - The expansion is outside the span. Only "frequency)" stays next to its button.
+  - "Macro F1 score (the average over products)". "n/a" becomes "not available", or "not yet" on a tile. " s" becomes " seconds", shown only next to a number.
+  - Reason codes show as the plain names the page already had, with the four missing ones added.
+  - The overview note names no rule.
+  - API answers are `no-store`. The page and its files stay `no-cache`.
+  - Spec A4 and A7 record both changes.
+  - Two earlier tests are changed in the green commit, each with a comment: the cache test no longer lists `/api/health`, and the tiles start as "not yet".
+- Red `3169695` at 00:11: 7 tests for the review. 6 failed. The "US" test passed at once, because the header already said "US", and it stays as a guard.
+- `main` (with #52) merged into `fix/spell-out-abbreviations` for #53. Both blocks of log lines are kept as written: #52's first, then #53's. Their times overlap, because the two pull requests were worked on at once.
 - About 23:00 (exact time not recorded) The owner looked at the live page after Ctrl+F5: better, but the text is too small, and the window of about 760 px got the narrow layout. The owner asked how the data is updated, and whether that suits the reviewers.
 - Before 23:42 (exact times not recorded) Owner decisions:
   - Normal text is no smaller than the verdict line (1.15rem). Only footnotes and similar text may be smaller.
@@ -863,3 +889,4 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - Red `aee7801` at 00:29: 12 cases for the review (6 for `/api/freshness`, 6 for the page). 11 failed. The test that the verdict line stays larger passed at once, and stays as a guard.
 - AI error caught before the commit: Claude first wrote "All 12 failed" here. It checked the test output, stopped the commit and corrected the count.
 - `main` (with #52) merged into `feat/data-freshness` for #54. Both blocks of log lines are kept as written: #52's first, then #54's. Their times overlap, because the pull requests were worked on at once.
+- `main` (with #53) merged into `feat/data-freshness` for #54. Both blocks of log lines are kept as written: #53's first, then #54's. The tests of both kept, and spec rule A7 holds both additions.
