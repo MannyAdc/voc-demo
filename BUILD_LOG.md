@@ -658,3 +658,18 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - About 10:18 (exact time not recorded) Second live try, same command: "dbt build: 2 seeds, 2 models, 4 data tests. passed 8, failed 0, errors 0, skipped 0". The same dbt models ran on the owner's Databricks Free Edition SQL warehouse, on the 12 synthetic complaints only.
 - About 10:20 The owner searched every file in the work folder for the token, in their own PowerShell: "files holding the token: 0". The command printed only the count. Claude never saw the token.
 - T021 went past its 1 hour time box: about 20 minutes before 02:50 and about 1 hour 35 minutes from 08:45. The owner had allowed past 12:00 at about 02:28.
+- Parallel run, the helper's fixes on #47 and #48, in `../voc-demo-helper`:
+  - #47: `0af6918` at 13:46, README only. Each quote was checked on the page's HTML: dbt's "Generally available" with DuckDB's "(CLI only)", and three DuckDB sentences on its concurrency page.
+  - #48: tests `9887986` at 14:01, then `67f2685` at 14:33, then green `95c4cbe` at 15:05. Every gate passed on the first try.
+  - AI error, caught by the helper itself: in `9887986` the fake project for the new refusal tests had no label file, so `voc dbt` stopped on a missing file before the name check. The refusal tests passed for the wrong reason. `67f2685` gives the fake project its label file, and the tests now also check the refusal message.
+- 15:33 Merge verdicts on #47 and #48: PENDING, then MERGE after Claude's judgement. Both touch README.md, in different sections. `git merge-tree` showed they merge cleanly. Both marked ready. 15:35 The owner merged #47, then #48 (times from GitHub).
+- 15:39 #46 marked ready, after Claude checked the lock and correction flow in a browser on synthetic data only. 15:39 The owner merged #46 (time from GitHub). A small leftover: the "hidden while you decide" note stays on screen after saving. It is fixed in the public copy's pull request.
+- About 15:10 (exact time not recorded) Owner decision: start the Azure deployment as soon as #49 is merged, today, not on Saturday.
+- About 15:15 to 15:30 The owner installed the Azure command line with winget, and logged in with `az login`. The first `az login` failed in the same PowerShell window, because a window only finds a newly installed program after it is restarted. The owner kept the account IDs out of the chat.
+- Facts checked for the deployment, on Microsoft's pages:
+  - App Service pricing for Linux: Free (F1) is "Shared (60 CPU minutes / day)", 1 GB RAM, 1 GB storage. The page does not say if F1 runs Python.
+  - The Python quickstart (updated 27 July 2026): a ZIP deploy builds from `requirements.txt` when `SCM_DO_BUILD_DURING_DEPLOYMENT` is true, and FastAPI on Python 3.13 or earlier needs a startup command.
+  - The app settings reference (updated 10 September 2026): `WEBSITE_HOSTNAME` is "Primary host name for the app".
+- #49's review fixes:
+  - Red `ffaa933` at 15:08: 3 tests. 2 failed. The request body test passed at once and guards that no body is logged.
+  - Green: a full match of path and method wins over a path-only match, and a request cancelled before any answer is logged as "(no response)" and counted, but not as an error. A9 lists the fixed methods and says that uvicorn's own tracebacks can still reach the terminal.

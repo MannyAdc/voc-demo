@@ -5,6 +5,7 @@ It never holds the query string, a header, the body or the client address. The p
 pattern of the route it matched, such as `/api/eval/{version}`, or as `(unknown path)`, so nothing a
 caller typed reaches the log. The counters live in memory and start again at zero with each app.
 """
+import asyncio
 import sys
 import time
 from datetime import datetime, timezone
@@ -13,6 +14,7 @@ from starlette.routing import Match, Mount
 
 UNKNOWN_PATH = "(unknown path)"
 OTHER_METHOD = "(other method)"
+NO_RESPONSE = "(no response)"
 METHODS = {"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 
 
@@ -26,6 +28,10 @@ class Monitor:
     def __init__(self):
         self.started = _now()
         self.requests = self.client_errors = self.server_errors = 0
+
+    def count_no_response(self):
+        """A request cancelled before any answer: counted, but not as an error."""
+        self.requests += 1
 
     def count(self, status):
         self.requests += 1
@@ -41,12 +47,18 @@ class Monitor:
 
 
 def route_pattern(router, scope):
-    """The pattern of the first route that matches this path, whatever the method, or `(unknown path)`."""
+    """The pattern of the route that matches this path and method, or else of the first route that matches the
+    path only, or `(unknown path)`. Review of #49: a full match wins, as in the router itself."""
+    partial = None
     for route in router.routes:
         match, _ = route.matches(dict(scope))
-        if match != Match.NONE:
-            return f"{route.path}/{{path}}" if isinstance(route, Mount) else route.path
-    return UNKNOWN_PATH
+        if match == Match.NONE:
+            continue
+        pattern = f"{route.path}/{{path}}" if isinstance(route, Mount) else route.path
+        if match == Match.FULL:
+            return pattern
+        partial = partial or pattern
+    return partial or UNKNOWN_PATH
 
 
 class RequestLog:
@@ -71,13 +83,30 @@ class RequestLog:
                 status = message["status"]
             await send(message)
 
+        answered = False
+
+        async def send_and_mark(message):
+            nonlocal answered
+            if message["type"] == "http.response.start":
+                answered = True
+            await send_and_note(message)
+
         try:
-            await self.app(scope, receive, send_and_note)
+            await self.app(scope, receive, send_and_mark)
+        except asyncio.CancelledError:
+            # Review of #49: a request cancelled before any answer (for example at shutdown) is no server error.
+            if not answered:
+                status = None
+            raise
         finally:
             ms = (time.perf_counter() - start) * 1000
-            self.monitor.count(status)
-            print(f"{_now()} {method} {path} {status} {ms:.1f} ms",
-                  file=sys.stderr, flush=True)
+            if status is None:
+                self.monitor.count_no_response()
+                print(f"{_now()} {method} {path} {NO_RESPONSE} {ms:.1f} ms", file=sys.stderr, flush=True)
+            else:
+                self.monitor.count(status)
+                print(f"{_now()} {method} {path} {status} {ms:.1f} ms",
+                      file=sys.stderr, flush=True)
 
 
 def install(app):
