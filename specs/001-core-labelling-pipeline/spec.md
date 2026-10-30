@@ -14,7 +14,7 @@ Requirement IDs are `B1`, `B2` and so on. Tests are named `test_B<number>_...`, 
 
 The guards in this spec (hooks, checks, logs, the spend stop) are built to stop honest mistakes, AI mistakes and hostile complaint text. They also make any bypass visible in the public history. They are not built to stop a person who deliberately works around them, for example by editing the ledger or undoing a log. Such limits are listed in the README under "Known limits". The owner's honesty and the public git history are the final check. *Agreed by the owner on 28 October.*
 
-### Known limits (copied to the README when built)
+### Known limits (copied to `docs/LIMITS.md`, which the README links, when built)
 
 - Deleting the ledger or the home-folder test log and starting again resets them, with no trace in git.
 - A git-ignored local settings file can turn off the project hooks.

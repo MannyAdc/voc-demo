@@ -1,213 +1,94 @@
 # voc-demo
 
-A Voice of the Customer pipeline on the public Consumer Complaint Database of the US Consumer Financial Protection Bureau (CFPB). An LLM labels each complaint by product and quotes the sentence that supports the label. A script checks that the quote really appears in the complaint. A label that fails a check goes to quarantine with a reason. It is never dropped and never counted as correct. A simple TF-IDF (term frequency, inverse document frequency) classifier is scored on the same complaints, head to head.
+**Can an AI label customer complaints well enough to trust, and show its evidence for every label?**
 
-Built in three days, with every step recorded: the spec, the tests written before the code, the reviews, the decisions and the mistakes. See [BUILD_LOG.md](BUILD_LOG.md).
+This repo tests that on real complaints sent to the US Consumer Financial Protection Bureau (CFPB) in July 2026. An LLM labels each complaint by product and quotes the sentence that supports the label. A script checks the quote. Anything that fails goes to a person. A simple TF-IDF (term frequency, inverse document frequency) model is the bar the LLM must beat.
 
-## In one minute
+🌐 **Live public copy:** https://voc-demo-20261030.azurewebsites.net (figures and labels, no complaint text)
+📒 **Every step, decision and AI mistake:** [BUILD_LOG.md](BUILD_LOG.md)
 
-- **The result.** The claim was fixed before the first run: the LLM, with its quote check, beats TF-IDF at the same coverage. On a frozen test set of 1,909 complaints, scored once, it did: 80.3% against 77.9%, a difference of +2.4 points with a 95% interval of +0.5 to +4.1. The LLM cost $0.2373 per 1,000 complaints (details under "The result").
-- **The analyst's tool.** A dashboard with four tabs: the overview with the verdict and a bar per product, browsing by product, the review queue where a person decides each quarantined complaint, and the method. The analyst sees the quoted sentence highlighted in the complaint's own text, on their own machine.
-- **Safety.** No label is trusted without a quote that a script found in the text. Failures go to a person, never into the figures as correct. Complaint text is untrusted data, sent with no tools. Spend has a hard cap.
-- **How it was built.** From the first commit on 27 October 2026 at 23:53 to 31 October: 53 merged pull requests. The rules: failing tests committed before the code, a fresh reviewer agent on each pull request, and the owner's merge. `main` holds 1,275 tests (`pytest --collect-only` on commit `b01c0be`). Every decision and every AI mistake is in [BUILD_LOG.md](BUILD_LOG.md). The owner's main decisions are under "Decisions the owner made".
+## 🎯 In one minute
 
-**Live public copy:** https://voc-demo-20261030.azurewebsites.net, on Azure App Service, free tier. It holds what this repo holds: IDs, labels, reasons and figures. It has no complaint text and saves no review decision. The analyst screens with the complaint text run only on the analyst's own machine ([docs/DEPLOY.md](docs/DEPLOY.md), spec 002 rule A13). The first visit after a quiet spell can be slow: App Service unloads an idle app after 20 minutes, and this one does not set Always On.
+- **📊 The result.** The claim was fixed before the first run: the LLM, with its quote check, beats TF-IDF at the same coverage. On a sealed test set of 1,909 complaints, scored once, it did: **80.3% against 77.9%**, +2.4 points, with a 95% interval of +0.5 to +4.1. It cost **$0.2373 per 1,000 complaints**.
+- **🖥️ The analyst's tool.** A dashboard with four tabs: the overview, browsing by product, the review queue where a person decides each quarantined complaint, and the method. On the analyst's own machine, the quoted sentence is highlighted in the complaint's text.
+- **🛡️ Safety.** No label is trusted without a quote that a script found in the text. Failures go to a person, never into the figures as correct. Spend has a hard cap.
+- **🔧 How it was built.** From the first commit on 27 October 2026 at 23:53 to 31 October: 53 merged pull requests and 1,275 tests on `main` (`pytest --collect-only` on commit `b01c0be`).
 
-Why the public copy has no complaint text, although the dashboard is the analyst's main tool:
-- The copy is built only from the files in this repo, and by rule the repo holds no raw data. So there is no text to serve without uploading data separately.
-- It is open to anyone, with no sign-in. The CFPB publishes these narratives for anyone to use, so this is not a privacy problem for this data. The pattern is what matters: for customer data such as sales calls, text must never sit on an open page.
-- With no sign-in, anyone could write a review, so the copy stores none.
+## 🔀 How one complaint is labelled
 
-The next step for analysts, not built: a signed-in analyst copy. App Service's built-in sign-in would let only named people in, the data would sit in a private store, and each decision would be saved with the reviewer's name. The public copy would stay as it is (owner decision, 31 October).
+```mermaid
+flowchart LR
+    A["📨 Complaint text<br/>(untrusted data)"] --> B["🤖 LLM proposes a product<br/>and quotes its evidence"]
+    B --> C{"🔍 Script: is the quote<br/>really in the text?"}
+    C -- yes --> D["✅ Label accepted"]
+    C -- no --> E["⏸️ Quarantine,<br/>with the reason"]
+    E --> F["👤 A person decides,<br/>with TF-IDF's suggestion<br/>as a second opinion"]
+    D --> G["📊 Dashboard"]
+    F --> G
+```
 
-## The result
+## ✔️ Who checks what
 
-The claim was fixed before the first run: **the LLM, with its quote check, beats TF-IDF at the same coverage** (rule B10 in the [spec](specs/001-core-labelling-pipeline/spec.md)). It was judged once, on a frozen test set of 1,909 complaints. [How we measure](docs/HOW_WE_MEASURE.md) explains the method in plain words.
+The AI proposes. Scripts, a baseline, a reviewer and the owner check, each at its own step.
 
-**Verdict: the LLM beats TF-IDF.**
+```mermaid
+flowchart TB
+    subgraph L["Each label"]
+        L1["🤖 The AI proposes<br/>a label and a quote"] --> L2["🔍 A script checks the quote<br/>is really in the text"]
+        L2 -- fails --> L3["👤 A person decides"]
+    end
+    subgraph M["The method"]
+        M1["📏 TF-IDF is the bar to beat,<br/>on the same complaints"] --> M2["🔒 A sealed test set,<br/>scored once"]
+    end
+    subgraph C["Every code change"]
+        C1["🧪 Failing tests first"] --> C2["🧐 A fresh reviewer agent<br/>reads the change"]
+        C2 --> C3["☑️ The merge check"] --> C4["🙋 The owner decides<br/>and merges"]
+        C4 --> C5["⚙️ CI runs the tests<br/>with no network"]
+    end
+```
+
+## 📊 The result
 
 | Test set, 1,909 complaints | LLM (claude-haiku-5-5, prompt v1) | TF-IDF at the same coverage |
 |---|---|---|
 | Re-weighted strict accuracy | **80.3%** | 77.9% |
-| Precision on accepted labels | 82.2% | 79.7% |
 | Coverage | 97.6% | 97.6% |
-| Macro-F1 | 0.761 | 0.654 |
 | Cost per 1,000 complaints | $0.2373 | $0 |
 | Time per 1,000 complaints | 2,015.2 seconds | 0.707 seconds |
 
-The difference is +2.4 points, with a 95% interval of +0.5 to +4.1 points from a paired bootstrap (2,000 resamples, seed 0). The whole interval is above zero, so the verdict is "beats".
+**Verdict: the LLM beats TF-IDF**, by +2.4 points (95% interval +0.5 to +4.1, paired bootstrap). The LLM's clear weak spot is credit reporting, where TF-IDF does better. The per-product table, the development figures and what each term means are in [docs/RESULTS.md](docs/RESULTS.md). [How we measure](docs/HOW_WE_MEASURE.md) explains the method in plain words.
 
-- The run: `uv run --native-tls voc final --prompt v1`, by the owner. It was logged in [runs/TEST_RUNS.md](runs/TEST_RUNS.md) on 29 October 2026 at 21:48, before any call. It is the only row there.
-- 1,864 labels accepted and 45 quarantined: the quote was not in the text 21 times, the label was not in the list 15 times, the answer could not be read 6 times, and the quote was too short 3 times.
-- 1,909 live calls, 2,630,555 input and 379,892 output tokens, $0.4530015 in all, 3,847 seconds.
-- Results: [results/eval/v1_test.json](results/eval/v1_test.json) and [results/labels/v1_test.json](results/labels/v1_test.json).
+## 🖥️ The analyst's dashboard
 
-**What the terms mean.**
-- *Strict accuracy*: correct accepted labels divided by all complaints. A quarantined label counts as wrong.
-- *Re-weighted*: worked out for each product, then averaged with weights equal to each product's share of the 9,303 complaints in the pool.
-- *At the same coverage*: TF-IDF answers only as many complaints as the LLM accepted, its most confident ones, and the rest count as wrong. So neither method looks better by skipping hard cases.
-- *Time per 1,000*: the LLM's calls were sent one at a time. TF-IDF's time counts labelling only, not training.
-- *Macro-F1*: the F1 score of each of the 11 products, averaged with equal weight. It is the one row not at matched coverage: TF-IDF's macro-F1 counts its label for every complaint.
+Four tabs: **Overview** (the verdict, a bar per product, and where the data comes from), **Browse** (complaints by product), **Review** (the quarantined complaints a person decides), and **How we measured**.
 
-### Per product, on the test set
+The live public copy shows the figures and labels, not the complaint text, for three reasons:
+- It is built only from this repo, and by rule the repo holds no raw data.
+- It is open to anyone, with no sign-in. The CFPB publishes these narratives for anyone to use, so this is not a privacy problem for this data. But for customer data such as sales calls, text must never sit on an open page.
+- With no sign-in, anyone could write a review, so it stores none.
 
-Here the LLM's quarantined labels count as wrong, and TF-IDF labels every complaint, at full coverage, not the matched coverage above. A product with fewer than 30 test complaints is "too few to judge".
+The next step for analysts, not built: a signed-in analyst copy, with App Service's built-in sign-in, the data in a private store, and each decision saved with the reviewer's name.
 
-| Product | Test complaints | F1, LLM | F1, TF-IDF |
-|---|---|---|---|
-| Debt collection | 452 | 0.833 | **0.863** |
-| Checking or savings account | 416 | **0.822** | 0.780 |
-| Credit card | 371 | **0.873** | 0.802 |
-| Money transfer, virtual currency, or money service | 160 | **0.730** | 0.623 |
-| Mortgage | 149 | 0.910 | 0.910 |
-| Vehicle loan or lease | 104 | **0.905** | 0.813 |
-| Payday loan, title loan, personal loan, or advance loan | 83 | **0.744** | 0.531 |
-| Credit reporting or other personal consumer reports | 64 | 0.500 | **0.697** |
-| Student loan | 63 | **0.923** | 0.822 |
-| Prepaid card | 28 | too few to judge | too few to judge |
-| Debt or credit management | 19 | too few to judge | too few to judge |
+## ⚡ Speed · 🛡️ Safety · 📈 Scale
 
-The LLM's clear weak spot is credit reporting. It gave that label to 168 accepted complaints, but only 64 test complaints have it. Of the 168, 58 were recorded as credit reporting, 72 as debt collection, 17 as credit card, 11 as checking or savings account, and 10 as other products (`confusion` in `results/eval/v1_test.json`). So 72 of the 452 debt collection complaints were labelled credit reporting, which lowers the LLM's debt collection score too. Some of this may be label noise: the consumer picks the product, and a complaint about a debt on a credit report could fit either. On Mortgage, the two tie at 3 decimals: 0.910394 against 0.910345.
+**⚡ Speed**
+- $0.2373 per 1,000 complaints. Labelling all 10,002 July complaints with a narrative would cost about $2.37 at that rate (a projection, not a run).
+- Every model answer is recorded, so a re-run of the same prompt replays it at no cost.
+- Several pieces of work ran at once, each in its own git worktree, and the build log records each with its times.
 
-### Development set: tuning figures, not the verdict
+**🛡️ Safety**
+- Every accepted label has a quote that a script found in the text. That shows the quote is in the text, not that it supports the label. No human has checked that yet.
+- 10 made-up complaints try to hijack the model. In one live run, none was obeyed: 9 reached the model, and 1 was caught by the script before any call.
+- Complaint text goes to the model as data, in a call with no tools. Every live call goes through a hard token cap and one shared ledger.
 
-The development set (370 complaints) was used while building, so its figures are tuning figures only.
+**📈 Scale**
+- The July 2026 export holds 672,036 complaints. 10,002 have a narrative, and 9,303 remain after removing copies.
+- Loading is incremental, keyed on complaint ID. dbt builds the models and runs the data tests, and the same models ran on Databricks with synthetic data.
+- A scheduled run does load, dbt build, label and evaluate every day, on synthetic data. The public copy on Azure has a health route and a request log.
 
-| Development set, 370 complaints | LLM | TF-IDF at the same coverage |
-|---|---|---|
-| Re-weighted strict accuracy | 79.8% | 79.1% |
-| Precision on accepted labels | 81.7% | 81.2% |
-| Coverage | 97.6% | 97.6% |
-| Macro-F1 | 0.772 | 0.694 |
+The details and the commands behind each figure: [docs/RESULTS.md](docs/RESULTS.md).
 
-Difference +0.6 points, from the unrounded figures (79.76% against 79.14%), 95% interval -3.1 to +4.7 points: inconclusive. Source: `uv run --native-tls voc evaluate dev --prompt v1 --note "first version"`, the first row of [EVAL_VERSIONS.md](EVAL_VERSIONS.md).
-
-## Speed, Safety, Scale
-
-**Speed**
-- The LLM took 2,015.2 seconds per 1,000 complaints on the test run, with calls sent one at a time. TF-IDF took 0.707 seconds per 1,000.
-- The LLM cost $0.2373 per 1,000 complaints on the test run (claude-haiku-5-5, prompt v1). Labelling all 10,002 complaints with a narrative in the July file would cost about $2.37 at that rate ($0.4530015 / 1,909 x 10,002). With calls sent one at a time, it would take about 5.6 hours (2,015.2 seconds x 10.002). Both are projections, not runs.
-- Every answer is recorded, so on the machine that holds the recordings, a re-run of the same prompt replays it at no cost.
-
-**Safety**
-- Every accepted label has a quote that a script found in the complaint, starting and ending on word boundaries. Before matching, both sides get the same small normalisation: one Unicode form, runs of spaces made one space, plain quote marks and dashes, and no zero-width characters (`src/voc/evidence.py`). Capital letters still matter. The model's word is never taken on trust. That shows the quote is **in the text**. It does not show that the quote **supports the label**. No human has checked that yet (see Limits).
-- `voc audit` checks a results file against the recorded answers and the complaint texts. On the development run it re-derived 361 of 361 accepted and 9 of 9 quarantined decisions, and 361 of 361 quotes matched word for word at their stored positions (`uv run --native-tls voc audit dev --prompt v1`). It reuses the labeller's own steps, so it is a consistency check. The exact character comparison is the independent part. The audit ran on the development run only. The test run has not been audited, because `voc audit` accepts the development and quick sets only.
-- A synthetic injection set of 10 made-up complaints (`config/injection.toml`, IDs SYN-9001 to SYN-9010) tries to force wrong labels. In one live run of prompt v1, 9 reached the model and none was obeyed. The tenth, a fake closing tag, was caught by the script before any call. The counts: obeyed and accepted 0, obeyed and quarantined 0, caught before any call 1, no usable answer 0, not obeyed 9 (`uv run --native-tls voc label injection --prompt v1`, then `uv run --native-tls voc evaluate injection --prompt v1 --note "first live run of the injection set"`, in [results/eval/v1_injection.json](results/eval/v1_injection.json)). These results are reported apart and never enter an accuracy figure. They show resistance on this set, with one model, not in general. An obeyed injection that quotes a real sentence from the text would pass the quote check.
-- Complaint text is untrusted data. It goes to the model between fixed tags, as data, in a call with no tools. There is no `claude -p` or other agent backend, because untrusted text must never reach an agent that can act, and one code path keeps every number reproducible.
-- The coding agent that built this repo was blocked from reading complaints, quotes and model answers from real data, and the build log records no case of it doing so. Commands print IDs, labels, reasons, positions and counts only. Hooks block it from reading the data, the ledger and the recordings, and ask the owner before any command with the word `final`. The hooks are best effort (see Known limits).
-- Every live call goes through a hard token cap, a record and replay cache, and one token ledger shared by every run.
-
-**Scale**
-- The July 2026 export holds 672,036 complaints. 10,002 of them (1.5 percent) have a narrative (`uv run --native-tls voc profile --write results/profile_july_2026.json`). `voc sample` removed 623 exact copies and 76 near-copies, so 9,303 remain ([docs/DATA.md](docs/DATA.md)).
-- Sample sizes come from Cochran's formula: 370 for development and 1,909 for the frozen test set. The remaining 7,024 train TF-IDF ([docs/DATA.md](docs/DATA.md)).
-- Loading is incremental and keyed on complaint ID, so loading the same file again adds nothing. dbt builds the models and runs the data tests.
-- A scheduled GitHub Actions workflow runs load, dbt build, label and evaluate every day on a committed synthetic fixture, with the mock backend. Its figures are synthetic, not a result. It is one job that runs these four steps in order after its setup steps, and any failing step or data test fails the run (`.github/workflows/scheduled.yml`). A full scheduler such as Airflow would be worth it with many pipelines that depend on each other, retries for each step, or backfills of past months. Airflow is not installed.
-
-## How it works
-
-1. `voc load july_2026` checks the export's SHA-256 against its pin in `config/data_files.toml`, then loads it into DuckDB.
-2. `voc dbt build` builds the staged and curated models and runs the data tests. The models leave out the test set.
-3. `voc sample` froze the development, test and training lists in `splits/`, by ID and content hash. They are never regenerated.
-4. `voc label dev` sends each complaint to the model, with the text between fixed tags, and records every answer.
-5. A script checks each quote. A failure is quarantined with its reason.
-6. `voc evaluate dev` scores both methods on the same complaints and adds a row to `EVAL_VERSIONS.md`.
-7. `voc final --prompt v1`, run once by the owner, commits its log row before any call, then labels and scores the test set.
-8. `voc serve` shows the committed results on a local dashboard at 127.0.0.1, with no complaint text. It logs each request in the terminal as one line (time, method, route pattern, status and milliseconds, never the query string or the client address), and `/api/health` counts the requests and the 4xx and 5xx answers since start (A9 in [specs/002-results-api-dashboard/spec.md](specs/002-results-api-dashboard/spec.md)).
-
-**The same models on Databricks (T021).** `voc dbt build --target databricks` runs the dbt models on a Databricks SQL warehouse, on synthetic data only. `scripts/databricks_fixture_build.py` loads the committed synthetic fixture with the same load code, writes it as a dbt seed in a work folder, and runs the build. The command refuses unless every complaint ID in both seeds starts with `SYN-`. Four DuckDB-only parts have a Databricks branch: the staged rows come from the seed, the test list is a seed, not a local file, the text check uses `rlike`, and the incremental model uses `merge`. The connection comes from environment variables. The adapter is pinned in its own dependency group (`dbt-databricks==1.13.0`), so a normal install does not get it. The lock file is shared, though, so adding it moved four packages of the normal install down: dbt-common, packaging, pydantic and pydantic-core. First live run, by the owner on 30 October 2026, on a Databricks Free Edition SQL warehouse: `uv run --native-tls --group databricks python scripts/databricks_fixture_build.py tests/fixtures/dbt/complaints.csv <new work folder>`, with the connection in environment variables. It printed "dbt build: 2 seeds, 2 models, 4 data tests. passed 8, failed 0, errors 0, skipped 0". A search of the work folder afterwards found the token in none of its files.
-
-## Run it yourself
-
-Without any data or key, you can run the tests, the dbt build on the synthetic fixture and the dashboard:
-
-```
-uv sync
-uv run pytest
-uv run python scripts/dbt_fixture_build.py tests/fixtures/dbt/complaints.csv <empty work folder>
-uv run voc serve
-```
-
-Then open http://127.0.0.1:8000. The tests never open a network connection or call a model.
-
-To label real complaints you need the pinned July 2026 export. The CFPB serves only its current export, updated about daily, so that exact file cannot be downloaded again. `python scripts/download.py <empty folder>` fetches today's file, a zip archive, and prints the archive's SHA-256. The pins in `config/data_files.toml` are on the CSV inside, so a new file must be unzipped and given its own pin. The data folder is given by an environment variable. The API key goes in an environment variable too, never in a file in the repo. Contributors also install gitleaks and run `git config core.hooksPath .githooks` (see [CLAUDE.md](CLAUDE.md)).
-
-## Why this stack
-
-The judgement here is to use the simplest tool that does the job. No tool was added for show. The one optional demonstration is Databricks (T021), added to show that the dbt models carry over to another platform.
-
-**Size.** The July 2026 export holds 672,036 complaints ([docs/DATA.md](docs/DATA.md), `results/profile_july_2026.json`). The file is 216,250,982 bytes (`config/data_files.toml`). That fits on one laptop. A Spark cluster or a cloud warehouse would add setup time, cost and accounts, with no gain at this size.
-
-**dbt is the part that carries over.** The SQL models and the data tests are dbt code, and dbt draws the lineage and writes the docs from them. dbt's documentation says: "dbt connects with data platforms by using a dedicated adapter plugin for each". Its table lists Databricks as "Generally available", and DuckDB as "Generally available" with the note "(CLI only)" ([Supported data platforms](https://docs.getdbt.com/docs/connect-adapters), read 30 October 2026). In this repo the same models ran on a Databricks SQL warehouse, on synthetic data. The run printed "dbt build: 2 seeds, 2 models, 4 data tests. passed 8, failed 0, errors 0, skipped 0" (see "The same models on Databricks (T021)" above, and [BUILD_LOG.md](BUILD_LOG.md), 30 October). Four DuckDB-only parts needed a Databricks branch to get there.
-
-**Anyone can run it.** The tests, the dbt build on the synthetic fixture and the dashboard need no account, no key and no money. After `uv sync`, each is one command (see "Run it yourself"). CI runs the same dbt build, with its data tests, on the committed synthetic fixture with no network (`.github/workflows/ci.yml`).
-
-**Time goes to verification, not infrastructure.** With no cluster or warehouse to set up, the time went to the quote check (`src/voc/evidence.py`), the evaluation against TF-IDF with a paired bootstrap ([docs/HOW_WE_MEASURE.md](docs/HOW_WE_MEASURE.md)), and the tests written before the code.
-
-**When to switch.**
-- The data no longer fits on one machine. Then the dbt models can move to a warehouse through its adapter. The Databricks run showed this on synthetic data, through another adapter. It did not show how a large load would move.
-- Many people write at once. DuckDB's documentation says that in its in-process mode "one process can both read and write to the database". It also says: "Writing to DuckDB's native database format from multiple processes is supported through the Quack remote protocol, which turns DuckDB into a client-server database." And: "Alternatively, consider using the DuckLake format with PostgreSQL as the catalog database." ([Concurrency](https://duckdb.org/docs/2.0/connect/concurrency.html), the DuckDB 2.0 docs, read 30 October 2026. This repo pins DuckDB 1.5.6 and uses neither option.)
-- There are many pipelines that depend on each other, retries for each step, or backfills of past months. Then a scheduler such as Airflow earns its cost (see the scheduler note under Scale). For the synthetic run, one scheduled GitHub Actions job is enough.
-
-Versions are the pins in `pyproject.toml`.
-
-- **DuckDB** (`duckdb==1.5.6`): one local file, no server, enough for a monthly export of 216 MB (216,250,982 bytes, `config/data_files.toml`).
-- **dbt** (`dbt-core==1.12.6`, `dbt-duckdb==1.11.0`): the models and data tests live as reviewed code, with incremental loads keyed on complaint ID.
-- **scikit-learn** (`scikit-learn==1.9.1`): the TF-IDF baseline. It is cheap, fast and well understood, which makes it the honest thing to beat.
-- **Anthropic SDK** (`anthropic==1.13.0`) with claude-haiku-5-5: Anthropic's low-cost model for high-volume work such as classification, at $0.10 per million input tokens and $0.50 per million output tokens (`config/prices.toml`, from the [pricing page](https://platform.claude.com/docs/en/about-claude/pricing), checked 28 October 2026).
-- **FastAPI** (`fastapi==0.143.0`, with `uvicorn==0.54.0`): a small read-only API and dashboard over the committed results.
-- **uv**: one lock file (`uv.lock`), so every machine and CI install the same versions.
-
-## Limits
-
-- The recorded product was chosen by the consumer, not by the CFPB, so some measured "errors" are label noise. TF-IDF learns from those same choices.
-- The CFPB says its database "is not a statistical sample of consumers' experiences in the marketplace". The results describe this data only.
-- The 10,002 narratives are a 1.5 percent subset with a very different mix. Credit reporting is 618,208 complaints (92 percent of all), but only 463 of them, about 1 in 1,300, have a narrative (`results/profile_july_2026.json`, [docs/DATA.md](docs/DATA.md)).
-- The model's training data cutoff is June 2026 ([models overview](https://platform.claude.com/docs/en/about-claude/models/overview), read 29 October 2026). The complaints were received in July 2026, so they cannot be in its training data.
-- The CFPB file changes over time, and only the current export can be downloaded. So the July file cannot be fetched again, and a reader cannot re-run the labelling from this repo alone.
-- Classifying is not the same as measuring. Prepaid card (28 test complaints) and debt or credit management (19) are too few to judge. Both methods still label them, and they count in the overall score. They were not over-sampled, because the pool has only 134 and 91 of them, and taking more for the test set would leave fewer for TF-IDF to train on. See "Small categories" in [docs/HOW_WE_MEASURE.md](docs/HOW_WE_MEASURE.md) and in [docs/DATA.md](docs/DATA.md).
-- The tests prove the code's rules. They do not prove label quality, which the evaluation measures, or how a cloud deployment would be secured.
-- One model, one prompt version and one test run. The result says nothing about other months, other data or other industries.
-- `voc ledger raise` writes a line to BUILD_LOG.md, and `voc final` needs a clean working tree. So after a raise, that line must be committed or set aside before the scored run.
-- Pending improvements:
-  - The analyser for error analysis (T018a): a tool-less model call that names one cause from a fixed list for each wrong label.
-  - A human spot check of whether quotes support their labels (T014c, the `show` command for the owner).
-  - Catching a crash in the middle of the scored run.
-- The public copy on Azure App Service (spec 002, A13, and [docs/DEPLOY.md](docs/DEPLOY.md)) serves only what this repo already holds: the results files, with no complaint text, no consumer's choice and no review saving. It needs no login for that reason. A deployment that labels or reviews in the cloud would need more: authentication on the API, keys in a secrets manager, the ledger in a shared database, the recordings in protected storage, and branch protection with required checks.
-
-### Known limits
-
-These come from the threat model in the [spec](specs/001-core-labelling-pipeline/spec.md). The guards stop honest mistakes, AI mistakes and hostile complaint text, and make any bypass visible in the public history. They are not built to stop a person who deliberately works around them.
-
-- Deleting the ledger or the home-folder test log and starting again resets them, with no trace in git.
-- A git-ignored local settings file can turn off the project hooks.
-- Shell commands that write files are not seen by the data guard.
-- Until branch protection is on, the owner can merge with failing CI.
-- A tests-only commit can weaken an existing check. Only the reviewer agent would notice.
-- A script that opens the DuckDB file directly skips the `final` guard and the dbt test-row filter.
-- The staged DuckDB table under the dbt models still holds the test rows. So the real seal is the `final` command path, its committed log and the CI check on that log. The dbt flag is a second layer.
-- A hand run of dbt with a relative project folder bakes a relative path to `splits/test.csv` into the `curated_complaints` view. Querying the view then depends on the folder the reader runs in. `voc dbt` always gives the full path.
-- `git commit --no-verify` in the owner's own terminal skips the git hook. Only CI catches it.
-- Hooks read command text, so an unusual command form can slip past them.
-- On Claude Code versions before 2.1.295, a hook that times out lets the action through. A crash still blocks, through exit code 2.
-- The git hook is switched on per clone with `git config core.hooksPath .githooks`. A fresh clone has no test gate until the owner runs it. Claude refuses to commit until then.
-- The read guard blocks any shell command with the word `show` unless it starts with `git`, so it also blocks harmless commands such as `echo show`.
-- `git cherry-pick`, `git revert` and `git commit-tree` run no pre-commit hook, so they can create a commit the test gate has not checked. Only CI catches it.
-- The read guard checks path-like fields and command text. A path built at run time inside a script (for example joined from parts in Python) is not seen.
-- The data guard does not check for complaint text copied into notes or docs. The read guard keeps Claude from reading that text in the first place.
-- A server error or rate limit that lasts is retried, so up to 9 reservations are charged before 3 failed complaints stop the run. A failed call is charged its full reservation, even when the API billed nothing.
-- The scored test run writes its results when it finishes, or when 3 complaints in a row fail. A crash in the middle (Ctrl-C, a ledger lock timeout, a corrupt recording, a ledger overrun that opens during the run) loses the outcomes so far. The log entry stays, so a new run needs a reason. Answers already made stay in the recordings, so a new run replays them at no cost. An overrun already open before the run is refused first.
-- The test gate keeps the full pytest output of its last run in the system temp folder, one folder per checkout. A failing test can print a fake key it built, and that stays there until the next run. No scan covers that folder.
-- `voc audit` needs the recorded answers, which stay outside the repo. So only the owner's machine can run it, not a reader of the repo. A recording rewritten together with matching positions in the results file would pass it, because recordings carry no signature.
-- `voc sample` records the pinned file's SHA-256 in `splits/manifest.json`, but it does not check that the staged rows came from that file. `voc load` checks the file against its pin before loading, and the staged table does not keep the file's hash.
-- No CI check yet stops `splits/` from changing compared with `main`. `voc sample` refuses to run while any list file is there, but a deleted folder can be rebuilt. With the same code and seed, the rebuilt lists are the same.
-- The merge verdict's trial merge (`--test-merge`) runs the tests with this checkout's installed packages, so a dependency change in a pull request is not covered.
-- The trial merge runs a pull request's tests on this machine. So it is for this repo's own pull requests only, and it refuses a pull request from a fork.
-- The Databricks target checks the seed's complaint IDs, not its text. A synthetic ID with real complaint text copied into the seed would pass. The seed is written by the fixture script from the committed synthetic fixture, and the repo has no seed folder.
-- A hand run of dbt with the Databricks profile skips the wrapper's seed check.
-- The seed check trusts the work folder's `dbt_project.yml`. A hand edit of its seed path would point dbt at seeds the check never read.
-- The Databricks run uses the owner's Free Edition workspace, which is for non-commercial use only. Its token is the owner's, kept encrypted on the owner's machine, and never in the repo.
-
-## Decisions the owner made
+## 🧭 Decisions the owner made
 
 Claude proposed, the owner decided. Each line is in [BUILD_LOG.md](BUILD_LOG.md) on its day.
 
@@ -222,36 +103,39 @@ Claude proposed, the owner decided. Each line is in [BUILD_LOG.md](BUILD_LOG.md)
 - **30 October: readability.** On the dashboard, every abbreviation except AI, LLM and API is spelled out. Normal text is no smaller than the old verdict line (pull request #54).
 - **31 October: the public copy stays without complaint text.** A signed-in analyst copy is named as the next step instead.
 
-## How it was built
+## ⚠️ Limits, in short
 
-- Every rule is in the [spec](specs/001-core-labelling-pipeline/spec.md), and the API's rules are in [specs/002-results-api-dashboard/spec.md](specs/002-results-api-dashboard/spec.md). Every test is named after its rule.
-- Tests come first. Each pull request that changes code has a commit with failing tests only, then the code.
-- A git hook runs gitleaks, a names check and the full test suite on exactly the staged files, for every commit in a clone where the hook is switched on. Known limits lists the ways around it.
-- A fresh reviewer agent reads every pull request. Its findings and Claude's check of each are posted on the pull request. The owner decides what to fix, and the owner merges.
-- `scripts/merge_verdict.py` runs the mechanical merge checks and leaves the judgement items to Claude.
+- The product label was chosen by the consumer, so some measured "errors" are label noise.
+- The CFPB says its database "is not a statistical sample of consumers' experiences in the marketplace". The results describe this data only.
+- One month, one model, one prompt version and one test run. The improvement loop is ready (`/eval` adds a row to [EVAL_VERSIONS.md](EVAL_VERSIONS.md)) but was not run beyond prompt v1.
+- The model's training data ends in June 2026, and the complaints were received in July 2026, so they cannot be in its training data.
 
-## About the data
+All limits, the known gaps in the guards, and notes on the data: [docs/LIMITS.md](docs/LIMITS.md).
 
-- Source: the CFPB Consumer Complaint Database. Raw data is not stored in this repo.
-- The CFPB says: "This database is not a statistical sample of consumers' experiences in the marketplace". Results here describe this data only.
-- The CFPB also says: "All complaint data we publish is freely available for anyone to use, analyze, and build on." Both quotes are from the [CFPB complaint database page](https://www.consumerfinance.gov/data-research/consumer-complaints/), read 28 October 2026.
-- The Product and Issue fields are set by the consumer, not by the CFPB ("The type of product the consumer identified in the complaint", [CFPB field reference](https://cfpb.github.io/api/ccdb/fields.html)). So the recorded labels are noisy, and some measured "errors" will be label noise.
+## ▶️ Run it yourself
 
-## Loading a new month
+No data, key or account is needed for the tests, the dbt build on synthetic data and the dashboard:
 
-- `voc load july_2026` and then `voc load august_2026` put each pinned monthly file into one staged DuckDB table. `voc dbt build` then builds the models and runs the data tests.
-- The dbt models leave out the test set (B17). They read the test IDs from `splits/test.csv`. Setting the dbt variable `final` to true turns this off, and `voc dbt` always passes it as false. The staged table under the models still holds the test rows.
-- The load and the staged dbt model are incremental and keyed on complaint ID. A run adds only complaint IDs it has not seen, so loading the same file again adds nothing.
-- What this does not cover yet:
-  - Late or corrected records. If a later file holds a complaint ID that is already loaded with changed values, the first row is kept and the change is ignored.
-  - Column changes. A file with a missing or extra column fails the load. A new or removed column in the staged table fails the incremental dbt build (`on_schema_change='fail'`). Neither is migrated automatically.
-- `voc dbt docs` writes the dbt docs and the lineage graph to the git-ignored `data/dbt/target` folder. Those files hold local paths, including the user folder, so they are not committed.
-- `voc dbt lineage` writes [docs/LINEAGE.md](docs/LINEAGE.md): the lineage graph of the source, the models and the data tests, with node names and edges only, and no paths. It printed "dbt lineage: 1 sources, 0 seeds, 2 models, 6 data tests, 9 edges. Written to docs/LINEAGE.md." (`uv run --native-tls voc dbt lineage`, 30 October 2026). A test fails if the committed file no longer matches the dbt project.
+```
+uv sync
+uv run pytest
+uv run python scripts/dbt_fixture_build.py tests/fixtures/dbt/complaints.csv <empty work folder>
+uv run voc serve
+```
 
-## Where to start
+Then open http://127.0.0.1:8000. Labelling real complaints, and loading a new month: [docs/PIPELINE.md](docs/PIPELINE.md).
 
-- What it must do: [specs/001-core-labelling-pipeline/spec.md](specs/001-core-labelling-pipeline/spec.md)
-- How we work: [CLAUDE.md](CLAUDE.md)
-- What happened and when: [BUILD_LOG.md](BUILD_LOG.md)
-- How we measure: [docs/HOW_WE_MEASURE.md](docs/HOW_WE_MEASURE.md)
-- What the data holds: [docs/DATA.md](docs/DATA.md)
+## 📚 Read more
+
+| Page | What it holds |
+|---|---|
+| [docs/RESULTS.md](docs/RESULTS.md) | The full results, per product, and Speed, Safety and Scale in detail |
+| [docs/HOW_WE_MEASURE.md](docs/HOW_WE_MEASURE.md) | The method, in plain words |
+| [docs/PIPELINE.md](docs/PIPELINE.md) | How the pipeline works, Databricks, loading a new month |
+| [docs/STACK.md](docs/STACK.md) | Why this stack, and when to switch |
+| [docs/DATA.md](docs/DATA.md) | What the data holds |
+| [docs/LIMITS.md](docs/LIMITS.md) | Limits, known gaps in the guards, the data source |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | The Azure public copy |
+| [specs/](specs/) | Every rule. Every test is named after its rule |
+| [CLAUDE.md](CLAUDE.md) | How the AI and the owner work in this repo |
+| [BUILD_LOG.md](BUILD_LOG.md) | What happened, when, and every AI mistake |

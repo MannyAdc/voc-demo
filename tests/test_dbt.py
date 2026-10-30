@@ -269,7 +269,9 @@ def test_B14_a_new_column_in_the_staged_table_fails_the_incremental_build(repo, 
 
 
 def test_B14_the_readme_says_what_the_incremental_load_does_not_cover():
-    readme = (REPO / "README.md").read_text(encoding="utf-8").lower()
+    # Changed on 31 October: the README links these notes, which moved word for word to docs/PIPELINE.md.
+    readme = ((REPO / "README.md").read_text(encoding="utf-8")
+              + (REPO / "docs" / "PIPELINE.md").read_text(encoding="utf-8")).lower()
     assert "late or corrected records" in readme
     assert "column" in readme and "incremental" in readme
     assert "lineage graph" in readme and "local paths" in readme
