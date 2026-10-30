@@ -65,8 +65,9 @@ def _ids(path):
     return {row.get("complaint_id") for row in csv.DictReader(io.StringIO(path.read_text(encoding="utf-8")))}
 
 
-def add_routes(app, root, checked_version, complaint_id_pattern, with_text=False):
-    """Add the analyst routes. `checked_version` raises a 404 for a bad version name."""
+def add_routes(app, root, checked_version, complaint_id_pattern, with_text=False, public=False):
+    """Add the analyst routes. `checked_version` raises a 404 for a bad version name. On the public copy (A13)
+    the local staged table is never read and no review is stored."""
 
     def _labels():
         return [label.name for label in load_labels(root / "config" / "labels.toml")]
@@ -131,7 +132,7 @@ def add_routes(app, root, checked_version, complaint_id_pattern, with_text=False
     def _local(ids):
         """The consumer's own choice and the text, from the local staged table, for these development IDs only."""
         path = root / DB_PATH
-        if not path.is_file():
+        if public or not path.is_file():
             return None
         try:
             con = duckdb.connect(str(path), read_only=True, config=SAFE_CONFIG)
@@ -216,6 +217,8 @@ def add_routes(app, root, checked_version, complaint_id_pattern, with_text=False
 
     @app.post("/api/review/{version}/decision/{complaint_id}")
     def review(version: str, complaint_id: str, body: Review, x_requested_with: Optional[str] = Header(None)):
+        if public:
+            raise HTTPException(403, "the public copy stores no review. Reviews are made on the analyst's own machine")
         if x_requested_with != PAGE_HEADER:
             raise HTTPException(403, "a review can only be sent from this app's own page")
         rows = _results(version)

@@ -312,6 +312,7 @@ function decisionForm(c) {
   // Review of #46: a saved decision is locked. The form then sends a correction, a new entry.
   const locked = !!c.review;
   $("d-locked").hidden = !locked; $("d-reasons").hidden = locked;
+  $("d-hidden-note").hidden = locked;  // once decided, the consumer's choice is no longer hidden
   $("d-save").textContent = locked ? "Save a correction" : "Save decision";
   if (locked) {
     select.disabled = false;

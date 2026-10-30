@@ -729,3 +729,8 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - The entry "The green change: ... and the docs" is wrong about the docs. They are in #45, not in this pull request.
   - The browser check entry sits under the red commit `3438541`, but it checked the green code.
 - The gate of `cf4c49d` listed the 5 still-failing tests of `76af932` as carried over, as the gate rules say. They pass in the green commit.
+- About 15:20 Work start on the public copy for Azure, in `../voc-demo-public`, branch `feat/public-mode`, started from `feat/analyst-screens` (#46).
+  - Red `4e36c4d` at 15:29: 7 tests in `tests/test_public.py`. All 7 failed.
+  - Green: `create_app(root, public_host=...)`, `src/voc/public.py` (the app for App Service, which needs `WEBSITE_HOSTNAME`), a `requirements.txt` from `uv export --frozen --no-default-groups --no-hashes --no-emit-project`, spec A13, `docs/DEPLOY.md` with the owner's commands, and a README line. The public copy answers only to its own host, never reads the local staged table, and stores no review.
+  - Writing `requirements.txt` with `uv export -o` failed with "Access is denied", most likely the same Windows file lock. A plain redirect worked.
+  - Also the leftover from #46: the "hidden while you decide" note now hides once a decision is saved.
