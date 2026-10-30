@@ -926,3 +926,11 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - Recounted on `b23a7b5`: 54 merged pull requests (`gh pr list --state merged`) and 1,294 tests (`pytest --collect-only`).
   - The spec line, the dbt model comment, and the moved "How it was built" line ("The rule: a fresh reviewer agent reads each pull request") fixed. The four pages' notes say so.
   - "Continuous integration (CI)", "identifier (ID)", "dbt (data build tool)", and Microsoft's page cited for the built-in sign-in (dated 28 March 2025).
+- 09:35 Owner merged #55 (time from GitHub).
+- Between 09:35 and 09:49 (exact time not recorded) Owner decision, in the same message as the merge: the README opens as a demonstration of applied AI system development, with the simple task explained and the next steps named, including newer AI systems such as TypeSafe AI's Jev. Claude checked Jev on TypeSafe's own post first: it returns a choice with a confidence score and no text, so it cannot quote evidence. It goes in as an idea to test, not a claim.
+- Same message: the owner's four further README points, with what Claude found in the repo:
+  - Name the scores with both the technical and the plain term. The headline is not F1: it is re-weighted strict accuracy. Macro F1 was a second row in docs/RESULTS.md only. Both are now in the README table, each with a plain explanation.
+  - Write "baseline (TF-IDF)" in "Who checks what".
+  - Speed, Safety and Scale: the owner asked whether it was about the development process. It was mostly about the pipeline, with one line about the build. It is now split into "Of the pipeline" and "Of the build".
+  - "When to switch to bigger tools": the owner read the project as already on the cloud. Only the public dashboard is on Azure, and Databricks ran once on synthetic data. The real complaints are processed on one laptop with DuckDB. The README now says where each part runs today, and when to move the processing.
+- 09:49 Work start on `docs/readme-framing`.
