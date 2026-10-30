@@ -12,6 +12,7 @@ import io
 import json
 import re
 import tomllib
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -45,6 +46,11 @@ TEST_RUN_NUMBERS = ("complaints", "accepted", "quarantined", "run_seconds", "inp
 LOG_DATE = r"\| [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:]+"
 LOG_ROW = re.compile(LOG_DATE + r" \| (?P<version>v[0-9]+) \| (?P<hash>[0-9a-f]{64}) \| "
                      r"(?P<model>[a-z0-9][a-z0-9.\-]{0,63}) \| (?P<count>[0-9]+) \|")
+# A14: the same row, with its date, for the "Data as of" strip.
+RUN_ROW = re.compile(r"\| (?P<date>[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}) \| (?P<version>v[0-9]+) \| [0-9a-f]{64} \| "
+                     r"(?P<model>[a-z0-9][a-z0-9.\-]{0,63}) \| (?P<count>[0-9]+) \|")
+# The daily schedule in .github/workflows/scheduled.yml: minute, then hour, in UTC.
+DAILY = re.compile(r'cron: "([0-9]{1,2}) ([0-9]{1,2}) \* \* \*"')
 VERDICTS = ("beats", "inconclusive", "does_not_beat")
 BACKENDS = ("api", "mock")
 SETS = ("dev", "quick")
@@ -91,6 +97,27 @@ def _dict(value):
 
 def _list(value):
     return value if isinstance(value, list) else []
+
+
+def _text(path):
+    """A committed file's text, or None when it is missing or not UTF-8 (A14: a broken file is a missing fact)."""
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def _real_time(value, form):
+    """The value when it is a real date or time in this form, else None. "2026-13-45" is not."""
+    try:
+        return value if isinstance(value, str) and datetime.strptime(value, form) else None
+    except ValueError:
+        return None
+
+
+def _count(value):
+    """A whole number of things: 0 or more. NaN, 1.5 and -5 are not counts."""
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
 
 
 def _numbers(record, fields):
@@ -287,6 +314,28 @@ def create_app(root, with_text=False, public_host=None):
         data = _json("audit", version)
         return {"set": _one_of(data.get("set"), SETS), "prompt_version": _matches(data.get("prompt_version"), VERSION),
                 **_numbers(data, AUDIT_NUMBERS), "failures": _counts(data.get("failures"), FAILURES)}
+
+    @app.get("/api/freshness")
+    def freshness():
+        # A14: the "Data as of" strip. Facts from committed files only, each checked. A missing or unexpected fact is
+        # null, so the page says it is not recorded. The app asks no other service whether the scheduled run passed.
+        # Review of #54: a broken file gives nulls, never an error, and dates and counts are checked for sense.
+        try:
+            profile = _dict(json.loads(_text(root / "results" / "profile_july_2026.json") or "{}"))
+        except ValueError:
+            profile = {}
+        days = _list(profile.get("date_range")) + [None, None]
+        data = {"from": _real_time(days[0], "%Y-%m-%d"), "to": _real_time(days[1], "%Y-%m-%d"),
+                "complaints": _count(profile.get("rows")), "narratives": _count(profile.get("narratives"))}
+        lines = (_text(root / "runs" / "TEST_RUNS.md") or "").splitlines()
+        rows = [m for m in (RUN_ROW.match(line) for line in lines) if m and _real_time(m["date"], "%Y-%m-%d %H:%M")]
+        # The row is written in the owner's local time, before the scoring starts (voc.testrun).
+        test_run = ({"date": rows[-1]["date"], "prompt_version": rows[-1]["version"], "model": rows[-1]["model"],
+                     "complaints": int(rows[-1]["count"]), "runs": len(rows)} if rows else None)
+        cron = DAILY.search(_text(root / ".github" / "workflows" / "scheduled.yml") or "")
+        valid = cron and int(cron[2]) < 24 and int(cron[1]) < 60
+        return {"data": data, "test_run": test_run,
+                "schedule_utc": f"{int(cron[2]):02d}:{int(cron[1]):02d}" if valid else None}
 
     @app.get("/api/data")
     def data():

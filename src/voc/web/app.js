@@ -23,6 +23,14 @@ function label(svg, x, y, text, anchor) {
   t.textContent = text;
   svg.appendChild(t);
 }
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+                "November", "December"];
+function day(text) {
+  // "2026-07-01" becomes "1 July 2026", the same on every machine.
+  const [y, m, d] = text.split("-").map(Number);
+  return d + " " + MONTHS[m - 1] + " " + y;
+}
+
 async function get(path) {
   const response = await fetch(path);
   if (!response.ok) return null;
@@ -500,6 +508,34 @@ function wire() {
   window.addEventListener("hashchange", route);
 }
 
+async function freshness() {
+  // A14: the "Data as of" strip, from committed files only. A fact the files do not hold is said to be missing.
+  const [f, s] = await Promise.all([get("/api/freshness"), get("/api/data")]);
+  if (!f) { put("fresh-data", "The data facts could not be loaded.", true); return; }
+  const d = f.data;
+  // Review of #54: both narrative counts on the page, and how one becomes the other (docs/DATA.md).
+  const copies = s && s.copies_removed && typeof s.copies_removed.exact === "number" && typeof s.copies_removed.near === "number"
+    ? s.copies_removed.exact + s.copies_removed.near : null;
+  const pool = s && typeof s.pool === "number" && copies !== null
+    ? " " + num(d.narratives) + " have the consumer's own description, and " + num(s.pool) + " of them form the pool after "
+      + num(copies) + " copies were removed."
+    : " " + num(d.narratives) + " have the consumer's own description.";
+  put("fresh-data", d.from && d.to
+    ? "Data: the CFPB export from " + day(d.from) + " to " + day(d.to) + ", " + num(d.complaints) + " complaints." + pool
+    : "Data: the export's dates are not recorded.", !(d.from && d.to));
+  const t = f.test_run;
+  // The test run's row is written in the owner's local time, just before the scoring starts.
+  put("fresh-test", t
+    ? "Test set: " + (t.runs === 1 ? "one scored run, logged on " : t.runs + " scored runs, the last logged on ")
+      + day(t.date.slice(0, 10)) + " at " + t.date.slice(11) + " Australian Eastern Daylight Time (AEDT), as it started: "
+      + num(t.complaints) + " complaints, prompt " + t.prompt_version + " on " + t.model + "."
+    : "No test run is logged yet.", !t);
+  put("fresh-schedule", f.schedule_utc
+    ? "Pipeline check: the whole pipeline runs by itself every day at " + f.schedule_utc
+      + " Coordinated Universal Time (UTC), on made-up complaints with a stand-in model."
+    : "Pipeline check: the schedule is not recorded.", !f.schedule_utc);
+}
+
 async function main() {
   wire();
   const versions = (await get("/api/versions")) || [];
@@ -509,6 +545,7 @@ async function main() {
   version = latest;
   productLinks();
   route();
+  freshness();
   // Review of #44: the test card asks which version has a logged test run, not the last development row.
   const logged = ((await get("/api/tested")) || { versions: [] }).versions;
   const testVersion = logged.length ? logged[logged.length - 1] : null;
