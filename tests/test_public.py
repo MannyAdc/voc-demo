@@ -111,3 +111,90 @@ def test_A13_requirements_txt_pins_the_runtime_packages_only():
     for dependency in project["project"]["dependencies"]:
         assert dependency.split("==")[0].lower() in names, dependency
     assert "pytest" not in names and "dbt-databricks" not in names and "voc" not in names
+
+
+# Review of #50
+
+
+def _locked_versions():
+    with open(REPO / "uv.lock", "rb") as f:
+        return {p["name"].lower(): p["version"] for p in tomllib.load(f)["package"] if "version" in p}
+
+
+def _pins():
+    lines = [line.strip() for line in (REPO / "requirements.txt").read_text(encoding="utf-8").splitlines()
+             if line.strip() and not line.startswith("#") and not line.startswith(" ")]
+    return {line.split("==")[0].lower(): line.split("==")[1].split(" ")[0] for line in lines}
+
+
+def test_A13_requirements_txt_pins_only_what_the_public_copy_needs_at_the_locked_versions():
+    pins, locked = _pins(), _locked_versions()
+    assert pins and all(locked.get(name) == version for name, version in pins.items()), pins
+    for heavy in ("dbt-core", "scikit-learn", "scipy", "numpy", "anthropic", "pytest", "dbt-databricks"):
+        assert heavy not in pins, heavy
+    for needed in ("fastapi", "starlette", "uvicorn", "duckdb"):
+        assert needed in pins, needed
+
+
+def test_A13_every_package_the_public_app_loads_is_pinned(tmp_path):
+    # Imports the public app in a fresh process, from a folder that is not the repo, and maps every module it
+    # loads to the package that ships it. Each such package must be in requirements.txt.
+    script = (
+        "import sys, importlib.metadata as md\n"
+        f"sys.path.insert(0, {str(REPO / 'src')!r})\n"
+        "before = set(sys.modules)\n"
+        "import voc.public\n"
+        "mods = {m.split('.')[0] for m in set(sys.modules) - before}\n"
+        "dist = md.packages_distributions()\n"
+        "print('\\n'.join(sorted({d.lower() for m in mods for d in dist.get(m, [])})))\n")
+    import os
+    import subprocess
+
+    env = {**os.environ, "WEBSITE_HOSTNAME": HOST}
+    result = subprocess.run([sys.executable, "-c", script], cwd=tmp_path, env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    loaded = {name.replace("_", "-") for name in result.stdout.split()}
+    pinned = {name.replace("_", "-") for name in _pins()}
+    assert loaded and loaded <= pinned, loaded - pinned
+
+
+def test_A13_an_empty_host_name_is_refused(monkeypatch):
+    monkeypatch.setenv("WEBSITE_HOSTNAME", "")
+    sys.modules.pop("voc.public", None)
+    try:
+        with pytest.raises(RuntimeError, match="WEBSITE_HOSTNAME"):
+            importlib.import_module("voc.public")
+    finally:
+        sys.modules.pop("voc.public", None)
+
+
+def test_A13_the_public_app_finds_the_results_whatever_folder_it_starts_in(monkeypatch, tmp_path):
+    monkeypatch.setenv("WEBSITE_HOSTNAME", HOST)
+    monkeypatch.chdir(tmp_path)
+    sys.modules.pop("voc.public", None)
+    try:
+        public = importlib.import_module("voc.public")
+        versions = _client(public.app).get("/api/versions").json()
+        assert versions and versions[0]["Prompt"] == "v1"
+    finally:
+        sys.modules.pop("voc.public", None)
+
+
+def test_A13_the_complaint_view_says_whether_a_review_can_be_saved(root):
+    from voc.api import create_app
+
+    public = _client(_public(root)).get("/api/review/v1/complaint/SYN-3").json()
+    local = _client(create_app(root), "127.0.0.1").get("/api/review/v1/complaint/SYN-3").json()
+    assert public["can_review"] is False and local["can_review"] is True
+
+
+def test_A13_the_page_says_where_reviews_are_made_on_the_public_copy():
+    script = (REPO / "src" / "voc" / "web" / "app.js").read_text(encoding="utf-8")
+    assert "Reviews are made on the analyst's own machine" in script and "can_review" in script
+
+
+def test_A13_the_deploy_guide_names_no_local_folder_and_uploads_no_lock_file():
+    guide = (REPO / "docs" / "DEPLOY.md").read_text(encoding="utf-8")
+    assert not re.search(r"[A-Za-z]:\\Users\\", guide)
+    archive = next(line for line in guide.splitlines() if line.startswith("git archive"))
+    assert ":!uv.lock" in archive and ":!pyproject.toml" in archive
