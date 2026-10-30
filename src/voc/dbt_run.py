@@ -10,12 +10,16 @@ T021: `--target databricks` runs the same project on a Databricks SQL warehouse,
 on two synthetic seeds only. It refuses before dbt starts unless the seeds are
 there, every seeded complaint ID is SYN-, and the test list seed is a byte copy
 of the checked splits/test.csv. Only that target gets the connection variables.
+
+T017: `voc dbt lineage` runs `dbt parse` the same way and writes docs/LINEAGE.md,
+a Mermaid graph of node names and edges only, so it holds no local path.
 """
 import csv
 import hashlib
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -35,7 +39,7 @@ QUIET = {
     "DBT_SEND_ANONYMOUS_USAGE_STATS": "False",  # dbt Core 1.10 and earlier
     "DO_NOT_TRACK": "1",
 }
-COMMANDS = {"build": ["build"], "docs": ["docs", "generate"]}
+COMMANDS = {"build": ["build"], "docs": ["docs", "generate"], "parse": ["parse"]}
 # B17: the models read the test IDs from this list, next to the dbt folder (dbt/macros/test_set.sql).
 TEST_LIST = Path("splits") / "test.csv"
 MANIFEST = Path("splits") / "manifest.json"
@@ -45,6 +49,12 @@ CONNECTION_VARS = ("DATABRICKS_HOST", "DATABRICKS_HTTP_PATH", "DATABRICKS_TOKEN"
 SEEDS = PROJECT / "seeds"
 STAGED_SEED, TEST_SEED = "staged_complaints.csv", "test_list.csv"
 TARGETS = ("local", "databricks")
+# T017: the lineage graph, written with node names only, so it can be committed.
+LINEAGE = Path("docs") / "LINEAGE.md"
+# The node kinds drawn in the lineage graph, in order, with their label and Mermaid shape.
+KINDS = {"source": ("source", '[("', '")]'), "seed": ("seed", '[/"', '"/]'),
+         "model": ("model", '["', '"]'), "test": ("test", '{{"', '"}}')}
+SAFE_NAME = re.compile(r"[A-Za-z0-9_.]+")
 
 
 class DbtError(Exception):
@@ -216,3 +226,59 @@ def docs(root, labels):
         raise DbtError(f"dbt docs exited with code {code}")
     return [f"dbt docs: {', '.join(written)} written to {TARGET.as_posix()}. "
             "They hold local paths: strip them before the lineage graph is published."]
+
+
+def _lineage_nodes(manifest):
+    """The graph's nodes as {unique_id: (kind, name)} and its edges as sorted (parent, child) pairs.
+
+    Only names are read, never paths, SQL or descriptions. A source is named `source_name.name`.
+    A name that is not plain letters, digits, `_` and `.` stops the command, so nothing else reaches the file.
+    """
+    nodes = {}
+    for uid, node in manifest.get("sources", {}).items():
+        nodes[uid] = ("source", f"{node['source_name']}.{node['name']}")
+    for uid, node in manifest.get("nodes", {}).items():
+        if node["resource_type"] in KINDS:
+            nodes[uid] = (node["resource_type"], node["name"])
+    for kind, name in nodes.values():
+        if not SAFE_NAME.fullmatch(name):
+            raise DbtError(f"a dbt {kind} name holds characters the lineage graph does not allow")
+    edges = sorted({(parent, uid) for uid, node in manifest.get("nodes", {}).items() if uid in nodes
+                    for parent in node.get("depends_on", {}).get("nodes", []) if parent in nodes})
+    return nodes, edges
+
+
+def lineage(root, labels):
+    """T017: run `dbt parse` and write docs/LINEAGE.md, a Mermaid graph of node names and edges only.
+
+    `dbt docs` files hold local paths, so they cannot be committed. This file can. It is built from
+    `manifest.json` with names only, and it has no date, so a re-run on the same project changes nothing.
+    """
+    code, _ = _run(root, "parse", labels)
+    path = Path(root) / TARGET / "manifest.json"
+    if code != 0 or not path.is_file():
+        raise DbtError(f"dbt parse exited with code {code}")
+    nodes, edges = _lineage_nodes(json.loads(path.read_text(encoding="utf-8")))
+    order = list(KINDS)
+    ordered = sorted(nodes, key=lambda uid: (order.index(nodes[uid][0]), nodes[uid][1]))
+    ids = {uid: f"n{number}" for number, uid in enumerate(ordered, start=1)}
+    counts = {kind: sum(1 for k, _ in nodes.values() if k == kind) for kind in KINDS}
+    lines = ["# dbt lineage", "",
+             "Written by `voc dbt lineage` from dbt's `manifest.json` (`dbt parse`). Do not edit it by hand.",
+             "It holds node names and edges only: no paths, no SQL and no descriptions.",
+             "It shows the local DuckDB target. The two seeds of the Databricks target (T021) are off there,",
+             "so they are not drawn.", "",
+             f"{counts['source']} sources, {counts['seed']} seeds, {counts['model']} models, "
+             f"{counts['test']} data tests, {len(edges)} edges.", "",
+             "```mermaid", "graph LR"]
+    for uid in ordered:
+        kind, name = nodes[uid]
+        label, start, end = KINDS[kind]
+        lines.append(f"  {ids[uid]}{start}{label}: {name}{end}")
+    lines += [f"  {ids[parent]} --> {ids[child]}" for parent, child in edges]
+    lines.append("```")
+    out = Path(root) / LINEAGE
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    return [f"dbt lineage: {counts['source']} sources, {counts['seed']} seeds, {counts['model']} models, "
+            f"{counts['test']} data tests, {len(edges)} edges. Written to {LINEAGE.as_posix()}."]

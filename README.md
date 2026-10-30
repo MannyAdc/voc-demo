@@ -198,7 +198,8 @@ These come from the threat model in the [spec](specs/001-core-labelling-pipeline
 - What this does not cover yet:
   - Late or corrected records. If a later file holds a complaint ID that is already loaded with changed values, the first row is kept and the change is ignored.
   - Column changes. A file with a missing or extra column fails the load. A new or removed column in the staged table fails the incremental dbt build (`on_schema_change='fail'`). Neither is migrated automatically.
-- `voc dbt docs` writes the dbt docs and the lineage graph to the git-ignored `data/dbt/target` folder. Those files hold local paths, including the user folder. Strip the local paths before the lineage graph is published.
+- `voc dbt docs` writes the dbt docs and the lineage graph to the git-ignored `data/dbt/target` folder. Those files hold local paths, including the user folder, so they are not committed.
+- `voc dbt lineage` writes [docs/LINEAGE.md](docs/LINEAGE.md): the lineage graph of the source, the models and the data tests, with node names and edges only, and no paths. It printed "dbt lineage: 1 sources, 0 seeds, 2 models, 6 data tests, 9 edges. Written to docs/LINEAGE.md." (`uv run --native-tls voc dbt lineage`, 30 October 2026). A test fails if the committed file no longer matches the dbt project.
 
 ## Where to start
 

@@ -68,6 +68,9 @@ def _dbt(config, root, args):
     if args.action == "docs":
         print("\n".join(dbt_run.docs(root, labels)))
         return
+    if args.action == "lineage":
+        print("\n".join(dbt_run.lineage(root, labels)))
+        return
     lines, passed = dbt_run.build(root, labels, args.target)
     print("\n".join(lines))
     if not passed:
@@ -256,7 +259,7 @@ def _evaluate(config, root, args):
 
 COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample, "label": _label,
             "evaluate": _evaluate, "final": _test_run, "audit": _audit, "serve": _serve,
-            ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt,
+            ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt, ("dbt", "lineage"): _dbt,
             ("ledger", "init"): _ledger_init, ("ledger", "raise"): _ledger_raise,
             ("ledger", "status"): _ledger_status, ("ledger", "release"): _ledger_release,
             ("ledger", "clear-overrun"): _ledger_clear_overrun}
@@ -299,6 +302,7 @@ def main(argv=None, env=None, root=None):
     db.add_argument("--target", choices=dbt_run.TARGETS, default="local",
                     help="local DuckDB, or Databricks on the synthetic seeds only (T021)")
     dbt_actions.add_parser("docs", help="write the dbt docs and lineage graph files to dbt/target")
+    dbt_actions.add_parser("lineage", help="write docs/LINEAGE.md, a lineage graph of node names only (T017)")
     ledger = sub.add_parser("ledger", help="the token ledger (B8)").add_subparsers(dest="action", required=True)
     init = ledger.add_parser("init", help="create the ledger with the committed cap")
     init.add_argument("--cap", type=int, help="a lower cap than the committed one")
