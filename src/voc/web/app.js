@@ -60,9 +60,9 @@ function headToHead(f) {
       ? f.tfidf.seconds_per_1000_complaints + " s" : "n/a");
 }
 
-function drawInterval(diff, low, high) {
+function drawInterval(diff, low, high, id) {
   // The 95 percent interval of the difference, in points, with zero marked. The claim needs it all above zero.
-  const svg = $("interval");
+  const svg = $(id || "interval");
   const span = Math.max(Math.abs(low), Math.abs(high), 0.01) * 1.25;
   const x = (v) => 160 + (v / span) * 145;
   const pts = (v) => (v >= 0 ? "+" : "") + (v * 100).toFixed(1);
@@ -73,6 +73,64 @@ function drawInterval(diff, low, high) {
   label(svg, x(diff), 18, pts(diff) + " points");
   label(svg, x(low), 82, pts(low)); label(svg, x(high), 82, pts(high));
   label(svg, x(0), 82, "0");
+}
+
+function points(v) { return typeof v === "number" ? (v >= 0 ? "+" : "") + (v * 100).toFixed(1) : "n/a"; }
+function round3(v) { return typeof v === "number" ? Math.round(v * 1000) : null; }
+
+function noVerdict(text) {
+  // No logged test run: a neutral card, with no figures and no claim that a run exists.
+  const card = $("verdict-h").closest("section");
+  card.classList.remove("has-verdict");
+  $("verdict-body").hidden = true; $("per-product-block").hidden = true;
+  put("verdict-note", "");
+  put("test-verdict", text, true);
+}
+
+function testVerdict(t) {
+  // The claim's verdict, from the single logged test run. Not a tuning figure.
+  const words = { beats: "The LLM beats TF-IDF", inconclusive: "Inconclusive", does_not_beat: "The LLM does not beat TF-IDF" };
+  const [low, high] = t.interval.length === 2 ? t.interval : [null, null];
+  const pts = points;
+  $("verdict-h").closest("section").classList.add("has-verdict");
+  put("verdict-note", "The test set was scored once, after its run was logged in runs/TEST_RUNS.md.");
+  if (t.verdict !== "beats") $("test-verdict").classList.add("not-beats");
+  put("test-verdict", (words[t.verdict] || "No verdict") + ": " + pts(t.difference) + " points, 95% interval "
+      + pts(low) + " to " + pts(high) + " points, on " + num(t.complaints) + " test complaints.");
+  put("t-llm-acc", pct(t.llm.reweighted_accuracy)); put("t-tf-acc", pct(t.tfidf.reweighted_accuracy));
+  put("t-llm-prec", pct(t.llm.precision)); put("t-tf-prec", pct(t.tfidf.precision));
+  put("t-llm-cov", pct(t.llm.coverage)); put("t-tf-cov", pct(t.tfidf.coverage));
+  put("t-llm-cost", t.llm.cost_per_1000_usd ? "$" + t.llm.cost_per_1000_usd : "n/a");
+  put("t-tf-cost", "$0 (no API call)");
+  put("t-llm-time", typeof t.llm.seconds_per_1000_complaints === "number"
+      ? t.llm.seconds_per_1000_complaints + " s (one call at a time)" : "not measured");
+  put("t-tf-time", typeof t.tfidf.seconds_per_1000_complaints === "number"
+      ? t.tfidf.seconds_per_1000_complaints + " s (labelling only)" : "n/a");
+  if ([t.difference, low, high].every((v) => typeof v === "number")) drawInterval(t.difference, low, high, "test-interval");
+  const r = t.run || {};
+  const reasons = Object.entries(r.quarantine_reasons || {}).map(([k, n]) => k + " " + n).join(", ");
+  put("test-run", num(r.accepted) + " accepted, " + num(r.quarantined) + " quarantined"
+      + (reasons ? " (" + reasons + ")" : "") + ". " + num(r.input_tokens) + " input and " + num(r.output_tokens)
+      + " output tokens, " + (r.live_cost_usd ? "$" + r.live_cost_usd : "cost n/a") + ", " + (r.run_seconds ?? "n/a") + " s.");
+  put("per-note", "In this table " + t.per_category.note + ".");
+  const body = $("per-product");
+  const rows = Object.entries(t.per_category.categories).sort((a, b) => b[1].complaints - a[1].complaints);
+  for (const [name, c] of rows) {
+    const tr = body.insertRow();
+    tr.insertCell().textContent = name;
+    tr.insertCell().textContent = num(c.complaints);
+    if (c.too_few_to_judge) {
+      const td = tr.insertCell(); td.colSpan = 2; td.textContent = "too few to judge (under 30)";
+    } else {
+      const llm = tr.insertCell(), tf = tr.insertCell();
+      llm.textContent = dec(c.llm_f1); tf.textContent = dec(c.tfidf_f1);
+      // Compared as shown, at 3 decimals, so a tie on screen is not marked as a win (Mortgage: 0.910 and 0.910).
+      // Only when both exist, so a missing figure is never marked as the better one.
+      const a = round3(c.llm_f1), b = round3(c.tfidf_f1);
+      if (a !== null && b !== null && a > b) llm.classList.add("better");
+      if (a !== null && b !== null && b > a) tf.classList.add("better");
+    }
+  }
 }
 
 function drawCurve(pc) {
@@ -149,9 +207,16 @@ async function main() {
   versionsTable(versions);
   const dev = versions.filter((r) => r.Set === "dev");
   const latest = dev.length ? dev[dev.length - 1].Prompt : "v1";
-  const [figures, run, audit, queue, data] = await Promise.all([
+  // Review of #44: the test card asks which version has a logged test run, not the last development row.
+  const logged = ((await get("/api/tested")) || { versions: [] }).versions;
+  const testVersion = logged.length ? logged[logged.length - 1] : null;
+  const [figures, run, audit, queue, data, tested] = await Promise.all([
     get("/api/eval/" + latest), get("/api/run/" + latest), get("/api/audit/" + latest),
-    get("/api/eval/" + latest + "/quarantine"), get("/api/data")]);
+    get("/api/eval/" + latest + "/quarantine"), get("/api/data"),
+    testVersion ? get("/api/test/" + testVersion) : Promise.resolve(null)]);
+  if (tested) testVerdict(tested);
+  else noVerdict(testVersion ? "The test results for prompt " + testVersion + " could not be loaded."
+                             : "No test run is logged yet, so there is no verdict.");
   if (figures) headToHead(figures);
   safety(run, audit, queue);
   if (data) scale(data);

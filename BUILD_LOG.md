@@ -658,3 +658,37 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - About 10:18 (exact time not recorded) Second live try, same command: "dbt build: 2 seeds, 2 models, 4 data tests. passed 8, failed 0, errors 0, skipped 0". The same dbt models ran on the owner's Databricks Free Edition SQL warehouse, on the 12 synthetic complaints only.
 - About 10:20 The owner searched every file in the work folder for the token, in their own PowerShell: "files holding the token: 0". The command printed only the count. Claude never saw the token.
 - T021 went past its 1 hour time box: about 20 minutes before 02:50 and about 1 hour 35 minutes from 08:45. The owner had allowed past 12:00 at about 02:28.
+- 10:35 Merge verdict on #43 PENDING, then MERGE after Claude's judgement. #43 marked ready. 10:43 The owner merged #43 (time from GitHub), before reading the open question on the lock file. Owner decision: keep the four lowered packages as they are.
+- About 10:45 Owner question: does the build answer what the reviewers asked for? Claude checked the original brief, kept in this session's own history, against `main`. The gaps it found:
+  - The dashboard had only the development figures, not the test verdict.
+  - The repo is still private.
+  - The front end "with user design in mind" (USER.md, wireframes, drill-down, quarantine review) was not built. The owner had chosen "results only" on 28 October without knowing what it left out.
+  - No request logging or monitoring.
+  - "Why this stack" lacked the brief's six points.
+  - Not built: prompt versions after v1, the synthetic sales calls, the lineage graph on screen.
+- About 10:50 (exact time not recorded) Owner decision: build the verdict on the dashboard, the user-designed front end with the quoted sentence on the analyst's own machine only, and, with a helper, "Why this stack", the lineage graph and request logging. Azure on Saturday morning.
+- About 10:55 to 11:05 The owner was offline. Nothing ran.
+- About 11:08 Parallel run: a helper agent started in `../voc-demo-helper` on three branches in order: `docs/why-this-stack`, `feat/lineage`, `feat/request-logging`. It commits only in its own worktree and does not edit this log. Claude reviews and pushes.
+- About 11:10 Work start on the dashboard verdict, in `../voc-demo-dash`, branch `feat/dashboard-verdict`.
+  - Red `3c6d85d` at 11:42: 9 tests in `tests/test_api.py`. 4 failed. 5 passed at once: the 404 cases, which hold before the route exists and guard it after.
+  - Its gate took 26 minutes, with the helper's gates running at the same time.
+  - Green: a new route `/api/test/{version}`, which answers only when `runs/TEST_RUNS.md` holds a logged row for that version (B17). The page puts the verdict card first, with the per-product table. The development panels keep their "tuning figure" tags.
+  - Claude checked the page in a local browser on the committed results files, which hold no complaint text. One fix came from that check: Mortgage was marked as an LLM win, though both F1 scores read 0.910. The page now compares the values as displayed, at 3 decimals.
+- 12:10 Green `d527e22`. #44 opened at about 12:27, with a reviewer.
+- 12:34 Reviewer findings posted on #44, with Claude's checks (time from GitHub). The real ones:
+  - When no test run is logged, the card still looked green and its static text claimed a logged run.
+  - The card asked for the last development version, so the v1 verdict would vanish once a v2 exists.
+  - The logged row was not matched to the scored file.
+  - A missing F1 could be marked as the better one, and missing values could read "NaN".
+  - The spec's field list for the route was short.
+  - Missing tests for these cases.
+- About 12:36 (exact time not recorded) Owner decision: fix them all. The owner also said they had clicked through the page in the browser themselves, so Claude checks the browser tab fresh before using it.
+- 12:39 Correction of the 11:42 entry, which stays as written: the red commit `3c6d85d` held 8 tests, not 9. 4 failed and 4 passed. The read-only test failed too, because before the route existed a POST to it was a 404, not a 405. AI error: Claude counted the test functions by eye, not from pytest's output. The reviewer caught it.
+- The fixes for #44:
+  - The route answers only when the scored file matches its logged row by list hash, model and count, with set "test".
+  - A new route, `/api/tested`, lists the versions with a logged run, and the page asks for the last one.
+  - With no logged run, the card is neutral and has no figures and no claim of a run.
+  - "Better" is marked only when both F1 values exist, compared at 3 decimals. Missing values read "n/a".
+  - The spec lists every served field, and Known limits says what a second logged run would do.
+- Red `46398b7` at 12:37: 11 new tests in `tests/test_api.py`, counted from the test file and the red run. 6 failed. 5 passed at once and guard the route: a v2 or v10 row, a missing log or run summary, and wrong kinds in served fields.
+  - AI error: the first draft of this line said 12 tests and 6 passed, written before counting. Claude stopped the commit, counted, and fixed the draft.
