@@ -831,3 +831,5 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - Before 22:49 (exact time not recorded) Owner decision: go ahead with the fixes as proposed.
 - Red `c844fd7` at 22:50: 4 cases for the page folder, `requirements.txt`, and `.html` or `.css` outside the page. All 4 failed.
 - The fixes for #52: the page folder `src/voc/web/` replaces the three suffixes, `requirements.txt` joins the code files, and a comment says `config/` stays out on purpose, because a prompt or label change is judged by `/eval` and the spec.
+- AI error, by the reviewer agent on #52: to rerun the red state, it tried `git checkout 2c8432e -- src/voc/merge_verdict.py`, which would have changed the worktree. Its brief said to edit nothing. Auto mode refused the command, and `git status` showed the tree unchanged. The agent reported it itself, and Claude posted it on #52.
+- Green `676c2f8` at 23:11: all merge check tests pass. CI green. Merge verdict PENDING. Claude found this entry missing, and added it before marking #52 ready (the same choice the owner made for #51).
