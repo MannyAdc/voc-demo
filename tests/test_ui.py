@@ -160,3 +160,36 @@ def test_A12_a_saved_decision_refreshes_the_queue_and_the_count():
 
 def test_A13_the_form_appears_only_where_a_review_can_be_saved():
     assert re.search(r"c\.can_review\)\s*decisionForm\(c\)", _function("complaintView"))
+
+
+# Owner decision of 30 October: most readers know AI, LLM and API. Every other abbreviation is spelled out where the
+# body text first uses it. The title keeps the short names (owner decision, version 2 of the wireframes).
+
+def _body_text():
+    page = _page()
+    body = page[page.index("</h1>"):]
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", body))
+
+
+def test_A7_the_CFPB_is_named_in_full_where_it_first_appears():
+    text = _body_text()
+    first = text.index("CFPB")
+    assert text[:first + len("CFPB") + 1].endswith("Consumer Financial Protection Bureau (CFPB)")
+
+
+def test_A7_TF_IDF_is_spelled_out_where_it_first_appears():
+    text = _body_text()
+    first = text.index("TF-IDF")
+    assert text[first:].startswith("TF-IDF (term frequency, inverse document frequency)")
+
+
+def test_A7_F1_is_called_the_F1_score_where_it_first_appears():
+    text = _body_text()
+    first = text.index("F1")
+    assert text[first:].startswith("F1 score")
+
+
+def test_A7_the_glossary_spells_out_the_abbreviations():
+    glossary = re.search(r'<dl[^>]*id="glossary"[^>]*>(.*?)</dl>', _page(), re.S).group(1)
+    for full in ("term frequency, inverse document frequency", "F1 score", "Consumer Financial Protection Bureau"):
+        assert full in glossary, full
