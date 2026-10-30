@@ -189,6 +189,12 @@ def test_T006b_code_files_are_told_apart(mv, path, code):
     assert mv.is_code_file(path) is code
 
 
+# Found on #51: the page's script, markup and styles are code too. Its tests read them.
+@pytest.mark.parametrize("path", ["src/voc/web/app.js", "src/voc/web/index.html", "src/voc/web/style.css"])
+def test_T006b_the_page_files_are_code(mv, path):
+    assert mv.is_code_file(path) is True
+
+
 @pytest.mark.parametrize("path, red", [
     ("tests/test_syn.py", True),
     ("tests/conftest.py", False),
