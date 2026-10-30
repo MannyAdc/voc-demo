@@ -193,3 +193,41 @@ def test_A7_the_glossary_spells_out_the_abbreviations():
     glossary = re.search(r'<dl[^>]*id="glossary"[^>]*>(.*?)</dl>', _page(), re.S).group(1)
     for full in ("term frequency, inverse document frequency", "F1 score", "Consumer Financial Protection Bureau"):
         assert full in glossary, full
+
+
+# Review of #53: the spelled-out names must still wrap, and the script and the API add no shortened words or codes.
+
+def test_A7_a_term_button_sits_next_to_a_short_name():
+    # The text before a (?) button cannot wrap, so a long expansion there would run off a phone screen.
+    for inner in re.findall(r'<span class="term-wrap">([^<]*)<button', _page()):
+        assert len(inner.strip()) <= 30, inner
+
+
+def test_A7_the_CFPB_is_named_as_the_US_bureau():
+    assert "US Consumer Financial Protection Bureau (CFPB)" in _body_text()
+
+
+def test_A7_macro_F1_is_explained():
+    page = _page()
+    assert "Macro-F1" not in page
+    assert "Macro F1 score (the average over products)" in page
+
+
+def test_A7_the_script_writes_no_shortened_words():
+    for literal in re.findall(r'"([^"\n]*)"', _script()):
+        assert "n/a" not in literal, literal
+        assert not re.match(r" s(\W|$)", literal), literal
+
+
+def test_A7_every_quarantine_reason_has_a_plain_name():
+    from voc.api import REASONS
+    names = re.search(r"const REASONS = \{(.*?)\};", _script(), re.S).group(1)
+    for reason in REASONS:
+        assert re.search(rf"\b{reason}:", names), reason
+    assert "REASONS[" in _function("safety")
+    assert "REASONS[" in _function("testVerdict")
+
+
+def test_A7_no_rule_number_reaches_the_page():
+    from voc.api import PER_CATEGORY_NOTE
+    assert not re.search(r"\(B[0-9]", PER_CATEGORY_NOTE)

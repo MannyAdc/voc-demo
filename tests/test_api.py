@@ -419,3 +419,12 @@ def test_A7_the_page_asks_which_version_was_tested_and_claims_no_run_in_its_stat
     page = (WEB / "index.html").read_text(encoding="utf-8")
     card = page[page.index('id="verdict-h"'):page.index('id="h2h"')]
     assert "was scored once" not in card and "logged in runs/TEST_RUNS.md" not in card
+
+
+def test_A4_api_answers_are_never_stored_by_the_browser(client):
+    # Review of #53: on the analyst's machine an answer can hold complaint text, so the browser keeps no copy of it.
+    # The page and its files are only checked again.
+    for route in ("/api/health", "/api/versions"):
+        assert client.get(route).headers["cache-control"] == "no-store", route
+    for route in ("/", "/web/app.js"):
+        assert client.get(route).headers["cache-control"] == "no-cache", route
