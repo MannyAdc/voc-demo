@@ -49,6 +49,21 @@ and the counters are at `https://<app name>.azurewebsites.net/api/health`.
 
 - `az appservice plan create` refuses F1 for Linux: run it again with `--sku B1`. That costs money, which the free account's credit covers. Delete the group afterwards to stop it.
 - `az webapp create` refuses the runtime: list the runtimes with `az webapp list-runtimes --os-type linux` and pick the closest Python 3.13 or later.
+- `az` is not found in a PowerShell window opened before the install: open a new window, or reload the path in that window with `$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")`.
+
+## What happened on the first deploy (30 October 2026)
+
+The owner ran the commands above with the app name `voc-demo-20261030`. The F1 plan for Linux was created, so F1 does run a Python app on Linux. Azure registered its `Microsoft.Web` provider for the new account by itself. Before the code was uploaded, the address answered 503, because the start command had nothing to start. After the upload of this branch, the dashboard loaded at https://voc-demo-20261030.azurewebsites.net.
+
+## Redeploying after a change
+
+One line, after `az login`, from the repo folder:
+
+```powershell
+.\scripts\deploy_azure.ps1 -App voc-demo-20261030
+```
+
+It packs the committed files of `origin/main` the same way, leaving out `uv.lock` and `pyproject.toml`, and uploads them. `-Ref <branch>` deploys another branch.
 
 ## Removing it
 

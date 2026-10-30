@@ -771,3 +771,14 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - DEPLOY.md: a placeholder for the folder, the exact export command, and the quickstart's note on B1.
   - Known limits: App Service's warm-up ping is counted as a 400.
   - AI error during the fix: Claude's `sed` edit added sniffio to the main dependency list too, because the FastAPI line appears twice in `pyproject.toml`. Claude saw it in the diff and removed it before the commit.
+- 17:01 Green `a2d65da` for #50's review pushed.
+- About 16:45 to 17:00 (exact times not recorded) The owner ran the Azure setup in their own PowerShell, with the app name `voc-demo-20261030` (the owner chose the date). The F1 plan for Linux was created, so F1 does run a Python app on Linux. Azure registered its `Microsoft.Web` provider by itself. Before the upload, the address answered 503, because the start command had nothing to start. The commands used `-o none`, so no account ID reached the screen or the chat.
+- About 17:05 (exact time not recorded) The owner uploaded the #50 branch with `git archive` and `az webapp deploy`, before the merge, as a test. The dashboard loaded at https://voc-demo-20261030.azurewebsites.net: the "What is being labelled" box, the review box with 9 waiting, and the product links.
+- About 17:08 Owner decisions:
+  - A one-line redeploy script and the live link at the top of the README.
+  - A UI rework, so the screens look designed for the analyst, not like a results report. Wireframes first, for approval.
+  - An outside review of the repo, run by the owner in another chat, was pasted in as a list of six leads. Claude checked them against the repo. It agreed with most: a screenshot from a synthetic demo mode, the deploy, a browser test, focus and contrast, a README summary, and checks before going public. It noted that `CLAUDE.md` forbids Claude to delete branches, and that "only one focus rule" is one rule covering all controls.
+  - About 17:18: the browser test is option (a), one smoke test in a separate CI job with network, after the UI rework.
+- The #50 change for this: `scripts/deploy_azure.ps1`, which packs `origin/<branch>` the same way and uploads it, and stops at the first failing step. The README top links the live copy and says what it holds and hides. `docs/DEPLOY.md` records what happened on the first deploy and how to redeploy.
+- Red `6632a5a` at 17:17: 2 tests in `tests/test_public.py`, for the redeploy script and the README link. Both failed, checked by running them on the commit's own files.
+- About 17:50 AI error: to check the red tests, Claude ran `uv run` in this worktree. It stopped on a Windows file lock part-way through reinstalling the `voc` package, so `voc` could not be imported. The gate then refused the green commit: 6 hook tests failed with "No module named 'voc'". The same repair as before (remove the half-removed package folder, then `uv sync`) fixed it. The commit was made again.

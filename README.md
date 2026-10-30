@@ -4,6 +4,8 @@ A Voice of the Customer pipeline on the public US CFPB Consumer Complaint Databa
 
 Built in three days, with every step recorded: the spec, the tests written before the code, the reviews, the decisions and the mistakes. See [BUILD_LOG.md](BUILD_LOG.md).
 
+**Live public copy:** https://voc-demo-20261030.azurewebsites.net, on Azure App Service (free tier, with no "Always On", so the first visit after a quiet spell can be slow while the app starts). It holds what this repo holds: IDs, labels, reasons and figures, with no complaint text and no saving of review decisions. The full analyst screens, with the complaint text and the quote highlighted, run only on the analyst's own machine ([docs/DEPLOY.md](docs/DEPLOY.md), spec 002 rule A13).
+
 ## The result
 
 The claim was fixed before the first run: **the LLM, with its quote check, beats TF-IDF at the same coverage** (rule B10 in the [spec](specs/001-core-labelling-pipeline/spec.md)). It was judged once, on a frozen test set of 1,909 complaints. [How we measure](docs/HOW_WE_MEASURE.md) explains the method in plain words.
