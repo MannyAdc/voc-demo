@@ -114,7 +114,9 @@ def test_A10_without_the_local_data_no_text_and_no_consumer_choice_is_served(roo
 
 
 def test_A10_a_complaint_outside_the_development_results_is_a_404_even_if_it_is_staged(client):
-    staged_only = [r for r in csv.DictReader(open(FIXTURE, encoding="utf-8"))][-1]["Complaint ID"]
+    # Changed after CI on #46: the fixture file is closed, because CI turns an unclosed file warning into an error.
+    with open(FIXTURE, encoding="utf-8", newline="") as f:
+        staged_only = list(csv.DictReader(f))[-1]["Complaint ID"]
     assert client.get(f"/api/review/v1/complaint/{staged_only}").status_code == 404
     assert client.get("/api/review/v1/complaint/not-an-id").status_code == 404
 

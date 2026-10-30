@@ -729,3 +729,4 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - The entry "The green change: ... and the docs" is wrong about the docs. They are in #45, not in this pull request.
   - The browser check entry sits under the red commit `3438541`, but it checked the green code.
 - The gate of `cf4c49d` listed the 5 still-failing tests of `76af932` as carried over, as the gate rules say. They pass in the green commit.
+- 15:12 CI failed on `ceeb4db`: `test_A10_a_complaint_outside_the_development_results_is_a_404_even_if_it_is_staged` opened the fixture file without closing it, and CI turns that warning into an error. AI error in Claude's test, caught by CI, not by the local gate. Fixed with a `with` block, with a comment.
