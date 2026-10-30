@@ -116,6 +116,21 @@ To label real complaints you need the pinned July 2026 export. The CFPB serves o
 
 ## Why this stack
 
+The judgement here is to use the simplest tool that does the job. No tool was added for show.
+
+**Size.** The July 2026 export holds 672,036 complaints ([docs/DATA.md](docs/DATA.md), `results/profile_july_2026.json`). The file is 216,250,982 bytes (`config/data_files.toml`). That fits on one laptop. A Spark cluster or a cloud warehouse would add setup time, cost and accounts, with no gain at this size.
+
+**dbt is the part that carries over.** The SQL models and the data tests are dbt code, and dbt draws the lineage and writes the docs from them. dbt's documentation says: "dbt connects with data platforms by using a dedicated adapter plugin for each". Its table lists DuckDB and Databricks as generally available ([Supported data platforms](https://docs.getdbt.com/docs/connect-adapters), read 30 October 2026). In this repo the same models ran on a Databricks SQL warehouse, on synthetic data. The run printed "dbt build: 2 seeds, 2 models, 4 data tests. passed 8, failed 0, errors 0, skipped 0" (see "The same models on Databricks (T021)" above, and [BUILD_LOG.md](BUILD_LOG.md), 30 October). Four DuckDB-only parts needed a Databricks branch to get there.
+
+**Anyone can run it.** The tests, the dbt build on the synthetic fixture and the dashboard need no account, no key and no money. After `uv sync`, each is one command (see "Run it yourself"). CI runs the same dbt build, with its data tests, on the committed synthetic fixture with no network (`.github/workflows/ci.yml`).
+
+**Time goes to verification, not infrastructure.** With no cluster or warehouse to set up, the time went to the quote check (`src/voc/evidence.py`), the evaluation against TF-IDF with a paired bootstrap ([docs/HOW_WE_MEASURE.md](docs/HOW_WE_MEASURE.md)), and the tests written before the code.
+
+**When to switch.**
+- The data no longer fits on one machine. Then the dbt models move to a warehouse through its adapter, as the Databricks run showed.
+- Many people write at once. DuckDB's documentation says that in its in-process mode "one process can both read and write to the database" ([Concurrency](https://duckdb.org/docs/2.0/connect/concurrency.html), read 30 October 2026). Many writers need a shared database server or warehouse.
+- Scheduled runs need dependencies between steps and retries. Then a scheduler such as Airflow earns its cost (see the scheduler note under Scale). Today one scheduled GitHub Actions job is enough.
+
 Versions are the pins in `pyproject.toml`.
 
 - **DuckDB** (`duckdb==1.5.6`): one local file, no server, enough for a monthly export of 216 MB (216,250,982 bytes, `config/data_files.toml`).
