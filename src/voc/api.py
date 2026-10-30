@@ -37,8 +37,9 @@ CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' 
 LOCAL_HOSTS = ["127.0.0.1", "localhost"]
 TUNING = "tuning figures. The verdict comes only from the single test run"
 VERDICT = "the claim's verdict, from the single logged test run (B10, B17)"
+# Shown on the page, so it names no rule number (review of #53). The rule is B10.
 PER_CATEGORY_NOTE = ("the LLM's quarantined labels count as wrong. TF-IDF here labels every complaint, at full "
-                     "coverage, not the matched coverage of the headline figures (B10)")
+                     "coverage, not the matched coverage of the headline figures")
 TEST_RUN_NUMBERS = ("complaints", "accepted", "quarantined", "run_seconds", "input_tokens", "output_tokens")
 # A row of runs/TEST_RUNS.md: | Date | Prompt | Test list hash | Model | Complaints | Reason |
 LOG_DATE = r"\| [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:]+"
@@ -117,6 +118,11 @@ def create_app(root, with_text=False, public_host=None):
         response.headers["Content-Security-Policy"] = CSP
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
+        # A browser checks for a newer copy of the page and its files on every visit, so a redeploy never pairs the new
+        # page with an old script. A file under /web/ that has not changed gets a short "not modified" answer. The page
+        # itself is small and is sent again. An API answer can hold complaint text on the analyst's machine, so the
+        # browser keeps no copy of it at all (review of #53).
+        response.headers["Cache-Control"] = "no-store" if request.url.path.startswith("/api/") else "no-cache"
         return response
 
     def _file(folder, version, suffix, set_name="dev"):

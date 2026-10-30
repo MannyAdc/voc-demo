@@ -238,6 +238,13 @@ def test_A4_only_the_local_host_names_are_answered(client):
     assert client.get("/api/health", headers={"host": "localhost:8000"}).status_code == 200
 
 
+def test_A4_browsers_check_for_a_newer_page_on_every_visit(client):
+    # Found after the first redeploy: with no cache header, a browser kept the old script and style for the new page.
+    # Changed in the green commit of the review of #53: API answers are now "no-store", tested on their own.
+    for route in ("/", "/web/app.js", "/web/style.css"):
+        assert client.get(route).headers["cache-control"] == "no-cache", route
+
+
 def test_A4_the_policy_names_every_source(client):
     policy = client.get("/").headers["content-security-policy"]
     for part in ("default-src 'self'", "script-src 'self'", "style-src 'self'", "connect-src 'self'",
@@ -413,3 +420,12 @@ def test_A7_the_page_asks_which_version_was_tested_and_claims_no_run_in_its_stat
     page = (WEB / "index.html").read_text(encoding="utf-8")
     card = page[page.index('id="verdict-h"'):page.index('id="h2h"')]
     assert "was scored once" not in card and "logged in runs/TEST_RUNS.md" not in card
+
+
+def test_A4_api_answers_are_never_stored_by_the_browser(client):
+    # Review of #53: on the analyst's machine an answer can hold complaint text, so the browser keeps no copy of it.
+    # The page and its files are only checked again.
+    for route in ("/api/health", "/api/versions"):
+        assert client.get(route).headers["cache-control"] == "no-store", route
+    for route in ("/", "/web/app.js"):
+        assert client.get(route).headers["cache-control"] == "no-cache", route

@@ -111,7 +111,8 @@ def test_A7_the_tiles_sit_in_the_overview_and_hold_no_figure_before_a_run_is_loa
     page = _page()
     overview = page[page.index('id="tab-overview"'):page.index('id="tab-browse"')]
     for tile in ("tile-complaints", "tile-accuracy", "tile-waiting", "tile-cost"):
-        assert re.search(rf'id="{tile}">n/a<', overview), tile
+        # Changed in the green commit of the review of #53: "n/a" became "not yet" (owner decision on abbreviations).
+        assert re.search(rf'id="{tile}">not yet<', overview), tile
         assert f'put("{tile}"' in _script(), tile
     for tile in ("tile-complaints", "tile-accuracy", "tile-cost"):
         assert tile in _function("noVerdict"), tile
@@ -160,3 +161,74 @@ def test_A12_a_saved_decision_refreshes_the_queue_and_the_count():
 
 def test_A13_the_form_appears_only_where_a_review_can_be_saved():
     assert re.search(r"c\.can_review\)\s*decisionForm\(c\)", _function("complaintView"))
+
+
+# Owner decision of 30 October: most readers know AI, LLM and API. Every other abbreviation is spelled out where the
+# body text first uses it. The title keeps the short names (owner decision, version 2 of the wireframes).
+
+def _body_text():
+    page = _page()
+    body = page[page.index("</h1>"):]
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", body))
+
+
+def test_A7_the_CFPB_is_named_in_full_where_it_first_appears():
+    text = _body_text()
+    first = text.index("CFPB")
+    assert text[:first + len("CFPB") + 1].endswith("Consumer Financial Protection Bureau (CFPB)")
+
+
+def test_A7_TF_IDF_is_spelled_out_where_it_first_appears():
+    text = _body_text()
+    first = text.index("TF-IDF")
+    assert text[first:].startswith("TF-IDF (term frequency, inverse document frequency)")
+
+
+def test_A7_F1_is_called_the_F1_score_where_it_first_appears():
+    text = _body_text()
+    first = text.index("F1")
+    assert text[first:].startswith("F1 score")
+
+
+def test_A7_the_glossary_spells_out_the_abbreviations():
+    glossary = re.search(r'<dl[^>]*id="glossary"[^>]*>(.*?)</dl>', _page(), re.S).group(1)
+    for full in ("term frequency, inverse document frequency", "F1 score", "Consumer Financial Protection Bureau"):
+        assert full in glossary, full
+
+
+# Review of #53: the spelled-out names must still wrap, and the script and the API add no shortened words or codes.
+
+def test_A7_a_term_button_sits_next_to_a_short_name():
+    # The text before a (?) button cannot wrap, so a long expansion there would run off a phone screen.
+    for inner in re.findall(r'<span class="term-wrap">([^<]*)<button', _page()):
+        assert len(inner.strip()) <= 30, inner
+
+
+def test_A7_the_CFPB_is_named_as_the_US_bureau():
+    assert "US Consumer Financial Protection Bureau (CFPB)" in _body_text()
+
+
+def test_A7_macro_F1_is_explained():
+    page = _page()
+    assert "Macro-F1" not in page
+    assert "Macro F1 score (the average over products)" in page
+
+
+def test_A7_the_script_writes_no_shortened_words():
+    for literal in re.findall(r'"([^"\n]*)"', _script()):
+        assert "n/a" not in literal, literal
+        assert not re.match(r" s(\W|$)", literal), literal
+
+
+def test_A7_every_quarantine_reason_has_a_plain_name():
+    from voc.api import REASONS
+    names = re.search(r"const REASONS = \{(.*?)\};", _script(), re.S).group(1)
+    for reason in REASONS:
+        assert re.search(rf"\b{reason}:", names), reason
+    assert "REASONS[" in _function("safety")
+    assert "REASONS[" in _function("testVerdict")
+
+
+def test_A7_no_rule_number_reaches_the_page():
+    from voc.api import PER_CATEGORY_NOTE
+    assert not re.search(r"\(B[0-9]", PER_CATEGORY_NOTE)
