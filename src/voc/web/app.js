@@ -83,6 +83,7 @@ function noVerdict(text) {
   const card = $("verdict-h").closest("section");
   card.classList.remove("has-verdict");
   $("verdict-body").hidden = true; $("per-product-block").hidden = true;
+  for (const tile of ["tile-complaints", "tile-accuracy", "tile-cost"]) put(tile, "n/a");
   put("verdict-note", "");
   put("test-verdict", text, true);
 }
@@ -245,7 +246,12 @@ const REASONS = { quote_not_in_text: "the quoted sentence is not in the text", i
   quote_empty: "the AI gave no quote", quote_redaction_only: "the quote is only redaction marks", other: "another reason" };
 const DECISIONS = { ai_right: "the AI's label is right", word_model_right: "the word-based model is right",
   other_product: "another product fits better", no_product: "it fits no product clearly", correction: "a correction" };
-const listState = { product: null, show: "all", page: 1 };
+const listState = { product: null, show: "all", page: 1, loaded: null, keepFocus: false };
+// Review of #51: each fetch takes a ticket. An answer that arrives after a newer request is dropped, so two quick
+// clicks never put one complaint's facts under another's heading.
+const latest = { list: 0, complaint: 0, review: 0 };
+let reviewLoaded = false;
+let currentTab = null;
 
 function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
 function link(href, text) { const a = document.createElement("a"); a.href = href; a.textContent = text; return a; }
@@ -256,6 +262,7 @@ const TABS = ["overview", "browse", "review", "measured"];
 
 function showTab(name, withDetail) {
   // One tab at a time. The complaint pane sits beside the Browse or Review list when a complaint is open.
+  currentTab = name;
   for (const tab of TABS) $("tab-" + tab).hidden = tab !== name;
   for (const a of document.querySelectorAll("nav.tabs a")) {
     if (a.dataset.tab === name) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
@@ -289,17 +296,34 @@ async function reviewCount() {
 }
 
 async function listView(product, openId) {
+  // The list is fetched again only when the product, the filter or the page changes. Opening a complaint beside
+  // it keeps the analyst's place. Paging keeps the focus on the pager.
   if (listState.product !== product) { listState.product = product; listState.page = 1; }
+  const keepFocus = listState.keepFocus; listState.keepFocus = false;
   showTab("browse", !!openId);
-  $("browse-product").value = product;
-  $("list-h").textContent = product + ": development complaints";
   if (openId) complaintView(openId);
-  else $("list-h").focus();
-  const body = $("list-rows"); clear(body);
+  const body = $("list-rows");
+  $("browse-product").value = product || "";
+  if (!product) {
+    $("list-h").textContent = "Browse the development complaints";
+    clear(body); put("list-note", ""); put("list-page", ""); listState.loaded = null;
+    status("list-status", "Choose a product above to see its complaints.");
+    $("list-prev").disabled = true; $("list-next").disabled = true;
+    $("list-h").focus();
+    return;
+  }
+  $("list-h").textContent = product + ": development complaints";
+  if (!openId && !keepFocus) $("list-h").focus();
+  const key = [product, listState.show, listState.page].join("|");
+  if (listState.loaded === key) return;
+  clear(body);
   status("list-status", "Loading...");
+  const ticket = ++latest.list;
   const q = new URLSearchParams({ product, show: listState.show, page: listState.page });
   const [d, err] = await fetchJson("/api/review/" + version + "/complaints?" + q);
+  if (ticket !== latest.list) return;
   if (!d) { status("list-status", "The complaints " + err + ". Go back and try again.", "error"); return; }
+  listState.loaded = key;
   status("list-status", d.total ? "" : "No complaints here for the filter \"" + listState.show + "\".");
   const notes = [];
   if (!d.local) notes.push("The consumer's own choice and the text are available only on the analyst's own machine, so this list groups by the AI's label and the right or wrong filter is empty.");
@@ -318,6 +342,7 @@ async function listView(product, openId) {
 }
 
 async function complaintView(id) {
+  const ticket = ++latest.complaint;
   $("view-complaint").hidden = false;
   $("complaint-h").textContent = "Complaint " + id;
   $("complaint-h").focus();
@@ -325,6 +350,7 @@ async function complaintView(id) {
   clear($("c-text")); $("decision").hidden = true; status("d-status", "");
   status("complaint-status", "Loading...");
   const [c, err] = await fetchJson("/api/review/" + version + "/complaint/" + encodeURIComponent(id));
+  if (ticket !== latest.complaint) return;
   if (!c) { status("complaint-status", "This complaint " + err + ".", "error"); return; }
   status("complaint-status", "");
   put("c-ai", c.ai_label || (c.proposed_label ? "proposed " + c.proposed_label + ", not accepted" : "none"));
@@ -388,19 +414,30 @@ function decisionForm(c) {
     const [saved] = await fetchJson("/api/review/" + version + "/decision/" + encodeURIComponent(c.complaint_id),
       { method: "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "voc" }, body: JSON.stringify(body) });
     if (!saved) { status("d-status", "The decision could not be saved. Check the choice and try again.", "error"); return; }
+    // The queue, the counts and the browse list change with a decision, so they are loaded again.
+    reviewLoaded = false; listState.loaded = null;
+    reviewCount();
+    if (currentTab === "review") reviewView(c.complaint_id, true);
     await complaintView(c.complaint_id);
     status("d-status", "Saved: " + (saved.review.label || "no product") + ", "
       + (DECISIONS[saved.review.reason] || "a correction") + ". The decision is locked.", "ok");
   };
 }
 
-async function reviewView(openId) {
-  showTab("review", !!openId);
-  if (openId) complaintView(openId); else $("review-h").focus();
-  const body = $("review-rows"); clear(body);
-  status("review-status", "Loading...");
+async function reviewView(openId, queueOnly) {
+  // queueOnly reloads the list on the left after a decision, and leaves the open complaint alone.
+  if (!queueOnly) {
+    showTab("review", !!openId);
+    if (openId) complaintView(openId); else $("review-h").focus();
+    if (reviewLoaded) return;
+  }
+  const body = $("review-rows");
+  if (!queueOnly) { clear(body); status("review-status", "Loading..."); }
+  const ticket = ++latest.review;
   const [q, err] = await fetchJson("/api/review/" + version + "/queue");
+  if (ticket !== latest.review) return;
   if (!q) { status("review-status", "The review queue " + err + ".", "error"); return; }
+  clear(body); reviewLoaded = true;
   status("review-status", q.total ? "Reviewed " + q.reviewed + " of " + q.total + "." : "No complaint is waiting for review.");
   for (const r of q.rows) {
     const tr = body.insertRow();
@@ -425,22 +462,33 @@ function route() {
   let hash = "";
   try { hash = decodeURIComponent(location.hash.replace(/^#/, "")); } catch (e) { hash = ""; }
   const [, kind, first, second] = hash.split("/");
+  // The old complaint address (before the tabs) opens the same complaint in the review queue.
+  if (kind === "complaint" && first) { location.replace("#/review/" + encodeURIComponent(first)); return; }
+  const before = currentTab;
   if (kind === "product" && first) listView(first, second);
-  else if (kind === "browse") { showTab("browse", false); $("list-h").focus(); }
+  else if (kind === "browse") listView(null);
   else if (kind === "review") reviewView(first);
-  else if (kind === "complaint" && first) { showTab("review", true); complaintView(first); }
   else if (kind === "measured") { showTab("measured", false); }
   else showTab("overview", false);
   reviewCount();
-  window.scrollTo(0, 0);
+  if (currentTab !== before) window.scrollTo(0, 0);
+}
+
+function refreshList() {
+  // Paging and the filter go through the address, so the address and the screen stay in step: an open complaint
+  // closes, and its link opens it again.
+  if (!listState.product) return;
+  listState.keepFocus = true;
+  const target = "#/product/" + encodeURIComponent(listState.product);
+  if (location.hash !== target) location.hash = target; else route();
 }
 
 function wire() {
   for (const r of document.querySelectorAll("input[name=show]")) {
-    r.onchange = () => { listState.show = r.value; listState.page = 1; listView(listState.product); };
+    r.onchange = () => { listState.show = r.value; listState.page = 1; refreshList(); };
   }
-  $("list-prev").onclick = () => { listState.page -= 1; listView(listState.product); };
-  $("list-next").onclick = () => { listState.page += 1; listView(listState.product); };
+  $("list-prev").onclick = () => { listState.page -= 1; refreshList(); };
+  $("list-next").onclick = () => { listState.page += 1; refreshList(); };
   $("browse-product").onchange = (event) => {
     if (event.target.value) location.hash = "#/product/" + encodeURIComponent(event.target.value);
   };

@@ -105,15 +105,15 @@ After the first screens were built, the owner judged that they read like a resul
 +--------------------------------------------------------------------------+
 ```
 
-The title keeps the technical names (owner decision). Each (?) opens a one-line note in place.
+The title keeps the technical names (owner decision). Each (?) opens a short note in place.
 
 ## Tab 1, Overview (task 1)
 
 ```
 | +-------------+ +-----------------+ +--------------+ +----------------+ |
 | | 1,909       | | 80.3%           | | 9            | | $0.2373        | |
-| | complaints  | | of the LLM's    | | wait for a   | | LLM cost per   | |
-| | in the test | | labels right (?)| | person       | | 1,000          | |
+| | complaints  | | of all test     | | wait for a   | | LLM cost per   | |
+| | in the test | | complaints right| | person       | | 1,000          | |
 | +-------------+ +-----------------+ +--------------+ +----------------+ |
 | VERDICT: The LLM beats TF-IDF: +2.4 points, 95% interval +0.5 to +4.1   |
 | COMPLAINTS BY PRODUCT                          F1 (?): LLM / TF-IDF      |

@@ -778,3 +778,17 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - The page was checked in a browser on synthetic data only (`SYN-` IDs, served with a scratchpad script), never on real data.
 - AI error caught in that check: the "How we measured" tab showed on the overview too. The CSS rule `.tab.grid{display:grid}` beat the `hidden` attribute. Fixed with `[hidden]{display:none !important}`.
 - Contrast, measured on the page with the WCAG formula: two pairs failed 4.5 to 1: the TF-IDF orange in light mode, and the button text in dark mode. Both fixed, with a darker orange and a new `--on-llm` colour for text on buttons. After the fix every pair measured passes: light TF-IDF on card 5.12, on the background 4.78, light button 4.75, dark button 7.28.
+- About 18:00 (exact time not recorded) A fresh reviewer agent read the diff `a2d65da..971411d`. It found 11 points, posted on #51 with Claude's checks. Claude confirmed three by hand: the (?) buttons were 4.43 to 1 on the page background, the "1,909" tile was written into the page, and paging with no product chosen asked for the product "null".
+- AI error: the contrast entry above says every pair passes. It was not true. Claude had measured only some pairs, and missed the LLM blue on the page background (4.43) and on the grey tag background (4.20), both in light mode. The reviewer caught it.
+- Note on the entries above: the red entry at 17:23 comes before the "about 17:10 to 17:20" entry. The log is not reordered.
+- 18:08 Owner decision: fix all of the review points.
+- The fixes for #51:
+  - Each fetch takes a ticket, and a late answer is dropped. Checked in a browser on synthetic data: the first of two complaint answers was delayed on purpose, and the pane kept the second complaint's facts.
+  - Browse with no product says "Choose a product above" and turns the pager off. Paging and the filter go through the address, so an open complaint closes and its link opens it again.
+  - The tiles start as "n/a" and go back to "n/a" when no test run loads. The accuracy tile says "of all test complaints labelled right by the LLM".
+  - The light-mode LLM blue is now #2963cc: 5.22 to 1 on the page, 5.60 on cards, 4.94 on the grey tag. A new test computes every text colour pair in both themes from the CSS.
+  - The list is loaded again only when the product, filter or page changes. The page scrolls to the top only when the tab changes. A saved decision reloads the queue, the tab count and the tile.
+  - The old `#/complaint/<id>` address opens the same complaint in the review queue.
+  - Spec A7 now describes the tabs. `USER.md` and the wireframes say "a short note", not "a one-line note".
+  - Not changed: the title test, which passed before the change. It guards the owner's decision on the title, and a red commit may not delete a test.
+- Red `0649e80` at 18:10: 10 tests in `tests/test_ui.py` for the review points. 7 failed. 3 passed at once and guard what was already right: the tab links, the term buttons, and no form on the public copy.
