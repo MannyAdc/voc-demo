@@ -822,3 +822,13 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - The work on #51 started in `../voc-demo-ui`, branch `feat/ui-tabs`, from `a2d65da` (#50's branch), after the owner approved the wireframes and before the first red commit at 17:23. The exact start time was not recorded. This line is written late, at about 21:35.
 - About 21:35 Owner decision: add these entries to #51 before it is marked ready.
 - AI error caught before the commit: Claude first wrote these entries with three times it had not checked (21:28, 21:38, 21:40). It stopped the commit and checked them against GitHub and the clock.
+- About 23:00 (exact time not recorded) The owner looked at the live page after Ctrl+F5: better, but the text is too small, and the window of about 760 px got the narrow layout. The owner asked how the data is updated, and whether that suits the reviewers.
+- Before 23:42 (exact times not recorded) Owner decisions:
+  - Normal text is no smaller than the verdict line (1.15rem). Only footnotes and similar text may be smaller.
+  - Build option (2): a "Data as of" strip on the overview. Claude said what it answers (deployment and monitoring, on screen) and what it does not (the update process itself, which the video shows with the incremental August load).
+- 23:42 Work start in `../voc-demo-ui`, branch `feat/data-freshness`, from `main`.
+- Red `fd067a3` at 23:43: 6 tests (3 for `/api/freshness`, the strip on the page, the font floor, the 720 px breakpoint). All 6 failed.
+- AI error caught by a test: Claude's first strip linked to the GitHub Actions page. Rule A8 ("the page loads nothing from outside") failed on it. Claude kept the rule and named the workflow in plain text instead.
+- AI error in a red test: the font test required normal text to equal the verdict line. But the verdict line had to grow to stay prominent. Changed in the green commit, with a comment, to compare against the fixed 1.15rem the owner chose.
+- Checked in a browser on synthetic data at 760 px (dark) and 1280 px (light). At 760 px the larger text cut off a tile and squeezed the bars. Fixed: tiles go two by two below 1000 px, and each bar gets its own line there. On the real repo files `/api/freshness` returns 1 to 31 July 2026, 672,036 complaints, 10,002 with a narrative, the test run of 29 October at 21:48, and 05:17 UTC.
+- 23:55 #52 merged by the owner (time from git).

@@ -183,8 +183,10 @@ def test_A14_the_overview_has_a_data_as_of_strip_filled_from_the_api():
 
 def test_A7_normal_text_is_as_large_as_the_verdict_line():
     # Owner decision: nothing smaller than the verdict line, except footnotes, captions and small marks.
+    # Changed in the green commit: the floor is the verdict line's size when the owner set the rule (1.15rem). The
+    # verdict line itself grew, so it still stands out, and the red version compared against its new size.
     css = _css()
-    verdict = _rem(re.search(r"\.verdict\.big \{[^}]*font-size: ([^;]+);", css).group(1))
+    verdict = 1.15
     body = re.search(r"body \{[^}]*font-size: ([^;]+);", css)
     assert body and _rem(body.group(1)) == verdict
     small_ok = (".note", ".small", ".legend", "footer", ".tag", "svg text", "button.term", ".bar-count", ".grid2 span")

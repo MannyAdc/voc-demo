@@ -11,13 +11,15 @@
 * { box-sizing: border-box; }
 /* A hidden element stays hidden, even where a rule below sets display (the tabs, the split panes). */
 [hidden] { display: none !important; }
+/* Owner decision: normal text is as large as the old verdict line (1.15rem). Only footnotes, captions and small marks
+   are smaller. */
 body { margin: 0; background: var(--bg); color: var(--ink);
-  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-header, main, footer { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 1.15rem; line-height: 1.5; }
+header, main, footer { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
 header { padding-top: 28px; }
-h1 { font-size: 1.6rem; margin: 0 0 6px; }
-h2 { font-size: 1.1rem; margin: 0 0 10px; display: flex; gap: 8px; align-items: center; }
-h3 { font-size: .9rem; color: var(--muted); margin: 14px 0 6px; font-weight: 600; }
+h1 { font-size: 2rem; margin: 0 0 6px; }
+h2 { font-size: 1.35rem; margin: 0 0 10px; display: flex; gap: 8px; align-items: center; }
+h3 { font-size: 1.15rem; color: var(--muted); margin: 14px 0 6px; font-weight: 600; }
 .sub { color: var(--muted); margin: 0 0 12px; max-width: 760px; }
 .banner { background: var(--tag); border-left: 4px solid var(--tf); padding: 8px 12px; border-radius: 6px; }
 main { padding-top: 16px; }
@@ -28,7 +30,7 @@ main { padding-top: 16px; }
 .wide { grid-column: 1 / -1; }
 .tag { font-size: .7rem; font-weight: 600; background: var(--tag); color: var(--muted); padding: 2px 8px;
   border-radius: 999px; text-transform: uppercase; letter-spacing: .03em; }
-.note { color: var(--muted); font-size: .85rem; }
+.note { color: var(--muted); font-size: 1rem; }
 .h2h { display: grid; grid-template-columns: 1.3fr 1.1fr .9fr 1.2fr; gap: 20px; align-items: start; }
 .figures th, .figures td { white-space: nowrap; }
 .figures tbody th { white-space: normal; }
@@ -37,14 +39,13 @@ th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line
 .figures td { font-weight: 600; }
 .figures thead th:nth-child(2) { color: var(--llm); }
 .figures thead th:nth-child(3) { color: var(--tf); }
-.queue { font-size: .85rem; }
 .scroll { overflow-x: auto; }
 .stats { display: grid; gap: 10px; margin: 0; }
 .stats div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .stats dt { color: var(--muted); }
 .stats dd { margin: 0; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 .verdict { font-weight: 600; }
-.verdict.big { font-size: 1.15rem; margin: 4px 0 8px; }
+.verdict.big { font-size: 1.4rem; margin: 4px 0 8px; }
 .has-verdict .verdict.big { color: var(--good); }
 .has-verdict .verdict.big.not-beats { color: var(--warn); }
 .verdict-card { border-left: 4px solid var(--line); }
@@ -54,9 +55,9 @@ td.better { color: var(--good); font-weight: 600; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .grid2 div { background: var(--tag); border-radius: 8px; padding: 10px; text-align: center; }
 .grid2 b { display: block; font-size: 1.3rem; }
-.grid2 span { color: var(--muted); font-size: .8rem; }
+.grid2 span { color: var(--muted); font-size: 1rem; }
 svg { width: 100%; height: auto; overflow: visible; }
-svg text { fill: var(--muted); font-size: 10px; }
+svg text { fill: var(--muted); font-size: 11px; }
 svg .axis { stroke: var(--line); }
 svg .zero { stroke: var(--muted); stroke-dasharray: 3 3; }
 svg .tf { stroke: var(--tf); fill: none; stroke-width: 2; }
@@ -64,12 +65,12 @@ svg .tfdot { fill: var(--tf); }
 svg .llm { fill: var(--llm); }
 svg .clip { fill: none; stroke: var(--warn); stroke-width: 1.5; }
 svg .ci { stroke: var(--llm); stroke-width: 3; }
-.legend { font-size: .8rem; color: var(--muted); }
+.legend { font-size: 1rem; color: var(--muted); }
 .key { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; vertical-align: middle; }
 .key.tf { background: var(--tf); } .key.llm { background: var(--llm); }
 .missing { color: var(--muted); font-weight: 400; font-style: italic; }
-footer { color: var(--muted); font-size: .8rem; padding: 24px 16px 40px; }
-@media (max-width: 900px) {
+footer { color: var(--muted); font-size: 1rem; padding: 24px 16px 40px; }
+@media (max-width: 720px) {
   .tab.grid { grid-template-columns: 1fr; }
   .h2h { grid-template-columns: 1fr; }
 }
@@ -79,7 +80,7 @@ footer { color: var(--muted); font-size: .8rem; padding: 24px 16px 40px; }
 .names div { background: var(--tag); border-radius: 8px; padding: 10px; }
 .names dt { font-weight: 600; }
 .names dd { margin: 4px 0 0; }
-.small { color: var(--muted); font-size: .8rem; }
+.small { color: var(--muted); font-size: 1rem; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .button, button { display: inline-block; background: var(--llm); color: var(--on-llm); border: 0; border-radius: 6px;
   padding: 7px 14px; font: inherit; text-decoration: none; cursor: pointer; }
@@ -97,7 +98,7 @@ select { font: inherit; padding: 6px; margin: 4px 0 8px; max-width: 100%; displa
 .status.error { color: var(--warn); font-weight: 600; }
 .status.ok { color: var(--good); font-weight: 600; }
 .pager { display: flex; gap: 12px; align-items: center; }
-@media (max-width: 900px) { .names { grid-template-columns: 1fr; } .products { columns: 1; } }
+@media (max-width: 720px) { .names { grid-template-columns: 1fr; } .products { columns: 1; } }
 /* UI rework (docs/WIREFRAMES.md version 2): tabs, tiles, product bars and term notes */
 .masthead { padding-bottom: 6px; }
 .tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-top: 8px; }
@@ -107,25 +108,24 @@ select { font: inherit; padding: 6px; margin: 4px 0 8px; max-width: 100%; displa
 .tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--llm); }
 .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .tile { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
-.tile b { display: block; font-size: 1.9rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.tile b { display: block; font-size: 2.4rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
 .tile a { color: inherit; text-decoration: none; }
 .tile a b { color: var(--llm); }
-.tile > span { color: var(--muted); font-size: .85rem; }
+.tile > span { color: var(--muted); }
 button.term { background: transparent; color: var(--llm); border: 1px solid var(--llm); border-radius: 999px;
   width: 1.35em; height: 1.35em; padding: 0; font-size: .8rem; line-height: 1; vertical-align: text-top; }
 button.term[aria-expanded="true"] { background: var(--llm); color: var(--on-llm); }
 .term-wrap { white-space: nowrap; }
 .term-note { background: var(--tag); border-left: 3px solid var(--llm); border-radius: 6px; padding: 8px 12px;
-  margin: 6px 0 12px; font-size: .9rem; max-width: 820px; }
+  margin: 6px 0 12px; max-width: 56rem; }
 .bars { list-style: none; margin: 10px 0; padding: 0; }
-.bars li { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr) 3.5rem 13rem; gap: 10px;
+.bars li { display: grid; grid-template-columns: minmax(0, 17rem) minmax(0, 1fr) 4rem 17rem; gap: 10px;
   align-items: center; padding: 5px 0; border-bottom: 1px solid var(--line); }
-.bar-name { font-size: .9rem; }
 .bar-track { background: var(--tag); border-radius: 4px; height: 12px; }
 .bar { display: block; height: 100%; background: var(--llm); border-radius: 4px; }
 .weak .bar { background: var(--tf); }
 .bar-count { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
-.bar-f1 { font-size: .85rem; font-variant-numeric: tabular-nums; }
+.bar-f1 { font-variant-numeric: tabular-nums; }
 .flag { color: var(--warn); font-weight: 700; }
 details.more { margin-top: 12px; }
 summary { cursor: pointer; font-weight: 600; }
@@ -136,7 +136,7 @@ summary h2 { display: inline; }
 .split.with-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 16px;
   align-items: start; }
 .detail { position: sticky; top: 12px; }
-@media (max-width: 900px) {
+@media (max-width: 720px) {
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bars li { grid-template-columns: 1fr 3.5rem; }
   .bar-track { grid-column: 1 / -1; order: 3; }
@@ -145,3 +145,17 @@ summary h2 { display: inline; }
   .detail { position: static; }
   .glossary { grid-template-columns: 1fr; }
 }
+/* With the larger text, four tiles need about 1000 px. Below that they go two by two, and a tile's note may wrap. */
+.tile .term-wrap { white-space: normal; }
+@media (max-width: 1000px) {
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Name, count and F1 on one line, the bar on its own full line below. */
+  .bars li { grid-template-columns: minmax(0, 1fr) 4rem auto; row-gap: 4px; }
+  .bar-track { grid-column: 1 / -1; order: 4; }
+}
+/* A14: the "Data as of" strip under the tiles */
+.fresh { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px;
+  margin-bottom: 16px; }
+.fresh h2 { margin-bottom: 6px; }
+.fresh ul { margin: 0; padding-left: 1.2em; }
+.fresh li { margin: 2px 0; }

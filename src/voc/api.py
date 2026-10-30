@@ -44,6 +44,12 @@ TEST_RUN_NUMBERS = ("complaints", "accepted", "quarantined", "run_seconds", "inp
 LOG_DATE = r"\| [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:]+"
 LOG_ROW = re.compile(LOG_DATE + r" \| (?P<version>v[0-9]+) \| (?P<hash>[0-9a-f]{64}) \| "
                      r"(?P<model>[a-z0-9][a-z0-9.\-]{0,63}) \| (?P<count>[0-9]+) \|")
+# A14: the same row, with its date, for the "Data as of" strip.
+RUN_ROW = re.compile(r"\| (?P<date>[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}) \| (?P<version>v[0-9]+) \| [0-9a-f]{64} \| "
+                     r"(?P<model>[a-z0-9][a-z0-9.\-]{0,63}) \| (?P<count>[0-9]+) \|")
+DAY = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+# The daily schedule in .github/workflows/scheduled.yml: minute, then hour, in UTC.
+DAILY = re.compile(r'cron: "([0-9]{1,2}) ([0-9]{1,2}) \* \* \*"')
 VERDICTS = ("beats", "inconclusive", "does_not_beat")
 BACKENDS = ("api", "mock")
 SETS = ("dev", "quick")
@@ -281,6 +287,26 @@ def create_app(root, with_text=False, public_host=None):
         data = _json("audit", version)
         return {"set": _one_of(data.get("set"), SETS), "prompt_version": _matches(data.get("prompt_version"), VERSION),
                 **_numbers(data, AUDIT_NUMBERS), "failures": _counts(data.get("failures"), FAILURES)}
+
+    @app.get("/api/freshness")
+    def freshness():
+        # A14: the "Data as of" strip. Facts from committed files only, each checked. A missing or unexpected fact is
+        # null, so the page says it is not recorded. The app asks no other service whether the scheduled run passed.
+        profile_path = root / "results" / "profile_july_2026.json"
+        profile = _dict(json.loads(profile_path.read_text(encoding="utf-8"))) if profile_path.is_file() else {}
+        days = _list(profile.get("date_range")) + [None, None]
+        data = {"from": _matches(days[0], DAY), "to": _matches(days[1], DAY),
+                "complaints": _number(profile.get("rows")), "narratives": _number(profile.get("narratives"))}
+        runs_path = root / "runs" / "TEST_RUNS.md"
+        lines = runs_path.read_text(encoding="utf-8").splitlines() if runs_path.is_file() else []
+        rows = [m for m in (RUN_ROW.match(line) for line in lines) if m]
+        test_run = ({"date": rows[-1]["date"], "prompt_version": rows[-1]["version"], "model": rows[-1]["model"],
+                     "complaints": int(rows[-1]["count"])} if rows else None)
+        workflow = root / ".github" / "workflows" / "scheduled.yml"
+        cron = DAILY.search(workflow.read_text(encoding="utf-8")) if workflow.is_file() else None
+        valid = cron and int(cron[2]) < 24 and int(cron[1]) < 60
+        return {"data": data, "test_run": test_run,
+                "schedule_utc": f"{int(cron[2]):02d}:{int(cron[1]):02d}" if valid else None}
 
     @app.get("/api/data")
     def data():
