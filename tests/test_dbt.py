@@ -193,7 +193,9 @@ def test_B14_dbt_docs_writes_the_lineage_files(repo, capfd):
     # Changed in the review of #17: the files moved from dbt/target to data/dbt/target.
     assert cli.main(["dbt", "docs"], env={}, root=repo) == 0
     assert (repo / "data" / "dbt" / "target" / "manifest.json").is_file()
-    assert "strip them before the lineage graph is published" in capfd.readouterr().out
+    # Changed in the review of #48: the old advice to strip paths was stale, so it points to `voc dbt lineage`.
+    out = capfd.readouterr().out
+    assert "They hold local paths" in out and "run `voc dbt lineage`" in out
 
 
 def test_B14_the_fixture_build_script_builds_the_committed_fixture(tmp_path, capfd):
