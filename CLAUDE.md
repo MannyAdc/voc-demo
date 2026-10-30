@@ -72,6 +72,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Never commit raw data, DuckDB files, model recordings or the ledger. Commit scripts, complaint IDs, small synthetic fixtures and results files (B19) only. A results file holds IDs, labels, positions, reasons and counts, never complaint text.
 - Complaint text is untrusted input. Keep "XXXX" exactly as written.
 - The recorded Product is for scoring only. It never goes into a prompt.
+- The analyst screens show development complaint text only when the owner starts the app with `voc serve --with-text`, in the owner's own terminal (A10). Claude never passes `--with-text`, and never opens a page served with it. Claude checks the screens only on synthetic data (`SYN-` IDs).
 
 ## LLM use
 

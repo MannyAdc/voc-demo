@@ -239,8 +239,10 @@ def _serve(config, root, args):
 
     from voc.api import create_app
 
-    print(f"dashboard on http://127.0.0.1:{args.port}/ (results files only, no complaint text). Ctrl+C stops it")
-    uvicorn.run(create_app(root), host="127.0.0.1", port=args.port, log_level="warning")
+    # A10: complaint text only when the owner asks for it. The coding agent never passes --with-text (CLAUDE.md).
+    what = "with complaint text from the local data" if args.with_text else "no complaint text"
+    print(f"dashboard on http://127.0.0.1:{args.port}/ ({what}). Ctrl+C stops it")
+    uvicorn.run(create_app(root, with_text=args.with_text), host="127.0.0.1", port=args.port, log_level="warning")
 
 
 def _evaluate(config, root, args):
@@ -291,6 +293,8 @@ def main(argv=None, env=None, root=None):
     au.add_argument("--prompt", default="v1", help="the prompt version whose run is audited")
     sv = sub.add_parser("serve", help="the results API and dashboard on 127.0.0.1, committed results only (A1 to A8)")
     sv.add_argument("--port", type=int, default=8000, help="the local port")
+    sv.add_argument("--with-text", action="store_true",
+                    help="include complaint text from the local data, for the owner only (A10). Claude never passes it")
     ld = sub.add_parser("load", help="load one pinned monthly export into the staged DuckDB table (B14)")
     ld.add_argument("month", choices=sorted(MONTHS), help="the month to load, as named in config/data_files.toml")
     dbt = sub.add_parser("dbt", help="run the dbt project, printing counts and check names only (B14, B21)")

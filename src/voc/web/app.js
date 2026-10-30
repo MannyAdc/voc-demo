@@ -186,11 +186,188 @@ function versionsTable(rows) {
   }
 }
 
+// The analyst screens (docs/USER.md tasks 2 and 3, docs/WIREFRAMES.md screens 2 and 3).
+// The route is in the address after "#", so the browser's Back button works.
+
+let version = "v1";
+const REASONS = { quote_not_in_text: "the quoted sentence is not in the text", invalid_label: "the AI named a product not in the list",
+  unparseable: "the AI's answer could not be read", quote_too_short: "the quote is too short to show anything",
+  quote_empty: "the AI gave no quote", quote_redaction_only: "the quote is only redaction marks", other: "another reason" };
+const DECISIONS = { ai_right: "the AI's label is right", word_model_right: "the word-based model is right",
+  other_product: "another product fits better", no_product: "it fits no product clearly" };
+const listState = { product: null, show: "all", page: 1 };
+
+function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+function link(href, text) { const a = document.createElement("a"); a.href = href; a.textContent = text; return a; }
+function status(id, text, kind) {
+  const el = $(id); el.textContent = text || ""; el.className = "status" + (kind ? " " + kind : "");
+}
+function viewOnly(id) {
+  for (const el of document.querySelectorAll(".ov")) el.hidden = id !== null;
+  for (const el of document.querySelectorAll(".view")) el.hidden = el.id !== id;
+  $("banner").hidden = id !== null;
+  if (id) { const h = $(id).querySelector("h2"); if (h) h.focus(); }
+  window.scrollTo(0, 0);
+}
+async function fetchJson(path, options) {
+  // Returns [data, null] or [null, a short message]. Never shows a raw error to the analyst.
+  try {
+    const response = await fetch(path, options);
+    if (!response.ok) return [null, response.status === 404 ? "not found" : "could not be loaded"];
+    return [await response.json(), null];
+  } catch (e) { return [null, "could not be loaded"]; }
+}
+
+async function reviewCount() {
+  const [q] = await fetchJson("/api/review/" + version + "/queue");
+  put("review-count", q ? q.total + " complaints of the development set wait for a person. Reviewed " + q.reviewed + " of " + q.total + "."
+    : "The review queue could not be loaded.");
+}
+
+async function listView(product) {
+  if (listState.product !== product) { listState.product = product; listState.page = 1; }
+  viewOnly("view-list");
+  $("list-h").textContent = product + ": development complaints";
+  const body = $("list-rows"); clear(body);
+  status("list-status", "Loading...");
+  const q = new URLSearchParams({ product, show: listState.show, page: listState.page });
+  const [d, err] = await fetchJson("/api/review/" + version + "/complaints?" + q);
+  if (!d) { status("list-status", "The complaints " + err + ". Go back and try again.", "error"); return; }
+  status("list-status", d.total ? "" : "No complaints here for the filter \"" + listState.show + "\".");
+  const notes = [];
+  if (!d.local) notes.push("The consumer's own choice and the text are available only on the analyst's own machine, so this list groups by the AI's label and the right or wrong filter is empty.");
+  if (d.held_back_for_review) notes.push(d.held_back_for_review + " quarantined complaints, across all products, are not listed by product until they are reviewed, so their consumer's own choice stays hidden. They are in the review queue.");
+  put("list-note", notes.join(" "));
+  for (const r of d.rows) {
+    const tr = body.insertRow();
+    tr.insertCell().appendChild(link("#/complaint/" + encodeURIComponent(r.complaint_id), r.complaint_id));
+    tr.insertCell().textContent = r.ai_label || "(quarantined)";
+    tr.insertCell().textContent = r.consumer_choice || (d.local ? "hidden until reviewed" : "only on the analyst's machine");
+    tr.insertCell().textContent = r.decision === "accepted" ? "found" : (REASONS[r.reason] || "not accepted");
+  }
+  $("list-page").textContent = "Page " + d.page + " of " + d.pages + ", " + d.total + (d.total === 1 ? " complaint" : " complaints");
+  $("list-prev").disabled = d.page <= 1; $("list-next").disabled = d.page >= d.pages;
+}
+
+async function complaintView(id) {
+  viewOnly("view-complaint");
+  $("complaint-h").textContent = "Complaint " + id;
+  for (const k of ["c-ai", "c-check", "c-tfidf", "c-consumer", "c-text-note"]) put(k, "");
+  clear($("c-text")); $("decision").hidden = true; status("d-status", "");
+  status("complaint-status", "Loading...");
+  const [c, err] = await fetchJson("/api/review/" + version + "/complaint/" + encodeURIComponent(id));
+  if (!c) { status("complaint-status", "This complaint " + err + ".", "error"); return; }
+  status("complaint-status", "");
+  put("c-ai", c.ai_label || (c.proposed_label ? "proposed " + c.proposed_label + ", not accepted" : "none"));
+  put("c-check", c.decision === "accepted" ? "the quoted sentence was found in the text" : (REASONS[c.reason] || "not accepted"));
+  put("c-tfidf", c.tfidf_label || "none");
+  put("c-consumer", c.hidden ? "hidden while you decide" : (c.consumer_choice || "only on the analyst's own machine"));
+  const box = $("c-text");
+  if (c.text === null) {
+    put("c-text-note", c.local && !c.with_text
+      ? "The text is not shown: the app was started without --with-text."
+      : "The text is shown only on the analyst's own machine, with the local data.");
+  } else {
+    put("c-text-note", (c.quote ? "The AI's quoted sentence is highlighted." : "There is no checked quote to highlight.")
+      + (c.cut ? " The text is cut at 4,000 characters, as the AI saw it." : ""));
+    const q = c.quote;
+    if (q) {
+      const mark = document.createElement("mark"); mark.textContent = c.text.slice(q.start, q.end);
+      box.append(document.createTextNode(c.text.slice(0, q.start)), mark, document.createTextNode(c.text.slice(q.end)));
+    } else { box.textContent = c.text; }
+  }
+  if (c.decision === "quarantined") decisionForm(c);
+}
+
+function decisionForm(c) {
+  const form = $("decision"); form.hidden = false;
+  const select = $("d-label"); clear(select);
+  for (const name of c.labels) { const o = document.createElement("option"); o.value = name; o.textContent = name; select.appendChild(o); }
+  const pick = { ai_right: c.proposed_label, word_model_right: c.tfidf_label };
+  $("r-ai").disabled = !c.proposed_label; $("r-word").disabled = !c.tfidf_label;
+  for (const r of form.querySelectorAll("input[name=reason]")) {
+    r.checked = !!(c.review && c.review.reason === r.value);
+    r.onchange = () => {
+      select.disabled = r.value === "no_product";
+      if (pick[r.value]) select.value = pick[r.value];
+      select.disabled = select.disabled || r.value in pick;
+    };
+  }
+  if (c.review) {
+    select.value = c.review.label || c.labels[0];
+    select.disabled = c.review.reason !== "other_product";
+    status("d-status", "Saved: " + (c.review.label || "no product") + ", " + DECISIONS[c.review.reason] + ".");
+  }
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    const chosen = form.querySelector("input[name=reason]:checked");
+    if (!chosen) { status("d-status", "Choose a reason first.", "error"); return; }
+    const body = { label: chosen.value === "no_product" ? null : select.value, reason: chosen.value };
+    status("d-status", "Saving...");
+    const [saved] = await fetchJson("/api/review/" + version + "/decision/" + encodeURIComponent(c.complaint_id),
+      { method: "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "voc" }, body: JSON.stringify(body) });
+    if (!saved) { status("d-status", "The decision could not be saved. Check the choice and try again.", "error"); return; }
+    await complaintView(c.complaint_id);
+    status("d-status", "Saved: " + (saved.review.label || "no product") + ", " + DECISIONS[saved.review.reason] + ".", "ok");
+  };
+}
+
+async function reviewView() {
+  viewOnly("view-review");
+  const body = $("review-rows"); clear(body);
+  status("review-status", "Loading...");
+  const [q, err] = await fetchJson("/api/review/" + version + "/queue");
+  if (!q) { status("review-status", "The review queue " + err + ".", "error"); return; }
+  status("review-status", q.total ? "Reviewed " + q.reviewed + " of " + q.total + "." : "No complaint is waiting for review.");
+  for (const r of q.rows) {
+    const tr = body.insertRow();
+    tr.insertCell().appendChild(link("#/complaint/" + encodeURIComponent(r.complaint_id), r.complaint_id));
+    tr.insertCell().textContent = REASONS[r.reason] || "another reason";
+    tr.insertCell().textContent = r.proposed_label || "none";
+    tr.insertCell().textContent = r.tfidf_label || "none";
+    tr.insertCell().textContent = r.review ? (r.review.label || "no product") + ", " + DECISIONS[r.review.reason] : "not yet";
+  }
+}
+
+function productLinks() {
+  // Browse by product (task 2): the development set's complaints, one link per product.
+  const box = $("product-links"); clear(box);
+  for (const li of document.querySelectorAll("#product-list li")) {
+    const item = document.createElement("li");
+    item.appendChild(link("#/product/" + encodeURIComponent(li.textContent), li.textContent));
+    box.appendChild(item);
+  }
+}
+
+function route() {
+  const hash = decodeURIComponent(location.hash.replace(/^#/, ""));
+  const [, kind, ...rest] = hash.split("/");
+  const arg = rest.join("/");
+  if (kind === "product" && arg) listView(arg);
+  else if (kind === "complaint" && arg) complaintView(arg);
+  else if (kind === "review") reviewView();
+  else { viewOnly(null); reviewCount(); }
+}
+
+function wire() {
+  for (const r of document.querySelectorAll("input[name=show]")) {
+    r.onchange = () => { listState.show = r.value; listState.page = 1; listView(listState.product); };
+  }
+  $("list-prev").onclick = () => { listState.page -= 1; listView(listState.product); };
+  $("list-next").onclick = () => { listState.page += 1; listView(listState.product); };
+  $("complaint-back").onclick = (event) => { event.preventDefault(); history.back(); };
+  window.addEventListener("hashchange", route);
+}
+
 async function main() {
+  wire();
   const versions = (await get("/api/versions")) || [];
   versionsTable(versions);
   const dev = versions.filter((r) => r.Set === "dev");
   const latest = dev.length ? dev[dev.length - 1].Prompt : "v1";
+  version = latest;
+  productLinks();
+  route();
   const [figures, run, audit, queue, data, tested] = await Promise.all([
     get("/api/eval/" + latest), get("/api/run/" + latest), get("/api/audit/" + latest),
     get("/api/eval/" + latest + "/quarantine"), get("/api/data"), get("/api/test/" + latest)]);

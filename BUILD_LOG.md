@@ -674,3 +674,19 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - Its gate took 26 minutes, with the helper's gates running at the same time.
   - Green: a new route `/api/test/{version}`, which answers only when `runs/TEST_RUNS.md` holds a logged row for that version (B17). The page puts the verdict card first, with the per-product table. The development panels keep their "tuning figure" tags.
   - Claude checked the page in a local browser on the committed results files, which hold no complaint text. One fix came from that check: Mortgage was marked as an LLM win, though both F1 scores read 0.910. The page now compares the values as displayed, at 3 decimals.
+- About 11:50 to 12:15 `docs/USER.md` and `docs/WIREFRAMES.md` drafted for the owner, before any screen was built, as the brief asks. The owner asked what exactly is labelled, and asked for that to be written down. Claude added "What is being labelled", and the three names used on every screen: the AI's label, the word-based model's suggestion, and the consumer's own choice.
+- Owner decisions on the drafts (exact times not recorded, between about 11:55 and 12:15):
+  - The four review reasons.
+  - The consumer's own choice is hidden while a person decides, and the docs say why.
+  - Decisions are stored in a file the repo can commit.
+- About 12:15 The owner approved both. Commit `f68e8f9` at 12:16.
+- About 12:20 Work start on the analyst screens, in `../voc-demo-analyst`, branch `feat/analyst-screens`, started from `feat/dashboard-verdict` (#44).
+  - Red `3438541` at 12:27: `tests/test_analyst.py`. Its gate took about 30 minutes, with three other gates running.
+  - Claude checked the screens in a local browser on a temp project built from the synthetic fixture only (SYN- IDs), never on real data. The review queue, one complaint with its quote highlighted, a saved decision and a product list all worked. Two fixes came from that check: IDs now sort by number (SYN-3 before SYN-10), and the held-back note says it counts all products.
+- 12:39 #45 opened (time from GitHub). 12:43 Reviewer findings posted on #45, with Claude's checks.
+  - The main one: reading the test set's complaint text and its consumer's choices breaks B17, which seals the test set ("the same guard covers reading test rows from the staged table"). It also strains B20.
+  - AI error: Claude had agreed to review the test set's 45 quarantined complaints without checking B17 and B20. The reviewer caught it.
+  - Also: the screens would put real complaint text in a browser that Claude can drive.
+- About 12:45 (exact time not recorded) Owner decision A: the browsing and review screens use the development set (370 complaints, 9 quarantined). B17 and B20 stay as they are. The verdict card still has the test set's figures, which come from the logged run. Claude added a safeguard: the text is served only with `voc serve --with-text`, which only the owner passes. CLAUDE.md says Claude never passes it and never opens a page served with it.
+- The green change: the routes, now `/api/review/{version}/...` on the development results, the page, spec 002 (A1, A2, A10 to A12, Not in scope), CLAUDE.md, `.gitignore` for `results/reviews/*.csv`, and the docs. The tests moved to the development set in this green commit, with a comment, because a tests-only commit may not rename a test.
+- The read guard blocked three of Claude's shell commands today because their text held the word it guards against, in a commit message, a help string and a log entry. Each time Claude used the file tools instead. The guard worked as designed. Known limits already says it also blocks harmless commands.
