@@ -71,6 +71,10 @@ def root(tmp_path, rows):
     labels = (REPO / "config" / "labels.toml").read_text(encoding="utf-8")
     _write(root / "config" / "labels.toml", labels)
     _write(root / "results" / "eval" / "v1_dev.csv", _results(rows))
+    # Review of #46: the frozen lists, so the routes can check each ID is in the development list (B17).
+    ids = [row["Complaint ID"] for row in rows]
+    _write(root / "splits" / "dev.csv", "complaint_id,content_hash\n" + "".join(f"{i},{'0' * 64}\n" for i in ids))
+    _write(root / "splits" / "test.csv", f"complaint_id,content_hash\nSYN-12,{'0' * 64}\n")
     names = [label.name for label in load_labels(root / "config" / "labels.toml")]
     load_month(root / DB_PATH, FIXTURE, "july_2026", names)
     return root
@@ -289,3 +293,112 @@ def test_A10_the_test_set_is_never_served_by_the_review_routes(root, rows):
 def test_A10_claude_md_says_claude_never_passes_the_text_flag():
     text = (REPO / "CLAUDE.md").read_text(encoding="utf-8")
     assert "--with-text" in text
+
+
+# Review of #46: checked fields, the development list, the decision lock, and the hold-back
+
+
+def _rewrite_results(root, rows, change):
+    """Rewrite the development results file, with `change(list_of_dicts)` applied."""
+    with open(root / "results" / "eval" / "v1_dev.csv", encoding="utf-8", newline="") as f:
+        data = list(csv.DictReader(f))
+    change(data)
+    out = io.StringIO()
+    writer = csv.DictWriter(out, fieldnames=COLUMNS, lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(data)
+    (root / "results" / "eval" / "v1_dev.csv").write_text(out.getvalue(), encoding="utf-8")
+
+
+def test_A2_an_unknown_quarantine_reason_is_served_as_other(root, rows):
+    def change(data):
+        data[1]["reason"] = "SYNHOSTILE reason"
+    _rewrite_results(root, rows, change)
+    client = _client(root)
+    cid = rows[1]["Complaint ID"]
+    for path in ("/api/review/v1/complaints", "/api/review/v1/queue", f"/api/review/v1/complaint/{cid}"):
+        response = client.get(path)
+        assert response.status_code == 200 and "SYNHOSTILE" not in response.text, path
+    assert client.get(f"/api/review/v1/complaint/{cid}").json()["reason"] == "other"
+
+
+def test_A2_a_broken_or_hostile_reviews_file_is_checked_field_by_field(root, client, rows):
+    path = root / "results" / "reviews" / "v1_dev.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("complaint_id,label,reason,decided_at\n"
+                    f"{rows[2]['Complaint ID']},Credit card,other_product,SYNHOSTILE time\n"
+                    "SYNHOSTILE id,Credit card,other_product,2026-10-30T13:00:00+11:00\n", encoding="utf-8")
+    response = client.get("/api/review/v1/queue")
+    assert response.status_code == 200 and "SYNHOSTILE" not in response.text
+    assert response.json()["reviewed"] == 1
+    path.write_text("label,reason\nCredit card,other_product\n", encoding="utf-8")
+    assert client.get("/api/review/v1/queue").status_code == 200
+
+
+def test_A10_an_id_outside_the_development_list_is_never_looked_up(root, rows):
+    # B17: an edited results file must not let a test row through. SYN-12 is on the test list.
+    def change(data):
+        data[0]["complaint_id"] = "SYN-12"
+    _rewrite_results(root, rows, change)
+    client = _client(root)
+    assert client.get("/api/review/v1/complaint/SYN-12").status_code == 404
+    listed = {r["complaint_id"] for r in client.get("/api/review/v1/complaints").json()["rows"]}
+    assert "SYN-12" not in listed
+
+
+def test_A11_a_quarantined_complaint_is_held_back_from_its_product_list_until_reviewed(client, rows):
+    cid, product = rows[1]["Complaint ID"], rows[1]["Product"]
+    before = client.get("/api/review/v1/complaints", params={"product": product}).json()
+    assert cid not in {r["complaint_id"] for r in before["rows"]}
+    assert before["held_back_for_review"] == len(rows) - 1
+    assert client.post(f"/api/review/v1/decision/{cid}", headers=HEADER,
+                       json={"label": product, "reason": "word_model_right"}).status_code == 200
+    after = client.get("/api/review/v1/complaints", params={"product": product}).json()
+    assert cid in {r["complaint_id"] for r in after["rows"]}
+
+
+def test_A11_the_wrong_filter_lists_accepted_labels_that_differ_from_the_consumer_choice(root, rows):
+    def change(data):
+        data[0]["accepted_label"] = data[0]["proposed_label"] = "Student loan"
+    _rewrite_results(root, rows, change)
+    wrong = _client(root).get("/api/review/v1/complaints", params={"show": "wrong"}).json()
+    assert [r["complaint_id"] for r in wrong["rows"]] == [rows[0]["Complaint ID"]]
+
+
+def test_A12_a_saved_decision_is_locked_and_a_correction_is_a_new_entry(root, client, rows):
+    cid = rows[2]["Complaint ID"]
+    first = {"label": "Credit card", "reason": "other_product"}
+    assert client.post(f"/api/review/v1/decision/{cid}", headers=HEADER, json=first).status_code == 200
+    second = {"label": "Mortgage", "reason": "other_product"}
+    assert client.post(f"/api/review/v1/decision/{cid}", headers=HEADER, json=second).status_code == 409
+    correction = {"label": "Mortgage", "reason": "correction"}
+    assert client.post(f"/api/review/v1/decision/{cid}", headers=HEADER, json=correction).status_code == 200
+    with open(root / "results" / "reviews" / "v1_dev.csv", encoding="utf-8", newline="") as f:
+        stored = [(r["complaint_id"], r["label"], r["reason"]) for r in csv.DictReader(f)]
+    assert stored == [(cid, "Credit card", "other_product"), (cid, "Mortgage", "correction")]
+    review = client.get(f"/api/review/v1/complaint/{cid}").json()["review"]
+    assert review["label"] == "Mortgage" and review["first"]["label"] == "Credit card"
+
+
+def test_A12_a_correction_needs_a_decision_first(client, rows):
+    body = {"label": "Mortgage", "reason": "correction"}
+    cid = rows[2]["Complaint ID"]
+    assert client.post(f"/api/review/v1/decision/{cid}", headers=HEADER, json=body).status_code == 409
+
+
+@pytest.mark.parametrize("body", [{"label": "Student loan", "reason": "other_product", "note": "SYN"},
+                                  {"reason": "other_product"},
+                                  {"label": "Credit card", "reason": "other_product"},
+                                  {"label": "Mortgage", "reason": "other_product"}])
+def test_A12_extra_or_missing_fields_and_a_label_that_belongs_to_another_reason_are_refused(root, client, rows, body):
+    # SYN-3: the AI proposed Mortgage and the word-based model says Credit card, so "another product" is neither.
+    response = client.post(f"/api/review/v1/decision/{rows[1]['Complaint ID']}", headers=HEADER, json=body)
+    assert response.status_code == 422
+    assert not (root / "results" / "reviews" / "v1_dev.csv").exists()
+
+
+def test_A12_a_saved_file_leaves_no_temp_file_behind(root, client, rows):
+    body = {"label": "Credit card", "reason": "other_product"}
+    cid = rows[2]["Complaint ID"]
+    assert client.post(f"/api/review/v1/decision/{cid}", headers=HEADER, json=body).status_code == 200
+    assert sorted(p.name for p in (root / "results" / "reviews").iterdir()) == ["v1_dev.csv"]
