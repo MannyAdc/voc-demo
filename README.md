@@ -98,7 +98,7 @@ First the pipeline that labels the complaints, then how it was built.
 
 **📈 Scale**
 - The July 2026 export holds 672,036 complaints. 10,002 have a narrative (`uv run --native-tls voc profile --write results/profile_july_2026.json`), and 9,303 remain after `voc sample` removed copies ([docs/DATA.md](docs/DATA.md)).
-- Loading is incremental, keyed on the complaint identifier (ID). dbt (data build tool) builds the models and runs the data tests. The same models ran on Databricks on the real July and August exports, 1,339,176 rows, and gave the same counts as the local build ([docs/PIPELINE.md](docs/PIPELINE.md), "The real exports on Databricks").
+- Loading is incremental, keyed on the complaint identifier (ID). dbt (data build tool) builds the models and runs the data tests. The same models ran on Databricks on the real July and August exports, 1,339,176 rows in the two files, and gave the same row counts as the local build ([docs/PIPELINE.md](docs/PIPELINE.md), "The real exports on Databricks").
 - A scheduled run does load, dbt build, label and evaluate every day, on synthetic data. The public copy on Azure has a health route and a request log.
 
 **Where it runs today, and when to move.** The raw exports are kept on one laptop, and the labelling, the scoring and the analyst screens run there, with DuckDB. Labelling sends each complaint's text to Anthropic's API. The same dbt models also run on Databricks (Free Edition) on the real July and August exports, with the data tests and the incremental load. The two files were uploaded by hand, once, because the CFPB serves only its current data. Azure hosts the public dashboard, built from the committed results. GitHub Actions runs the tests on every pull request, and the whole pipeline every day on synthetic data. Move the labelling and the scoring to the cloud too when the data no longer fits on one machine or many people write at once. Add a scheduler such as Airflow when many pipelines depend on each other. The reasons: [docs/STACK.md](docs/STACK.md).
@@ -119,19 +119,19 @@ Each line is in [BUILD_LOG.md](BUILD_LOG.md) on the day shown.
 - **Overruled: the headline measure.** Claude recommended the quote-only view alone as the headline, with the two methods' agreement as a side report. I pushed back: the point is how the two methods work together for better precision, not choosing one. *(28 October)*
 - **Overruled: the sample sizes.** I asked whether Claude was really confident in its sample size rule. It was not: the rule ignored that the decision compares two methods on the same complaints. I then chose a simpler method: Cochran's formula for the sizes and a paired bootstrap for the verdict, both explained in plain words in [docs/HOW_WE_MEASURE.md](docs/HOW_WE_MEASURE.md). *(28 October)*
 - **The labels.** All 11 CFPB products as they are, with no merging. The two small products are kept, and their limits are written down. *(28 October)*
-- **The spend cap.** When the cap refused the scored run, it was raised to 40,000,000 tokens. Changing the prompt's output limit after tuning, or relaxing the cap check, was turned down. *(29 October)*
 
 ### Data and safety
 
 - **The analyst screens use the development set.** The test set stays sealed. Claude added a safeguard to this: complaint text appears only when I start the app with `--with-text`. *(30 October)*
 - **The public copy stays without complaint text.** A signed-in analyst copy is named as the next step instead. *(31 October)*
-- **The real exports go to Databricks,** with their narrative text, not only synthetic rows. Claude's earlier rule that no complaint text goes to a cloud host was its own caution, not part of my brief. The data is public, and only I can open the workspace. *(31 October)*
+- **The real exports go to Databricks,** with their narrative text, not only synthetic rows. This changes my 29 October choice, which kept the narrative text out. The CFPB publishes these narratives for anyone to use. Only I can sign in to the workspace. Its token is encrypted on my machine, and Claude has never held it. I judge this demo non-commercial, as the Free Edition's terms ask. *(31 October)*
 
 ### Scope and delivery
 
 - **Scope.** The human spot check of whether quotes support their labels was cut, and listed as a pending improvement. Databricks was kept. *(29 October)*
 - **Deploy to Azure the same day,** not on Saturday. *(30 October)*
-- **The monthly automatic feed is not built.** My brief does not ask for it, and the time goes to the demo video. It is named as the next step below. *(31 October)*
+- **The spend cap.** When the cap refused the scored run, it was raised to 40,000,000 tokens. Changing the prompt's output limit after tuning, or relaxing the cap check, was turned down. *(29 October)*
+- **The monthly automatic feed is not built.** The audience's brief does not ask for it, and the time goes to the demo video. It is named as the next step below. *(31 October)*
 
 ### How it reads
 

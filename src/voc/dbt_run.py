@@ -84,7 +84,7 @@ def dbt_env(base):
 
 
 def check_seeds(root):
-    """T021: the Databricks target gets synthetic rows only. Raises before dbt starts if not.
+    """T021: without `--month`, the Databricks target gets synthetic rows only. Raises before dbt starts if not.
 
     The seed folder must hold exactly the two seeds. The test list seed is a byte copy of
     splits/test.csv, already checked (B17). Every complaint ID in both seeds starts with SYN-.

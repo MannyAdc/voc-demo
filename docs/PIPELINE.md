@@ -76,9 +76,9 @@ Each build prints a line of counts, `dbt build: ... passed ..., failed 0, errors
 | `july_2026` | 1 seeds, 3 models, 12 data tests. passed 16, failed 0, errors 0, skipped 0 | july_2026 670127 | 8093 |
 | `august_2026` | 1 seeds, 3 models, 11 data tests. passed 15, failed 0, errors 0, skipped 0 | august_2026 667140, july_2026 670127 | 8094 |
 
-- July: the file's SHA-256 matched its pin, and 672,036 rows were read, as pinned. The staged rows are those less the 1,909 test-set complaints. The curated rows are the 10,002 narratives in `results/profile_july_2026.json` less the same 1,909.
-- August: 667,140 complaint IDs were new, so the incremental load added them and left July's rows as they were. August added one complaint with a narrative.
-- Cross-check on the owner's machine, the same day, with the local DuckDB target on the same two files: `voc load august_2026` printed "667140 rows in the file, 667140 new, 0 already loaded, 1339176 rows in the staged table". `voc dbt build` printed "2 models, 6 data tests. passed 8, failed 0, errors 0, skipped 0" and "stg_complaints: 1337267 rows, curated_complaints: 8094 rows". 1,337,267 is 670,127 + 667,140, and the curated rows match, so the two platforms agree.
+- July: the data tests `landed_file_matches_pin` and `landed_row_count_matches_pin` passed, so the file's SHA-256 matched its pin and 672,036 rows were read, as pinned. Neither is printed as a number. The staged rows are those less the 1,909 test-set complaints. The curated rows are the 10,002 narratives in `results/profile_july_2026.json` less the same 1,909.
+- August: 667,140 complaint IDs were new, so the incremental load added them and left July's rows as they were. August added one complaint with a narrative, by the same count as the local build. Nobody has profiled the August file, so this is not explained further.
+- Cross-check on the owner's machine, the same day, with the local DuckDB target on the same two files: `uv run --native-tls voc load august_2026` printed "667140 rows in the file, 667140 new, 0 already loaded, 1339176 rows in the staged table". `uv run --native-tls voc dbt build` printed "2 models, 6 data tests. passed 8, failed 0, errors 0, skipped 0" and "stg_complaints: 1337267 rows, curated_complaints: 8094 rows". 1,337,267 is 670,127 + 667,140, and the curated rows match, so the two platforms agree on the row counts. (The owner ran both commands as `voc ...` with the main checkout's environment active.)
 
 ## Run it yourself
 
