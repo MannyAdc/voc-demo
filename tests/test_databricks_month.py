@@ -8,6 +8,7 @@ Databricks query are stand-ins.
 """
 import importlib.util
 import json
+import re
 import subprocess
 import tomllib
 from pathlib import Path
@@ -302,3 +303,45 @@ def test_B14_the_month_script_main_prepares_and_runs_the_month_build(tmp_path, c
     assert _vars(fake_dbt)["month"] == "august_2026"
     assert _script().main([]) == 2
     assert "usage" in capfd.readouterr().out
+
+
+# Added in the review of #58
+
+
+def test_B14_every_rlike_pattern_in_the_dbt_project_doubles_its_backslashes():
+    # Databricks drops a backslash before an unknown escape in a string literal, so '\s' would match "s".
+    # DuckDB uses regexp_matches, not rlike, so every rlike pattern is a Databricks one.
+    found = 0
+    for path in (REPO / "dbt").rglob("*.sql"):
+        for pattern in re.findall(r"rlike '([^']*)'", path.read_text(encoding="utf-8")):
+            found += 1
+            assert "\\" not in pattern.replace("\\\\", ""), f"{path.name}: {pattern}"
+    assert found >= 5
+
+
+def test_B17_the_landed_model_leaves_out_the_test_rows_and_a_data_test_checks_it():
+    landed = (REPO / "dbt" / "models" / "landed_complaints.sql").read_text(encoding="utf-8")
+    assert "leave_out_test_rows(" in landed
+    check = (REPO / "dbt" / "tests" / "landed_has_no_test_set_rows.sql").read_text(encoding="utf-8")
+    assert "ref('landed_complaints')" in check and "test_set_ids()" in check
+    assert "var('month'" in check
+
+
+def test_B16_the_row_count_check_counts_the_file_itself():
+    # The landed model leaves out the test rows, so the pinned count is checked on the file as read.
+    count = (REPO / "dbt" / "tests" / "landed_row_count_matches_pin.sql").read_text(encoding="utf-8")
+    assert "from {{ month_file_rows() }}" in count
+    assert "depends_on: {{ ref('landed_complaints') }}" in count
+
+
+def test_B14_the_product_check_runs_on_the_landed_rows_before_the_staged_merge():
+    check = (REPO / "dbt" / "tests" / "landed_product_in_label_list.sql").read_text(encoding="utf-8")
+    assert "from {{ ref('landed_complaints') }}" in check and "var('labels')" in check
+    assert "product is null" in check and "var('month'" in check
+
+
+def test_B21_the_owner_steps_delete_the_work_folders():
+    pipeline = (REPO / "docs" / "PIPELINE.md").read_text(encoding="utf-8")
+    section = pipeline[pipeline.index("## The real exports on Databricks"):]
+    section = section[:section.index("\n## ", 1)]
+    assert "Remove-Item -Recurse -Force $julyWork, $augustWork" in section
