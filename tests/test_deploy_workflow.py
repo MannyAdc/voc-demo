@@ -226,3 +226,15 @@ def test_A15_the_403_fix_checks_each_command_and_needs_exactly_one_identity():
 def test_A15_the_manual_redeploy_names_the_commit_even_for_a_tag():
     script = (REPO / "scripts" / "deploy_azure.ps1").read_text(encoding="utf-8")
     assert 'git rev-parse "origin/$Ref^{commit}"' in script
+
+
+# Third review of #56
+
+
+def test_A15_the_setup_checks_the_web_app_is_in_the_signed_in_subscription_before_any_change():
+    # Without this, a sign-in to another subscription would create an app registration, then fail and leave it.
+    setup = _blocks()[0]
+    webapp = next(i for i, line in enumerate(setup) if line == "az webapp " + "show --name $app --resource-group $rg -o none")
+    first_change = next(i for i, line in enumerate(setup) if line.startswith("$clientId = az ad app create"))
+    assert webapp < first_change
+    assert setup[webapp + 1].startswith("if ($LASTEXITCODE -ne 0)")
