@@ -83,3 +83,105 @@ def test_A15_it_checks_the_live_health_route_after_the_upload():
     health = next(i for i, run in enumerate(runs) if "/api/health" in run)
     assert health > upload
     assert "--fail" in runs[health]
+
+
+# Review of #56
+
+
+CI = REPO / ".github" / "workflows" / "ci.yml"
+GUIDE = REPO / "docs" / "DEPLOY.md"
+GO = "steps.ready.outputs.go == 'true'"
+
+
+def _job():
+    return next(iter(_workflow()["jobs"].values()))
+
+
+def test_A15_the_job_condition_is_exactly_ci_success_on_a_push_to_main_of_this_repo():
+    # Checked whole, so an added `|| true` cannot slip through.
+    assert _job()["if"] == ("github.event.workflow_run.conclusion == 'success'"
+                            " && github.event.workflow_run.event == 'push'"
+                            " && github.event.workflow_run.head_branch == 'main'"
+                            " && github.event.workflow_run.head_repository.full_name == github.repository")
+
+
+def test_A15_the_trigger_names_the_ci_workflow_by_its_own_name():
+    ci = yaml.safe_load(CI.read_text(encoding="utf-8"))
+    assert _triggers(_workflow())["workflow_run"]["workflows"] == [ci["name"]]
+
+
+def test_A15_the_first_step_decides_whether_to_deploy_and_every_other_step_follows_it():
+    steps = _job()["steps"]
+    assert steps[0]["id"] == "ready" and "uses" not in steps[0]
+    for step in steps[1:]:
+        assert step["if"] == GO, step.get("name")
+
+
+def test_A15_it_skips_without_failing_until_the_azure_secrets_are_set():
+    ready = _job()["steps"][0]
+    assert ready["env"]["CLIENT_ID"] == "${{ secrets.AZURE_CLIENT_ID }}"
+    assert ready["env"]["TENANT_ID"] == "${{ secrets.AZURE_TENANT_ID }}"
+    assert ready["env"]["SUBSCRIPTION_ID"] == "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+    run = ready["run"]
+    for name in ("CLIENT_ID", "TENANT_ID", "SUBSCRIPTION_ID"):
+        assert f'-z "${name}"' in run, name
+    assert 'echo "go=false" >> "$GITHUB_OUTPUT"' in run and "exit 0" in run
+
+
+def test_A15_it_skips_when_main_has_moved_on_since_the_tested_commit():
+    # Deploys finish in the order their CI runs end, so an older commit could overwrite a newer one.
+    ready = _job()["steps"][0]
+    assert ready["env"]["TESTED"] == "${{ github.event.workflow_run.head_sha }}"
+    assert ready["env"]["GH_TOKEN"] == "${{ github.token }}"
+    run = ready["run"]
+    assert 'gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha' in run
+    assert '"$TESTED"' in run
+    assert run.rstrip().endswith('echo "go=true" >> "$GITHUB_OUTPUT"')
+
+
+def test_A15_the_zip_names_the_commit_it_was_built_from():
+    runs = "\n".join(s.get("run", "") for s in _steps(_workflow()))
+    archive = next(line for line in runs.splitlines() if line.strip().startswith("git archive"))
+    assert '--add-virtual-file="BUILD_COMMIT:$(git rev-parse HEAD)"' in archive
+
+
+def test_A15_the_health_check_waits_for_that_exact_commit_for_up_to_10_minutes():
+    health = next(s["run"] for s in _steps(_workflow()) if "/api/health" in s.get("run", ""))
+    assert "git rev-parse HEAD" in health and "jq -r .commit" in health
+    # 20 tries of at most 15 seconds each, with 15 seconds between them: at most 600 seconds.
+    assert "seq 1 20" in health and "--max-time 15" in health and "sleep 15" in health
+    assert "10 minutes" in health
+
+
+def test_A15_the_manual_redeploy_also_names_its_commit():
+    script = (REPO / "scripts" / "deploy_azure.ps1").read_text(encoding="utf-8")
+    archive = next(line for line in script.splitlines() if line.lstrip().startswith("git archive"))
+    assert "--add-virtual-file=" in archive and "BUILD_COMMIT:" in archive
+
+
+def _setup_block():
+    guide = GUIDE.read_text(encoding="utf-8")
+    section = guide[guide.index("## Automatic deploy"):]
+    return section[section.index("```powershell"):section.index("```", section.index("```powershell") + 3)]
+
+
+def test_A15_the_setup_stops_at_the_first_failed_command():
+    lines = [line.strip() for line in _setup_block().splitlines()]
+    commands = [i for i, line in enumerate(lines) if re.match(r"(\$\w+ = )?(az|gh) ", line)]
+    assert len(commands) >= 9
+    for i in commands:
+        assert lines[i + 1].startswith("if ($LASTEXITCODE -ne 0)"), lines[i]
+
+
+def test_A15_the_secrets_are_set_from_a_value_not_a_pipe():
+    block = _setup_block()
+    assert "| gh secret set" not in block
+    for name, value in (("AZURE_CLIENT_ID", "$clientId"), ("AZURE_TENANT_ID", "$tenant"),
+                        ("AZURE_SUBSCRIPTION_ID", "$sub")):
+        assert f"gh secret set {name} --repo $repo --body {value}" in block
+
+
+def test_A15_the_guide_says_to_run_the_setup_once_and_what_a_403_means():
+    section = GUIDE.read_text(encoding="utf-8")
+    section = section[section.index("## Automatic deploy"):section.index("## Redeploying after a change")]
+    assert "once" in section and "403" in section
