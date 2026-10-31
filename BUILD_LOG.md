@@ -1019,3 +1019,10 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - The recount entry above has no time. It ran at about 00:04 (exact time not recorded).
 - About 00:20 (exact time not recorded) Owner: "go", for all three. The README now names `--limit 500`. The two log entries above stay as written, corrected by this one.
 - Added for the merge check: the work start of #59 was not logged. About 00:04 (exact time not recorded) Work start on `docs/morning-ready`, in `../voc-demo-public`, from `main` at `9763017`. 00:15 #59 opened as a draft, with a reviewer (time from GitHub).
+- 01:39 Work start on `fix/empty-text-box`, in `../voc-demo-public`, from `main` at `4f96b99`: the owner's note of 30 October that the complaint view shows an empty grey box where no text can be shown.
+- Found while reading the code. AI error by Claude, from #50: on the public copy, the note about reviews replaced the note on where the text is shown, so a quarantined complaint lost its explanation.
+- The fix: the text box is hidden when the answer holds no text, and on the public copy the note about reviews is added to the text note.
+- Checked in a browser, on synthetic data only (`SYN-` IDs, served from a scratch folder):
+  - As the public copy: SYN-3 has no grey box, and both notes appear.
+  - As the analyst's screen with synthetic text: SYN-3 and SYN-5 have the box with their text, and the decision form.
+- Red `1cfbab7` at 01:40: 2 tests in `tests/test_ui.py`. Both failed, and none was carried over.
