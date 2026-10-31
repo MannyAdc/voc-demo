@@ -1035,3 +1035,13 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - Red `301cec5` at 01:37: 4 tests for the second review. All 4 failed, and none was carried over.
 - The fixes: every line of both setup blocks inside one `& { }`, a check that PowerShell runs in this repo's folder and that its GitHub repo is `voc-demo` before any change, no `Read-Host`, checks in the 403 block and a stop unless exactly one `voc-demo-deploy` identity exists, `^{commit}` in the manual script, and a Known limits line on the skipped older commit. Checked by hand: PowerShell's parser finds no error in the blocks or the script, and `git rev-parse "origin/$Ref^{commit}"` gives a 40-character ID.
 - Deferred, with its reason: a test that runs the `ready` step's script with a fake `gh`. It needs bash, and the local gate runs on Windows, where `bash` can resolve to WSL. The step's text is tested, and the first live run will exercise it.
+- 02:07 Green `fb1d724` passed its gate and was pushed.
+- About 02:20 (exact time not recorded) Third review of #56, on the setup commands, posted at 02:24 with Claude's checks. In PowerShell 5.1 the reviewer confirmed that each block runs as one piece, a `throw` stops the rest, and the folder and repo checks come before any change. The real findings:
+  - The block did not check the Azure subscription. A sign-in to another subscription would create the app registration, then fail at the role and leave the registration behind.
+  - AI error by Claude: the test name and the log said `^{commit}` makes the manual redeploy work "even for a tag". Tags are not under `origin/`, so `-Ref` works for branches only. The reviewer checked it in a scratch clone.
+  - The green commit had no time in the log.
+  - One finding was not right: an existing test already checks that every `az` and `gh` line in the setup block is followed by an exit-code check.
+- Decision by Claude, under the owner's instruction of 01:36: fix them. The owner can still reject the fixes before merging.
+- Red `18edb8c` at 02:25: a test that the setup checks the web app before any change. It failed.
+- The fixes: the setup checks the web app in the signed-in subscription before any change, and says so. The test is renamed to say what it checks (a full commit ID), with a comment. `^{commit}` stays: it is harmless.
+- 02:30 The owner merged #60 (time from GitHub, logged here because this branch has the next commit).

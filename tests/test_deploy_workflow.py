@@ -223,7 +223,8 @@ def test_A15_the_403_fix_checks_each_command_and_needs_exactly_one_identity():
     assert any("$ids.Count -ne 1" in line for line in fix)
 
 
-def test_A15_the_manual_redeploy_names_the_commit_even_for_a_tag():
+def test_A15_the_manual_redeploy_names_a_full_commit_id():
+    # Renamed in the third review of #56: -Ref names a branch. Tags are not under origin/, so "for a tag" was wrong.
     script = (REPO / "scripts" / "deploy_azure.ps1").read_text(encoding="utf-8")
     assert 'git rev-parse "origin/$Ref^{commit}"' in script
 

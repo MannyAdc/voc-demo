@@ -66,7 +66,7 @@ It signs in to Azure with OpenID Connect: GitHub gives the workflow a short-live
 
 One-time setup, by the owner. **Run it once.** A second run would make a second app registration named `voc-demo-deploy`. If that happens, delete the extra one in the Azure portal, under Microsoft Entra ID, App registrations.
 
-Open PowerShell in your clone of this repo, the folder that holds `README.md`, and paste the whole block. It runs as one piece, so it stops at the first command that fails. It first checks that it runs in this repo's folder and that the folder's GitHub repo is `voc-demo`, before it changes anything. Every ID stays in a variable and goes straight into a GitHub secret, so none is printed:
+Open PowerShell in your clone of this repo, the folder that holds `README.md`, and paste the whole block. It runs as one piece, so it stops at the first command that fails. Before it changes anything, it checks that it runs in this repo's folder, that the folder's GitHub repo is `voc-demo`, and that the web app is in the Azure subscription you signed in to. Every ID stays in a variable and goes straight into a GitHub secret, so none is printed:
 
 ```powershell
 & {
@@ -81,6 +81,8 @@ $rg = "voc-demo-rg"
 $repo = gh repo view --json nameWithOwner --jq .nameWithOwner
 if ($LASTEXITCODE -ne 0) { throw "gh repo view failed" }
 if ($repo -notlike "*/voc-demo") { throw "This folder's GitHub repo is not voc-demo, so nothing was changed." }
+az webapp show --name $app --resource-group $rg -o none
+if ($LASTEXITCODE -ne 0) { throw "The web app is not in the subscription you signed in to, so nothing was changed." }
 $sub = az account show --query id -o tsv
 if ($LASTEXITCODE -ne 0) { throw "az account show failed" }
 $tenant = az account show --query tenantId -o tsv
