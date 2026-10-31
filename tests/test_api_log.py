@@ -193,3 +193,22 @@ def test_A9_a_request_cancelled_before_any_answer_is_not_a_server_error(capsys):
     asyncio.run(run())
     assert monitor.server_errors == 0 and monitor.requests == 1
     assert "(no response)" in capsys.readouterr().err
+
+
+# Deferred from the review of #49: the review routes of #46 carry a complaint ID in their path, and a decision
+# carries the label a person typed in its body. Neither reaches the log, which names only the route pattern.
+# Changed in the review of #60: the body has the shape of a real decision, and the queue route is included.
+
+
+def test_A9_the_review_routes_are_logged_as_their_patterns_with_no_complaint_id(client, capsys):
+    capsys.readouterr()
+    client.get("/api/review/v1/complaint/SYN-LOGGED1")
+    client.post("/api/review/v1/decision/SYN-LOGGED2",
+                json={"label": "SYNLABEL typed by a person", "reason": "other_product"})
+    client.get("/api/review/v1/complaints?product=SYNPRODUCT")
+    client.get("/api/review/v1/queue")
+    err = capsys.readouterr().err
+    assert "SYN-LOGGED" not in err and "SYNLABEL" not in err and "SYNPRODUCT" not in err
+    paths = [LINE.fullmatch(line)["path"] for line in err.splitlines() if line.strip()]
+    assert paths == ["/api/review/{version}/complaint/{complaint_id}", "/api/review/{version}/decision/{complaint_id}",
+                     "/api/review/{version}/complaints", "/api/review/{version}/queue"]
