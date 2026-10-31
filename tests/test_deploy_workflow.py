@@ -185,3 +185,44 @@ def test_A15_the_guide_says_to_run_the_setup_once_and_what_a_403_means():
     section = GUIDE.read_text(encoding="utf-8")
     section = section[section.index("## Automatic deploy"):section.index("## Redeploying after a change")]
     assert "once" in section and "403" in section
+
+
+# Second review of #56
+
+
+def _blocks():
+    """The PowerShell blocks of the "Automatic deploy" section, as lists of stripped, non-empty lines."""
+    guide = GUIDE.read_text(encoding="utf-8")
+    section = guide[guide.index("## Automatic deploy"):guide.index("## Redeploying after a change")]
+    found = re.findall(r"```powershell\n(.*?)```", section, flags=re.S)
+    return [[line.strip() for line in block.splitlines() if line.strip()] for block in found]
+
+
+def test_A15_every_setup_line_runs_inside_one_block_so_a_failure_stops_the_rest():
+    # A throw outside & { } does not stop the lines pasted after it.
+    for lines in _blocks():
+        assert lines[0] == "& {" and lines[-1] == "}", lines[:2]
+        assert "& {" not in lines[1:]
+
+
+def test_A15_the_setup_checks_its_folder_and_its_repo_before_any_change():
+    setup = _blocks()[0]
+    folder = next(i for i, line in enumerate(setup) if 'Test-Path ".github/workflows/deploy.yml"' in line)
+    repo = next(i for i, line in enumerate(setup) if '$repo -notlike "*/voc-demo"' in line)
+    first_change = next(i for i, line in enumerate(setup) if line.startswith("$clientId = az ad app create"))
+    assert folder < repo < first_change
+    assert not any("Read-Host" in line for line in setup)
+
+
+def test_A15_the_403_fix_checks_each_command_and_needs_exactly_one_identity():
+    fix = _blocks()[1]
+    commands = [i for i, line in enumerate(fix) if re.match(r"(\$\w+ = @?\(?)?(az|gh) ", line)]
+    assert len(commands) >= 3
+    for i in commands:
+        assert fix[i + 1].startswith("if ($LASTEXITCODE -ne 0)"), fix[i]
+    assert any("$ids.Count -ne 1" in line for line in fix)
+
+
+def test_A15_the_manual_redeploy_names_the_commit_even_for_a_tag():
+    script = (REPO / "scripts" / "deploy_azure.ps1").read_text(encoding="utf-8")
+    assert 'git rev-parse "origin/$Ref^{commit}"' in script
