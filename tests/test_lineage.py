@@ -220,3 +220,18 @@ def test_B14_dbt_lineage_names_the_seed_note_only_when_no_seed_is_drawn(fake_par
 def test_B14_dbt_lineage_says_which_inputs_dbt_does_not_track(lineage):
     text, _, _ = lineage
     assert "`splits/test.csv`" in text and "`labels`" in text
+
+
+def test_B14_dbt_lineage_leaves_out_nodes_that_are_switched_off(fake_parse, capsys):
+    # Found while building the real exports on Databricks: dbt lists a data test of a model that is off for
+    # this target, with its own config off. The local graph must not draw it.
+    manifest = _fake_manifest(["stg_complaints"])
+    manifest["nodes"]["test.voc.off"] = {"resource_type": "test", "name": "off_test", "config": {"enabled": False},
+                                         "depends_on": {"nodes": []}}
+    manifest["nodes"]["test.voc.on"] = {"resource_type": "test", "name": "on_test", "config": {"enabled": True},
+                                        "depends_on": {"nodes": ["model.voc.m0"]}}
+    root = fake_parse(manifest)
+    assert cli.main(["dbt", "lineage"], env={}, root=root) == 0
+    text = (root / LINEAGE).read_text(encoding="utf-8")
+    assert "test: on_test" in text and "off_test" not in text
+    assert "1 data tests" in capsys.readouterr().out
