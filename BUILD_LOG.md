@@ -1019,3 +1019,5 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - The recount entry above has no time. It ran at about 00:04 (exact time not recorded).
 - About 00:20 (exact time not recorded) Owner: "go", for all three. The README now names `--limit 500`. The two log entries above stay as written, corrected by this one.
 - Added for the merge check: the work start of #59 was not logged. About 00:04 (exact time not recorded) Work start on `docs/morning-ready`, in `../voc-demo-public`, from `main` at `9763017`. 00:15 #59 opened as a draft, with a reviewer (time from GitHub).
+- 01:47 Work start on `test/review-route-log`, in `../voc-demo-dbx`, from `main` at `4f96b99`: the log test deferred in the review of #49 (logged on 30 October at 16:13).
+- The test: requests to the review routes, with a complaint ID in the path, a note in a decision's body and a product in the query, are logged only as their route patterns. It passed at once, as expected: the deferral's reason was that the general mechanism already covers these routes. It guards the routes that carry complaint IDs. No code change, so no red commit.
