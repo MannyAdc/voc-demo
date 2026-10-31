@@ -1018,3 +1018,4 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - `gh pr list --state merged` stops at 30 by default. The count of 57 was made with `--limit 500`, which the README and the entry above leave out. The README of 31 October had the same gap.
   - The recount entry above has no time. It ran at about 00:04 (exact time not recorded).
 - About 00:20 (exact time not recorded) Owner: "go", for all three. The README now names `--limit 500`. The two log entries above stay as written, corrected by this one.
+- Added for the merge check: the work start of #59 was not logged. About 00:04 (exact time not recorded) Work start on `docs/morning-ready`, in `../voc-demo-public`, from `main` at `9763017`. 00:15 #59 opened as a draft, with a reviewer (time from GitHub).
