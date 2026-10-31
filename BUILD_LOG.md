@@ -999,3 +999,23 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - About 22:15 (exact time not recorded) The owner's laptop crashed and turned off while this commit was in its gate. At 22:21 the fixes were still staged and not committed, nothing was pushed, no git lock file was left, and `git fsck` reported nothing. The commit was run again.
 - 22:30 Correction of the entry above, which stays as written. The first commit was not lost. Its gate was still running at 22:21, so the background process outlived the crash. It finished as `aba2103` (stamped 22:17, when the commit started) and took in the crash entry, which was staged by then. It was pushed. The second try found nothing to commit. AI error by Claude: it read "staged, not yet committed" at 22:21 as "stopped by the crash", without checking for a running gate.
 - Deferred from the first review of #58, with reasons. 7: `M/d/yy` maps to 2000 to 2099 on Databricks and 1969 to 2068 in DuckDB, which makes no difference for these dates. 8: the guesses about `read_files` options are settled by the live runs, which read both files and passed every data test. 9: the capital letter after "(exact times not recorded)" stays, because log entries are not tidied. The missing green commit time was added at 13:42.
+- 14:36 The owner merged #57 (time from GitHub, logged after the fact).
+- 23:47 The owner merged #58 (time from GitHub).
+- About 23:58 (exact time not recorded) The owner asked again for the redeploy command, because `az` was not found in their PowerShell each time. AI error: Claude's steps kept using `az` as if it were on the PATH, though the owner's PowerShell had failed to find it before. The new block adds Azure CLI's folder to the PATH for that session first.
+- About 23:58 (exact time not recorded) Owner decision: no recording tonight, because it is late and the walls are thin. Claude is to have everything ready for recording in the morning.
+
+## Sunday 1 November 2026
+
+- About 00:00 (exact times not recorded, until 00:03) Claude checked the demo commands on `main` (`9763017`), with no model call:
+  - `voc label injection --prompt v1 --replay` printed "calls: 9 replay" and "this run $0". It rewrites `results/labels/v1_injection.*` with the replay's figures, so Claude restored both files with `git restore`.
+  - `voc evaluate injection --prompt v1 --note ...` printed the 10 attacks: 9 not obeyed and accepted with the right label, 1 caught before the call. It rewrites the note in `results/eval/v1_injection.json`, restored the same way.
+  - `voc serve --port 8140`, without text: `/api/health`, `/api/freshness`, `/api/versions`, `/api/eval/v1`, `/` and `/web/app.js` answered 200. Stopped after.
+- About 00:01 Release checks on `main` (`9763017`): `python -m voc.repo_checks` printed "names: 0, raw data: 0, over size: 0, unchecked: 0". `gitleaks git --redact` scanned 296 commits: "no leaks found". A scan for the owner's account name, email and local paths found none in tracked files. In history, the account name is only in the #50 commit already logged on 30 October.
+- 00:03 The live site still answers `/api/freshness` with 404, so it runs the version from before #53. The owner's redeploy is pending.
+- Recount for the README on `9763017`: 57 merged pull requests (`gh pr list --state merged`) and 1,322 tests (`pytest --collect-only`).
+- 00:17 Reviewer findings posted on #59, with Claude's checks. The counts and merge times held. The real findings:
+  - AI error by Claude: the 00:03 entry says the live site "runs the version from before #53". `/api/freshness` came in with #54, so the 404 shows only that the site is older than #54. Most likely it runs #50 and #51, from the last redeploy on 30 October. Claude's message to the owner said the same and is corrected here.
+  - `gh pr list --state merged` stops at 30 by default. The count of 57 was made with `--limit 500`, which the README and the entry above leave out. The README of 31 October had the same gap.
+  - The recount entry above has no time. It ran at about 00:04 (exact time not recorded).
+- About 00:20 (exact time not recorded) Owner: "go", for all three. The README now names `--limit 500`. The two log entries above stay as written, corrected by this one.
+- Added for the merge check: the work start of #59 was not logged. About 00:04 (exact time not recorded) Work start on `docs/morning-ready`, in `../voc-demo-public`, from `main` at `9763017`. 00:15 #59 opened as a draft, with a reviewer (time from GitHub).
