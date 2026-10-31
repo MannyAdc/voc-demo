@@ -359,7 +359,8 @@ async function complaintView(id) {
   $("complaint-h").textContent = "Complaint " + id;
   $("complaint-h").focus();
   for (const k of ["c-ai", "c-check", "c-tfidf", "c-consumer", "c-text-note"]) put(k, "");
-  clear($("c-text")); $("decision").hidden = true; status("d-status", "");
+  // Review of #61: the box stays hidden while the complaint loads, or if it fails to load.
+  clear($("c-text")); $("c-text").hidden = true; $("decision").hidden = true; status("d-status", "");
   status("complaint-status", "Loading...");
   const [c, err] = await fetchJson("/api/review/" + version + "/complaint/" + encodeURIComponent(id));
   if (ticket !== latest.complaint) return;
