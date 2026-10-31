@@ -942,3 +942,5 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - Naming "TypeSafe AI", a company, needed the owner.
 - About 13:20 (exact time not recorded) Owner decision: fix them all. A named example gets "such as", so naming TypeSafe AI is fine. The monthly automatic job is not built, and goes in as the first next step.
 - The fixes for #57, in the README: the text sent to Anthropic's API and the daily job in "Where it runs today", "every normal commit" with the three commands named, "Since 28 October", the Jev line with "such as", "a typed value" and "the West Coast" in quotes, "New prompt versions" with `/eval`, "megabytes", and the monthly feed as a next step with the CFPB API's date filters and CSV export, cited from its specification.
+- 13:28 The fixes for #57 passed their gate (`e4976e9`) and were pushed. CI green.
+- Deferred, with its reason: "Macro F1 score" in the README and "Macro-F1" in `docs/RESULTS.md`. The README uses the dashboard's spelling from #53. `docs/RESULTS.md` holds text moved word for word, so it is left as it is.
