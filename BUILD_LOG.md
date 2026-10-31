@@ -1013,3 +1013,8 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - About 00:01 Release checks on `main` (`9763017`): `python -m voc.repo_checks` printed "names: 0, raw data: 0, over size: 0, unchecked: 0". `gitleaks git --redact` scanned 296 commits: "no leaks found". A scan for the owner's account name, email and local paths found none in tracked files. In history, the account name is only in the #50 commit already logged on 30 October.
 - 00:03 The live site still answers `/api/freshness` with 404, so it runs the version from before #53. The owner's redeploy is pending.
 - Recount for the README on `9763017`: 57 merged pull requests (`gh pr list --state merged`) and 1,322 tests (`pytest --collect-only`).
+- 00:17 Reviewer findings posted on #59, with Claude's checks. The counts and merge times held. The real findings:
+  - AI error by Claude: the 00:03 entry says the live site "runs the version from before #53". `/api/freshness` came in with #54, so the 404 shows only that the site is older than #54. Most likely it runs #50 and #51, from the last redeploy on 30 October. Claude's message to the owner said the same and is corrected here.
+  - `gh pr list --state merged` stops at 30 by default. The count of 57 was made with `--limit 500`, which the README and the entry above leave out. The README of 31 October had the same gap.
+  - The recount entry above has no time. It ran at about 00:04 (exact time not recorded).
+- About 00:20 (exact time not recorded) Owner: "go", for all three. The README now names `--limit 500`. The two log entries above stay as written, corrected by this one.
