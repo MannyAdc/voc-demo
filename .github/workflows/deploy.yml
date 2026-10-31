@@ -16,7 +16,8 @@ permissions:
   contents: read
   id-token: write
 
-# One deploy at a time. A newer one waits for the one running, and is not cancelled.
+# One deploy at a time. While one runs, GitHub keeps at most one more waiting, and a newer run replaces the
+# waiting one. The first step also skips a run whose commit is no longer the tip of main (review of #56).
 concurrency:
   group: deploy-public-copy
   cancel-in-progress: false
@@ -24,23 +25,50 @@ concurrency:
 jobs:
   deploy:
     name: Deploy to Azure App Service
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       APP: voc-demo-20261030
       GROUP: voc-demo-rg
     steps:
+      - name: Decide whether to deploy
+        id: ready
+        # Review of #56: until the owner sets the three secrets, the run ends here without failing. A run whose
+        # tested commit is no longer the tip of main also ends here, so an older commit cannot overwrite a newer one.
+        env:
+          CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          TESTED: ${{ github.event.workflow_run.head_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$CLIENT_ID" ] || [ -z "$TENANT_ID" ] || [ -z "$SUBSCRIPTION_ID" ]; then
+            echo "The Azure secrets are not set yet (docs/DEPLOY.md, \"Automatic deploy\"), so nothing is deployed."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          tip=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$tip" != "$TESTED" ]; then
+            echo "main has moved on since this commit was tested, so the run for the newer commit deploys instead."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "go=true" >> "$GITHUB_OUTPUT"
+
       - name: Check out the commit CI tested
+        if: steps.ready.outputs.go == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
 
-      - name: Pack the committed files without the lock files, as scripts/deploy_azure.ps1 does
-        run: git archive --format=zip -o "$RUNNER_TEMP/voc-site.zip" HEAD -- . ":!uv.lock" ":!pyproject.toml"
+      - name: Pack the committed files without the lock files, as scripts/deploy_azure.ps1 does, plus BUILD_COMMIT
+        if: steps.ready.outputs.go == 'true'
+        run: git archive --format=zip -o "$RUNNER_TEMP/voc-site.zip" --add-virtual-file="BUILD_COMMIT:$(git rev-parse HEAD)" HEAD -- . ":!uv.lock" ":!pyproject.toml"
 
       - name: Sign in to Azure with OpenID Connect
+        if: steps.ready.outputs.go == 'true'
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -48,17 +76,23 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Upload the ZIP, printing no resource ID
+        if: steps.ready.outputs.go == 'true'
         run: az webapp deploy --name "$APP" --resource-group "$GROUP" --src-path "$RUNNER_TEMP/voc-site.zip" --type zip -o none
 
-      - name: Check the live health route
-        # Azure builds and starts the app after the upload, and a cold start can be slow, so it tries for 5 minutes.
+      - name: Wait until the live app runs this exact commit
+        if: steps.ready.outputs.go == 'true'
+        # Azure builds and starts the app after the upload, and a cold start can be slow. /api/health names the
+        # commit in BUILD_COMMIT, so an old app that keeps answering does not count. 20 tries of at most 15 seconds,
+        # 15 seconds apart: up to 10 minutes.
         run: |
+          expected=$(git rev-parse HEAD)
           for attempt in $(seq 1 20); do
-            if curl --fail --silent --max-time 30 -o /dev/null "https://$APP.azurewebsites.net/api/health"; then
-              echo "The live app answered /api/health."
+            body=$(curl --fail --silent --max-time 15 "https://$APP.azurewebsites.net/api/health") || body=""
+            if [ -n "$body" ] && [ "$(printf '%s' "$body" | jq -r .commit)" = "$expected" ]; then
+              echo "The live app runs the tested commit."
               exit 0
             fi
             sleep 15
           done
-          echo "The live app did not answer /api/health within 5 minutes."
+          echo "The live app did not report the tested commit within 10 minutes."
           exit 1

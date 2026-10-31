@@ -58,33 +58,64 @@ The owner ran the setup commands above, each with `-o none`, with the app name `
 
 ## Automatic deploy (A15)
 
-After CI passes on a push to `main`, the workflow `.github/workflows/deploy.yml` uploads the same ZIP as the script below and checks `https://<app name>.azurewebsites.net/api/health`. Nobody runs anything after a merge.
+After CI passes on a push to `main`, the workflow `.github/workflows/deploy.yml` uploads the same ZIP as the script below, plus a file `BUILD_COMMIT` that names the commit. It then waits, for up to 10 minutes, until `https://<app name>.azurewebsites.net/api/health` reports that exact commit. Nobody runs anything after a merge.
+
+The workflow's first step decides whether to deploy. It ends the run without failing in two cases: the three secrets below are not set yet, or `main` has moved on since the tested commit, so the run for the newer commit deploys instead.
 
 It signs in to Azure with OpenID Connect: GitHub gives the workflow a short-lived token, and Azure trusts it only for this repo's `main` branch and only for this one web app. No password or key is stored. Facts checked on Microsoft's page [Deploy by using GitHub Actions](https://learn.microsoft.com/en-us/azure/app-service/deploy-github-actions) (dated 28 November 2025, read 31 October 2026): the role "Website Contributor" on the web app, the issuer `https://token.actions.githubusercontent.com`, a subject of the form `repo:<owner>/<repo>:ref:refs/heads/main`, the audience `api://AzureADTokenExchange`, and the three secrets below. GitHub's page [Events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows) says a `workflow_run` workflow runs with the default branch as its ref, so the subject is `main`'s. The workflow checks out the exact commit CI tested.
 
-One-time setup, by the owner, in their own PowerShell, after `az login -o none` and `gh auth login`. Every ID stays in a variable and goes straight into a GitHub secret, so none is printed:
+One-time setup, by the owner, in their own PowerShell. **Run it once.** A second run would make a second app registration named `voc-demo-deploy`. If that happens, delete the extra one in the Azure portal, under Microsoft Entra ID, App registrations. Every ID stays in a variable and goes straight into a GitHub secret, so none is printed. The block runs as one piece, so it stops at the first command that fails:
 
 ```powershell
-cd <your clone of this repo>
+$env:Path = "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin;C:\Program Files\GitHub CLI;" + $env:Path
+cd (Read-Host "The folder of your clone of this repo")
+az login -o none
+if ($LASTEXITCODE -ne 0) { throw "az login failed" }
+gh auth status
+if ($LASTEXITCODE -ne 0) { throw "gh is not signed in. Run gh auth login first." }
+& {
 $app = "voc-demo-20261030"
 $rg = "voc-demo-rg"
 $repo = gh repo view --json nameWithOwner --jq .nameWithOwner
+if ($LASTEXITCODE -ne 0) { throw "gh repo view failed. Run gh auth login first." }
 $sub = az account show --query id -o tsv
+if ($LASTEXITCODE -ne 0) { throw "az account show failed. Run az login first." }
 $tenant = az account show --query tenantId -o tsv
+if ($LASTEXITCODE -ne 0) { throw "az account show failed" }
 $clientId = az ad app create --display-name "voc-demo-deploy" --query appId -o tsv
+if ($LASTEXITCODE -ne 0) { throw "az ad app create failed" }
 $appObjectId = az ad app show --id $clientId --query id -o tsv
+if ($LASTEXITCODE -ne 0) { throw "az ad app show failed" }
 $spObjectId = az ad sp create --id $clientId --query id -o tsv
+if ($LASTEXITCODE -ne 0) { throw "az ad sp create failed" }
 az role assignment create --role "Website Contributor" --assignee-object-id $spObjectId --assignee-principal-type ServicePrincipal --scope "/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/sites/$app" -o none
+if ($LASTEXITCODE -ne 0) { throw "az role assignment create failed" }
 $credential = '{"name": "voc-demo-main", "issuer": "https://token.actions.githubusercontent.com", "subject": "repo:' + $repo + ':ref:refs/heads/main", "audiences": ["api://AzureADTokenExchange"]}'
 [System.IO.File]::WriteAllText("$env:TEMP\voc-credential.json", $credential)
 az ad app federated-credential create --id $appObjectId --parameters "$env:TEMP\voc-credential.json" -o none
+if ($LASTEXITCODE -ne 0) { throw "az ad app federated-credential create failed" }
 Remove-Item "$env:TEMP\voc-credential.json"
-$clientId | gh secret set AZURE_CLIENT_ID --repo $repo
-$tenant | gh secret set AZURE_TENANT_ID --repo $repo
-$sub | gh secret set AZURE_SUBSCRIPTION_ID --repo $repo
+gh secret set AZURE_CLIENT_ID --repo $repo --body $clientId
+if ($LASTEXITCODE -ne 0) { throw "gh secret set failed" }
+gh secret set AZURE_TENANT_ID --repo $repo --body $tenant
+if ($LASTEXITCODE -ne 0) { throw "gh secret set failed" }
+gh secret set AZURE_SUBSCRIPTION_ID --repo $repo --body $sub
+if ($LASTEXITCODE -ne 0) { throw "gh secret set failed" }
+"Done: the identity, its role on the web app, the federated credential and the three secrets."
+}
 ```
 
-`WriteAllText` writes the file without a byte order mark, which Windows PowerShell 5.1's `Set-Content` would add. `gh secret set` reads the value from standard input when no `--body` is given.
+`WriteAllText` writes the file without a byte order mark, which Windows PowerShell 5.1's `Set-Content` would add. `--body` gives each secret its value directly, so no newline from a pipe can slip in.
+
+**If the first automatic deploy fails at the upload with a 403**, the role on the web app alone was not enough for `az webapp deploy`. Give the same role on the resource group instead, in the same kind of PowerShell window:
+
+```powershell
+$sub = az account show --query id -o tsv
+$spObjectId = az ad sp list --display-name "voc-demo-deploy" --query "[0].id" -o tsv
+az role assignment create --role "Website Contributor" --assignee-object-id $spObjectId --assignee-principal-type ServicePrincipal --scope "/subscriptions/$sub/resourceGroups/voc-demo-rg" -o none
+```
+
+Then rerun the failed run from the Actions tab.
 
 To stop automatic deploys, delete the federated credential or the three secrets. The script below still works by hand.
 
