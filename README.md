@@ -101,14 +101,14 @@ First the pipeline that labels the complaints, then how it was built.
 - Loading is incremental, keyed on the complaint identifier (ID). dbt (data build tool) builds the models and runs the data tests, and the same models ran on Databricks with synthetic data.
 - A scheduled run does load, dbt build, label and evaluate every day, on synthetic data. The public copy on Azure has a health route and a request log.
 
-**Where it runs today, and when to move.** The real complaints are processed on one laptop, with DuckDB: the July export is 216 MB. Azure hosts only the public dashboard, built from the committed results. Databricks ran the same dbt models once, on synthetic data, on its Free Edition. Move the processing to a cloud warehouse such as Databricks when the data no longer fits on one machine or many people write at once. Add a scheduler such as Airflow when many pipelines depend on each other. The reasons: [docs/STACK.md](docs/STACK.md).
+**Where it runs today, and when to move.** The real complaints are stored and processed on one laptop, with DuckDB: the July export is 216 megabytes. Labelling sends each complaint's text to Anthropic's API. Azure hosts only the public dashboard, built from the committed results. GitHub Actions runs the tests on every pull request, and the whole pipeline every day on synthetic data. Databricks ran the same dbt models once, on synthetic data, on its Free Edition. Move the processing to a cloud warehouse such as Databricks when the data no longer fits on one machine or many people write at once. Add a scheduler such as Airflow when many pipelines depend on each other. The reasons: [docs/STACK.md](docs/STACK.md).
 
 The details and the commands behind each figure: [docs/RESULTS.md](docs/RESULTS.md).
 
 ### Of the build
 
-- **⚡ Speed.** Several pieces of work ran at once, each in its own git worktree, and the build log records them. The counts are under "In one minute".
-- **🛡️ Safety.** Hooks stop the AI coding agent from reading the raw data, the model recordings, the ledger or the key file, and from skipping the test gate. A secret scan (gitleaks) and a names check run on every commit and in CI. Every pull request opens as a draft, and only the owner merges. The hooks read command text, so they are best effort: the known gaps are in [docs/LIMITS.md](docs/LIMITS.md).
+- **⚡ Speed.** Several pieces of work ran at once, each in its own git worktree, and the build log records them.
+- **🛡️ Safety.** Hooks stop the AI coding agent from reading the raw data, the model recordings, the ledger or the key file, and from skipping the test gate. A secret scan (gitleaks) and a names check run on every normal commit and in CI. `cherry-pick`, `revert` and `commit-tree` skip the commit hook. Since 28 October, every pull request opens as a draft, and only the owner merges. The hooks read command text, so they are best effort: the known gaps are in [docs/LIMITS.md](docs/LIMITS.md).
 
 ## 🧭 Decisions the owner made
 
@@ -128,12 +128,13 @@ Claude proposed, the owner decided. Each line is in [BUILD_LOG.md](BUILD_LOG.md)
 
 ## 🔭 Where this could go next
 
-None of this is built or measured yet.
+Not done yet:
 
+- **A monthly feed with no person involved.** Once a month, a scheduled job would ask the CFPB's search API for last month's complaints as CSV, record the file's SHA-256, and run the same load, checks and build. The API takes `date_received_min`, `date_received_max` and `format=csv` ([its specification](https://github.com/cfpb/ccdb5-api/blob/main/swagger-config.yaml), read 31 October 2026). Not tested: whether its CSV has exactly the columns of the pinned exports. The load's column check would stop a run that differs.
 - **Call transcripts.** Text from speech-to-text, through the same quote check, so each label points to the moment in the call that supports it.
 - **Richer labels.** The issue, the sentiment and the root cause, each with its own checked quote.
-- **A fast decision model as the first pass.** For example Jev from TypeSafe AI, announced for early access in a post dated 15 September 2026 ([Introducing System One Models & Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev), read 31 October 2026). It returns a choice with a confidence score, not text, so it cannot quote its evidence. The idea: it labels the confident cases cheaply, and the LLM with its checked quote takes the rest. The same sealed test and baseline would show whether that helps. TypeSafe's speed and cost figures are its own, and its post says the service is based on the US West Coast, so where the data may go must be checked first.
-- **The improvement loop.** New prompt versions scored on the development set with `/eval`. Only prompt v1 has run.
+- **A fast decision model as the first pass,** such as Jev from TypeSafe AI, announced for early access in a post dated 15 September 2026 ([Introducing System One Models & Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev), read 31 October 2026). It returns a typed value with a confidence score, not text, so it cannot quote its evidence. The idea: it labels the confident cases cheaply, and the LLM with its checked quote takes the rest. The same sealed test and baseline would show whether that helps. TypeSafe's speed and cost figures are its own, and its post says the service is based on "the West Coast", so where the data may go must be checked first.
+- **New prompt versions.** `/eval` already scores a prompt version on the development set and adds its row to [EVAL_VERSIONS.md](EVAL_VERSIONS.md). Only prompt v1 has been run.
 - **A signed-in analyst copy** with complaint text, as described under the dashboard.
 
 ## ⚠️ Limits, in short

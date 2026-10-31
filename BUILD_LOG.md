@@ -934,3 +934,11 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - Speed, Safety and Scale: the owner asked whether it was about the development process. It was mostly about the pipeline, with one line about the build. It is now split into "Of the pipeline" and "Of the build".
   - "When to switch to bigger tools": the owner read the project as already on the cloud. Only the public dashboard is on Azure, and Databricks ran once on synthetic data. The real complaints are processed on one laptop with DuckDB. The README now says where each part runs today, and when to move the processing.
 - 09:49 Work start on `docs/readme-framing`.
+- 10:24 Reviewer findings posted on #57, with Claude's checks. All numbers matched their sources. The real findings:
+  - The "Where it runs today" line left out that labelling sends the text to Anthropic's API, and the daily scheduled job.
+  - "On every commit" overstated the hooks: `cherry-pick`, `revert` and `commit-tree` skip them. "Every pull request opens as a draft" has been the rule only since 28 October.
+  - AI error by Claude: the Jev line said "US West Coast" and "a choice". TypeSafe's post says "the West Coast" and "typed probabilistic decisions". Claude wrote from its own summary of the post. The reviewer caught it.
+  - "None of this is built" conflicted with `/eval`, which exists. "MB" was not spelled out. One sentence read as if the counts counted the parallel work.
+  - Naming "TypeSafe AI", a company, needed the owner.
+- About 13:20 (exact time not recorded) Owner decision: fix them all. A named example gets "such as", so naming TypeSafe AI is fine. The monthly automatic job is not built, and goes in as the first next step.
+- The fixes for #57, in the README: the text sent to Anthropic's API and the daily job in "Where it runs today", "every normal commit" with the three commands named, "Since 28 October", the Jev line with "such as", "a typed value" and "the West Coast" in quotes, "New prompt versions" with `/eval`, "megabytes", and the monthly feed as a next step with the CFPB API's date filters and CSV export, cited from its specification.
