@@ -1,5 +1,5 @@
-# T021: the Databricks target, for the synthetic seeds only. Run it only through
-# `voc dbt build --target databricks`, which refuses unless every seeded complaint ID is SYN-.
+# T021: the Databricks target. Run it only through `voc dbt build --target databricks`, which refuses
+# unless every seeded complaint ID is SYN-, or, with `--month`, through the real export in the volume.
 # The connection comes from environment variables set by the owner for one run, never written here.
 # The catalog defaults to `workspace`, the Free Edition catalog. dbt writes to its own schema.
 voc:
@@ -11,5 +11,6 @@ voc:
       http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"
       token: "{{ env_var('DATABRICKS_TOKEN') }}"
       catalog: "{{ env_var('DATABRICKS_CATALOG', 'workspace') }}"
-      schema: voc_synthetic
+      # The synthetic seeds go to voc_synthetic. `--month` sets VOC_DBX_SCHEMA to voc_cfpb for the real exports.
+      schema: "{{ env_var('VOC_DBX_SCHEMA', 'voc_synthetic') }}"
       threads: 1

@@ -16,6 +16,56 @@ Moved here from the README on 31 October 2026, word for word, except that refere
 **The same models on Databricks (T021).** `voc dbt build --target databricks` runs the dbt models on a Databricks SQL warehouse, on synthetic data only. `scripts/databricks_fixture_build.py` loads the committed synthetic fixture with the same load code, writes it as a dbt seed in a work folder, and runs the build. The command refuses unless every complaint ID in both seeds starts with `SYN-`. Four DuckDB-only parts have a Databricks branch: the staged rows come from the seed, the test list is a seed, not a local file, the text check uses `rlike`, and the incremental model uses `merge`. The connection comes from environment variables. The adapter is pinned in its own dependency group (`dbt-databricks==1.13.0`), so a normal install does not get it. The lock file is shared, though, so adding it moved four packages of the normal install down: dbt-common, packaging, pydantic and pydantic-core. First live run, by the owner on 30 October 2026, on a Databricks Free Edition SQL warehouse: `uv run --native-tls --group databricks python scripts/databricks_fixture_build.py tests/fixtures/dbt/complaints.csv <new work folder>`, with the connection in environment variables. It printed "dbt build: 2 seeds, 2 models, 4 data tests. passed 8, failed 0, errors 0, skipped 0". A search of the work folder afterwards found the token in none of its files.
 
 
+## The real exports on Databricks
+
+Owner decision, 31 October 2026: the same dbt models run on Databricks on the real July and August exports, not only on synthetic data.
+
+- The owner uploads the two pinned exports, under their own names, to the Unity Catalog volume `voc_raw` in the `default` schema of the `workspace` catalog.
+- `voc dbt build --target databricks --month <month>` reads the month's file from the volume with every column as text, and types it as `voc load` does (`dbt/models/landed_complaints.sql`).
+- Before any staged model is built from it, data tests on the warehouse check:
+  - that the file's SHA-256 matches its pin in `config/data_files.toml`, so the rows are the same bytes the local load checked (`dbt/tests/landed_file_matches_pin.sql`)
+  - the row count, for July, where a count is pinned (`dbt/tests/landed_row_count_matches_pin.sql`)
+  - the dates, the Yes/No flag and the complaint IDs (`dbt/tests/landed_rows_are_valid.sql` and `dbt/models/schema.yml`)
+- dbt skips every model below a failing test. The models are built in the schema `voc_cfpb`, the synthetic seeds in `voc_synthetic`.
+- The staged model is incremental on Databricks too: the August run adds only complaint IDs that the July run did not.
+- After a passing build, two queries read the row counts back: the staged rows by month, and the curated rows. Only counts and check names are printed. The narrative text stays in the warehouse.
+
+**Step by step, in the owner's own PowerShell.**
+
+1. Upload the two files: in the workspace's sidebar, click **New**, then **Add or upload data**, then **Upload files to a volume**. Pick catalog `workspace`, schema `default`, and create the volume `voc_raw`. Drop in `CCDB_Export_20_July_2026.csv` and `CCDB_Export_21_August_2026.csv` from the folders named by `VOC_DATA_DIR` and `VOC_NEXT_DATA_DIR`. (Databricks, "Upload files to a volume", updated 27 October 2026. The limit is 5 GB per file.)
+2. Find the connection details: in the sidebar, click **SQL Warehouses**, open the warehouse, and open **Connection details**. Keep the page open for the server hostname and the HTTP path.
+3. Open PowerShell in your clone of this repo and run these lines. Each `Read-Host` asks for one value. Paste it and press Enter. The token is read from the encrypted file made on 30 October and never shown:
+
+   ```powershell
+   $env:DATABRICKS_HOST = Read-Host "Server hostname, without https://"
+   $env:DATABRICKS_HTTP_PATH = Read-Host "HTTP path"
+   $sec = Get-Content "$HOME\.voc\databricks-token.dpapi" | ConvertTo-SecureString
+   $env:DATABRICKS_TOKEN = [System.Net.NetworkCredential]::new('', $sec).Password
+   ```
+
+4. Build July:
+
+   ```powershell
+   $work = Join-Path $env:TEMP ("voc-dbx-july-" + (Get-Date -Format "yyyyMMdd-HHmm"))
+   uv run --native-tls --group databricks python scripts/databricks_month_build.py july_2026 $work
+   ```
+
+5. Then August, the incremental load:
+
+   ```powershell
+   $work = Join-Path $env:TEMP ("voc-dbx-august-" + (Get-Date -Format "yyyyMMdd-HHmm"))
+   uv run --native-tls --group databricks python scripts/databricks_month_build.py august_2026 $work
+   ```
+
+6. Remove the token from the session:
+
+   ```powershell
+   Remove-Item Env:DATABRICKS_TOKEN
+   Remove-Variable sec
+   ```
+
+Each build prints a line of counts, `dbt build: ... passed ..., failed 0, errors 0, skipped 0`, then the rows by month and the curated rows. Keep `--group databricks`: without it, `uv run` removes the Databricks packages.
+
 ## Run it yourself
 
 Without any data or key, you can run the tests, the dbt build on the synthetic fixture and the dashboard:

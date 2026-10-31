@@ -233,6 +233,9 @@ def test_B7_the_query_after_the_build_gets_the_connection_and_no_other_secret(wo
 
 def test_B14_the_landed_model_reads_the_month_file_with_every_cfpb_column():
     landed = (REPO / "dbt" / "models" / "landed_complaints.sql").read_text(encoding="utf-8")
+    # Changed in the green commit: the read is the macro month_file_rows(), shared with the row checks.
+    assert "month_file_rows()" in landed
+    landed += (REPO / "dbt" / "macros" / "targets.sql").read_text(encoding="utf-8")
     assert "read_files(" in landed and "var('month_file')" in landed.replace('"', "'")
     for option in ("format => 'csv'", "header => true", "multiLine => true", "escape => '\"'"):
         assert option in landed, option

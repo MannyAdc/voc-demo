@@ -17,6 +17,12 @@ vars:
   # B17: while this is false, the models leave out every complaint ID in splits/test.csv.
   # `voc dbt` always passes false. Only a person running dbt by hand can set it to true.
   final: false
+  # The real monthly export on Databricks (owner decision, 31 October 2026). `voc dbt build --target databricks
+  # --month <month>` passes the volume file, its pinned SHA-256 and, where recorded, its row count.
+  month: ""
+  month_file: ""
+  month_sha256: ""
+  month_rows: 0
 
 # T021: on the Databricks target, two synthetic seeds stand in for the staged DuckDB table and for
 # splits/test.csv. `scripts/databricks_fixture_build.py` writes them into a work folder, never into
@@ -27,6 +33,8 @@ seeds:
     +enabled: "{{ target.type == 'databricks' }}"
     +quote_columns: false
     staged_complaints:
+      # Off for a month build: the rows then come from the volume (models/landed_complaints.sql).
+      +enabled: "{{ target.type == 'databricks' and var('month', '') == '' }}"
       +column_types:
         date_received: date
         date_sent_to_company: date

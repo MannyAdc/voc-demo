@@ -50,6 +50,9 @@ These come from the threat model in the [spec](../specs/001-core-labelling-pipel
 - The Databricks target checks the seed's complaint IDs, not its text. A synthetic ID with real complaint text copied into the seed would pass. The seed is written by the fixture script from the committed synthetic fixture, and the repo has no seed folder.
 - A hand run of dbt with the Databricks profile skips the wrapper's seed check.
 - The seed check trusts the work folder's `dbt_project.yml`. A hand edit of its seed path would point dbt at seeds the check never read.
+- The month build on Databricks (31 October) builds `landed_complaints` from the file before its data tests run, so that one table can hold rows from a file that then fails its SHA-256 check. No model below it is built.
+- August's row count is not pinned, so on Databricks August is checked by its SHA-256 and values, not by its count.
+- The real exports, with their narrative text, are in the owner's Databricks workspace (owner decision, 31 October 2026). The CFPB publishes them for anyone to use. Only the owner can open the workspace. Claude never reads the text: the commands print counts and check names only.
 - The Databricks run uses the owner's Free Edition workspace, which is for non-commercial use only. Its token is the owner's, kept encrypted on the owner's machine, and never in the repo.
 
 

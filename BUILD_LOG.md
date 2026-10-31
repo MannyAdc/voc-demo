@@ -926,3 +926,26 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - Recounted on `b23a7b5`: 54 merged pull requests (`gh pr list --state merged`) and 1,294 tests (`pytest --collect-only`).
   - The spec line, the dbt model comment, and the moved "How it was built" line ("The rule: a fresh reviewer agent reads each pull request") fixed. The four pages' notes say so.
   - "Continuous integration (CI)", "identifier (ID)", "dbt (data build tool)", and Microsoft's page cited for the built-in sign-in (dated 28 March 2025).
+- This branch, `feat/databricks-real`, starts from `main` after #55, so #57's entries are not in this file yet. They join at the merge.
+- Between about 09:55 and 10:15 (exact times not recorded) The owner asked what "synthetic only" and "when to switch to bigger tools" meant. Claude's table: the raw exports, the load, the dbt models on real data, the labelling and the analyst screens run on the owner's laptop. Only the public dashboard is on Azure, and Databricks ran once on 12 synthetic complaints. The owner said the cloud wiring on real data is missing for this audience, and that a sudden half day of extra work read as moving the goalposts.
+  - AI error: on 29 October at 17:11 the owner decided that Databricks gets the real July rows if the Free Edition terms allow it. Claude read the terms on 30 October at about 02:25, and the work went on with synthetic data only. The question did not go back to the owner, so the decision was left open. The owner caught it.
+  - AI error: Claude kept writing "synthetic data" without saying that no cloud part had touched the real data. The README's "When to switch to bigger tools" line hid the gap. The owner caught it.
+  - AI error: Claude read the owner's "I want all mentioned changes" as including #56's review fixes, and said it was starting them. The owner corrected it: the words were about the README reframing. No file of #56 had been changed.
+  - AI error: Claude ran `az rest` to read the subscription's offer type. It failed on a certificate error, and the error message showed the subscription ID to Claude. It went into no file. The rule is that account IDs stay out of view. Claude then gave the owner the command to run instead.
+  - The rule that no complaint text goes to a cloud host was Claude's own caution call (29 October, 13:57), not part of the brief. The brief says never commit raw data, and treat narratives as untrusted input.
+  - Azure Databricks was checked and not chosen. Microsoft's page "Sign up for Azure Databricks for free" (dated 15 October 2026) says it needs a subscription that is not a Free Trial, a switch to pay-as-you-go and the spending limit removed. The free part is 14 days of Databricks usage. Azure's machines and storage are billed.
+- About 10:15 (exact time not recorded) Owner: "The scope sounds fine." Claude took that as a yes to the Free Edition with the real files, including the narrative text, and said so. The owner judges the demo non-commercial. The scope: the owner uploads both exports to a volume, the same dbt models run there with the checks of the local load, the owner runs July then August, and the docs get the real counts. Labelling from the warehouse and a dashboard that reads Databricks are named as next steps.
+- 10:22 Work start on `feat/databricks-real`, in the worktree `../voc-demo-dbx`.
+- 10:24 Reviewer findings posted on #57, with Claude's checks. They wait for the owner.
+- Red `e6c8370` at 10:27: 22 tests in `tests/test_databricks_month.py`. All 22 failed.
+- Found while building: the committed lineage graph test failed. dbt lists the month build's data tests even when they are off, with their own config off, so `voc dbt lineage` would draw them in the local graph. A second red commit adds a test that the graph leaves out switched-off nodes.
+- Red `1703a9e` at 12:43: the lineage test. It failed. The gate carried over 22 failing tests, all from `e6c8370`, each printed as a notice. The green commit makes them pass.
+- The green change:
+  - `voc dbt build --target databricks --month <month>`, and `scripts/databricks_month_build.py`, which makes a work folder with the test list as the only seed.
+  - `dbt/models/landed_complaints.sql` reads the volume file with every column as text and types it as `voc load` does.
+  - Data tests on the warehouse: the file's SHA-256 against its pin, July's row count (672,036, from `results/profile_july_2026.json`, now pinned in `config/data_files.toml`), the dates, the Yes/No flag and the complaint IDs.
+  - The real models go to the schema `voc_cfpb`. The synthetic seeds keep `voc_synthetic`.
+  - After a passing build, two queries read the counts back.
+  - The lineage graph leaves out nodes that are off.
+  - `docs/PIPELINE.md` has the owner's steps. The spec and `docs/LIMITS.md` have three new limits.
+- Before the commit, Claude parsed the project offline with a fake connection, in a scratch folder. Month mode: `stg_complaints` depends on `landed_complaints`, and its 6 data tests are on. Synthetic mode is unchanged: 2 seeds, 2 models and the same 4 data tests on.
