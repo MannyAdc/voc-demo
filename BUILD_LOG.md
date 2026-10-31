@@ -949,3 +949,13 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - The lineage graph leaves out nodes that are off.
   - `docs/PIPELINE.md` has the owner's steps. The spec and `docs/LIMITS.md` have three new limits.
 - Before the commit, Claude parsed the project offline with a fake connection, in a scratch folder. Month mode: `stg_complaints` depends on `landed_complaints`, and its 6 data tests are on. Synthetic mode is unchanged: 2 seeds, 2 models and the same 4 data tests on.
+- Green `1e23042` at 13:01. It passed its gate and was pushed. 13:08 #58 opened as a draft, with a reviewer (time from GitHub).
+- 13:13 Reviewer findings posted on #58, with Claude's checks. No path found for the token, the host or complaint text to reach the output or the repo. The real findings:
+  - AI error by Claude: the padded complaint ID check had `'^\s|\s$'` with one backslash, so on Databricks it matched the letter s and checked nothing. The file was written through a shell heredoc, which lost a backslash. The reviewer caught it.
+  - AI error by Claude: `landed_complaints` held the test-set rows, against B17. The reviewer caught it.
+  - The Product check ran only after the staged merge. There is no exact column-set check. A failed read can leave part of a row in dbt's log in the work folder, outside the guards. The token path should be confirmed.
+  - The red test changed in green (`test_B14_the_landed_model_reads_the_month_file_with_every_cfpb_column`) now reads the model and the macros together. Its comment says so. It is noted here now, as the reviewer asked.
+- About 13:20 (exact time not recorded) Owner decision: fix all of #58's findings, and #57's, with "such as" before a named example. The monthly automatic job is not built. The audience's brief does not ask for it, and the owner needs the time for the video. It goes into the README as a next step.
+- Red `3930f7b` at 13:23: 5 tests for the findings. All 5 failed, and none was carried over.
+- The fixes for #58: the pattern doubled, a test that every `rlike` pattern in `dbt/` doubles its backslashes, the test rows left out of `landed_complaints` with a data test, the row count taken on the file itself, the Product check on `landed_complaints`, a last step that deletes the work folders, the `dbt_run.py` comment corrected, and the limits.
+- Offline parse after the fixes, with a fake connection: in month mode, 8 data tests on `landed_complaints` and 4 on the staged and curated models. July has 12 data tests, August 11 (no pinned row count).

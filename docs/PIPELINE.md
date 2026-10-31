@@ -26,6 +26,8 @@ Owner decision, 31 October 2026: the same dbt models run on Databricks on the re
   - that the file's SHA-256 matches its pin in `config/data_files.toml`, so the rows are the same bytes the local load checked (`dbt/tests/landed_file_matches_pin.sql`)
   - the row count, for July, where a count is pinned (`dbt/tests/landed_row_count_matches_pin.sql`)
   - the dates, the Yes/No flag and the complaint IDs (`dbt/tests/landed_rows_are_valid.sql` and `dbt/models/schema.yml`)
+  - the Products, against the label set (`dbt/tests/landed_product_in_label_list.sql`)
+  - that the test rows are left out (`dbt/tests/landed_has_no_test_set_rows.sql`)
 - dbt skips every model below a failing test. The models are built in the schema `voc_cfpb`, the synthetic seeds in `voc_synthetic`.
 - The staged model is incremental on Databricks too: the August run adds only complaint IDs that the July run did not.
 - After a passing build, two queries read the row counts back: the staged rows by month, and the curated rows. Only counts and check names are printed. The narrative text stays in the warehouse.
@@ -46,22 +48,23 @@ Owner decision, 31 October 2026: the same dbt models run on Databricks on the re
 4. Build July:
 
    ```powershell
-   $work = Join-Path $env:TEMP ("voc-dbx-july-" + (Get-Date -Format "yyyyMMdd-HHmm"))
-   uv run --native-tls --group databricks python scripts/databricks_month_build.py july_2026 $work
+   $julyWork = Join-Path $env:TEMP ("voc-dbx-july-" + (Get-Date -Format "yyyyMMdd-HHmm"))
+   uv run --native-tls --group databricks python scripts/databricks_month_build.py july_2026 $julyWork
    ```
 
 5. Then August, the incremental load:
 
    ```powershell
-   $work = Join-Path $env:TEMP ("voc-dbx-august-" + (Get-Date -Format "yyyyMMdd-HHmm"))
-   uv run --native-tls --group databricks python scripts/databricks_month_build.py august_2026 $work
+   $augustWork = Join-Path $env:TEMP ("voc-dbx-august-" + (Get-Date -Format "yyyyMMdd-HHmm"))
+   uv run --native-tls --group databricks python scripts/databricks_month_build.py august_2026 $augustWork
    ```
 
-6. Remove the token from the session:
+6. Remove the token from the session, and delete the two work folders. If Databricks fails to read a row, dbt's log in a work folder can hold part of it. Nothing there is printed, but the folders are outside the repo's guards:
 
    ```powershell
    Remove-Item Env:DATABRICKS_TOKEN
    Remove-Variable sec
+   Remove-Item -Recurse -Force $julyWork, $augustWork
    ```
 
 Each build prints a line of counts, `dbt build: ... passed ..., failed 0, errors 0, skipped 0`, then the rows by month and the curated rows. Keep `--group databricks`: without it, `uv run` removes the Databricks packages.

@@ -10,5 +10,5 @@ where {{ is_blank('`Date received`') }}
    or {{ cfpb_date('`Date received`') }} is null
    or (not {{ is_blank('`Date sent to company`') }} and {{ cfpb_date('`Date sent to company`') }} is null)
    or (not {{ is_blank('`Timely response?`') }} and {{ cfpb_flag('`Timely response?`') }} is null)
-   or `Complaint ID` rlike '^\s|\s$'
+   or `Complaint ID` rlike '^\\s|\\s$'
 having count(*) > 0

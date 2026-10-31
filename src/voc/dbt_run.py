@@ -35,7 +35,9 @@ from voc.load import DB_PATH
 
 PROJECT = Path("dbt")
 # dbt's output can hold complaint text (run_results.json, dbt.log) and local paths (manifest.json),
-# so it goes in the git-ignored data folder, next to the DuckDB file, which the read guard protects.
+# so it goes in the git-ignored data folder under the root, next to the DuckDB file. In the repo, the read
+# guard protects it. In a work folder made by a scripts/databricks_*_build.py script it is not protected,
+# so the owner's steps delete that folder after the run (docs/PIPELINE.md).
 TARGET = DB_PATH.parent / "dbt" / "target"
 LOGS = DB_PATH.parent / "dbt" / "logs"
 MODELS = ("stg_complaints", "curated_complaints")

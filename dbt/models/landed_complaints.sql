@@ -24,3 +24,5 @@ select
   `Complaint ID` as complaint_id,
   '{{ var('month') | replace("'", "''") }}' as source
 from {{ month_file_rows() }}
+-- B17, review of #58: the test rows are left out here too, as in every model (macros/test_set.sql).
+where {{ leave_out_test_rows('`Complaint ID`') }}
