@@ -330,3 +330,10 @@ def test_A13_the_public_copy_keeps_the_note_on_where_the_text_is_shown():
     view = _function("complaintView")
     assert "textNote + \" Reviews are made on the analyst's own machine." in view
     assert view.count("put(\"c-text-note\"") == 2
+
+
+def test_A13_the_text_box_is_hidden_while_a_complaint_loads_or_fails_to_load():
+    # Review of #61: without this, the previous complaint's box stayed beside "Loading..." or an error.
+    view = _function("complaintView")
+    hide = view.index('$("c-text").hidden = true')
+    assert hide < view.index("fetchJson(")
