@@ -15,3 +15,17 @@ models:
         description: The Product the consumer chose. Must be in config/labels.toml, see tests/product_in_label_list.sql.
   - name: curated_complaints
     description: The staged complaints that have a narrative, without the test rows unless `final` is on (B17).
+  - name: landed_complaints
+    description: >
+      The real monthly export on Databricks, read from the volume and typed as `voc load` types it. Only a
+      month build turns it on. Its file, row count and values are checked in tests/landed_*.sql.
+    columns:
+      - name: complaint_id
+        description: The CFPB complaint ID. Must be present and appear once in the file (B14).
+        data_tests:
+          - not_null
+          - unique
+      - name: date_received
+        description: Required, as in `voc load`.
+        data_tests:
+          - not_null

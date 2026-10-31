@@ -11,6 +11,9 @@
 file_name = "CCDB_Export_20_July_2026.csv"
 size_bytes = 216250982
 sha256 = "beb05a0a61e1ccfe186ad1f7c6ab062bc7a089f7bda28adfe7e6c4c9ccefa57c"
+# The row count, from results/profile_july_2026.json (`voc profile`). Databricks checks it after reading
+# the file (dbt/tests/landed_row_count_matches_pin.sql). August has no recorded count.
+rows = 672036
 pinned_on = "2026-10-28"
 
 [august_2026]

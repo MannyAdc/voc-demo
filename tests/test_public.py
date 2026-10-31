@@ -214,7 +214,8 @@ def test_A13_the_redeploy_script_packs_committed_files_only_and_holds_no_secret(
 
 def test_A13_the_readme_links_the_live_copy_and_says_what_it_hides():
     readme = (REPO / "README.md").read_text(encoding="utf-8")
-    top = readme[:readme.index("## The result")]
+    # Changed on 31 October: the restructured README's heading carries an icon, "## 📊 The result".
+    top = readme[:readme.index("## 📊 The result")]
     assert "https://voc-demo-20261030.azurewebsites.net" in top
     assert "no complaint text" in top
 

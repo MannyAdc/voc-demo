@@ -64,6 +64,8 @@ def _load(config, root, args):
 
 
 def _dbt(config, root, args):
+    if getattr(args, "month", None) and args.target != "databricks":
+        raise DbtError("--month needs --target databricks, so nothing was run")
     labels = [label.name for label in load_labels(Path(root) / "config" / "labels.toml")]
     if args.action == "docs":
         print("\n".join(dbt_run.docs(root, labels)))
@@ -71,7 +73,7 @@ def _dbt(config, root, args):
     if args.action == "lineage":
         print("\n".join(dbt_run.lineage(root, labels)))
         return
-    lines, passed = dbt_run.build(root, labels, args.target)
+    lines, passed = dbt_run.build(root, labels, args.target, args.month)
     print("\n".join(lines))
     if not passed:
         raise DbtError("the dbt build failed, see the checks above")
@@ -304,7 +306,9 @@ def main(argv=None, env=None, root=None):
     dbt_actions = dbt.add_subparsers(dest="action", required=True)
     db = dbt_actions.add_parser("build", help="build the models and run the data tests")
     db.add_argument("--target", choices=dbt_run.TARGETS, default="local",
-                    help="local DuckDB, or Databricks on the synthetic seeds only (T021)")
+                    help="local DuckDB, or Databricks on the synthetic seeds (T021) or a real month (--month)")
+    db.add_argument("--month", choices=sorted(MONTHS), default=None,
+                    help="with --target databricks: build from this month's pinned export in the volume")
     dbt_actions.add_parser("docs", help="write the dbt docs and lineage graph files to dbt/target")
     dbt_actions.add_parser("lineage", help="write docs/LINEAGE.md, a lineage graph of node names only (T017)")
     ledger = sub.add_parser("ledger", help="the token ledger (B8)").add_subparsers(dest="action", required=True)

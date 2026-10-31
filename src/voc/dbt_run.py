@@ -11,6 +11,11 @@ on two synthetic seeds only. It refuses before dbt starts unless the seeds are
 there, every seeded complaint ID is SYN-, and the test list seed is a byte copy
 of the checked splits/test.csv. Only that target gets the connection variables.
 
+With `--month` (owner decision, 31 October 2026) it runs the same models on a real pinned export that the
+owner uploaded to the volume /Volumes/<catalog>/default/voc_raw. The only seed is then the test list. dbt
+gets the file's path, its pinned SHA-256 and, where recorded, its row count, and Databricks checks them before
+any staged model is built. After a passing build, one query per model reads the row counts back.
+
 T017: `voc dbt lineage` runs `dbt parse` the same way and writes docs/LINEAGE.md,
 a Mermaid graph of node names and edges only, so it holds no local path.
 """
@@ -24,12 +29,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+from voc.datafile import load_pins
 from voc.db import connect
 from voc.load import DB_PATH
 
 PROJECT = Path("dbt")
 # dbt's output can hold complaint text (run_results.json, dbt.log) and local paths (manifest.json),
-# so it goes in the git-ignored data folder, next to the DuckDB file, which the read guard protects.
+# so it goes in the git-ignored data folder under the root, next to the DuckDB file. In the repo, the read
+# guard protects it. In a work folder made by a scripts/databricks_*_build.py script it is not protected,
+# so the owner's steps delete that folder after the run (docs/PIPELINE.md).
 TARGET = DB_PATH.parent / "dbt" / "target"
 LOGS = DB_PATH.parent / "dbt" / "logs"
 MODELS = ("stg_complaints", "curated_complaints")
@@ -49,6 +57,11 @@ CONNECTION_VARS = ("DATABRICKS_HOST", "DATABRICKS_HTTP_PATH", "DATABRICKS_TOKEN"
 SEEDS = PROJECT / "seeds"
 STAGED_SEED, TEST_SEED = "staged_complaints.csv", "test_list.csv"
 TARGETS = ("local", "databricks")
+# The real exports: their pins, the volume they are uploaded to, and the schema the models are built in.
+PINS = Path("config") / "data_files.toml"
+VOLUME = "/Volumes/{catalog}/default/voc_raw/"
+REAL_SCHEMA = "voc_cfpb"
+PLAIN = re.compile(r"[A-Za-z0-9_]+")
 # T017: the lineage graph, written with node names only, so it can be committed.
 LINEAGE = Path("docs") / "LINEAGE.md"
 # The node kinds drawn in the lineage graph, in order, with their label and Mermaid shape.
@@ -71,7 +84,7 @@ def dbt_env(base):
 
 
 def check_seeds(root):
-    """T021: the Databricks target gets synthetic rows only. Raises before dbt starts if not.
+    """T021: without `--month`, the Databricks target gets synthetic rows only. Raises before dbt starts if not.
 
     The seed folder must hold exactly the two seeds. The test list seed is a byte copy of
     splits/test.csv, already checked (B17). Every complaint ID in both seeds starts with SYN-.
@@ -100,6 +113,55 @@ def check_seeds(root):
     test_rows = list(csv.reader(io.StringIO((folder / TEST_SEED).read_text(encoding="utf-8"))))[1:]
     if any(not row[0].startswith("SYN-") for row in test_rows):
         raise DbtError(f"{TEST_SEED} holds a complaint ID that is not synthetic (SYN-), {stop}")
+
+
+def check_month_seeds(root):
+    """A month build reads its rows from the volume, so the only seed is the test list, a byte copy of the
+    checked splits/test.csv. Raises before dbt starts if not."""
+    folder = Path(root) / SEEDS
+    stop = "so nothing was sent to Databricks"
+    if not folder.is_dir() or sorted(path.name for path in folder.iterdir()) != [TEST_SEED]:
+        raise DbtError(f"{SEEDS.as_posix()} must hold only {TEST_SEED} for a month build, {stop}")
+    if (folder / TEST_SEED).read_bytes() != (Path(root) / TEST_LIST).read_bytes():
+        raise DbtError(f"{TEST_SEED} is not a byte copy of {TEST_LIST.as_posix()}, {stop}")
+
+
+def catalog_name(base):
+    """The Unity Catalog name, `workspace` unless DATABRICKS_CATALOG is set. It goes into SQL, so it must be plain."""
+    name = base.get("DATABRICKS_CATALOG") or "workspace"
+    if not PLAIN.fullmatch(name):
+        raise DbtError("DATABRICKS_CATALOG must be plain letters, digits and _, so nothing was sent to Databricks")
+    return name
+
+
+def month_vars(root, month, catalog):
+    """The dbt variables for a month build, from the month's pin in config/data_files.toml."""
+    pin = load_pins(Path(root) / PINS)[month]
+    return {"month": month, "month_file": VOLUME.format(catalog=catalog) + pin["file_name"],
+            "month_sha256": pin["sha256"], "month_rows": pin.get("rows", 0)}
+
+
+def _databricks_query(env, sql):
+    """One query on the SQL warehouse, with the connection from `env`. Returns the rows as tuples."""
+    from databricks import sql as databricks_sql  # in the databricks dependency group only
+
+    with databricks_sql.connect(server_hostname=env["DATABRICKS_HOST"], http_path=env["DATABRICKS_HTTP_PATH"],
+                                access_token=env["DATABRICKS_TOKEN"]) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql)
+            return [tuple(row) for row in cursor.fetchall()]
+
+
+def databricks_counts(env, catalog):
+    """B21: the row counts of the real models, by month. Counts and our own month names only."""
+    schema = f"{catalog}.{REAL_SCHEMA}"
+    months = _databricks_query(env, f"select source, count(*) from {schema}.stg_complaints "
+                                    "group by source order by source")
+    if any(not PLAIN.fullmatch(str(source)) for source, _ in months):
+        raise DbtError("stg_complaints holds a month name that is not ours")
+    curated = _databricks_query(env, f"select count(*) from {schema}.curated_complaints")
+    return ["stg_complaints by month: " + ", ".join(f"{source} {int(n)} rows" for source, n in months),
+            f"curated_complaints: {int(curated[0][0])} rows"]
 
 
 def databricks_env(base):
@@ -146,14 +208,23 @@ def check_test_list(root):
     return count
 
 
-def _run(root, action, labels, target_name="local"):
+def _run(root, action, labels, target_name="local", month=None):
     # B17: without a checked test list the models cannot leave out the test rows, so dbt does not start.
     check_test_list(root)
     project = (Path(root) / PROJECT).resolve()
     profiles = project
+    extra = {}
     if target_name == "databricks":
-        check_seeds(root)
+        if month:
+            check_month_seeds(root)
+            extra = month_vars(root, month, catalog_name(os.environ))
+        else:
+            check_seeds(root)
         env = databricks_env(os.environ)
+        # The real exports are built in their own schema. The synthetic seeds keep the profile's default.
+        env.pop("VOC_DBX_SCHEMA", None)
+        if month:
+            env["VOC_DBX_SCHEMA"] = REAL_SCHEMA
         profiles = (Path(root) / DATABRICKS_PROFILES).resolve()
     else:
         env = dbt_env(os.environ)
@@ -164,7 +235,7 @@ def _run(root, action, labels, target_name="local"):
             "--project-dir", str(project), "--profiles-dir", str(profiles),
             "--target-path", str(target), "--log-path", str((Path(root) / LOGS).resolve()),
             # B17: the test-set flag is always passed off. It overrides dbt_project.yml, and no command turns it on.
-            "--vars", json.dumps({"labels": labels, "final": False})]
+            "--vars", json.dumps({"labels": labels, "final": False, **extra})]
     if target_name == "databricks":
         args += ["--target", "databricks"]
     env["VOC_DBT_DB"] = str((Path(root) / DB_PATH).resolve())
@@ -183,9 +254,11 @@ def _row_counts(root):
         con.close()
 
 
-def build(root, labels, target_name="local"):
+def build(root, labels, target_name="local", month=None):
     """Run `dbt build`. Returns the lines to print and whether the build passed."""
-    code, results = _run(root, "build", labels, target_name)
+    if month and target_name != "databricks":
+        raise DbtError("--month needs --target databricks, so nothing was run")
+    code, results = _run(root, "build", labels, target_name, month)
     if not results.is_file():
         raise DbtError(f"dbt exited with code {code} before it wrote any result")
     nodes = json.loads(results.read_text(encoding="utf-8"))["results"]
@@ -214,7 +287,11 @@ def build(root, labels, target_name="local"):
     counts = _row_counts(root) if target_name == "local" else {}
     if counts:
         lines.append(", ".join(f"{name}: {n} rows" for name, n in counts.items()))
-    return lines, code == 0 and not problems
+    passed = code == 0 and not problems
+    # A month build reads its counts back from Databricks, only after it passed.
+    if month and passed:
+        lines += databricks_counts(databricks_env(os.environ), catalog_name(os.environ))
+    return lines, passed
 
 
 def docs(root, labels):
@@ -236,10 +313,13 @@ def _lineage_nodes(manifest):
     A name that is not plain letters, digits, `_` and `.` stops the command, so nothing else reaches the file.
     """
     nodes = {}
+    # A node that is off for this target is left out. dbt lists a data test of a model that is off,
+    # with its own config off (found while building the real exports on Databricks).
     for uid, node in manifest.get("sources", {}).items():
-        nodes[uid] = ("source", f"{node['source_name']}.{node['name']}")
+        if node.get("config", {}).get("enabled", True) is not False:
+            nodes[uid] = ("source", f"{node['source_name']}.{node['name']}")
     for uid, node in manifest.get("nodes", {}).items():
-        if node["resource_type"] in KINDS:
+        if node["resource_type"] in KINDS and node.get("config", {}).get("enabled", True) is not False:
             nodes[uid] = (node["resource_type"], node["name"])
     for kind, name in nodes.values():
         if not SAFE_NAME.fullmatch(name):
