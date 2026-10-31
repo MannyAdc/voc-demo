@@ -359,7 +359,8 @@ async function complaintView(id) {
   $("complaint-h").textContent = "Complaint " + id;
   $("complaint-h").focus();
   for (const k of ["c-ai", "c-check", "c-tfidf", "c-consumer", "c-text-note"]) put(k, "");
-  clear($("c-text")); $("decision").hidden = true; status("d-status", "");
+  // Review of #61: the box stays hidden while the complaint loads, or if it fails to load.
+  clear($("c-text")); $("c-text").hidden = true; $("decision").hidden = true; status("d-status", "");
   status("complaint-status", "Loading...");
   const [c, err] = await fetchJson("/api/review/" + version + "/complaint/" + encodeURIComponent(id));
   if (ticket !== latest.complaint) return;
@@ -369,25 +370,29 @@ async function complaintView(id) {
   put("c-check", c.decision === "accepted" ? "the quoted sentence was found in the text" : (REASONS[c.reason] || "not accepted"));
   put("c-tfidf", c.tfidf_label || "none");
   put("c-consumer", c.hidden ? "hidden while you decide" : (c.consumer_choice || "only on the analyst's own machine"));
+  // Where no text can be shown, the empty grey box is hidden, and the note says why.
   const box = $("c-text");
+  box.hidden = c.text === null;
+  let textNote;
   if (c.text === null) {
-    put("c-text-note", c.local && !c.with_text
+    textNote = c.local && !c.with_text
       ? "The text is not shown: the app was started without --with-text."
-      : "The text is shown only on the analyst's own machine, with the local data.");
+      : "The text is shown only on the analyst's own machine, with the local data.";
   } else {
-    put("c-text-note", (c.quote ? "The AI's quoted sentence is highlighted." : "There is no checked quote to highlight.")
-      + (c.cut ? " The text is cut at 4,000 characters, as the AI saw it." : ""));
+    textNote = (c.quote ? "The AI's quoted sentence is highlighted." : "There is no checked quote to highlight.")
+      + (c.cut ? " The text is cut at 4,000 characters, as the AI saw it." : "");
     const q = c.quote;
     if (q) {
       const mark = document.createElement("mark"); mark.textContent = c.text.slice(q.start, q.end);
       box.append(document.createTextNode(c.text.slice(0, q.start)), mark, document.createTextNode(c.text.slice(q.end)));
     } else { box.textContent = c.text; }
   }
+  put("c-text-note", textNote);
   if (c.decision === "quarantined" && c.can_review) decisionForm(c);
   else if (c.decision === "quarantined") {
-    // The public copy (A13) stores no review, so it offers no form.
+    // The public copy (A13) stores no review, so it offers no form. Its note is added to the one on the text.
     status("d-status", "");
-    put("c-text-note", "Reviews are made on the analyst's own machine. This public copy stores no review.");
+    put("c-text-note", textNote + " Reviews are made on the analyst's own machine. This public copy stores no review.");
   }
 }
 
