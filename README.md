@@ -14,7 +14,7 @@ The task is kept simple on purpose: label each customer complaint by product. Th
 - **📊 The result.** The claim was fixed before the first run: the LLM, with its quote check, beats TF-IDF at the same coverage. On a sealed test set of 1,909 complaints, scored once, it did: **80.3% against 77.9%** on re-weighted strict accuracy (the share labelled correctly), +2.4 points, with a 95% interval of +0.5 to +4.1. It cost **$0.2373 per 1,000 complaints**. The command and the full figures are under "The result".
 - **🖥️ The analyst's tool.** A dashboard with four tabs: the overview, browsing by product, the review queue where a person decides each quarantined complaint of the development set, and the method. On the analyst's own machine, the quoted sentence is highlighted in the complaint's text.
 - **🛡️ Safety.** No label is trusted without a quote that a script found in the text. Failures are held back and never counted as correct: on the development set a person decides each one (9 complaints), and on the test set they count as wrong (45 of 1,909). Spend has a hard cap.
-- **🔧 How it was built.** From the first commit on 27 October 2026 at 23:53 to 31 October: 54 merged pull requests (`gh pr list --state merged`, 31 October) and 1,294 tests (`pytest --collect-only` on commit `b23a7b5`).
+- **🔧 How it was built.** From the first commit on 27 October 2026 at 23:53 to 31 October: 57 merged pull requests (`gh pr list --state merged --limit 500`, 1 November) and 1,322 tests (`pytest --collect-only` on commit `9763017`).
 
 ## 🔀 How one complaint is labelled
 
