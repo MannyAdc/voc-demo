@@ -98,10 +98,10 @@ First the pipeline that labels the complaints, then how it was built.
 
 **📈 Scale**
 - The July 2026 export holds 672,036 complaints. 10,002 have a narrative (`uv run --native-tls voc profile --write results/profile_july_2026.json`), and 9,303 remain after `voc sample` removed copies ([docs/DATA.md](docs/DATA.md)).
-- Loading is incremental, keyed on the complaint identifier (ID). dbt (data build tool) builds the models and runs the data tests, and the same models ran on Databricks with synthetic data.
+- Loading is incremental, keyed on the complaint identifier (ID). dbt (data build tool) builds the models and runs the data tests. The same models ran on Databricks on the real July and August exports, 1,339,176 rows, and gave the same counts as the local build ([docs/PIPELINE.md](docs/PIPELINE.md), "The real exports on Databricks").
 - A scheduled run does load, dbt build, label and evaluate every day, on synthetic data. The public copy on Azure has a health route and a request log.
 
-**Where it runs today, and when to move.** The real complaints are stored and processed on one laptop, with DuckDB: the July export is 216 megabytes. Labelling sends each complaint's text to Anthropic's API. Azure hosts only the public dashboard, built from the committed results. GitHub Actions runs the tests on every pull request, and the whole pipeline every day on synthetic data. Databricks ran the same dbt models once, on synthetic data, on its Free Edition. Move the processing to a cloud warehouse such as Databricks when the data no longer fits on one machine or many people write at once. Add a scheduler such as Airflow when many pipelines depend on each other. The reasons: [docs/STACK.md](docs/STACK.md).
+**Where it runs today, and when to move.** The raw exports are kept on one laptop, and the labelling, the scoring and the analyst screens run there, with DuckDB. Labelling sends each complaint's text to Anthropic's API. The same dbt models also run on Databricks (Free Edition) on the real July and August exports, with the data tests and the incremental load. The two files were uploaded by hand, once, because the CFPB serves only its current data. Azure hosts the public dashboard, built from the committed results. GitHub Actions runs the tests on every pull request, and the whole pipeline every day on synthetic data. Move the labelling and the scoring to the cloud too when the data no longer fits on one machine or many people write at once. Add a scheduler such as Airflow when many pipelines depend on each other. The reasons: [docs/STACK.md](docs/STACK.md).
 
 The details and the commands behind each figure: [docs/RESULTS.md](docs/RESULTS.md).
 
@@ -110,27 +110,41 @@ The details and the commands behind each figure: [docs/RESULTS.md](docs/RESULTS.
 - **⚡ Speed.** Several pieces of work ran at once, each in its own git worktree, and the build log records them.
 - **🛡️ Safety.** Hooks stop the AI coding agent from reading the raw data, the model recordings, the ledger or the key file, and from skipping the test gate. A secret scan (gitleaks) and a names check run on every normal commit and in CI. `cherry-pick`, `revert` and `commit-tree` skip the commit hook. Since 28 October, every pull request opens as a draft, and only the owner merges. The hooks read command text, so they are best effort: the known gaps are in [docs/LIMITS.md](docs/LIMITS.md).
 
-## 🧭 Decisions the owner made
+## 🧭 Decisions I made as the project owner
 
-Claude proposed, the owner decided. Each line is in [BUILD_LOG.md](BUILD_LOG.md) on its day.
+Each line is in [BUILD_LOG.md](BUILD_LOG.md) on the day shown.
 
-- **28 October, overruled: the headline measure.** Claude recommended the quote-only view alone as the headline, with the two methods' agreement as a side report. The owner pushed back: the point is how the two methods work together for better precision, not choosing one.
-- **28 October, overruled: the sample sizes.** The owner asked whether Claude was really confident in its sample size rule. It was not: the rule ignored that the decision compares two methods on the same complaints. The owner then chose a simpler method: Cochran's formula for the sizes and a paired bootstrap for the verdict, both explained in plain words in [docs/HOW_WE_MEASURE.md](docs/HOW_WE_MEASURE.md).
-- **28 October: the labels.** All 11 CFPB products as they are, with no merging. The two small products are kept, and their limits are written down.
-- **29 October: scope.** The human spot check of whether quotes support their labels was cut, and listed as a pending improvement. Databricks was kept.
-- **29 October: the spend cap.** When the cap refused the scored run, it was raised to 40,000,000 tokens. Changing the prompt's output limit after tuning, or relaxing the cap check, was turned down.
-- **30 October: the analyst screens use the development set.** The test set stays sealed. Claude added a safeguard to this: complaint text appears only when the owner starts the app with `--with-text`.
-- **30 October: deploy to Azure the same day,** not on Saturday.
-- **30 October, overruled: the title.** Claude proposed plain words in place of "LLM" and "TF-IDF". The owner kept the technical terms, with an explanation beside each, because a technical reader looks for them.
-- **30 October: readability.** On the dashboard, every abbreviation except AI, LLM and API is spelled out. Normal text is no smaller than the old verdict line (pull request #54).
-- **31 October: the public copy stays without complaint text.** A signed-in analyst copy is named as the next step instead.
-- **31 October: the README opens as a demonstration of applied AI system development,** with the simple task explained and the next steps named, so the repo does not read as only a classifier.
+### How we measure
+
+- **Overruled: the headline measure.** Claude recommended the quote-only view alone as the headline, with the two methods' agreement as a side report. I pushed back: the point is how the two methods work together for better precision, not choosing one. *(28 October)*
+- **Overruled: the sample sizes.** I asked whether Claude was really confident in its sample size rule. It was not: the rule ignored that the decision compares two methods on the same complaints. I then chose a simpler method: Cochran's formula for the sizes and a paired bootstrap for the verdict, both explained in plain words in [docs/HOW_WE_MEASURE.md](docs/HOW_WE_MEASURE.md). *(28 October)*
+- **The labels.** All 11 CFPB products as they are, with no merging. The two small products are kept, and their limits are written down. *(28 October)*
+- **The spend cap.** When the cap refused the scored run, it was raised to 40,000,000 tokens. Changing the prompt's output limit after tuning, or relaxing the cap check, was turned down. *(29 October)*
+
+### Data and safety
+
+- **The analyst screens use the development set.** The test set stays sealed. Claude added a safeguard to this: complaint text appears only when I start the app with `--with-text`. *(30 October)*
+- **The public copy stays without complaint text.** A signed-in analyst copy is named as the next step instead. *(31 October)*
+- **The real exports go to Databricks,** with their narrative text, not only synthetic rows. Claude's earlier rule that no complaint text goes to a cloud host was its own caution, not part of my brief. The data is public, and only I can open the workspace. *(31 October)*
+
+### Scope and delivery
+
+- **Scope.** The human spot check of whether quotes support their labels was cut, and listed as a pending improvement. Databricks was kept. *(29 October)*
+- **Deploy to Azure the same day,** not on Saturday. *(30 October)*
+- **The monthly automatic feed is not built.** My brief does not ask for it, and the time goes to the demo video. It is named as the next step below. *(31 October)*
+
+### How it reads
+
+- **Overruled: the title.** Claude proposed plain words in place of "LLM" and "TF-IDF". I kept the technical terms, with an explanation beside each, because a technical reader looks for them. *(30 October)*
+- **Readability.** On the dashboard, every abbreviation except AI, LLM and API is spelled out. Normal text is no smaller than the old verdict line (pull request #54). *(30 October)*
+- **The README opens as a demonstration of applied AI system development,** with the simple task explained and the next steps named, so the repo does not read as only a classifier. *(31 October)*
 
 ## 🔭 Where this could go next
 
 Not done yet:
 
-- **A monthly feed with no person involved.** Once a month, a scheduled job would ask the CFPB's search API for last month's complaints as CSV, record the file's SHA-256, and run the same load, checks and build. The API takes `date_received_min`, `date_received_max` and `format=csv` ([its specification](https://github.com/cfpb/ccdb5-api/blob/main/swagger-config.yaml), read 31 October 2026). Not tested: whether its CSV has exactly the columns of the pinned exports. The load's column check would stop a run that differs.
+- **A monthly feed with no person involved.** Once a month, a scheduled job would ask the CFPB's search API for last month's complaints as CSV, record the file's SHA-256, upload it to the Databricks volume, and run the same month build. The API takes `date_received_min`, `date_received_max` and `format=csv` ([its specification](https://github.com/cfpb/ccdb5-api/blob/main/swagger-config.yaml), read 31 October 2026). Not tested: whether its CSV has exactly the columns of the pinned exports. The load's column check would stop a run that differs.
+- **Labelling from the warehouse.** Labelling and scoring read the complaints from Databricks and write the labels back, so no step needs the laptop.
 - **Call transcripts.** Text from speech-to-text, through the same quote check, so each label points to the moment in the call that supports it.
 - **Richer labels.** The issue, the sentiment and the root cause, each with its own checked quote.
 - **A fast decision model as the first pass,** such as Jev from TypeSafe AI, announced for early access in a post dated 15 September 2026 ([Introducing System One Models & Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev), read 31 October 2026). It returns a typed value with a confidence score, not text, so it cannot quote its evidence. The idea: it labels the confident cases cheaply, and the LLM with its checked quote takes the rest. The same sealed test and baseline would show whether that helps. TypeSafe's speed and cost figures are its own, and its post says the service is based on "the West Coast", so where the data may go must be checked first.
