@@ -315,3 +315,25 @@ def test_A7_every_quarantine_reason_has_a_plain_name():
 def test_A7_no_rule_number_reaches_the_page():
     from voc.api import PER_CATEGORY_NOTE
     assert not re.search(r"\(B[0-9]", PER_CATEGORY_NOTE)
+
+
+# The empty text box (owner's note on the live page, 30 October): where no text can be shown, the grey box is hidden,
+# and the note says why. On the public copy, the note about reviews is added to that note, not put in its place.
+
+
+def test_A13_the_text_box_is_hidden_when_no_text_can_be_shown():
+    view = _function("complaintView")
+    assert re.search(r"box\.hidden\s*=\s*c\.text === null", view)
+
+
+def test_A13_the_public_copy_keeps_the_note_on_where_the_text_is_shown():
+    view = _function("complaintView")
+    assert "textNote + \" Reviews are made on the analyst's own machine." in view
+    assert view.count("put(\"c-text-note\"") == 2
+
+
+def test_A13_the_text_box_is_hidden_while_a_complaint_loads_or_fails_to_load():
+    # Review of #61: without this, the previous complaint's box stayed beside "Loading..." or an error.
+    view = _function("complaintView")
+    hide = view.index('$("c-text").hidden = true')
+    assert hide < view.index("fetchJson(")
