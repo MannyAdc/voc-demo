@@ -59,6 +59,7 @@ A small web app. The API serves the committed results files, and one page shows 
 - No test drives the page in a browser. The owner checks it by eye before the demo.
 - Azure trusts any job on this repo's `main` branch that asks for an OpenID Connect token, not only the deploy workflow. A GitHub environment would give the deploy its own subject, but it needs a repo setting, which is the owner's. *Review of #56.*
 - The check that the tested commit is still the tip of `main` runs when the deploy starts. A push during the upload is deployed by its own run, which waits for this one. *Review of #56.*
+- If a newer commit on `main` fails CI, the run for the older green commit is skipped too, so nothing deploys until the next green push. The skipped run shows as passed. *Second review of #56.*
 - The request counters live in memory. They start again at zero when `voc serve` restarts, and they are not stored anywhere.
 - The request log goes to the terminal only. It is not written to a file, so it is gone when the terminal closes.
 - `/api/health` is open to anyone who can reach the app. With the A4 host check and the 127.0.0.1 listener, that is this computer only.

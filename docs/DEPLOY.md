@@ -64,22 +64,25 @@ The workflow's first step decides whether to deploy. It ends the run without fai
 
 It signs in to Azure with OpenID Connect: GitHub gives the workflow a short-lived token, and Azure trusts it only for this repo's `main` branch and only for this one web app. No password or key is stored. Facts checked on Microsoft's page [Deploy by using GitHub Actions](https://learn.microsoft.com/en-us/azure/app-service/deploy-github-actions) (dated 28 November 2025, read 31 October 2026): the role "Website Contributor" on the web app, the issuer `https://token.actions.githubusercontent.com`, a subject of the form `repo:<owner>/<repo>:ref:refs/heads/main`, the audience `api://AzureADTokenExchange`, and the three secrets below. GitHub's page [Events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows) says a `workflow_run` workflow runs with the default branch as its ref, so the subject is `main`'s. The workflow checks out the exact commit CI tested.
 
-One-time setup, by the owner, in their own PowerShell. **Run it once.** A second run would make a second app registration named `voc-demo-deploy`. If that happens, delete the extra one in the Azure portal, under Microsoft Entra ID, App registrations. Every ID stays in a variable and goes straight into a GitHub secret, so none is printed. The block runs as one piece, so it stops at the first command that fails:
+One-time setup, by the owner. **Run it once.** A second run would make a second app registration named `voc-demo-deploy`. If that happens, delete the extra one in the Azure portal, under Microsoft Entra ID, App registrations.
+
+Open PowerShell in your clone of this repo, the folder that holds `README.md`, and paste the whole block. It runs as one piece, so it stops at the first command that fails. It first checks that it runs in this repo's folder and that the folder's GitHub repo is `voc-demo`, before it changes anything. Every ID stays in a variable and goes straight into a GitHub secret, so none is printed:
 
 ```powershell
+& {
 $env:Path = "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin;C:\Program Files\GitHub CLI;" + $env:Path
-cd (Read-Host "The folder of your clone of this repo")
+if (-not (Test-Path ".github/workflows/deploy.yml")) { throw "Open PowerShell in your clone of this repo first." }
 az login -o none
 if ($LASTEXITCODE -ne 0) { throw "az login failed" }
 gh auth status
 if ($LASTEXITCODE -ne 0) { throw "gh is not signed in. Run gh auth login first." }
-& {
 $app = "voc-demo-20261030"
 $rg = "voc-demo-rg"
 $repo = gh repo view --json nameWithOwner --jq .nameWithOwner
-if ($LASTEXITCODE -ne 0) { throw "gh repo view failed. Run gh auth login first." }
+if ($LASTEXITCODE -ne 0) { throw "gh repo view failed" }
+if ($repo -notlike "*/voc-demo") { throw "This folder's GitHub repo is not voc-demo, so nothing was changed." }
 $sub = az account show --query id -o tsv
-if ($LASTEXITCODE -ne 0) { throw "az account show failed. Run az login first." }
+if ($LASTEXITCODE -ne 0) { throw "az account show failed" }
 $tenant = az account show --query tenantId -o tsv
 if ($LASTEXITCODE -ne 0) { throw "az account show failed" }
 $clientId = az ad app create --display-name "voc-demo-deploy" --query appId -o tsv
@@ -107,12 +110,20 @@ if ($LASTEXITCODE -ne 0) { throw "gh secret set failed" }
 
 `WriteAllText` writes the file without a byte order mark, which Windows PowerShell 5.1's `Set-Content` would add. `--body` gives each secret its value directly, so no newline from a pipe can slip in.
 
-**If the first automatic deploy fails at the upload with a 403**, the role on the web app alone was not enough for `az webapp deploy`. Give the same role on the resource group instead, in the same kind of PowerShell window:
+**If the first automatic deploy fails at the upload with a 403**, the role on the web app alone was not enough for `az webapp deploy`. Give the same role on the resource group instead. Paste this in the same kind of PowerShell window. It stops if it does not find exactly one `voc-demo-deploy` identity:
 
 ```powershell
+& {
+$env:Path = "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin;C:\Program Files\GitHub CLI;" + $env:Path
 $sub = az account show --query id -o tsv
-$spObjectId = az ad sp list --display-name "voc-demo-deploy" --query "[0].id" -o tsv
-az role assignment create --role "Website Contributor" --assignee-object-id $spObjectId --assignee-principal-type ServicePrincipal --scope "/subscriptions/$sub/resourceGroups/voc-demo-rg" -o none
+if ($LASTEXITCODE -ne 0) { throw "az account show failed. Run az login first." }
+$ids = @(az ad sp list --display-name "voc-demo-deploy" --query "[].id" -o tsv)
+if ($LASTEXITCODE -ne 0) { throw "az ad sp list failed" }
+if ($ids.Count -ne 1) { throw "Expected one voc-demo-deploy identity, found $($ids.Count). Delete the extra one first." }
+az role assignment create --role "Website Contributor" --assignee-object-id $ids[0] --assignee-principal-type ServicePrincipal --scope "/subscriptions/$sub/resourceGroups/voc-demo-rg" -o none
+if ($LASTEXITCODE -ne 0) { throw "az role assignment create failed" }
+"Done: the role on the resource group."
+}
 ```
 
 Then rerun the failed run from the Actions tab.

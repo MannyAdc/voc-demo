@@ -1022,3 +1022,16 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
   - Spec 002 A15 and two known limits: Azure trusts any job on `main` that asks for a token, and the tip-of-main check runs when the deploy starts.
   - `test_A9_health_serves_the_counters` changed in green, with a comment: health also names the commit.
 - Checked by hand before the commit: `git archive --add-virtual-file="BUILD_COMMIT:..."` with git 2.49 puts `BUILD_COMMIT` at the ZIP's root, holding the commit. PowerShell's parser finds no error in `scripts/deploy_azure.ps1` or in the guide's PowerShell blocks. The first parse found one, the old `cd <your clone of this repo>` placeholder.
+- 01:16 Green `dfc4b9d` passed its gate and was pushed. CI green.
+- 01:29 The owner merged #59 (time from GitHub).
+- 01:30 Second review of #56 posted, with Claude's checks. No high-severity issue. The secrets, the event text, the token, the `ready` step and the health route were all checked and hold. The real findings:
+  - Medium: five setup lines sat outside `& { }`, so a failed command there did not stop the rest, and a failed `cd` was never checked. `gh repo view` could then name another repo, and the credential and secrets would go there.
+  - If a newer commit fails CI, the older green one is skipped too, and the skipped run shows as passed.
+  - The setup tests did not check that every line is inside the block, or the folder and repo. `git rev-parse "origin/$Ref"` gives a tag object's ID for a tag. The 403 block had no checks, and `[0]` picked either of two registrations.
+  - Log: the green time was missing, the first review's item 8 had no logged deferral, and two AI errors were not marked.
+  - The reviewer ran `uv run` in the worktree. Claude checked afterwards: the worktree is unchanged and its environment imports `voc`.
+- Logged now, from the first review of #56. AI error by Claude: the concurrency comment said a newer run is not cancelled, but GitHub replaces a waiting run with a newer one. AI error by Claude: the health check claimed "5 minutes", but its tries could take about 15. The reviewer caught both. Deferred with its reason, item 8: the log line with no verb stays, because log entries are not tidied.
+- 01:36 Owner: complete all development tasks before the morning. Claude took it as the "go" for #56's second-review fixes, and said so.
+- Red `301cec5` at 01:37: 4 tests for the second review. All 4 failed, and none was carried over.
+- The fixes: every line of both setup blocks inside one `& { }`, a check that PowerShell runs in this repo's folder and that its GitHub repo is `voc-demo` before any change, no `Read-Host`, checks in the 403 block and a stop unless exactly one `voc-demo-deploy` identity exists, `^{commit}` in the manual script, and a Known limits line on the skipped older commit. Checked by hand: PowerShell's parser finds no error in the blocks or the script, and `git rev-parse "origin/$Ref^{commit}"` gives a 40-character ID.
+- Deferred, with its reason: a test that runs the `ready` step's script with a fake `gh`. It needs bash, and the local gate runs on Windows, where `bash` can resolve to WSL. The step's text is tested, and the first live run will exercise it.

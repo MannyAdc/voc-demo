@@ -25,7 +25,7 @@ try {
     git fetch origin
     if ($LASTEXITCODE -ne 0) { throw "git fetch failed, so nothing was deployed" }
     # Review of #56: the ZIP names its commit in BUILD_COMMIT, which /api/health reports.
-    $commit = git rev-parse "origin/$Ref"
+    $commit = git rev-parse "origin/$Ref^{commit}"
     if ($LASTEXITCODE -ne 0) { throw "git rev-parse failed, so nothing was deployed" }
     git archive --format=zip -o $zip --add-virtual-file="BUILD_COMMIT:$commit" "origin/$Ref" -- . ":!uv.lock" ":!pyproject.toml"
     if ($LASTEXITCODE -ne 0) { throw "git archive failed, so nothing was deployed" }
