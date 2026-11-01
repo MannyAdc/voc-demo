@@ -179,12 +179,12 @@
     </form>
   </section>
 
-  <!-- Tab 4, How we measured: the method and the development figures, for a technical reader. -->
+  <!-- Tab 4, How we measured: the method, the final test figures and the development figures, for a technical reader. -->
   <div class="tab grid" id="tab-measured" hidden>
-    <p class="banner wide" id="banner">The verdict on the Overview comes from the single logged run of the frozen test set. The panels here are tuning figures from the development set.</p>
+    <p class="banner wide" id="banner">The head to head below is from the frozen test set, scored once: the same run as the Overview. The panels marked "development set" are tuning figures from the complaints used while building. They are not the verdict.</p>
 
     <section class="card wide" aria-labelledby="h2h">
-      <h2 id="h2h">Development head to head <span class="tag">tuning figure</span></h2>
+      <h2 id="h2h">Test set head to head <span class="tag">final test, scored once</span></h2>
       <p class="note">Claim fixed before the first run: the LLM, with its quote check, beats TF-IDF at the same coverage. TF-IDF answers only its most confident complaints, as many as the LLM accepted.</p>
       <div class="h2h">
         <table class="figures" aria-label="Figures for both methods">
@@ -204,17 +204,19 @@
         <div>
           <h3>Who was right</h3>
           <div class="grid2" id="who"></div>
+          <p class="note" id="who-note">Each test complaint, by which method labelled it correctly: both, only one of them, or neither. TF-IDF counts as right only on the complaints it answered, its most confident ones. A held-back LLM label counts as wrong.</p>
         </div>
         <div>
           <h3>Precision against coverage</h3>
           <svg id="curve" viewBox="0 0 320 200" role="img" aria-label="TF-IDF precision at each coverage, and the LLM point"></svg>
           <p class="legend"><span class="key tf"></span>TF-IDF <span class="key llm"></span>LLM. The precision axis starts at 50%. A point below it is drawn on the axis as a hollow ring.</p>
+          <p class="note" id="curve-note">Coverage is the share of complaints a method answers. Precision is the share of its answers that are right. The line is TF-IDF. It gives each complaint a confidence score, so it can answer only its surest complaints: the fewer it answers, the more of its answers are right. The LLM gives no confidence score. It either gives a label with a quote that passed the script's check, or the complaint is held back. So it was measured at one coverage only, and it is one dot, not a line. Compare the dot with the line at the same coverage.</p>
         </div>
       </div>
     </section>
 
     <section class="card" aria-labelledby="speed">
-      <h2 id="speed">Speed <span class="tag">tuning figure</span></h2>
+      <h2 id="speed">Speed <span class="tag">tuning figure, development set</span></h2>
       <dl class="stats">
         <div><dt>LLM cost per 1,000 complaints, if every answer was live</dt><dd id="llm-cost"></dd></div>
         <div><dt>TF-IDF cost per 1,000</dt><dd id="tf-cost"></dd></div>
@@ -226,7 +228,7 @@
     </section>
 
     <section class="card" aria-labelledby="safety">
-      <h2 id="safety">Safety <span class="tag">tuning figure</span></h2>
+      <h2 id="safety">Safety <span class="tag">tuning figure, development set</span></h2>
       <dl class="stats">
         <div><dt>Accepted, with a checked quote</dt><dd id="accepted"></dd></div>
         <div><dt>Quarantined</dt><dd id="quarantined"></dd></div>
@@ -243,13 +245,13 @@
         <div><dt>Pool, after copies removed</dt><dd id="pool"></dd></div>
         <div><dt>Copies removed</dt><dd id="copies"></dd></div>
         <div><dt>Categories</dt><dd id="categories"></dd></div>
-        <div><dt>Development / test / training</dt><dd id="sets"></dd></div>
+        <div><dt>Training / development / test</dt><dd id="sets"></dd></div>
       </dl>
-      <p class="note">Set sizes come from Cochran's formula. The test set is frozen and scored once.</p>
+      <p class="note">Training: only TF-IDF learns from these. The LLM is not trained. Development: used while building. Test: frozen and scored once. The development and test sizes come from Cochran's formula. Training is the rest of the pool.</p>
     </section>
 
     <section class="card wide" aria-labelledby="queue-h">
-      <h2 id="queue-h">Quarantine queue <span class="tag">tuning figure</span></h2>
+      <h2 id="queue-h">Quarantine queue <span class="tag">tuning figure, development set</span></h2>
       <p class="note">The LLM labels that the quote check did not accept, with the reason, the label the LLM proposed and the TF-IDF label. No complaint text is shown.</p>
       <div class="scroll"><table class="queue" aria-label="Quarantined complaints">
         <thead><tr><th>Complaint</th><th>Reason</th><th>LLM proposed</th><th>TF-IDF</th></tr></thead>
@@ -258,7 +260,7 @@
     </section>
 
     <section class="card wide" aria-labelledby="versions">
-      <h2 id="versions">Prompt versions <span class="tag">tuning figure</span></h2>
+      <h2 id="versions">Prompt versions <span class="tag">tuning figure, development set</span></h2>
       <div class="scroll"><table class="queue" id="versions-table" aria-label="Evaluation versions"></table></div>
     </section>
   </div>
