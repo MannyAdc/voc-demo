@@ -68,7 +68,7 @@ What the two scores mean:
 
 Source: `uv run --native-tls voc final --prompt v1`, run once by the owner on 29 October 2026, written to [results/eval/v1_test.json](results/eval/v1_test.json).
 
-**Verdict: the LLM beats TF-IDF**, by +2.4 points (95% interval +0.5 to +4.1, paired bootstrap). The interval comes from 2,000 random redraws of the 1,909 test complaints, each the same size, with both methods scored on each redraw. In 95% of them the LLM's lead was between +0.5 and +4.1 points, so it stays above zero. Step by step, with an example: [How we decide who wins](docs/HOW_WE_MEASURE.md#how-we-decide-who-wins). The LLM's clear weak spot is credit reporting, where TF-IDF does better. The per-product table, the development figures and what each term means are in [docs/RESULTS.md](docs/RESULTS.md). [How we measure](docs/HOW_WE_MEASURE.md) explains the method in plain words.
+**Verdict: the LLM beats TF-IDF**, by +2.4 points (95% interval +0.5 to +4.1, paired bootstrap). The interval comes from 2,000 random redraws of the 1,909 test complaints, each the same size, with both methods scored on each redraw. In 95% of them the LLM's lead was between +0.5 and +4.1 points, so the whole range is above zero. Step by step, with an example: [How we decide who wins](docs/HOW_WE_MEASURE.md#how-we-decide-who-wins). The LLM's clear weak spot is credit reporting, where TF-IDF does better. The per-product table, the development figures and what each term means are in [docs/RESULTS.md](docs/RESULTS.md). [How we measure](docs/HOW_WE_MEASURE.md) explains the method in plain words.
 
 ## 🖥️ The analyst's dashboard
 

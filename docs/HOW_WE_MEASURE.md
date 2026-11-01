@@ -62,20 +62,26 @@ Suppose the LLM scores 84 percent and TF-IDF scores 81 percent. The LLM is 3 poi
 
 We answer this with a **paired bootstrap**. It works like re-running the exam many times with the questions we already have. By then, both methods have already labelled every test complaint once. So for each complaint and each method there is one fact: right or wrong.
 
-1. **One pick.** Take 1 complaint at random from the 1,909 test complaints, and put it back. So the same complaint can be picked again.
-2. **One draw.** Make 1,909 picks. This is one pretend test set, the same size as the real one. Because each pick is put back, a draw is not the real set again. On average about 63 percent of the complaints appear in it, some of them twice or more, and about 37 percent do not appear at all. The picks are made within each category, for example 452 picks from the 452 debt collection complaints. So every draw keeps the same mix of categories.
-3. **Score the draw.** For each method, the score is the share of its 1,909 picks it labelled correctly, with all the same rules: a held-back label counts as wrong, and each category counts by its share of the pool. A complaint picked twice counts twice. Then write down the gap: the LLM's score minus TF-IDF's score.
+1. **One pick.** Take 1 complaint at random from one category of the test complaints, and put it back. So the same complaint can be picked again.
+2. **One draw.** Make as many picks in each category as it has complaints, for example 452 picks from the 452 debt collection complaints. That is 1,909 picks in all: one pretend test set, the same size and the same mix of categories as the real one. Because each pick is put back, a draw is not the real set again. On average about 63 percent of the complaints appear in it, some of them twice or more, and about 37 percent do not appear at all.
+3. **Score the draw.** Score both methods with the same rules as the real test. A complaint picked twice counts twice.
+   - The LLM: a quarantined label counts as wrong.
+   - TF-IDF: it answers only as many picks as the LLM accepted in this draw, its most confident ones. The picks it skips count as wrong. This is chosen again in every draw (see "One more fairness rule" below).
+   - For each category, take the share of its picks that are right. Then combine the categories, each weighted by its share of the 9,303 complaints in the pool. Because the test set was drawn in proportion to the pool, this is very close to "right picks ÷ 1,909".
+   - Write down the gap: the LLM's score minus TF-IDF's score, in percentage points.
 4. **Repeat.** Make 2,000 draws. Now there are 2,000 gaps.
 5. **The 95 percent range.** Sort the 2,000 gaps from smallest to largest. Drop about the smallest 50 and the largest 50, which is 2.5 percent at each end. The smallest and largest gaps left are the ends of the range. On the test set, they were +0.5 and +4.1 points.
 
-A small example with 5 complaints, A to E. The LLM got A, B, C and D right. TF-IDF got A, B, C and E right.
+A small, simplified example: 5 complaints, A to E, all in one category, with nothing quarantined and nothing skipped. The LLM got A, B, C and D right. TF-IDF got A, B, C and E right.
 
 | Set | Complaints in it | LLM right | TF-IDF right | Gap |
 |---|---|---|---|---|
-| The real set | A, B, C, D, E | 4 of 5 | 4 of 5 | 0 |
-| Draw 1 | A, A, D, D, B | 5 of 5 | 3 of 5 | +2 |
-| Draw 2 | E, E, C, A, E | 2 of 5 | 5 of 5 | −3 |
-| Draw 3 | B, D, C, C, A | 5 of 5 | 4 of 5 | +1 |
+| The real set | A, B, C, D, E | 4 of 5 (80%) | 4 of 5 (80%) | 0 points |
+| Draw 1 | A, A, D, D, B | 5 of 5 (100%) | 3 of 5 (60%) | +40 points |
+| Draw 2 | E, E, C, A, E | 2 of 5 (40%) | 5 of 5 (100%) | −60 points |
+| Draw 3 | B, D, C, C, A | 5 of 5 (100%) | 4 of 5 (80%) | +20 points |
+
+With only 5 complaints the gap swings wildly. With 1,909 it moves much less.
 
 Each draw counts some complaints twice and leaves others out, so the gap moves. How far it moves over 2,000 draws shows how much the result depends on which complaints happened to be in the test.
 
