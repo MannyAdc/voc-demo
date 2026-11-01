@@ -1167,3 +1167,8 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - 08:07 Work start on `docs/log-cleanup`, from `main` at `23b06be`: this log had no entries for the end of #65, its merge and deploy, or the cleanup.
 - 08:18 Reviewer findings posted on #66, with Claude's checks. Nothing serious. The findings: the Monday heading came after the 01:46 and 01:58 entries, the cleanup counts had no command, the owner's "ok for cleaning" had no time and was out of order, and the forced removal was not approved in particular.
 - Between 08:18 and 08:32 (exact time not recorded) Owner: "go" for all four.
+- 08:33 `fb65939`: the four fixes. The gate passed. Two AI errors by Claude, both caught by Claude before that commit:
+  - The owner's "go" was first logged as "between 08:18 and 08:30", but the clock was only read at 08:32. Changed to 08:32.
+  - The script that rewrote this block wrote Windows line endings over the whole file. `git ls-files --eol` showed it, and the line endings were put back before the commit.
+- 08:45 CI green on `fb65939` (time from GitHub). Merge verdict PENDING: this log did not yet have the fix commit or the two errors above.
+- 08:46 AI error by Claude, caught by Claude before the commit: the line above was first written with 08:41, before the CI times were read. GitHub gives 08:45 for the last check.
