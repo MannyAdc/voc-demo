@@ -337,3 +337,36 @@ def test_A13_the_text_box_is_hidden_while_a_complaint_loads_or_fails_to_load():
     view = _function("complaintView")
     hide = view.index('$("c-text").hidden = true')
     assert hide < view.index("fetchJson(")
+
+
+# Owner's review of 1 November: the method tab mixed the practice figures with the final verdict.
+
+
+def test_A7_the_head_to_head_is_from_the_final_test_set():
+    heading = re.search(r'<h2 id="h2h">(.*?)</h2>', _page(), re.S)
+    assert heading and "test set" in heading.group(1).lower() and "tuning figure" not in heading.group(1)
+    assert "headToHead(tested" in _script()
+
+
+def test_A7_the_chart_says_why_the_tfidf_line_falls_and_why_the_llm_is_one_dot():
+    method = _page()[_page().index('id="tab-measured"'):]
+    note = re.search(r'<p class="note" id="curve-note">(.*?)</p>', method, re.S)
+    assert note, "no note under the chart"
+    for words in ("confidence score", "one dot", "Coverage", "Precision"):
+        assert words in note.group(1), words
+
+
+def test_A7_who_was_right_says_what_its_four_counts_are():
+    method = _page()[_page().index('id="tab-measured"'):]
+    assert re.search(r'<p class="note" id="who-note">[^<]*test complaint', method)
+
+
+def test_A7_the_sets_are_listed_training_then_development_then_test():
+    assert "<dt>Training / development / test</dt>" in _page()
+    assert "[d.sets.train, d.sets.dev, d.sets.test]" in _script()
+
+
+def test_A7_each_development_panel_names_the_development_set():
+    for section in ("speed", "safety", "queue-h", "versions"):
+        heading = re.search(rf'<h2 id="{section}">(.*?)</h2>', _page(), re.S)
+        assert heading and "development set" in heading.group(1), section
