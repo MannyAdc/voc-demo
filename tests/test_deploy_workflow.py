@@ -239,3 +239,28 @@ def test_A15_the_setup_checks_the_web_app_is_in_the_signed_in_subscription_befor
     first_change = next(i for i, line in enumerate(setup) if line.startswith("$clientId = az ad app create"))
     assert webapp < first_change
     assert setup[webapp + 1].startswith("if ($LASTEXITCODE -ne 0)")
+
+
+# The first automatic deploy, 1 November: Azure refused GitHub's token (AADSTS700213).
+
+
+def test_A15_the_setup_trusts_the_subject_with_the_owner_and_repo_ids():
+    # GitHub's tokens for repos made after mid-July 2026 name the owner and repo with fixed numeric IDs:
+    # repo:OWNER@OWNER-ID/REPO@REPO-ID:ref:refs/heads/main. The old form repo:OWNER/REPO:... is refused.
+    setup = _blocks()[0]
+    owner_id = next(i for i, line in enumerate(setup) if line.startswith("$ownerId = gh api"))
+    repo_id = next(i for i, line in enumerate(setup) if line.startswith("$repoId = gh api"))
+    for i in (owner_id, repo_id):
+        assert setup[i + 1].startswith("if ($LASTEXITCODE -ne 0)")
+    subject = next(line for line in setup if line.startswith("$subject = "))
+    assert '"@" + $ownerId' in subject and '"@" + $repoId' in subject and ":ref:refs/heads/main" in subject
+    credential = next(line for line in setup if line.startswith("$credential = "))
+    assert "$subject" in credential and "$repo + ':ref" not in credential
+    first_change = next(i for i, line in enumerate(setup) if line.startswith("$clientId = az ad app create"))
+    assert owner_id < first_change and repo_id < first_change
+
+
+def test_A15_the_guide_says_how_to_fix_a_credential_made_with_the_old_subject():
+    guide = GUIDE.read_text(encoding="utf-8")
+    section = guide[guide.index("## Automatic deploy"):guide.index("## Redeploying after a change")]
+    assert "AADSTS700213" in section and "az ad app federated-credential update" in section
