@@ -265,7 +265,9 @@ def test_A5_the_data_route_is_a_404_when_a_file_is_missing(root, client):
 
 def test_A7_every_development_panel_says_tuning_figure():
     page = (WEB / "index.html").read_text(encoding="utf-8")
-    for section in ("h2h", "speed", "safety", "queue-h", "versions"):
+    # Changed on 1 November (owner's review): the head to head ("h2h") now shows the final test run, so it is no
+    # longer a development panel. tests/test_ui.py checks its heading says "test set".
+    for section in ("speed", "safety", "queue-h", "versions"):
         heading = re.search(rf'<h2 id="{section}">(.*?)</h2>', page, re.S)
         assert heading and "tuning figure" in heading.group(1), section
 

@@ -60,14 +60,34 @@ A fair measurement of the small categories needs more data, for example several 
 
 Suppose the LLM scores 84 percent and TF-IDF scores 81 percent. The LLM is 3 points ahead. Is that lead real, or luck in which complaints happened to be picked?
 
-We answer this with a **paired bootstrap**. It works like re-running the exam many times with the questions we already have:
+We answer this with a **paired bootstrap**. It works like re-running the exam many times with the questions we already have. By then, both methods have already labelled every test complaint once. So for each complaint and each method there is one fact: right or wrong.
 
-1. From the test complaints, draw a new set of the same size at random, allowing repeats. Some complaints appear twice, some not at all. The draw is made within each category, so every pretend set keeps the same mix of categories. This is one pretend test set.
-2. Score both methods on that same pretend set, with all the same rules, and write down the gap between them.
-3. Do this 2,000 times. Now we have 2,000 gaps.
-4. Look at the middle 95 percent of those gaps. That is the likely range for the real gap.
+1. **One pick.** Take 1 complaint at random from one category of the test complaints, and put it back. So the same complaint can be picked again.
+2. **One draw.** Make as many picks in each category as it has complaints, for example 452 picks from the 452 debt collection complaints. That is 1,909 picks in all: one pretend test set, the same size and the same mix of categories as the real one. Because each pick is put back, a draw is not the real set again. On average about 63 percent of the complaints appear in it, some of them twice or more, and about 37 percent do not appear at all.
+3. **Score the draw.** Score both methods with the same rules as the real test. A complaint picked twice counts twice.
+   - The LLM: a quarantined label counts as wrong.
+   - TF-IDF: it answers only as many picks as the LLM accepted in this draw, its most confident ones. The picks it skips count as wrong. This is chosen again in every draw (see "One more fairness rule" below).
+   - For each category, take the share of its picks that are right. Then combine the categories, each weighted by its share of the 9,303 complaints in the pool. Because the test set was drawn in proportion to the pool, this is very close to "right picks ÷ 1,909".
+   - Write down the gap: the LLM's score minus TF-IDF's score, in percentage points.
+4. **Repeat.** Make 2,000 draws. Now there are 2,000 gaps.
+5. **The 95 percent range.** Sort the 2,000 gaps from smallest to largest. Drop about the smallest 50 and the largest 50, which is 2.5 percent at each end. The smallest and largest gaps left are the ends of the range. On the test set, they were +0.5 and +4.1 points.
 
-"Paired" means both methods are always scored on the same pretend set, so neither gets easier questions.
+A small, simplified example: 5 complaints, A to E, all in one category, with nothing quarantined and nothing skipped. The LLM got A, B, C and D right. TF-IDF got A, B, C and E right.
+
+| Set | Complaints in it | LLM right | TF-IDF right | Gap |
+|---|---|---|---|---|
+| The real set | A, B, C, D, E | 4 of 5 (80%) | 4 of 5 (80%) | 0 points |
+| Draw 1 | A, A, D, D, B | 5 of 5 (100%) | 3 of 5 (60%) | +40 points |
+| Draw 2 | E, E, C, A, E | 2 of 5 (40%) | 5 of 5 (100%) | −60 points |
+| Draw 3 | B, D, C, C, A | 5 of 5 (100%) | 4 of 5 (80%) | +20 points |
+
+With only 5 complaints the gap swings wildly. With 1,909 it moves much less.
+
+Each draw counts some complaints twice and leaves others out, so the gap moves. How far it moves over 2,000 draws shows how much the result depends on which complaints happened to be in the test.
+
+"Paired" means both methods are always scored on the same draw, so neither gets easier questions.
+
+The draws only re-count answers that already exist. No model runs again, nothing is trained, and no test complaint is sent anywhere. The code is `compare` in `src/voc/metrics.py`: 2,000 draws, seed 0, and the range is the 2.5th and 97.5th percentile of the gaps.
 
 The verdict follows from that range:
 

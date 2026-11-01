@@ -337,3 +337,65 @@ def test_A13_the_text_box_is_hidden_while_a_complaint_loads_or_fails_to_load():
     view = _function("complaintView")
     hide = view.index('$("c-text").hidden = true')
     assert hide < view.index("fetchJson(")
+
+
+# Owner's review of 1 November: the method tab mixed the practice figures with the final verdict.
+
+
+def test_A7_the_head_to_head_is_from_the_final_test_set():
+    heading = re.search(r'<h2 id="h2h">(.*?)</h2>', _page(), re.S)
+    assert heading and "test set" in heading.group(1).lower() and "tuning figure" not in heading.group(1)
+    assert "headToHead(tested" in _script()
+
+
+def test_A7_the_chart_says_why_the_tfidf_line_falls_and_why_the_llm_is_one_dot():
+    method = _page()[_page().index('id="tab-measured"'):]
+    note = re.search(r'<p class="note" id="curve-note">(.*?)</p>', method, re.S)
+    assert note, "no note under the chart"
+    for words in ("confidence score", "one dot", "Coverage", "Precision"):
+        assert words in note.group(1), words
+
+
+def test_A7_who_was_right_says_what_its_four_counts_are():
+    method = _page()[_page().index('id="tab-measured"'):]
+    assert re.search(r'<p class="note" id="who-note">[^<]*test complaint', method)
+
+
+def test_A7_the_sets_are_listed_training_then_development_then_test():
+    assert "<dt>Training / development / test</dt>" in _page()
+    assert "[d.sets.train, d.sets.dev, d.sets.test]" in _script()
+
+
+def test_A7_each_development_panel_names_the_development_set():
+    for section in ("speed", "safety", "queue-h", "versions"):
+        heading = re.search(rf'<h2 id="{section}">(.*?)</h2>', _page(), re.S)
+        assert heading and "development set" in heading.group(1), section
+
+
+# Review of #62
+
+
+def test_A7_who_was_right_says_how_tfidf_and_a_held_back_label_are_counted():
+    note = re.search(r'<p class="note" id="who-note">(.*?)</p>', _page(), re.S).group(1)
+    assert "only on the complaints it answered" in note and "held-back LLM label counts as wrong" in note
+
+
+def test_A7_the_scale_note_says_only_development_and_test_come_from_cochran():
+    assert "The development and test sizes come from Cochran's formula. Training is the rest of the pool." in _page()
+
+
+def test_A7_the_chart_note_says_the_quote_passed_the_check():
+    note = re.search(r'<p class="note" id="curve-note">(.*?)</p>', _page(), re.S).group(1)
+    assert "a quote that passed the script's check" in note
+
+
+def test_A7_the_head_to_head_verdict_is_in_words_not_a_code():
+    head = _function("headToHead")
+    assert "VERDICT_WORDS[f.verdict]" in head and "does not beat" in _script()
+
+
+def test_A7_without_a_test_run_the_head_to_head_banner_and_note_say_development():
+    fallback = _function("developmentHeadToHead")
+    for words in ('"banner"', '"who-note"', "tuning figure, development set"):
+        assert words in fallback, words
+    assert "developmentHeadToHead()" in _script()

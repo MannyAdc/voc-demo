@@ -7,7 +7,7 @@ The task is kept simple on purpose: label each customer complaint by product. Th
 **The question:** can an AI label customer complaints well enough to trust, and show its evidence for every label? This repo tests that on real complaints sent to the US Consumer Financial Protection Bureau (CFPB) in July 2026. Where it could go next is [below](#-where-this-could-go-next).
 
 🎬 **Demo video:** [voc-demo.mp4 on Google Drive](https://drive.google.com/file/d/1Ve3bvOztGoJkQOtqZWexnC_IDXevF8pM/view?usp=sharing) (recorded by the owner on 1 November 2026)
-🌐 **Live public copy:** https://voc-demo-20261030.azurewebsites.net (figures and labels, no complaint text)
+🌐 **Live public copy:** https://voc-demo-20261030.azurewebsites.net (figures and labels, no complaint text). It runs on Azure App Service's free tier, which sleeps when idle, so the first visit can take about 20 seconds to load.
 📒 **Every step, decision and AI mistake:** [BUILD_LOG.md](BUILD_LOG.md)
 
 ## 🎯 In one minute
@@ -69,7 +69,7 @@ What the two scores mean:
 
 Source: `uv run --native-tls voc final --prompt v1`, run once by the owner on 29 October 2026, written to [results/eval/v1_test.json](results/eval/v1_test.json).
 
-**Verdict: the LLM beats TF-IDF**, by +2.4 points (95% interval +0.5 to +4.1, paired bootstrap). The LLM's clear weak spot is credit reporting, where TF-IDF does better. The per-product table, the development figures and what each term means are in [docs/RESULTS.md](docs/RESULTS.md). [How we measure](docs/HOW_WE_MEASURE.md) explains the method in plain words.
+**Verdict: the LLM beats TF-IDF**, by +2.4 points (95% interval +0.5 to +4.1, paired bootstrap). The interval comes from 2,000 random redraws of the 1,909 test complaints, each the same size, with both methods scored on each redraw. In 95% of them the LLM's lead was between +0.5 and +4.1 points, so the whole range is above zero. Step by step, with an example: [How we decide who wins](docs/HOW_WE_MEASURE.md#how-we-decide-who-wins). The LLM's clear weak spot is credit reporting, where TF-IDF does better. The per-product table, the development figures and what each term means are in [docs/RESULTS.md](docs/RESULTS.md). [How we measure](docs/HOW_WE_MEASURE.md) explains the method in plain words.
 
 ## 🖥️ The analyst's dashboard
 
