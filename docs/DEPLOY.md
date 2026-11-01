@@ -62,7 +62,7 @@ After CI passes on a push to `main`, the workflow `.github/workflows/deploy.yml`
 
 The workflow's first step decides whether to deploy. It ends the run without failing in two cases: the three secrets below are not set yet, or `main` has moved on since the tested commit, so the run for the newer commit deploys instead.
 
-It signs in to Azure with OpenID Connect: GitHub gives the workflow a short-lived token, and Azure trusts it only for this repo's `main` branch and only for this one web app. No password or key is stored. Facts checked on Microsoft's page [Deploy by using GitHub Actions](https://learn.microsoft.com/en-us/azure/app-service/deploy-github-actions) (dated 28 November 2025, read 31 October 2026): the role "Website Contributor" on the web app, the issuer `https://token.actions.githubusercontent.com`, a subject of the form `repo:<owner>/<repo>:ref:refs/heads/main`, the audience `api://AzureADTokenExchange`, and the three secrets below. GitHub's page [Events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows) says a `workflow_run` workflow runs with the default branch as its ref, so the subject is `main`'s. The workflow checks out the exact commit CI tested.
+It signs in to Azure with OpenID Connect: GitHub gives the workflow a short-lived token, and Azure trusts it only for this repo's `main` branch and only for this one web app. No password or key is stored. Facts checked on Microsoft's page [Deploy by using GitHub Actions](https://learn.microsoft.com/en-us/azure/app-service/deploy-github-actions) (dated 28 November 2025, read 31 October 2026): the role "Website Contributor" on the web app, the issuer `https://token.actions.githubusercontent.com`, the audience `api://AzureADTokenExchange`, and the three secrets below. The subject comes from GitHub, not from Microsoft's page. For repos created after mid-July 2026, GitHub's token names the owner and the repo with their fixed numeric IDs: `repo:<owner>@<owner id>/<repo>@<repo id>:ref:refs/heads/main` (GitHub's [OpenID Connect reference](https://docs.github.com/en/actions/reference/security/oidc), read 1 November 2026). Microsoft's page shows the older form `repo:<owner>/<repo>:ref:refs/heads/main`, which Azure refused for this repo on 1 November (AADSTS700213). GitHub's page [Events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows) says a `workflow_run` workflow runs with the default branch as its ref, so the subject is `main`'s. The workflow checks out the exact commit CI tested.
 
 One-time setup, by the owner. **Run it once.** A second run would make a second app registration named `voc-demo-deploy`. If that happens, delete the extra one in the Azure portal, under Microsoft Entra ID, App registrations.
 
@@ -81,6 +81,11 @@ $rg = "voc-demo-rg"
 $repo = gh repo view --json nameWithOwner --jq .nameWithOwner
 if ($LASTEXITCODE -ne 0) { throw "gh repo view failed" }
 if ($repo -notlike "*/voc-demo") { throw "This folder's GitHub repo is not voc-demo, so nothing was changed." }
+$pair = @(gh api "repos/$repo" --jq ".owner.id, .id")
+if ($LASTEXITCODE -ne 0) { throw "Reading the repo's IDs from GitHub failed" }
+if ($pair.Count -ne 2) { throw "GitHub did not return the owner and repo IDs" }
+$owner, $name = $repo.Split("/")
+$subject = "repo:" + $owner + "@" + $pair[0] + "/" + $name + "@" + $pair[1] + ":ref:refs/heads/main"
 az webapp show --name $app --resource-group $rg -o none
 if ($LASTEXITCODE -ne 0) { throw "The web app is not in the subscription you signed in to, so nothing was changed." }
 $sub = az account show --query id -o tsv
@@ -95,7 +100,7 @@ $spObjectId = az ad sp create --id $clientId --query id -o tsv
 if ($LASTEXITCODE -ne 0) { throw "az ad sp create failed" }
 az role assignment create --role "Website Contributor" --assignee-object-id $spObjectId --assignee-principal-type ServicePrincipal --scope "/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/sites/$app" -o none
 if ($LASTEXITCODE -ne 0) { throw "az role assignment create failed" }
-$credential = '{"name": "voc-demo-main", "issuer": "https://token.actions.githubusercontent.com", "subject": "repo:' + $repo + ':ref:refs/heads/main", "audiences": ["api://AzureADTokenExchange"]}'
+$credential = '{"name": "voc-demo-main", "issuer": "https://token.actions.githubusercontent.com", "subject": "' + $subject + '", "audiences": ["api://AzureADTokenExchange"]}'
 [System.IO.File]::WriteAllText("$env:TEMP\voc-credential.json", $credential)
 az ad app federated-credential create --id $appObjectId --parameters "$env:TEMP\voc-credential.json" -o none
 if ($LASTEXITCODE -ne 0) { throw "az ad app federated-credential create failed" }
@@ -129,6 +134,36 @@ if ($LASTEXITCODE -ne 0) { throw "az role assignment create failed" }
 ```
 
 Then rerun the failed run from the Actions tab.
+
+**If an automatic deploy fails at the sign-in with AADSTS700213** ("No matching federated identity record found"), the credential trusts a different subject from the one GitHub sends. A setup run before 1 November 2026 used the older form. This block updates the credential to the form above. Paste it in PowerShell, in your clone of this repo. It stops if it does not find exactly one `voc-demo-deploy` app:
+
+```powershell
+& {
+$env:Path = "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin;C:\Program Files\GitHub CLI;" + $env:Path
+if (-not (Test-Path ".github/workflows/deploy.yml")) { throw "Open PowerShell in your clone of this repo first." }
+az login -o none
+if ($LASTEXITCODE -ne 0) { throw "az login failed" }
+$repo = gh repo view --json nameWithOwner --jq .nameWithOwner
+if ($LASTEXITCODE -ne 0) { throw "gh repo view failed" }
+if ($repo -notlike "*/voc-demo") { throw "This folder's GitHub repo is not voc-demo, so nothing was changed." }
+$pair = @(gh api "repos/$repo" --jq ".owner.id, .id")
+if ($LASTEXITCODE -ne 0) { throw "Reading the repo's IDs from GitHub failed" }
+if ($pair.Count -ne 2) { throw "GitHub did not return the owner and repo IDs" }
+$owner, $name = $repo.Split("/")
+$subject = "repo:" + $owner + "@" + $pair[0] + "/" + $name + "@" + $pair[1] + ":ref:refs/heads/main"
+$ids = @(az ad app list --display-name "voc-demo-deploy" --query "[].id" -o tsv)
+if ($LASTEXITCODE -ne 0) { throw "az ad app list failed" }
+if ($ids.Count -ne 1) { throw "Expected one voc-demo-deploy app, found $($ids.Count), so nothing was changed." }
+$credential = '{"name": "voc-demo-main", "issuer": "https://token.actions.githubusercontent.com", "subject": "' + $subject + '", "audiences": ["api://AzureADTokenExchange"]}'
+[System.IO.File]::WriteAllText("$env:TEMP\voc-credential.json", $credential)
+az ad app federated-credential update --id $ids[0] --federated-credential-id voc-demo-main --parameters "$env:TEMP\voc-credential.json" -o none
+if ($LASTEXITCODE -ne 0) { throw "az ad app federated-credential update failed" }
+Remove-Item "$env:TEMP\voc-credential.json"
+"Done: the credential now trusts the subject with the owner and repo IDs."
+}
+```
+
+Then rerun the failed run from the Actions tab, or merge the next change.
 
 To stop automatic deploys, delete the federated credential or the three secrets. The script below still works by hand.
 

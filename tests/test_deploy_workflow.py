@@ -239,3 +239,58 @@ def test_A15_the_setup_checks_the_web_app_is_in_the_signed_in_subscription_befor
     first_change = next(i for i, line in enumerate(setup) if line.startswith("$clientId = az ad app create"))
     assert webapp < first_change
     assert setup[webapp + 1].startswith("if ($LASTEXITCODE -ne 0)")
+
+
+# The first automatic deploy, 1 November: Azure refused GitHub's token (AADSTS700213).
+
+
+def test_A15_the_setup_trusts_the_subject_with_the_owner_and_repo_ids():
+    # GitHub's tokens for repos made after mid-July 2026 name the owner and repo with fixed numeric IDs:
+    # repo:OWNER@OWNER-ID/REPO@REPO-ID:ref:refs/heads/main. The old form repo:OWNER/REPO:... is refused.
+    # Changed in the review of #65: the two IDs now come from one `gh api` call, into $pair. The exact subject
+    # line and the call's checks are tested in test_A15_both_blocks_read_the_two_ids_with_one_gh_call_...
+    setup = _blocks()[0]
+    ids = next(i for i, line in enumerate(setup) if line.startswith("$pair = @(gh api"))
+    assert setup[ids + 1].startswith("if ($LASTEXITCODE -ne 0)")
+    subject = next(line for line in setup if line.startswith("$subject = "))
+    assert '"@" + $pair[0]' in subject and '"@" + $pair[1]' in subject and ":ref:refs/heads/main" in subject
+    credential = next(line for line in setup if line.startswith("$credential = "))
+    assert "$subject" in credential and "$repo + ':ref" not in credential
+    first_change = next(i for i, line in enumerate(setup) if line.startswith("$clientId = az ad app create"))
+    assert ids < first_change
+
+
+def test_A15_the_guide_says_how_to_fix_a_credential_made_with_the_old_subject():
+    guide = GUIDE.read_text(encoding="utf-8")
+    section = guide[guide.index("## Automatic deploy"):guide.index("## Redeploying after a change")]
+    assert "AADSTS700213" in section and "az ad app federated-credential update" in section
+
+
+# Review of #65
+
+SUBJECT = '$subject = "repo:" + $owner + "@" + $pair[0] + "/" + $name + "@" + $pair[1] + ":ref:refs/heads/main"'
+
+
+def test_A15_both_blocks_read_the_two_ids_with_one_gh_call_and_build_the_exact_subject():
+    for block in (_blocks()[0], _blocks()[2]):
+        calls = [i for i, line in enumerate(block) if "gh api" in line]
+        assert len(calls) == 1, calls
+        i = calls[0]
+        assert block[i] == '$pair = @(gh api "repos/$repo" --jq ".owner.id, .id")'
+        assert block[i + 1].startswith("if ($LASTEXITCODE -ne 0)")
+        assert block[i + 2].startswith("if ($pair.Count -ne 2)")
+        assert SUBJECT in block
+
+
+def test_A15_the_credential_fix_checks_each_command_before_the_update_and_prints_no_id():
+    fix = _blocks()[2]
+    commands = [i for i, line in enumerate(fix) if re.match(r"(\$\w+ = @?\(?)?(az|gh) ", line)]
+    assert len(commands) >= 5
+    for i in commands:
+        assert fix[i + 1].startswith("if ($LASTEXITCODE -ne 0)"), fix[i]
+    folder = next(i for i, line in enumerate(fix) if 'Test-Path ".github/workflows/deploy.yml"' in line)
+    repo = next(i for i, line in enumerate(fix) if '$repo -notlike "*/voc-demo"' in line)
+    one_app = next(i for i, line in enumerate(fix) if "$ids.Count -ne 1" in line)
+    update = next(i for i, line in enumerate(fix) if line.startswith("az ad app federated-credential update"))
+    assert folder < repo < one_app < update and fix.index(SUBJECT) < update
+    assert "$subject" not in fix[-2] and "$pair" not in fix[-2]
