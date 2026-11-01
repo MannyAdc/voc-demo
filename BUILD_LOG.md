@@ -1149,3 +1149,26 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - 01:30 Checked by hand before writing: one call, `gh api "repos/MannyAdc/voc-demo" --jq ".owner.id, .id"`, returns 2 lines in that order, and they build the same subject that Azure accepted at 23:26.
 - Red `7f1d9b6` at 01:30: 2 tests in `tests/test_deploy_workflow.py`. Both failed, and none was carried over.
 - The fixes: both blocks read the two IDs with one `gh api` call and check that it returned two, the subject line is tested whole, the new block's checks and their order are tested, and its last line prints no ID. `test_A15_the_setup_trusts_the_subject_with_the_owner_and_repo_ids` changed in green, with a comment, because the IDs now come from one call. The two error messages avoid the words "gh api", so the new test's count of calls stays strict. Checked by hand at 01:31: 28 deploy tests pass, and PowerShell's parser finds no error in the three blocks of the automatic deploy section.
+## Monday 2 November 2026
+
+The entries from 00:06 to 01:31 above were also on this day. They stay under Sunday as written.
+
+- 01:46 Green `f99b9ca` pushed. The gate passed.
+- 01:58 CI green on `f99b9ca` (tests, repo-checks, secret-scan). Merge verdict PENDING, then MERGE after Claude's judgement: each real finding fixed, the 23:28 doubt explained above, this log complete. #65 marked ready (time from GitHub).
+- 07:46 The owner merged #65 (time from GitHub).
+- Between 07:46 and 08:07 (exact time not recorded) Owner: "ok for cleaning" (the worktrees).
+- 07:50 to 07:53 The automatic deploy of #65 (run 41348941666) passed. Checked by Claude at 08:07 with `curl -s --max-time 60 https://voc-demo-20261030.azurewebsites.net/api/health`. It reports the commit `23b06be`, the merge of #65.
+- Between 07:46 and 08:07 (exact time not recorded) Worktree cleanup, by Claude:
+  - `git worktree list` listed 29 worktrees other than the main checkout. For each one, `git merge-base --is-ancestor <its last commit> origin/main` passed, so all its commits are in `main`. `git status --porcelain` found no changes in 28 of them.
+  - `../voc-demo-final` had an uncommitted change to this file from 29 October: 25 added lines (`git diff BUILD_LOG.md`). Each added line was looked up in `main`'s copy of this file with `grep -qxF`. 23 were there word for word. The other 2 are in `main` in a later, corrected form, with times from GitHub (checked with `git grep` on `origin/main`). So it was an old draft, and it was discarded with `git worktree remove --force`.
+  - Two worktrees held an ignored `data/` folder with dbt build output, and one also a DuckDB file (`git status --porcelain --ignored`, then the file names only). Both can be rebuilt. They were deleted with their worktrees. No file contents were read.
+  - The other worktrees were removed with `git worktree remove`, then `git worktree prune`. `git worktree list` then showed only the main checkout. No branch was deleted.
+  - AI error by Claude, raised by the reviewer of #66: the owner's "ok for cleaning" was general. Claude decided on its own that the uncommitted change in `../voc-demo-final` was an old draft and removed it with `--force`, without asking about that change in particular. Nothing was lost, as checked above. It should have been put to the owner first.
+- 08:07 Work start on `docs/log-cleanup`, from `main` at `23b06be`: this log had no entries for the end of #65, its merge and deploy, or the cleanup.
+- 08:18 Reviewer findings posted on #66, with Claude's checks. Nothing serious. The findings: the Monday heading came after the 01:46 and 01:58 entries, the cleanup counts had no command, the owner's "ok for cleaning" had no time and was out of order, and the forced removal was not approved in particular.
+- Between 08:18 and 08:32 (exact time not recorded) Owner: "go" for all four.
+- 08:33 `fb65939`: the four fixes. The gate passed. Two AI errors by Claude, both caught by Claude before that commit:
+  - The owner's "go" was first logged as "between 08:18 and 08:30", but the clock was only read at 08:32. Changed to 08:32.
+  - The script that rewrote this block wrote Windows line endings over the whole file. `git ls-files --eol` showed it, and the line endings were put back before the commit.
+- 08:45 CI green on `fb65939` (time from GitHub). Merge verdict PENDING: this log did not yet have the fix commit or the two errors above.
+- 08:46 AI error by Claude, caught by Claude before the commit: the line above was first written with 08:41, before the CI times were read. GitHub gives 08:45 for the last check.
