@@ -1124,3 +1124,15 @@ Sections used in entries: Work (start, merged, duration), AI error (what, how ca
 - 23:20 The owner merged #63 (time from GitHub).
 - 23:26 The second automatic deploy (run 41306304812) passed every step. `/api/health` on the live site reports the commit `d6cd383`, the merge of #63. So the live copy now has #61, #62 and #63.
 - 23:27 `main` merged into `docs/video-link`. The README's live copy line now says it runs on Azure App Service's free tier, which sleeps when idle, so the first visit can take about 20 seconds (a first load of 18 seconds was measured at about 20:10).
+- 23:43 Reviewer findings posted on #64, with Claude's checks. Nothing serious. The real findings: the README's free-tier line implied only the first visit waits and did not say the demo may be offline, the 18-second load had no command, tonight's entries had loose times and one clock-like duration, the changelog had no link or read date, and the README's top lines ran together. `docs/DEPLOY.md` still writes the older subject: that is fixed in its own pull request, `fix/oidc-subject`. Noted for next time: new content came in inside a merge commit.
+- Between 23:43 and 23:46 (exact time not recorded) Owner: "go" for the fixes.
+- Corrections of tonight's entries, which stay as written:
+  - "Before edits it ran 20:46" means 20 minutes 46 seconds.
+  - The one-time Azure setup ran between 22:32 and 22:59. The 22:32 run found no secrets. The 22:59 run had them.
+  - "The first automatic deploy (run 41304290652)" was the first deploy run with the secrets set. The 22:32 run came earlier and stopped at its first step.
+  - The 18-second load was measured by Claude at about 20:10 (exact time not recorded) with `curl -s -o /dev/null -w '%{http_code} %{time_total}s\n' --max-time 60 https://voc-demo-20261030.azurewebsites.net/api/health`. It printed `200 18.522380s`.
+  - The changelog is [Immutable subject claims for GitHub Actions OIDC tokens](https://github.blog/changelog/2026-04-23-immutable-subject-claims-for-github-actions-oidc-tokens), read 1 November 2026. GitHub's [OpenID Connect reference](https://docs.github.com/en/actions/reference/security/oidc), read the same day, gives 15 July 2026 for new repos.
+  - The 30-day rule for the free trial is from Microsoft's [Azure free account FAQ](https://azure.microsoft.com/free/free-account-faq), read 1 November 2026.
+  - "The live copy now has #61, #62 and #63" means the live copy matches `main` at `d6cd383`.
+- About 23:45 (exact time not recorded) The owner created the budget `voc-demo-1-dollar` in the Azure portal: monthly, A$1.00, from 1 November 2026 to 31 October 2028 (from the owner's screenshot, with the scope blurred). The upgrade to pay-as-you-go is not confirmed in the chat yet.
+- 23:46 The README: the video line drops "by the owner", the live copy line says a visit after a quiet spell can take about 20 seconds and that the free demo may sometimes be offline, and the three top lines are separate paragraphs.
