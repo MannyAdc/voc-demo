@@ -6,7 +6,10 @@ The task is kept simple on purpose: label each customer complaint by product. Th
 
 **The question:** can an AI label customer complaints well enough to trust, and show its evidence for every label? This repo tests that on real complaints sent to the US Consumer Financial Protection Bureau (CFPB) in July 2026. Where it could go next is [below](#-where-this-could-go-next).
 
-🌐 **Live public copy:** https://voc-demo-20261030.azurewebsites.net (figures and labels, no complaint text)
+🎬 **Demo video:** [voc-demo.mp4 on Google Drive](https://drive.google.com/file/d/1Ve3bvOztGoJkQOtqZWexnC_IDXevF8pM/view?usp=sharing) (recorded on 1 November 2026)
+
+🌐 **Live public copy:** https://voc-demo-20261030.azurewebsites.net (figures and labels, no complaint text). It runs on Azure App Service's free tier. After a quiet spell, a visit can take about 20 seconds to load. As a free demo, it may sometimes be offline.
+
 📒 **Every step, decision and AI mistake:** [BUILD_LOG.md](BUILD_LOG.md)
 
 ## 🎯 In one minute
