@@ -56,9 +56,85 @@ and the counters are at `https://<app name>.azurewebsites.net/api/health`.
 
 The owner ran the setup commands above, each with `-o none`, with the app name `voc-demo-20261030`. Creating the plan printed "Creating App Service Plan 'voc-demo-plan' (Linux, SKU: F1)", then, because the account was new, "Resource provider 'Microsoft.Web' used by this operation is not registered. We are registering for you." and "Registration succeeded." Before the code was uploaded, the address answered 503, because the start command had nothing to start. The owner then uploaded the `feat/public-mode` branch (pull request #50) with `git archive` and `az webapp deploy`, and the dashboard loaded at https://voc-demo-20261030.azurewebsites.net. So F1 does run this Python app on Linux.
 
+## Automatic deploy (A15)
+
+After CI passes on a push to `main`, the workflow `.github/workflows/deploy.yml` uploads the same ZIP as the script below, plus a file `BUILD_COMMIT` that names the commit. It then waits, for up to 10 minutes, until `https://<app name>.azurewebsites.net/api/health` reports that exact commit. Nobody runs anything after a merge.
+
+The workflow's first step decides whether to deploy. It ends the run without failing in two cases: the three secrets below are not set yet, or `main` has moved on since the tested commit, so the run for the newer commit deploys instead.
+
+It signs in to Azure with OpenID Connect: GitHub gives the workflow a short-lived token, and Azure trusts it only for this repo's `main` branch and only for this one web app. No password or key is stored. Facts checked on Microsoft's page [Deploy by using GitHub Actions](https://learn.microsoft.com/en-us/azure/app-service/deploy-github-actions) (dated 28 November 2025, read 31 October 2026): the role "Website Contributor" on the web app, the issuer `https://token.actions.githubusercontent.com`, a subject of the form `repo:<owner>/<repo>:ref:refs/heads/main`, the audience `api://AzureADTokenExchange`, and the three secrets below. GitHub's page [Events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows) says a `workflow_run` workflow runs with the default branch as its ref, so the subject is `main`'s. The workflow checks out the exact commit CI tested.
+
+One-time setup, by the owner. **Run it once.** A second run would make a second app registration named `voc-demo-deploy`. If that happens, delete the extra one in the Azure portal, under Microsoft Entra ID, App registrations.
+
+Open PowerShell in your clone of this repo, the folder that holds `README.md`, and paste the whole block. It runs as one piece, so it stops at the first command that fails. Before it changes anything, it checks that it runs in this repo's folder, that the folder's GitHub repo is `voc-demo`, and that the web app is in the Azure subscription you signed in to. Every ID stays in a variable and goes straight into a GitHub secret, so none is printed:
+
+```powershell
+& {
+$env:Path = "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin;C:\Program Files\GitHub CLI;" + $env:Path
+if (-not (Test-Path ".github/workflows/deploy.yml")) { throw "Open PowerShell in your clone of this repo first." }
+az login -o none
+if ($LASTEXITCODE -ne 0) { throw "az login failed" }
+gh auth status
+if ($LASTEXITCODE -ne 0) { throw "gh is not signed in. Run gh auth login first." }
+$app = "voc-demo-20261030"
+$rg = "voc-demo-rg"
+$repo = gh repo view --json nameWithOwner --jq .nameWithOwner
+if ($LASTEXITCODE -ne 0) { throw "gh repo view failed" }
+if ($repo -notlike "*/voc-demo") { throw "This folder's GitHub repo is not voc-demo, so nothing was changed." }
+az webapp show --name $app --resource-group $rg -o none
+if ($LASTEXITCODE -ne 0) { throw "The web app is not in the subscription you signed in to, so nothing was changed." }
+$sub = az account show --query id -o tsv
+if ($LASTEXITCODE -ne 0) { throw "az account show failed" }
+$tenant = az account show --query tenantId -o tsv
+if ($LASTEXITCODE -ne 0) { throw "az account show failed" }
+$clientId = az ad app create --display-name "voc-demo-deploy" --query appId -o tsv
+if ($LASTEXITCODE -ne 0) { throw "az ad app create failed" }
+$appObjectId = az ad app show --id $clientId --query id -o tsv
+if ($LASTEXITCODE -ne 0) { throw "az ad app show failed" }
+$spObjectId = az ad sp create --id $clientId --query id -o tsv
+if ($LASTEXITCODE -ne 0) { throw "az ad sp create failed" }
+az role assignment create --role "Website Contributor" --assignee-object-id $spObjectId --assignee-principal-type ServicePrincipal --scope "/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Web/sites/$app" -o none
+if ($LASTEXITCODE -ne 0) { throw "az role assignment create failed" }
+$credential = '{"name": "voc-demo-main", "issuer": "https://token.actions.githubusercontent.com", "subject": "repo:' + $repo + ':ref:refs/heads/main", "audiences": ["api://AzureADTokenExchange"]}'
+[System.IO.File]::WriteAllText("$env:TEMP\voc-credential.json", $credential)
+az ad app federated-credential create --id $appObjectId --parameters "$env:TEMP\voc-credential.json" -o none
+if ($LASTEXITCODE -ne 0) { throw "az ad app federated-credential create failed" }
+Remove-Item "$env:TEMP\voc-credential.json"
+gh secret set AZURE_CLIENT_ID --repo $repo --body $clientId
+if ($LASTEXITCODE -ne 0) { throw "gh secret set failed" }
+gh secret set AZURE_TENANT_ID --repo $repo --body $tenant
+if ($LASTEXITCODE -ne 0) { throw "gh secret set failed" }
+gh secret set AZURE_SUBSCRIPTION_ID --repo $repo --body $sub
+if ($LASTEXITCODE -ne 0) { throw "gh secret set failed" }
+"Done: the identity, its role on the web app, the federated credential and the three secrets."
+}
+```
+
+`WriteAllText` writes the file without a byte order mark, which Windows PowerShell 5.1's `Set-Content` would add. `--body` gives each secret its value directly, so no newline from a pipe can slip in.
+
+**If the first automatic deploy fails at the upload with a 403**, the role on the web app alone was not enough for `az webapp deploy`. Give the same role on the resource group instead. Paste this in the same kind of PowerShell window. It stops if it does not find exactly one `voc-demo-deploy` identity:
+
+```powershell
+& {
+$env:Path = "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin;C:\Program Files\GitHub CLI;" + $env:Path
+$sub = az account show --query id -o tsv
+if ($LASTEXITCODE -ne 0) { throw "az account show failed. Run az login first." }
+$ids = @(az ad sp list --display-name "voc-demo-deploy" --query "[].id" -o tsv)
+if ($LASTEXITCODE -ne 0) { throw "az ad sp list failed" }
+if ($ids.Count -ne 1) { throw "Expected one voc-demo-deploy identity, found $($ids.Count). Delete the extra one first." }
+az role assignment create --role "Website Contributor" --assignee-object-id $ids[0] --assignee-principal-type ServicePrincipal --scope "/subscriptions/$sub/resourceGroups/voc-demo-rg" -o none
+if ($LASTEXITCODE -ne 0) { throw "az role assignment create failed" }
+"Done: the role on the resource group."
+}
+```
+
+Then rerun the failed run from the Actions tab.
+
+To stop automatic deploys, delete the federated credential or the three secrets. The script below still works by hand.
+
 ## Redeploying after a change
 
-One line, after `az login`, from the repo folder:
+By hand, for example before the automatic deploy is set up: one line, after `az login`, from the repo folder:
 
 ```powershell
 .\scripts\deploy_azure.ps1 -App voc-demo-20261030

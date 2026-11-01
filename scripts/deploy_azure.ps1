@@ -24,7 +24,10 @@ $zip = Join-Path $env:TEMP "voc-site.zip"
 try {
     git fetch origin
     if ($LASTEXITCODE -ne 0) { throw "git fetch failed, so nothing was deployed" }
-    git archive --format=zip -o $zip "origin/$Ref" -- . ":!uv.lock" ":!pyproject.toml"
+    # Review of #56: the ZIP names its commit in BUILD_COMMIT, which /api/health reports.
+    $commit = git rev-parse "origin/$Ref^{commit}"
+    if ($LASTEXITCODE -ne 0) { throw "git rev-parse failed, so nothing was deployed" }
+    git archive --format=zip -o $zip --add-virtual-file="BUILD_COMMIT:$commit" "origin/$Ref" -- . ":!uv.lock" ":!pyproject.toml"
     if ($LASTEXITCODE -ne 0) { throw "git archive failed, so nothing was deployed" }
     az webapp deploy --name $App --resource-group $ResourceGroup --src-path $zip --type zip -o none
     if ($LASTEXITCODE -ne 0) { throw "az webapp deploy failed" }
