@@ -204,13 +204,13 @@
         <div>
           <h3>Who was right</h3>
           <div class="grid2" id="who"></div>
-          <p class="note" id="who-note">Each test complaint, by which method labelled it correctly: both, only one of them, or neither.</p>
+          <p class="note" id="who-note">Each test complaint, by which method labelled it correctly: both, only one of them, or neither. TF-IDF counts as right only on the complaints it answered, its most confident ones. A held-back LLM label counts as wrong.</p>
         </div>
         <div>
           <h3>Precision against coverage</h3>
           <svg id="curve" viewBox="0 0 320 200" role="img" aria-label="TF-IDF precision at each coverage, and the LLM point"></svg>
           <p class="legend"><span class="key tf"></span>TF-IDF <span class="key llm"></span>LLM. The precision axis starts at 50%. A point below it is drawn on the axis as a hollow ring.</p>
-          <p class="note" id="curve-note">Coverage is the share of complaints a method answers. Precision is the share of its answers that are right. The line is TF-IDF. It gives each complaint a confidence score, so it can answer only its surest complaints: the fewer it answers, the more of its answers are right. The LLM gives no confidence score. It either gives a label with a quote the script found, or the complaint is held back. So it was measured at one coverage only, and it is one dot, not a line. Compare the dot with the line at the same coverage.</p>
+          <p class="note" id="curve-note">Coverage is the share of complaints a method answers. Precision is the share of its answers that are right. The line is TF-IDF. It gives each complaint a confidence score, so it can answer only its surest complaints: the fewer it answers, the more of its answers are right. The LLM gives no confidence score. It either gives a label with a quote that passed the script's check, or the complaint is held back. So it was measured at one coverage only, and it is one dot, not a line. Compare the dot with the line at the same coverage.</p>
         </div>
       </div>
     </section>
@@ -247,7 +247,7 @@
         <div><dt>Categories</dt><dd id="categories"></dd></div>
         <div><dt>Training / development / test</dt><dd id="sets"></dd></div>
       </dl>
-      <p class="note">Training: only TF-IDF learns from these. The LLM is not trained. Development: used while building. Test: frozen and scored once. Set sizes come from Cochran's formula.</p>
+      <p class="note">Training: only TF-IDF learns from these. The LLM is not trained. Development: used while building. Test: frozen and scored once. The development and test sizes come from Cochran's formula. Training is the rest of the pool.</p>
     </section>
 
     <section class="card wide" aria-labelledby="queue-h">

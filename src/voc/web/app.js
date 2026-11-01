@@ -37,15 +37,19 @@ async function get(path) {
   return response.json();
 }
 
+const VERDICT_WORDS = { beats: "the LLM beats TF-IDF", inconclusive: "inconclusive",
+                        does_not_beat: "the LLM does not beat TF-IDF" };
+
 function headToHead(f) {
   put("llm-acc", pct(f.llm.reweighted_accuracy)); put("tf-acc", pct(f.tfidf.reweighted_accuracy));
   put("llm-prec", pct(f.llm.precision)); put("tf-prec", pct(f.tfidf.precision));
   put("llm-cov", pct(f.llm.coverage)); put("tf-cov", pct(f.tfidf.coverage));
   put("llm-f1", dec(f.llm.macro_f1)); put("tf-f1", dec(f.tfidf.macro_f1));
-  const [low, high] = f.interval;
-  put("verdict", (f.set === "test" ? "Test verdict: " : "Development verdict: ") + (f.verdict || "none") + ". "
-      + num(f.complaints) + " complaints, " + num(f.resamples) + " paired bootstrap resamples.");
-  drawInterval(f.difference, low, high);
+  const [low, high] = f.interval.length === 2 ? f.interval : [null, null];
+  // Review of #62: the verdict in words, as on the Overview, never the internal code.
+  put("verdict", (f.set === "test" ? "Test verdict: " : "Development verdict: ") + (VERDICT_WORDS[f.verdict] || "none")
+      + ". " + num(f.complaints) + " complaints, " + num(f.resamples) + " paired bootstrap resamples.");
+  if ([f.difference, low, high].every((v) => typeof v === "number")) drawInterval(f.difference, low, high);
   const who = $("who");
   const names = { both: "both right", only_llm: "only the LLM", only_tfidf: "only TF-IDF", neither: "neither" };
   for (const key of ["both", "only_llm", "only_tfidf", "neither"]) {
@@ -55,6 +59,18 @@ function headToHead(f) {
     cell.append(b, s); who.appendChild(cell);
   }
   drawCurve(f.precision_coverage);
+}
+
+function developmentHeadToHead() {
+  // Review of #62: with no logged test run, the heading, its tag, the banner and the note all say development set.
+  const heading = $("h2h"); clear(heading);
+  const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = "tuning figure, development set";
+  heading.append("Development head to head ", tag);
+  put("banner", "No test run is logged yet, so the head to head below is from the development set: tuning figures, "
+      + "not a verdict.");
+  put("who-note", "Each development complaint, by which method labelled it correctly: both, only one of them, or "
+      + "neither. TF-IDF counts as right only on the complaints it answered, its most confident ones. A held-back LLM "
+      + "label counts as wrong.");
 }
 
 function speedFigures(f) {
@@ -568,7 +584,7 @@ async function main() {
   // Owner's review of 1 November: the head to head shows the final test run, like the Overview. Without a logged
   // test run it falls back to the development figures, and its heading says so.
   if (tested) headToHead(tested);
-  else if (figures) { headToHead(figures); put("h2h", "Development head to head (tuning figure)"); }
+  else if (figures) { headToHead(figures); developmentHeadToHead(); }
   if (figures) speedFigures(figures);
   safety(run, audit, queue);
   if (data) scale(data);
