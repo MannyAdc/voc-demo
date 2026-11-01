@@ -81,12 +81,11 @@ $rg = "voc-demo-rg"
 $repo = gh repo view --json nameWithOwner --jq .nameWithOwner
 if ($LASTEXITCODE -ne 0) { throw "gh repo view failed" }
 if ($repo -notlike "*/voc-demo") { throw "This folder's GitHub repo is not voc-demo, so nothing was changed." }
-$ownerId = gh api "repos/$repo" --jq .owner.id
-if ($LASTEXITCODE -ne 0) { throw "gh api failed" }
-$repoId = gh api "repos/$repo" --jq .id
-if ($LASTEXITCODE -ne 0) { throw "gh api failed" }
+$pair = @(gh api "repos/$repo" --jq ".owner.id, .id")
+if ($LASTEXITCODE -ne 0) { throw "Reading the repo's IDs from GitHub failed" }
+if ($pair.Count -ne 2) { throw "GitHub did not return the owner and repo IDs" }
 $owner, $name = $repo.Split("/")
-$subject = "repo:" + $owner + "@" + $ownerId + "/" + $name + "@" + $repoId + ":ref:refs/heads/main"
+$subject = "repo:" + $owner + "@" + $pair[0] + "/" + $name + "@" + $pair[1] + ":ref:refs/heads/main"
 az webapp show --name $app --resource-group $rg -o none
 if ($LASTEXITCODE -ne 0) { throw "The web app is not in the subscription you signed in to, so nothing was changed." }
 $sub = az account show --query id -o tsv
@@ -147,12 +146,11 @@ if ($LASTEXITCODE -ne 0) { throw "az login failed" }
 $repo = gh repo view --json nameWithOwner --jq .nameWithOwner
 if ($LASTEXITCODE -ne 0) { throw "gh repo view failed" }
 if ($repo -notlike "*/voc-demo") { throw "This folder's GitHub repo is not voc-demo, so nothing was changed." }
-$ownerId = gh api "repos/$repo" --jq .owner.id
-if ($LASTEXITCODE -ne 0) { throw "gh api failed" }
-$repoId = gh api "repos/$repo" --jq .id
-if ($LASTEXITCODE -ne 0) { throw "gh api failed" }
+$pair = @(gh api "repos/$repo" --jq ".owner.id, .id")
+if ($LASTEXITCODE -ne 0) { throw "Reading the repo's IDs from GitHub failed" }
+if ($pair.Count -ne 2) { throw "GitHub did not return the owner and repo IDs" }
 $owner, $name = $repo.Split("/")
-$subject = "repo:" + $owner + "@" + $ownerId + "/" + $name + "@" + $repoId + ":ref:refs/heads/main"
+$subject = "repo:" + $owner + "@" + $pair[0] + "/" + $name + "@" + $pair[1] + ":ref:refs/heads/main"
 $ids = @(az ad app list --display-name "voc-demo-deploy" --query "[].id" -o tsv)
 if ($LASTEXITCODE -ne 0) { throw "az ad app list failed" }
 if ($ids.Count -ne 1) { throw "Expected one voc-demo-deploy app, found $($ids.Count), so nothing was changed." }
@@ -161,7 +159,7 @@ $credential = '{"name": "voc-demo-main", "issuer": "https://token.actions.github
 az ad app federated-credential update --id $ids[0] --federated-credential-id voc-demo-main --parameters "$env:TEMP\voc-credential.json" -o none
 if ($LASTEXITCODE -ne 0) { throw "az ad app federated-credential update failed" }
 Remove-Item "$env:TEMP\voc-credential.json"
-"Done: Azure now trusts " + $subject
+"Done: the credential now trusts the subject with the owner and repo IDs."
 }
 ```
 
