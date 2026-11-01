@@ -264,3 +264,33 @@ def test_A15_the_guide_says_how_to_fix_a_credential_made_with_the_old_subject():
     guide = GUIDE.read_text(encoding="utf-8")
     section = guide[guide.index("## Automatic deploy"):guide.index("## Redeploying after a change")]
     assert "AADSTS700213" in section and "az ad app federated-credential update" in section
+
+
+# Review of #65
+
+SUBJECT = '$subject = "repo:" + $owner + "@" + $pair[0] + "/" + $name + "@" + $pair[1] + ":ref:refs/heads/main"'
+
+
+def test_A15_both_blocks_read_the_two_ids_with_one_gh_call_and_build_the_exact_subject():
+    for block in (_blocks()[0], _blocks()[2]):
+        calls = [i for i, line in enumerate(block) if "gh api" in line]
+        assert len(calls) == 1, calls
+        i = calls[0]
+        assert block[i] == '$pair = @(gh api "repos/$repo" --jq ".owner.id, .id")'
+        assert block[i + 1].startswith("if ($LASTEXITCODE -ne 0)")
+        assert block[i + 2].startswith("if ($pair.Count -ne 2)")
+        assert SUBJECT in block
+
+
+def test_A15_the_credential_fix_checks_each_command_before_the_update_and_prints_no_id():
+    fix = _blocks()[2]
+    commands = [i for i, line in enumerate(fix) if re.match(r"(\$\w+ = @?\(?)?(az|gh) ", line)]
+    assert len(commands) >= 5
+    for i in commands:
+        assert fix[i + 1].startswith("if ($LASTEXITCODE -ne 0)"), fix[i]
+    folder = next(i for i, line in enumerate(fix) if 'Test-Path ".github/workflows/deploy.yml"' in line)
+    repo = next(i for i, line in enumerate(fix) if '$repo -notlike "*/voc-demo"' in line)
+    one_app = next(i for i, line in enumerate(fix) if "$ids.Count -ne 1" in line)
+    update = next(i for i, line in enumerate(fix) if line.startswith("az ad app federated-credential update"))
+    assert folder < repo < one_app < update and fix.index(SUBJECT) < update
+    assert "$subject" not in fix[-2] and "$pair" not in fix[-2]
