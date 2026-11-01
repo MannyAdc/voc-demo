@@ -97,7 +97,8 @@ def test_A9_an_unusual_method_is_not_logged_as_typed(client, capsys):
 
 def test_A9_health_serves_the_counters(client):
     body = client.get("/api/health").json()
-    assert set(body) == {"status", "requests", "client_errors", "server_errors", "started"}
+    # Changed in the green commit of the review of #56: health also names the deployed commit (A15).
+    assert set(body) == {"status", "requests", "client_errors", "server_errors", "started", "commit"}
     assert body["status"] == "ok"
     assert datetime.fromisoformat(body["started"]).tzinfo is not None
 

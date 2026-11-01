@@ -130,6 +130,16 @@ def _counts(mapping, allowed):
     return {k: v for k, v in _dict(mapping).items() if k in allowed and _number(v) is not None}
 
 
+def _build_commit(root):
+    """A15, review of #56: the commit in BUILD_COMMIT, which the deploy adds to the ZIP, or None.
+    Only a 40-character lowercase hex commit ID is served, never other content of the file."""
+    try:
+        text = (Path(root) / "BUILD_COMMIT").read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError):
+        return None
+    return text if re.fullmatch(r"[0-9a-f]{40}", text) else None
+
+
 def create_app(root, with_text=False, public_host=None):
     """The app. With `public_host` it is the public copy (A13): it answers only to that host name, never reads
     the local staged table, never serves complaint text or the consumer's own choice, and stores no review."""
@@ -138,6 +148,7 @@ def create_app(root, with_text=False, public_host=None):
     app = FastAPI(title="voc-demo results", docs_url=None, redoc_url=None, openapi_url=None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[public_host] if public else LOCAL_HOSTS)
     monitor = api_log.install(app)  # A9: one log line per request, and the counters for /api/health
+    build_commit = _build_commit(root)
 
     @app.middleware("http")
     async def headers(request, call_next):
@@ -198,7 +209,7 @@ def create_app(root, with_text=False, public_host=None):
 
     @app.get("/api/health")
     def health():
-        return monitor.health()
+        return {**monitor.health(), "commit": build_commit}
 
     @app.get("/api/versions")
     def versions():
