@@ -43,8 +43,8 @@ function headToHead(f) {
   put("llm-cov", pct(f.llm.coverage)); put("tf-cov", pct(f.tfidf.coverage));
   put("llm-f1", dec(f.llm.macro_f1)); put("tf-f1", dec(f.tfidf.macro_f1));
   const [low, high] = f.interval;
-  put("verdict", "Development verdict: " + (f.verdict || "none") + ". " + f.complaints + " complaints, "
-      + f.resamples + " paired bootstrap resamples.");
+  put("verdict", (f.set === "test" ? "Test verdict: " : "Development verdict: ") + (f.verdict || "none") + ". "
+      + num(f.complaints) + " complaints, " + num(f.resamples) + " paired bootstrap resamples.");
   drawInterval(f.difference, low, high);
   const who = $("who");
   const names = { both: "both right", only_llm: "only the LLM", only_tfidf: "only TF-IDF", neither: "neither" };
@@ -55,6 +55,10 @@ function headToHead(f) {
     cell.append(b, s); who.appendChild(cell);
   }
   drawCurve(f.precision_coverage);
+}
+
+function speedFigures(f) {
+  // The Speed panel stays a development figure: its labelling run is the development run.
   put("llm-cost", f.llm.cost_per_1000_usd ? "$" + f.llm.cost_per_1000_usd : "not available");
   put("tf-cost", "$0 (no API call)");
   if (typeof f.llm.seconds_per_1000_complaints === "number") {
@@ -229,7 +233,7 @@ function scale(d) {
   put("pool", num(d.pool) + " narratives");
   put("copies", num(d.copies_removed.exact) + " exact, " + num(d.copies_removed.near) + " near");
   put("categories", num(d.categories));
-  put("sets", [d.sets.dev, d.sets.test, d.sets.train].map(num).join(" / "));
+  put("sets", [d.sets.train, d.sets.dev, d.sets.test].map(num).join(" / "));
 }
 
 function versionsTable(rows) {
@@ -561,7 +565,11 @@ async function main() {
   if (tested) testVerdict(tested);
   else noVerdict(testVersion ? "The test results for prompt " + testVersion + " could not be loaded."
                              : "No test run is logged yet, so there is no verdict.");
-  if (figures) headToHead(figures);
+  // Owner's review of 1 November: the head to head shows the final test run, like the Overview. Without a logged
+  // test run it falls back to the development figures, and its heading says so.
+  if (tested) headToHead(tested);
+  else if (figures) { headToHead(figures); put("h2h", "Development head to head (tuning figure)"); }
+  if (figures) speedFigures(figures);
   safety(run, audit, queue);
   if (data) scale(data);
 }
