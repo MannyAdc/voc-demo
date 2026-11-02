@@ -413,3 +413,11 @@ def test_A7_the_page_names_the_baseline_as_tf_idf_with_logistic_regression():
     for text in (subtitle, note, entry):
         assert "logistic regression" in text, text[:60]
         assert "word-based model" not in text, text[:60]
+
+
+def test_A7_the_names_list_describes_the_baseline_as_tf_idf_with_logistic_regression():
+    # Review of #68: the "What is being labelled" list kept the old description of the baseline.
+    entry = re.search(r"<dt>The word-based model's suggestion</dt>\s*<dd>(.*?)</dd>", _page(), re.S)
+    assert entry
+    assert "logistic regression" in entry.group(1)
+    assert "A simple model that learned" not in entry.group(1)
