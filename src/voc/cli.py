@@ -132,6 +132,12 @@ def _sample(config, root, args):
     print(format_summary(summary))
 
 
+def _validation_lists(config, root, args):
+    from voc.validation import format_summary, freeze
+
+    print(format_summary(freeze(root)))
+
+
 def _label(config, root, args):
     from voc import pipeline
     from voc.backends import make_backend
@@ -261,7 +267,8 @@ def _evaluate(config, root, args):
     print(format_evaluation(evaluate(root, args.set, args.prompt, args.note), root))
 
 
-COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample, "label": _label,
+COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample,
+            "validation-lists": _validation_lists, "label": _label,
             "evaluate": _evaluate, "final": _test_run, "audit": _audit, "serve": _serve,
             ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt, ("dbt", "lineage"): _dbt,
             ("ledger", "init"): _ledger_init, ("ledger", "raise"): _ledger_raise,
@@ -277,6 +284,8 @@ def main(argv=None, env=None, root=None):
     p = sub.add_parser("profile", help="print data facts as counts (B22)")
     p.add_argument("--write", help="also write the facts as JSON to this file")
     sub.add_parser("sample", help="build and freeze the samples from the staged July rows (B9, B16, B25)")
+    sub.add_parser("validation-lists", help="draw and freeze the validation review's lists from the development "
+                                           "set, printing counts only (spec 003, B16)")
     lb = sub.add_parser("label", help="label development complaints with the LLM, printing counts only (B3, B21)")
     lb.add_argument("set", choices=("dev", "quick", "injection"),
                     help="the development set, its fixed 50-complaint part, or the synthetic injection set")

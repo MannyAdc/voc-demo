@@ -1,0 +1,11 @@
+# The frozen lists of the validation review (spec 003, B16). Fixed before the lists are drawn.
+# Sizes, in the spec's drawing order: the judge's dry run, V5 (the owner's blind ratings),
+# V2 (disagreements, never sharing a case with V5 or the dry run), and V1 (run-to-run consistency).
+dry_run = 10
+v5 = 50
+v2 = 40
+v1 = 100
+# The seed of the draw. The date the lists were drawn.
+seed = 20261103
+# The accepted labels the lists are drawn from: the development run of prompt v1.
+labels_file = "results/labels/v1_dev.csv"
