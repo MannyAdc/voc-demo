@@ -955,7 +955,13 @@ def test_V1_the_summary_says_its_cost_and_tokens_count_this_runs_live_calls_only
     ("results/validation/v2_sheet.csv", True),
     ("results/validation/notes.csv", True),
 ])
-def test_V8_only_the_planned_validation_results_can_be_committed(path, ignored):
+def test_V8_only_the_planned_validation_results_can_be_committed(tmp_path, path, ignored):
+    # Changed in the green commit: the gate runs the tests on a copy that is not a git repo, so the test makes
+    # its own repo with a copy of `.gitignore` instead of asking the checkout.
+    import shutil
     import subprocess
-    found = subprocess.run(["git", "check-ignore", "--no-index", "-q", path], cwd=REPO, capture_output=True)
+    shutil.copy(REPO / ".gitignore", tmp_path / ".gitignore")
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True, capture_output=True)
+    found = subprocess.run(["git", "check-ignore", "--no-index", "-q", path], cwd=tmp_path, capture_output=True)
+    assert found.returncode in (0, 1)
     assert (found.returncode == 0) == ignored

@@ -80,3 +80,6 @@ Drawn once, from the development set only, with a fixed seed, in this order, and
 - Every sample is small. The intervals are wide, and the text says so.
 - The consumer's recorded product is the answer key and is itself noisy. V2 measures how noisy, on 40 cases only.
 - The judge's reasons are model text and stay local, so a reader of the repo sees ratings, not reasons.
+- V1: a complaint whose call fails the same way every time is never recorded, so every rerun of that repeat
+  pays for it again and the repeat cannot finish. The run stops after 3 failures in a row, so each rerun costs
+  little. The owner decides what to do if it happens. *Added on 3 November after the second review of #72.*

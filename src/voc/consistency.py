@@ -229,19 +229,21 @@ def _summary_json(summary):
 
 
 def _write_results(paths, rows, summary):
-    """Both files are written to temporary files first and then renamed, so a write that fails partway leaves
-    neither, and the repeat stays open."""
+    """Both files are written to temporary files first and then renamed. If anything fails, the files renamed
+    so far are removed again, so a failure leaves neither, and the repeat stays open."""
     folder = paths[0].parent
     folder.mkdir(parents=True, exist_ok=True)
     temporary = [folder / f".{p.name}.tmp" for p in paths]
+    renamed = []
     try:
         temporary[0].write_text(rows_csv(rows), encoding="utf-8", newline="\n")
         temporary[1].write_text(_summary_json(summary), encoding="utf-8", newline="\n")
         for temp, path in zip(temporary, paths):
             os.replace(temp, path)
+            renamed.append(path)
     except BaseException:
-        for temp in temporary:
-            temp.unlink(missing_ok=True)
+        for path in [*temporary, *renamed]:
+            path.unlink(missing_ok=True)
         raise
 
 
@@ -296,8 +298,10 @@ def command(config, root, repeat, approved):
     rows = relabel(complaints, version, labels, call, backend_name, repeat, old)
     failed = sum(r["new_reason"] in (MODEL_ERROR, NOT_RUN_BUDGET) for r in rows)
     if failed:
+        kept = (f"The answers so far are recorded. Run repeat {repeat} again to finish" if backend_name == "api"
+                else "Run it again to finish")
         raise ConsistencyError(f"{failed} complaints failed with a model error or at the cap, so no results are "
-                               f"written. The answers so far are recorded. Run repeat {repeat} again to finish")
+                               f"written. {kept}")
     summary = summarise(rows, repeat)
     live = [r for r in rows if r["source"] == "live" and r["input_tokens"] is not None]
     cost = sum((call_cost(prices, model, r["input_tokens"], r["output_tokens"]) for r in live), Decimal(0))
@@ -305,7 +309,10 @@ def command(config, root, repeat, approved):
                     "list": "splits/validation/v1.csv", "run_seconds": round(time.monotonic() - started, 1),
                     "live_calls": len(live), "replayed_calls": sum(r["source"] == "replay" for r in rows),
                     "input_tokens": sum(r["input_tokens"] for r in live),
-                    "output_tokens": sum(r["output_tokens"] for r in live), "cost_usd": str(cost)})
+                    "output_tokens": sum(r["output_tokens"] for r in live), "cost_usd": str(cost),
+                    "cost_and_tokens_count": "the live calls of this run only. Answers replayed from an earlier "
+                                             "run of the same repeat cost nothing now and are counted in "
+                                             "replayed_calls"})
     if ledger is not None:
         summary["ledger_charged_tokens"] = ledger.state()["used"] - used_before
     _write_results(paths, rows, summary)
