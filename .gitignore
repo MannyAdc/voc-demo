@@ -30,6 +30,8 @@ ledger.json
 !results/eval/*.csv
 # Review decisions hold IDs, labels and a reason from a fixed list, never complaint text (A12)
 !results/reviews/*.csv
+# Validation results hold IDs, labels, positions, codes and counts, never complaint text (spec 003, V8)
+!results/validation/*.csv
 !splits/**
 !config/**
 !tests/fixtures/**/*.jsonl
