@@ -399,3 +399,17 @@ def test_A7_without_a_test_run_the_head_to_head_banner_and_note_say_development(
     for words in ('"banner"', '"who-note"', "tuning figure, development set"):
         assert words in fallback, words
     assert "developmentHeadToHead()" in _script()
+
+
+# 2 November: the baseline is a logistic regression on TF-IDF features (src/voc/baselines.py), so the page must
+# not call TF-IDF itself the model. "TF-IDF" stays as the short name, as in the README and docs.
+
+def test_A7_the_page_names_the_baseline_as_tf_idf_with_logistic_regression():
+    page = _page()
+    subtitle = re.search(r'<p class="sub">(.*?)</p>', page, re.S).group(1)
+    note = re.search(r'<p class="term-note" id="term-tfidf"[^>]*>(.*?)</p>', page, re.S).group(1)
+    glossary = re.search(r'<dl[^>]*id="glossary"[^>]*>(.*?)</dl>', page, re.S).group(1)
+    entry = re.search(r"<dt>TF-IDF</dt>\s*<dd>(.*?)</dd>", glossary, re.S).group(1)
+    for text in (subtitle, note, entry):
+        assert "logistic regression" in text, text[:60]
+        assert "word-based model" not in text, text[:60]
