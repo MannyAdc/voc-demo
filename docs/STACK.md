@@ -23,7 +23,7 @@ Versions are the pins in `pyproject.toml`.
 
 - **DuckDB** (`duckdb==1.5.6`): one local file, no server, enough for a monthly export of 216 MB (216,250,982 bytes, `config/data_files.toml`).
 - **dbt** (`dbt-core==1.12.6`, `dbt-duckdb==1.11.0`): the models and data tests live as reviewed code, with incremental loads keyed on complaint ID.
-- **scikit-learn** (`scikit-learn==1.9.1`): the TF-IDF baseline. It is cheap, fast and well understood, which makes it the honest thing to beat.
+- **scikit-learn** (`scikit-learn==1.9.1`): the baseline, TF-IDF word scores fed into a logistic regression (settings in `config/tfidf.toml`). It is cheap, fast and well understood, which makes it the honest thing to beat.
 - **Anthropic SDK** (`anthropic==1.13.0`) with claude-haiku-5-5: Anthropic's low-cost model for high-volume work such as classification, at $0.10 per million input tokens and $0.50 per million output tokens (`config/prices.toml`, from the [pricing page](https://platform.claude.com/docs/en/about-claude/pricing), checked 28 October 2026).
 - **FastAPI** (`fastapi==0.143.0`, with `uvicorn==0.54.0`): a small read-only API and dashboard over the committed results.
 - **uv**: one lock file (`uv.lock`), so every machine and CI install the same versions.

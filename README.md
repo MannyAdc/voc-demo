@@ -2,7 +2,7 @@
 
 **A demonstration of applied AI system development: putting an LLM into a real workflow so that its output can be checked, measured and trusted.**
 
-The task is kept simple on purpose: label each customer complaint by product. The work is in what surrounds the model. Every label must quote its evidence, and a script checks the answer and the quote. Anything that fails is held back and never counted as correct. A simple TF-IDF (term frequency, inverse document frequency) model is the baseline, the bar to beat. A sealed test set is scored once. Analysts get a dashboard. The AI coding agent that built it, Claude Code, worked under tests, a reviewer agent and the owner's decisions.
+The task is kept simple on purpose: label each customer complaint by product. The work is in what surrounds the model. Every label must quote its evidence, and a script checks the answer and the quote. Anything that fails is held back and never counted as correct. The baseline, the bar to beat, is a simple word-based model: TF-IDF (term frequency, inverse document frequency) turns each complaint into word scores, and a logistic regression learns which scores point to which product. It is called TF-IDF for short. A sealed test set is scored once. Analysts get a dashboard. The AI coding agent that built it, Claude Code, worked under tests, a reviewer agent and the owner's decisions.
 
 **The question:** can an AI label customer complaints well enough to trust, and show its evidence for every label? This repo tests that on real complaints sent to the US Consumer Financial Protection Bureau (CFPB) in July 2026. Where it could go next is [below](#-where-this-could-go-next).
 
@@ -63,6 +63,8 @@ flowchart TB
 | Coverage | 97.6% | 97.6% |
 | Cost per 1,000 complaints | $0.2373 | $0 |
 | Time per 1,000 complaints | 2,015.2 seconds | 0.707 seconds |
+
+TF-IDF here is short for the baseline: TF-IDF word scores fed into a logistic regression, a standard statistical model, trained on 7,024 other complaints. [What we compare](docs/HOW_WE_MEASURE.md#what-we-compare) explains it in plain words.
 
 What the two scores mean:
 - **Re-weighted strict accuracy**, the headline: the share of complaints labelled correctly. "Strict" means a held-back label counts as wrong. "Re-weighted" means each product counts by its share of the 9,303 complaints in the pool, not by its share of the sample.
