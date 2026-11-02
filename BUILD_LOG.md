@@ -1181,3 +1181,27 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - 17:48 The fixes: `docs/HOW_WE_MEASURE.md` says how the logistic regression labels a complaint. It gives each score a weight for each category, adds them up and turns the totals into a confidence (`src/voc/baselines.py:84`: the confidence is the top class probability).
 - 17:48 AI error by Claude, caught by the read guard: the first command for these fixes held the log text, with the words of the reviewer's command, so the guard refused it. Nothing ran. The fixes were then written to a script file first.
 - 19:41 Work start on `docs/validation-spec`, in `../voc-demo-val`, from `main` at `2666af8`, while #68 is in review: spec 003 for the validation review, the change to B16 and the test list, as in the plan the owner approved with "go". The spec names the cross-cutting rules V7 to V10, beside the owner's V1 to V6. The judge's rubric goes in `config/prompts/`, where the prompts live.
+- The owner's choices for the validation review, given between 18:13 and 18:55 (exact time not recorded), in reply to Claude's 11 points. The owner accepted all 11:
+  - V1 to V6 in a new spec.
+  - B16 amended to allow frozen development lists for V1, V2 and V5, and a small list for the rubric's dry run.
+  - The owner runs the review sheet command. The sheet goes in a folder the read guard blocks. Extending the guard is approved.
+  - Judge reasons stay local. Only IDs and codes are committed. The owner may add a short note in their own words.
+  - The judge is Claude Sonnet, with no other provider.
+  - V5 uses its own random sample of about 50 accepted development labels, separate from V2.
+  - The rubric is fixed after one dry run on about 10 other development cases that are never reported.
+  - V3 is a plain list.
+  - The hybrid: one rule fixed in advance from development data only. The baseline answers when its top probability is at least 0.9, otherwise the LLM. No per-product split. Reported as exploratory and optimistic.
+  - Time at scale is labelled as an estimate. No paid parallel run.
+  - Every small-sample share is reported with its interval.
+  - V1 gets a new recording key.
+  Then Claude's plan with costs, and the owner's "go". Claude read the "go" as also accepting its two suggestions: V5 may overlap V2, and V6 uses the test set's published figures only.
+- Between 19:41 and 19:57 the commit for #69 was refused three times:
+  - AI error by Claude: the new worktree `../voc-demo-val` had no `.venv`. Claude ran `uv sync --native-tls` there.
+  - AI error by Claude: the worktree had no local names deny list, which is git-ignored. Claude copied it from the main checkout without opening it.
+  - `tests/test_budget.py::test_B8_raise_from_a_throwaway_repo_is_refused` failed at setup: `git add` in the test's own scratch repo returned 128. No other gate was running. The same kind of failure as about 19:28. Retried.
+  Both AI errors were setup steps for a new worktree that earlier sessions did. Each refusal stopped the commit, so nothing wrong was committed.
+- `304f6ab` at 19:57: the spec, the change to B16 and the test list. Docs only, so no red commit. #69 opened as a draft at about 20:08.
+- 20:11 Reviewer findings posted on #69, with Claude's checks. 4 serious: the owner's choices were not in this log, V5 could overlap V2 although the owner asked for a separate sample rated blind, "no per-product split" was missing, and `recording_key` takes no repeat number, so the spec had to say how the old recordings keep replaying. 10 minor and 1 nit: rules for quarantined and unparseable rows, which test file V6 may read, which run gives the time, the hybrid's score, unparseable judge answers, the rubric's version name and the token margin, V3's results file, the approval flag, the import's refusals, what pull request 2 adds, and the consumer's product in the judge prompt. Claude checked the claims on the code and the results files, and all held.
+- AI error by Claude, found by the reviewer: Claude's plan suggested letting V5 overlap V2, which weakens the owner's blind rating. The owner had asked for a separate sample.
+- Between 20:11 and 20:30 (exact time not recorded) Owner: "go" for Claude's two suggestions and all the fixes. V5 is drawn first and V2 leaves V5 out. If Sonnet needs a larger token margin, the main run waits for the owner's decision.
+- 20:31 The fixes in spec 003 and the test list, as above. The time at scale uses the test run's published time per 1,000, because the development run has none: `results/eval/v1_dev.json` says "not every call was a live model call that returned an answer".
