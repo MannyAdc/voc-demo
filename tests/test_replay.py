@@ -316,3 +316,47 @@ def test_B21_any_other_error_is_still_named_by_its_type_only(replay, repo, ledge
     with pytest.raises(replay.ModelError) as err:
         _caller(replay, repo, backend).call(PROMPT)
     assert "SYNHOSTILE" not in str(err.value) and "RuntimeError" in str(err.value)
+
+
+# V1 (spec 003): a repeat number joins the recording key only, so a fresh run is recorded apart.
+
+def test_V1_no_repeat_number_leaves_the_key_exactly_as_before(replay):
+    material = {"backend": "fake", "model": "synthetic-model", "prompt": PROMPT, "settings": SETTINGS}
+    expected = hashlib.sha256(json.dumps(material, sort_keys=True, ensure_ascii=False,
+                                         separators=(",", ":")).encode("utf-8")).hexdigest()
+    assert replay.recording_key("fake", "synthetic-model", SETTINGS, PROMPT, repeat=None) == expected
+
+
+def test_V1_each_repeat_number_has_its_own_key(replay):
+    keys = {replay.recording_key("fake", "synthetic-model", SETTINGS, PROMPT, repeat=r) for r in (None, 1, 2)}
+    assert len(keys) == 3
+
+
+@pytest.mark.parametrize("repeat", [0, -1, True, 1.5, "1"])
+def test_V1_a_repeat_number_must_be_a_whole_number_of_1_or_more(replay, repo, repeat):
+    with pytest.raises(ValueError):
+        replay.Caller("fake", "synthetic-model", SETTINGS, backend=FakeBackend(replay), root=repo, repeat=repeat)
+
+
+def test_V1_a_repeat_number_is_never_sent_to_the_model(replay, repo, ledger):
+    seen = []
+
+    class Spy(FakeBackend):
+        def __call__(self, prompt, settings):
+            seen.append((prompt, settings))
+            return super().__call__(prompt, settings)
+
+    replay.Caller("fake", "synthetic-model", SETTINGS, backend=Spy(replay), root=repo, repeat=1).call(PROMPT)
+    assert seen == [(PROMPT, SETTINGS)]
+
+
+def test_V1_a_repeat_call_is_live_even_when_the_original_is_recorded_and_is_recorded_apart(replay, repo, ledger,
+                                                                                             home):
+    backend = FakeBackend(replay)
+    assert _caller(replay, repo, backend).call(PROMPT).source == "live"
+    again = replay.Caller("fake", "synthetic-model", SETTINGS, backend=backend, root=repo, repeat=1).call(PROMPT)
+    assert again.source == "live" and backend.calls == 2
+    assert len(_recording_files(home)) == 2
+    replayed = replay.Caller("fake", "synthetic-model", SETTINGS, backend=backend, root=repo, repeat=1).call(PROMPT)
+    assert replayed.source == "replay" and backend.calls == 2
+    assert _caller(replay, repo, backend).call(PROMPT).source == "replay"
