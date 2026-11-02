@@ -20,6 +20,7 @@ from voc.datafile import DataFileError, find_export, load_pins, sha256_of, verif
 from voc.dbt_run import DbtError
 from voc.env import settings
 from voc.audit import AuditError
+from voc.consistency import ConsistencyError
 from voc.evaluate import EvaluationError
 from voc.injection import InjectionError
 from voc.testrun import TestRunError
@@ -136,6 +137,22 @@ def _validation_lists(config, root, args):
     from voc.validation import format_summary, freeze
 
     print(format_summary(freeze(root)))
+
+
+def _consistency(config, root, args):
+    from voc.consistency import command
+
+    print("\n".join(command(config, root, args.repeat, args.approved)))
+
+
+def _repeat(value):
+    try:
+        number = int(value)
+    except ValueError:
+        number = 0
+    if number < 1:
+        raise argparse.ArgumentTypeError("--repeat must be a whole number of 1 or more")
+    return number
 
 
 def _label(config, root, args):
@@ -268,7 +285,7 @@ def _evaluate(config, root, args):
 
 
 COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample,
-            "validation-lists": _validation_lists, "label": _label,
+            "validation-lists": _validation_lists, "consistency": _consistency, "label": _label,
             "evaluate": _evaluate, "final": _test_run, "audit": _audit, "serve": _serve,
             ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt, ("dbt", "lineage"): _dbt,
             ("ledger", "init"): _ledger_init, ("ledger", "raise"): _ledger_raise,
@@ -286,6 +303,12 @@ def main(argv=None, env=None, root=None):
     sub.add_parser("sample", help="build and freeze the samples from the staged July rows (B9, B16, B25)")
     sub.add_parser("validation-lists", help="draw and freeze the validation review's lists from the development "
                                            "set, printing counts only (spec 003, B16)")
+    co = sub.add_parser("consistency", help="V1: label V1's list again under a repeat number and compare, printing "
+                                            "counts only. No call without --approved (spec 003)")
+    co.add_argument("--repeat", type=_repeat, required=True, help="the repeat number, 1 or more, joined to the "
+                                                                  "recording key only")
+    co.add_argument("--approved", action="store_true", help="make the calls. Only after the owner approved the "
+                                                            "figures printed without it")
     lb = sub.add_parser("label", help="label development complaints with the LLM, printing counts only (B3, B21)")
     lb.add_argument("set", choices=("dev", "quick", "injection"),
                     help="the development set, its fixed 50-complaint part, or the synthetic injection set")
@@ -338,7 +361,8 @@ def main(argv=None, env=None, root=None):
         command = (args.command, args.action) if args.command in ("ledger", "dbt") else args.command
         COMMANDS[command](config, root, args)
     except (DataFileError, BudgetError, DbtError, SampleMismatch, BackendError, RecordingMissing,
-            RecordingCorrupt, RunStopped, EvaluationError, AuditError, InjectionError, TestRunError) as err:
+            RecordingCorrupt, RunStopped, EvaluationError, AuditError, InjectionError, TestRunError,
+            ConsistencyError) as err:
         print(f"error: {err}")
         return 1
     # B21: the type only, never the message. The spec also asks for the row number and the

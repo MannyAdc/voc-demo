@@ -38,7 +38,7 @@ Drawn once, from the development set only, with a fixed seed, in this order, and
     - the decision: both accepted, both quarantined, or changed
     - the proposed label: same, different, or missing in one or both (an `unparseable` answer has no label)
     - the quote, only when both answers are accepted: same start and end, overlapping, or apart. Otherwise the quote is "not compared", counted apart.
-  - It prints counts and shares with intervals, and writes `results/validation/v1_consistency.json` and `.csv`.
+  - It prints counts and shares with intervals, and writes `results/validation/v1_consistency_r<repeat>.json` and `.csv`, one pair for each repeat number. It refuses to write over a pair that exists. *Changed on 3 November in pull request 4: the file names carry the repeat number, so a second run does not replace the first.*
   - Limit: a difference may come from randomness or from a quiet model update under the same model ID. The two cannot be told apart.
 - **V2. Disagreement review.** V2's 40. The owner runs `voc review sheet v2`, which writes a sheet with the complaint text, the LLM's label and quote, and the consumer's choice. The owner marks each one with a code: `llm_right`, `consumer_right`, `both_plausible` or `unclear`. The owner then runs `voc review import v2`, which reads only the ID and code columns and writes `results/validation/v2_codes.csv`. The summary gives each code's share with its interval, and the share of the measured disagreements that is label noise: `llm_right` alone as the lower figure, `llm_right` plus `both_plausible` as the upper one.
 - **V3. Quarantine review.** Every quarantined development complaint: 9 in `results/labels/v1_dev.csv` (7 `quote_not_in_text`, 2 `unparseable`). The same sheet and import commands, as `v3`, show each one's reason, the text, and the proposed label and quote where the answer gave them. For the 2 `unparseable` ones, the sheet says that no label or quote could be read. The codes are `check_right`, `check_wrong` and `unclear`. The import writes `results/validation/v3_codes.csv`. The result is a plain list of IDs, reasons and codes, with counts. Nine cases are too few for a reliable share. The interval is given and the text says so.
@@ -80,3 +80,6 @@ Drawn once, from the development set only, with a fixed seed, in this order, and
 - Every sample is small. The intervals are wide, and the text says so.
 - The consumer's recorded product is the answer key and is itself noisy. V2 measures how noisy, on 40 cases only.
 - The judge's reasons are model text and stay local, so a reader of the repo sees ratings, not reasons.
+- V1: a complaint whose call fails the same way every time is never recorded, so every rerun of that repeat
+  pays for it again and the repeat cannot finish. The run stops after 3 failures in a row, so each rerun costs
+  little. The owner decides what to do if it happens. *Added on 3 November after the second review of #72.*

@@ -94,8 +94,11 @@ def _id_number(complaint_id):
     return (int(digits) if digits else float("inf"), complaint_id)
 
 
-def label_complaints(complaints, version, labels, call, backend_name):
-    """Decide every complaint, in complaint ID order. `call(prompt)` returns a Reply or raises."""
+def label_complaints(complaints, version, labels, call, backend_name, repeat=None):
+    """Decide every complaint, in complaint ID order. `call(prompt)` returns a Reply or raises.
+
+    `repeat` is V1's repeat number. It goes into the recorded key, as the caller's does, never into the prompt.
+    """
     names = [label.name for label in labels]
     defined = definitions(labels)
     model = version.settings["model"]
@@ -111,7 +114,7 @@ def label_complaints(complaints, version, labels, call, backend_name):
             outcomes.append(Outcome(Decision(cid, reason=NOT_RUN_BUDGET), cut))
             continue
         prompt = build_prompt(version.instructions, names, text, complaint_id=cid, definitions=defined).prompt
-        key = recording_key(backend_name, model, version.settings, prompt)
+        key = recording_key(backend_name, model, version.settings, prompt, repeat)
         size = len(prompt.encode("utf-8"))
         try:
             reply = call(prompt)

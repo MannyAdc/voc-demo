@@ -1,0 +1,101 @@
+complaint_id,repeat,old_decision,new_decision,old_label,new_label,decision,label,quote,new_quote_start,new_quote_end,new_reason,recording_key,source,input_tokens,output_tokens
+23745978,1,accepted,accepted,Prepaid card,Prepaid card,both_accepted,same,same,45,142,,33f046809913ae8945a7fd6db8434c17a9e4b2e6ecfc9d204c38338f320dc7c9,live,972,59
+23753212,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,apart,423,476,,93310fa7ef504be9b684a37bfbaf81ef548ae3678cd976b6096e0a710f69dd79,live,1435,242
+23753401,1,accepted,accepted,Credit card,Credit card,both_accepted,same,overlapping,39,138,,6bf59e9019363aa30af6b930e2b30c6ecfdac6147c45ef277655f52a13ae844b,live,1210,51
+23755269,1,accepted,accepted,"Payday loan, title loan, personal loan, or advance loan","Payday loan, title loan, personal loan, or advance loan",both_accepted,same,same,0,43,,adb30fc0c1eda34296fc4e60b9c6ee4f43be39677b013525dcdb665f4b050d49,live,1516,197
+23757866,1,accepted,accepted,Credit card,Credit card,both_accepted,same,same,0,65,,616f754bbd8ba9e6ec87a2d2614b1eeb277f922f943c278d033f17b800a12325,live,1132,171
+23762149,1,accepted,accepted,Credit card,Credit card,both_accepted,same,same,43,68,,f5949b171e9d007d9ca05c2df6cafb812afce105d14f03d7f65cb7693051bde7,live,945,261
+23763811,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,overlapping,27,63,,bd7ffaaf50919d829fa8c9d9f958df5a01f8cc1ece0558a510a3781ca2cb711d,live,935,165
+23763937,1,accepted,accepted,Credit card,Credit card,both_accepted,same,same,0,63,,650bbc60be33ee97ad4e9268817c71d8e8ddbc1472c554de7745a3ac716da8dd,live,1111,43
+23768722,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,overlapping,159,215,,c3b79ff607433cbb64319a0a6537df141be7b082d701b109261d634942b75894,live,1355,427
+23779081,1,accepted,accepted,Vehicle loan or lease,Vehicle loan or lease,both_accepted,same,same,946,972,,1e08c0b96a38dce92c9a349a40bfab0a2450230f3be4a39a48378aa82de77f27,live,1477,35
+23779205,1,accepted,accepted,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,both_accepted,same,same,0,88,,0c6dd8c8b1084f41952eaf554d7066942aa174dfc7d5e26fbd174e1b3bcf8fb6,live,977,65
+23792577,1,accepted,accepted,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",both_accepted,same,overlapping,0,68,,2539d7292e95fe9b6624023f205774bb8c790ad6af9bdb2c843b7522da6fb43c,live,1014,195
+23792826,1,accepted,accepted,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,both_accepted,same,same,34,64,,7e536fcb975ff64a61fddaafa48d7a763c7666b577ddaa7b5cf76b5a4acdbbb5,live,939,141
+23796797,1,accepted,quarantined,Mortgage,(not in list),changed,different,not_compared,,,invalid_label,8d19a24a81a2d025489e1a6c7c6503e91e529a24f2a07a1ac155e718a805d044,live,1067,442
+23797340,1,accepted,accepted,Credit card,Credit card,both_accepted,same,apart,333,446,,0bc0a34b565e88acfc654d21617dc38d8d35c04d9fb73c5a5e510c24970f6703,live,1412,202
+23811505,1,accepted,accepted,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",both_accepted,same,same,204,259,,248220d95aa42d9faa1178f05f714a7044160980a29183ccbeaba9a3277a0e3e,live,1083,563
+23814939,1,accepted,accepted,"Payday loan, title loan, personal loan, or advance loan","Payday loan, title loan, personal loan, or advance loan",both_accepted,same,same,0,77,,e95d9fc9596730ab69b80159dd0ce67fcd39c6ff3d3d0cf0610836aa014b5fd3,live,1296,264
+23825512,1,accepted,accepted,Credit card,Credit card,both_accepted,same,overlapping,17,87,,4a183e550c6bb4a1d06fc69aaf626d53426f0aef3d8ebc57354cb8de83d03733,live,1033,386
+23836313,1,accepted,accepted,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,both_accepted,same,overlapping,106,135,,dd50fda04afed9541284a6b61ab90f9ca183eab7c6c04a2a9456f1871a686217,live,958,292
+23874077,1,accepted,accepted,Credit card,Credit card,both_accepted,same,overlapping,62,147,,d93b67d09527f738203628fa8552907f3502ab876e4a22a134135feba8466064,live,1615,141
+23880858,1,accepted,accepted,"Payday loan, title loan, personal loan, or advance loan","Payday loan, title loan, personal loan, or advance loan",both_accepted,same,overlapping,133,233,,baf2e90b1e72e76c83f9d817d3733bfe0321ca03193058fdd907823b98a18ebe,live,1222,301
+23881362,1,quarantined,quarantined,Mortgage,Mortgage,both_quarantined,same,not_compared,,,quote_not_in_text,abcc89342809dd6261b728d53e0a236fa51a5f40ff2b48c48ae50181394f8f1d,live,2205,44
+23881397,1,accepted,accepted,Student loan,Student loan,both_accepted,same,same,122,164,,965b759488a48b3009bf09cf426af4889def9b04b57bead3ab8794ba87fc6821,live,950,131
+23885354,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,same,1126,1203,,99321c026c7da1aba1a42e3ce24687f26169e4d3671574ea62bc432c66e12137,live,1880,341
+23888002,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,same,0,51,,768c3a72516efe0282db7af4d73f93ad8b5d0ee35081575d4b54cc9f6b8743ea,live,1265,39
+23890529,1,accepted,accepted,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",both_accepted,same,overlapping,0,80,,d7d418b93a879450875a0f6d1b512c3b0dfcaebef557d59465815015b8c4b553,live,1272,252
+23902313,1,accepted,accepted,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",both_accepted,same,overlapping,694,718,,5fa61a40478f49b827b4d265633e2aa7b6318a7b5fe305a8325650b4cf83b583,live,1251,293
+23902343,1,accepted,accepted,Vehicle loan or lease,Vehicle loan or lease,both_accepted,same,same,110,185,,fd9710247009f993533ed5bf0314291d09a9659b86f321c856016e226b9e0d30,live,1473,314
+23903174,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,overlapping,0,92,,bb5d35d81f0cb7359bd07bb74a49bc8fee3193c497fb8d177c3607205bcc9318,live,1334,191
+23904023,1,accepted,accepted,Credit card,Credit card,both_accepted,same,same,328,366,,872be48b46bbe9e2612708906593ef8a101a264139df2d714a6090e1461e9299,live,1813,34
+23905502,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,same,0,156,,8f63c1540b0177164ae4abc414421e4407acf07bcd306ceea82e1eca921aea33,live,1483,60
+23911252,1,accepted,accepted,Mortgage,Mortgage,both_accepted,same,same,0,67,,4d2050d0cb17c32f637bd2140253ef60e0afbaefd6328155462d3d3d28a1830c,live,1737,45
+23919173,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,same,20,87,,3415e7d36b5b242e2c1b313f60a4f85ed6269fecd07cff88a59e71626d6cb8a5,live,1102,38
+23921571,1,quarantined,quarantined,Credit card,Credit card,both_quarantined,same,not_compared,,,quote_not_in_text,8c93ea824b283e928cbe9c8f54eff4c0a9a5d9618fa9b4782bb953e72a1294dd,live,1032,229
+23930319,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,same,24,93,,2a29a51fd5932c898adb161584440ea57a9d89d6e7d264d153d15d1db4c1fa3e,live,1219,269
+23941973,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,same,29,99,,b97b7a4d06c077147dbbddf0d40a2f6570eadc3538a5c05786ae41de2a4684eb,live,1020,45
+23952210,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,same,80,151,,e2f159e88077e02626679873f10912698072aadd25c9e25e89a44b544c72811e,live,1325,43
+23954714,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,apart,2441,2508,,2195770b13abdd9d1521aa3b7da496c4a9e7e7554843e7a3748cba8846b03ca7,live,1950,343
+23955336,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,same,35,100,,d48b225ef32c5b3f00e0a3102b3216f3be915cf32b686c1ee02070410423fe4d,live,1771,41
+23962953,1,accepted,accepted,Credit card,Credit card,both_accepted,same,same,0,86,,00226c84322fba3e2d0f2f65a24ba493e9867fab1cdbb0a9b017354a65e8ec3f,live,1448,41
+23967280,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,same,0,85,,d9c5fc061d1ef75ed7f56e74d070f1d997dfab575b4729c230d01ab68633da43,live,1103,46
+23970673,1,accepted,accepted,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",both_accepted,same,overlapping,120,203,,c3a986f29dfba8cf1f32c4175fdede7bc8f1dc7a599a1c255bdfcd74bbc309f9,live,1638,58
+23971778,1,accepted,accepted,Credit card,Credit card,both_accepted,same,same,0,85,,d26c473d0240579d3c51a384aa6749b6dc0c27288fd614ee976ea617b87563cb,live,1198,47
+23976072,1,accepted,accepted,Mortgage,Mortgage,both_accepted,same,same,9,130,,f0a3f2877a8e93acb5910392d86d1dc09a6c871b4010eafb87ef9197da1b24f2,live,1088,274
+23980983,1,accepted,accepted,Mortgage,Mortgage,both_accepted,same,same,0,73,,4d55902ad94ab5fd5cf281453b743065b96c26f0f2cfe5b9675cd5194377f652,live,1075,44
+23989850,1,accepted,accepted,Student loan,Student loan,both_accepted,same,same,15,89,,6ac542cf62f7016e9220466d379b9927c90c8f2e1931de2a0cc36060249544e3,live,1219,39
+23989910,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,same,25,60,,202b2606d6ff234c394c35ab2f88a777fb1ca3c1f417e3f7d409a78159c7514b,live,1085,31
+23994036,1,accepted,accepted,"Payday loan, title loan, personal loan, or advance loan","Payday loan, title loan, personal loan, or advance loan",both_accepted,same,same,0,57,,67a7d5a41ec64918acfc92f95621bd8ed6d74d80ec5096c85aaefc442df552ba,live,1467,336
+23996562,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,overlapping,134,207,,62efbb7248369f56e511cfa47e0b1938511585507bcaafe95a33b5d1627b43da,live,1020,197
+23997155,1,accepted,accepted,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,both_accepted,same,same,0,33,,e590020423efc7bced0eeffd57a5f0a03c8b025c66466a5b72e9a367e5bf8e3a,live,1016,134
+24005690,1,accepted,accepted,Mortgage,Mortgage,both_accepted,same,same,137,270,,bbd3fca08b2dfb0348157a2606d874b1b745d1ccebe533307df216145703ce20,live,2280,70
+24016286,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,same,0,75,,3ca78bf589e86417727f1aee364620648795e16198498c33177945d463f23d62,live,1108,283
+24021013,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,same,0,78,,b2644ba8beb57c2172b6abe22b64e06131c62c1ec41cac628b4ec0248e04f58e,live,1278,228
+24028636,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,same,35,131,,68acb27ff55180af2b953b0526148c7f0808a5bf0f1a3d375f19864676309153,live,1175,336
+24116336,1,accepted,accepted,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",both_accepted,same,same,15,98,,c5c5ef3d97f9b71bb306b07ed1a6a757292d6d73dfb6c60f408ce403df3910ed,live,1294,295
+24129133,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,same,154,213,,e46ae709b9c7698a6b8bb76f5fca572399abc64b221edd2ed7e5708ab3206a5e,live,1093,174
+24132930,1,accepted,accepted,Prepaid card,Prepaid card,both_accepted,same,apart,0,62,,41be78dd466e17648b01cde729773df6543c517b2e6eda6344e9f8485ddf2100,live,941,231
+24141141,1,accepted,accepted,"Payday loan, title loan, personal loan, or advance loan","Payday loan, title loan, personal loan, or advance loan",both_accepted,same,same,261,347,,2c641e621b97e9709ca297565203d9865348927b54d90c0160b93b2fabb77061,live,1131,76
+24143433,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,same,0,71,,33656ecca8db01f0601c463d3cd333b2faee5ae953966bf29fb0945a3869bd8c,live,1296,55
+24152022,1,accepted,accepted,"Payday loan, title loan, personal loan, or advance loan","Payday loan, title loan, personal loan, or advance loan",both_accepted,same,same,15,169,,db291b0886a0a911b7e77d71239dec9caeecef9021b7809ee1455e1a1c35e964,live,1973,312
+24154544,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,same,110,162,,ad1de0b2cae93f0581487a34e461f7f560df291c201220fcbd5c57c8e66b43cc,live,1009,207
+24155232,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,apart,0,45,,2fad56fe683f59b8c81d3ca1bd7001dd16400e7a571be4254060479f3596b709,live,1296,579
+24163118,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,apart,109,154,,d6bdd0d86d8007813cc5d5e4c8538dadf98f79651fd63fd9c824ba399250acb7,live,1260,319
+24163558,1,accepted,accepted,Credit card,Credit card,both_accepted,same,overlapping,72,116,,7bfbc10d74ccf5797167c1a357654f56d80e1f66becf5975287686d3277f2a99,live,1265,35
+24173205,1,accepted,accepted,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,both_accepted,same,same,349,405,,436ff66d71fcfc3db11a4a1e4dbe32dc487315ae86d445a8ecb694a6b0ca6b79,live,1120,210
+24173562,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,apart,1698,1794,,9fa317bf36accf1ff50c24f9cebe05d6758c00eaf96035d59645972cd96d4bf2,live,2123,510
+24178850,1,accepted,accepted,Vehicle loan or lease,Vehicle loan or lease,both_accepted,same,same,274,354,,9519290f58d7ad0c5cdc2e5e70a3c9fcc0fbcf8005cd6b2031bfaa3d02b7991b,live,1634,215
+24186914,1,accepted,accepted,Debt collection,"Payday loan, title loan, personal loan, or advance loan",both_accepted,different,apart,0,69,,06eba9fa7c015990e1c1fec036400bbce63d8040bed9c39a2c9dd25d1f936998,live,1016,407
+24192387,1,accepted,quarantined,"Money transfer, virtual currency, or money service","Money transfer, virtual currency, or money service",changed,same,not_compared,,,quote_not_in_text,3a5e79f86daf5e6386e639f5619ce41f57db9bead433df2659ba859c78efc3ca,live,953,168
+24193227,1,accepted,accepted,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,both_accepted,same,same,0,48,,c6bd2b56fcc3dc9c1b0b28d690eac49b59c0f87926ec7c21bbb65ac17fe00a93,live,944,131
+24196950,1,accepted,accepted,Credit card,Credit card,both_accepted,same,same,41,74,,28814f6ead38251d8e8fcb8d71e960d4d569c711dbe64deca6c3369dce9422c7,live,1051,30
+24197011,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,same,0,95,,8b631999b589037e62c0331f063f22f6c8c9c9b0808142b63484b905495e9c25,live,1219,47
+24197576,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,same,0,58,,dcb5c9310325b50b7d0515a59e315564edf238750bd98727bbea9c44a7b38faf,live,926,99
+24197578,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,overlapping,15,115,,628309a07e57617839c4cb8ab8c4683ac58bb36bb215a690ab74351aa6ae2210,live,1160,255
+24200674,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,overlapping,19,105,,3af39328911f9d0bee8b48ceb47d79653a65e4a88b43763a903954ffa9b7f88b,live,1238,309
+24204322,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,same,353,404,,54342dc116a534e267f0f7edfec62a0f3423b84d4f363b470fcf80afe5c1d713,live,1097,142
+24207305,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,same,69,126,,3c353bd1cb1239a7d66a7819097871cb8b91d64ba8c284ae6d6d890549373384,live,1249,316
+24208206,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,same,16,89,,e79acc7d4768e3b5b402ad7536c1d6dd5c2d771c5f62087187a405e15a92bb27,live,1278,322
+24227111,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,same,92,179,,71060c43a488b53007d440cbb57103e2bc22449e373d6c649ecc5b73cce46b8f,live,1285,177
+24232288,1,accepted,accepted,Vehicle loan or lease,Vehicle loan or lease,both_accepted,same,same,0,79,,e589a761d109dc25116206469bdafb5e6318c9482ab628e0a9b245a8db0d344f,live,1031,159
+24232908,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,apart,1285,1365,,162f2fdb6e9464447dfb954c4b0c03b592292ecfd80511ed4b69e84d12d7bec2,live,1630,328
+24234244,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,apart,451,502,,3f4f99499ecdc06c9faa7f62245d822b1a3ba82540de4090df97b1555603ac4e,live,1766,312
+24240501,1,accepted,accepted,Credit card,Credit card,both_accepted,same,apart,0,94,,ab57d1284ce495aeb003222620795e5f8311e9c958ad7545e0fddbd54f90d2f8,live,1416,335
+24293606,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,same,0,36,,9ffdb958990e10dc8b8d2baeabd102a9e613a645b4d727d5bb78364bf2c33557,live,1162,173
+24363652,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,same,0,77,,54edd2249062d2f7c038aa576b0c8432e7ba9c07a9dd2349100ec70d6fbfda59,live,1094,228
+24380276,1,accepted,accepted,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,both_accepted,same,same,35,122,,d9955776a571633ef3ae3155cb3788e4d149e30ff1ea8a6c5d0a660bc9436024,live,1263,329
+24380323,1,accepted,accepted,Mortgage,Mortgage,both_accepted,same,same,44,127,,c915046233608ce11d752110c5d4949f629be74c2134d096d0cf2bead067427a,live,2227,66
+24384504,1,accepted,accepted,Mortgage,Mortgage,both_accepted,same,overlapping,0,76,,53a51a7db93f36de31efb374f40b2087cbcd50f89aaa9afd966585ebd24cb9c0,live,1281,180
+24386732,1,accepted,accepted,Student loan,Student loan,both_accepted,same,overlapping,36,96,,101171f0c01c45208147b1766545e9bd638029e0c562dad07cd63a831326a5bc,live,1276,330
+24393317,1,quarantined,quarantined,Checking or savings account,Checking or savings account,both_quarantined,same,not_compared,,,quote_not_in_text,e3add066b3290ea7102ac796fa95f54e5fb9cbdf9aa7adbd8c94e3da01f93f85,live,2133,35
+24400011,1,accepted,accepted,Credit card,Credit card,both_accepted,same,same,0,88,,0616d2ab099cf05261b3e99621ed836b9d1ee24cbbd22a246379f03f14ea416b,live,1082,128
+24401410,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,same,15,42,,4101d9eb7d9adfad46764f6c83038ee2cccb502897a5506e11b09b1797dd748d,live,1218,30
+24471471,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,apart,2525,2584,,714cc9b42b92015c42baac48eb5d6c31f40cee5cc7fa0244fdbcfd5bdb8025bd,live,1724,286
+24514638,1,accepted,accepted,Credit card,Debt collection,both_accepted,different,same,0,74,,22c4eb8f57220a3975a5ef18e62dce11b2e59a170bc24c2e4b8dd204ac78c7ca,live,1595,222
+24528224,1,accepted,accepted,Vehicle loan or lease,Vehicle loan or lease,both_accepted,same,same,0,34,,a39e61524c30f0edda11500d37a3c3694913e324a56ccbadb95cc2771f53f48e,live,988,464
+24659218,1,accepted,accepted,Credit reporting or other personal consumer reports,Credit reporting or other personal consumer reports,both_accepted,same,same,0,48,,9c86579af9ac3501fe47e54e594900a5d3c0cc707593cac843dc75e369e2e323,live,1026,45
+24681669,1,accepted,accepted,Checking or savings account,Checking or savings account,both_accepted,same,overlapping,155,231,,c89146a618d7146b82de6675600401db0c5e04dd12ae9eeb32e7a2a9b2f2ab1e,live,2156,396
+24688426,1,accepted,accepted,Debt collection,Debt collection,both_accepted,same,apart,0,51,,e1791fc3b1ae61491ac41af0d6f1ef69dac6ed535a741a2d3cb2adf266763c14,live,1391,358
+24706812,1,accepted,accepted,Credit card,Credit card,both_accepted,same,same,16,118,,d95501c0e7b4886f90206d84c5c2faa0109177198d372907d28cf30c30ed992f,live,1616,50
+24727453,1,accepted,accepted,Vehicle loan or lease,Vehicle loan or lease,both_accepted,same,same,65,114,,1d33cc934cded44c53ff26ea9418716cbd3dc0442686b712c85d85a776bf7e17,live,1122,47

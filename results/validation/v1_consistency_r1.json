@@ -1,0 +1,95 @@
+{
+  "backend": "api",
+  "complaints": 100,
+  "cost_usd": "0.0229437",
+  "decision": {
+    "both_accepted": {
+      "count": 95,
+      "interval": [
+        0.8882480347279118,
+        0.9784566385436864
+      ],
+      "share": 0.95
+    },
+    "both_quarantined": {
+      "count": 3,
+      "interval": [
+        0.010254338223414816,
+        0.08452078080402699
+      ],
+      "share": 0.03
+    },
+    "changed": {
+      "count": 2,
+      "interval": [
+        0.005501852234968185,
+        0.07001316294199365
+      ],
+      "share": 0.02
+    }
+  },
+  "input_tokens": 131032,
+  "label": {
+    "different": {
+      "count": 3,
+      "interval": [
+        0.010254338223414816,
+        0.08452078080402699
+      ],
+      "share": 0.03
+    },
+    "missing": {
+      "count": 0,
+      "interval": [
+        0.0,
+        0.03699480747600191
+      ],
+      "share": 0.0
+    },
+    "same": {
+      "count": 97,
+      "interval": [
+        0.915479219195973,
+        0.9897456617765851
+      ],
+      "share": 0.97
+    }
+  },
+  "ledger_charged_tokens": 150713,
+  "list": "splits/validation/v1.csv",
+  "live_calls": 100,
+  "model": "claude-haiku-5-5",
+  "output_tokens": 19681,
+  "prompt_version": "v1",
+  "quote": {
+    "apart": {
+      "count": 13,
+      "interval": [
+        0.08174716099796558,
+        0.2201662034153989
+      ],
+      "share": 0.1368421052631579
+    },
+    "overlapping": {
+      "count": 19,
+      "interval": [
+        0.13194444444444448,
+        0.2913752913752914
+      ],
+      "share": 0.2
+    },
+    "same": {
+      "count": 63,
+      "interval": [
+        0.5634242145911216,
+        0.7502089115420044
+      ],
+      "share": 0.6631578947368421
+    }
+  },
+  "quote_compared": 95,
+  "quote_not_compared": 5,
+  "repeat": 1,
+  "replayed_calls": 0,
+  "run_seconds": 171.1
+}

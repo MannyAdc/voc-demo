@@ -10,10 +10,14 @@ neither the worst-case estimate nor the recording key. Settings must be JSON
 values (tuples become lists).
 
 A recording is keyed by a SHA-256 hash of the backend, the model, the
-settings (sorted) and the exact prompt. It holds only that key material, the
-answer text, the token use and the live cost in tokens. It never holds
-headers or keys. Failed, refused and cut-off calls are never stored, and
-neither are calls with no full usage report.
+settings (sorted) and the exact prompt. A recording holds only that key
+material, the answer text, the token use and the live cost in tokens. It
+never holds headers or keys. Failed, refused and cut-off calls are never
+stored, and neither are calls with no full usage report.
+
+V1 (spec 003) may add a repeat number to the key material, never to what is
+sent, so a fresh run of the same prompt is recorded apart. With no repeat
+number the key is exactly as before.
 
 Recordings live in the home folder next to the ledger, so all worktrees share
 one cache. A recorded answer is served with no backend and no ledger, so it
@@ -85,17 +89,21 @@ def recordings_dir():
     return voc_home() / "recordings"
 
 
-def _key_material(backend, model, settings, prompt):
-    return {"backend": backend, "model": model, "settings": dict(sorted(settings.items())), "prompt": prompt}
+def _key_material(backend, model, settings, prompt, repeat=None):
+    material = {"backend": backend, "model": model, "settings": dict(sorted(settings.items())), "prompt": prompt}
+    if repeat is not None:
+        material["repeat"] = repeat
+    return material
 
 
 def _canonical(material):
     return json.dumps(material, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
 
-def recording_key(backend, model, settings, prompt):
-    """A stable SHA-256 hash of the backend, the model, the sorted settings and the exact prompt."""
-    return hashlib.sha256(_canonical(_key_material(backend, model, settings, prompt)).encode("utf-8")).hexdigest()
+def recording_key(backend, model, settings, prompt, repeat=None):
+    """A stable SHA-256 hash of the backend, the model, the sorted settings, the exact prompt and the repeat number."""
+    material = _key_material(backend, model, settings, prompt, repeat)
+    return hashlib.sha256(_canonical(material).encode("utf-8")).hexdigest()
 
 
 def _count(value):
@@ -126,9 +134,13 @@ def _valid_record(record, key, canonical):
 class Caller:
     """Calls one backend and model with fixed settings, through the recordings and the ledger."""
 
-    def __init__(self, backend_name, model, settings, backend=None, mode="live", root=None, ledger=None):
+    def __init__(self, backend_name, model, settings, backend=None, mode="live", root=None, ledger=None,
+                 repeat=None):
         if mode not in MODES:
             raise ValueError(f"mode must be one of {', '.join(MODES)}")
+        if repeat is not None and (not isinstance(repeat, int) or isinstance(repeat, bool) or repeat < 1):
+            raise ValueError("a repeat number must be a whole number of 1 or more")
+        self.repeat = repeat
         self.backend_name = backend_name
         self.model = model
         self.settings = dict(settings)
@@ -160,8 +172,8 @@ class Caller:
         atomic_write(self._path(key), json.dumps(record, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
 
     def call(self, prompt):
-        material = _key_material(self.backend_name, self.model, self.settings, prompt)
-        key = recording_key(self.backend_name, self.model, self.settings, prompt)
+        material = _key_material(self.backend_name, self.model, self.settings, prompt, self.repeat)
+        key = recording_key(self.backend_name, self.model, self.settings, prompt, self.repeat)
         record = self._load(key, material)
         if record is not None:
             usage = record["usage"]
