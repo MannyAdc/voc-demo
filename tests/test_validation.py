@@ -870,3 +870,92 @@ def test_V1_the_printed_summary_names_the_replayed_calls():
     rows = [{"decision": "both_accepted", "label": "same", "quote": "same"}]
     summary = {**consistency.summarise(rows, repeat=1), "cost_usd": "0", "live_calls": 0, "replayed_calls": 1}
     assert any("replayed" in line for line in consistency.format_summary(summary, []))
+
+
+# Second review of #72.
+
+def _mock_answers(tmp_path, prompts):
+    import json
+    items = [{"prompt": p, "text": json.dumps({"label": "Mortgage", "quote": "not in the text at all"})}
+             for p in prompts]
+    fixtures = tmp_path / "mock.json"
+    fixtures.write_text(json.dumps(items), encoding="utf-8")
+    return {"LLM_BACKEND": "mock", "VOC_MOCK_FIXTURES": str(fixtures)}
+
+
+def test_V1_a_failed_second_rename_leaves_neither_results_file(tmp_path, capsys, monkeypatch):
+    import os
+    from voc import cli, consistency
+    root, dev = _v1_project(tmp_path)
+    _, prompts = _v1_prompts(root, dev)
+    real, calls = os.replace, []
+
+    def second_fails(src, dst):
+        calls.append(dst)
+        if len(calls) == 2:
+            raise OSError("disk full")
+        return real(src, dst)
+
+    monkeypatch.setattr(consistency.os, "replace", second_fails)
+    assert cli.main(["consistency", "--repeat", "1", "--approved"], env=_mock_answers(tmp_path, prompts),
+                    root=root) == 1
+    folder = root / "results" / "validation"
+    assert not folder.exists() or not any(folder.iterdir())
+    capsys.readouterr()
+
+
+def test_V9_the_estimate_counts_the_real_recordings_under_the_repeat_and_not_the_originals(
+        tmp_path, fake_home, capsys, monkeypatch):
+    from voc import backends, budget, cli
+    from voc.replay import Caller
+    root, dev = _v1_project(tmp_path)
+    _git_project(root)
+    budget.init_ledger(root)
+    fake = _FakeApi()
+    monkeypatch.setattr(backends, "make_backend", lambda *a, **k: fake)
+    version, prompts = _v1_prompts(root, dev)
+    model, settings = version.settings["model"], version.settings
+    for prompt in prompts:  # the originals, with no repeat number
+        Caller("api", model, settings, backend=fake, root=root).call(prompt)
+    Caller("api", model, settings, backend=fake, root=root, repeat=1).call(prompts[0])  # one under repeat 1
+    assert cli.main(["consistency", "--repeat", "1"], env={"LLM_BACKEND": "api"}, root=root) == 0
+    printed = capsys.readouterr().out
+    assert "already recorded under repeat 1: 1," in printed
+    assert cli.main(["consistency", "--repeat", "2"], env={"LLM_BACKEND": "api"}, root=root) == 0
+    assert "already recorded under repeat 2: 0," in capsys.readouterr().out
+
+
+def test_V1_the_mock_refusal_does_not_claim_the_answers_are_recorded(tmp_path, capsys):
+    from voc import cli
+    root, dev = _v1_project(tmp_path)
+    _, prompts = _v1_prompts(root, dev)
+    assert cli.main(["consistency", "--repeat", "1", "--approved"], env=_mock_answers(tmp_path, prompts[:2]),
+                    root=root) == 1
+    printed = capsys.readouterr().out
+    assert "failed" in printed and "recorded" not in printed
+
+
+def test_V1_the_summary_says_its_cost_and_tokens_count_this_runs_live_calls_only(tmp_path, capsys):
+    import json
+    from voc import cli
+    root, dev = _v1_project(tmp_path)
+    _, prompts = _v1_prompts(root, dev)
+    assert cli.main(["consistency", "--repeat", "1", "--approved"], env=_mock_answers(tmp_path, prompts),
+                    root=root) == 0
+    summary = json.loads((root / "results" / "validation" / "v1_consistency_r1.json").read_text(encoding="utf-8"))
+    assert "live calls of this run" in summary["cost_and_tokens_count"]
+    capsys.readouterr()
+
+
+@pytest.mark.parametrize("path, ignored", [
+    ("results/validation/v1_consistency_r1.csv", False),
+    ("results/validation/v1_consistency_r12.csv", False),
+    ("results/validation/v2_codes.csv", False),
+    ("results/validation/v5_judge.csv", False),
+    ("results/validation/v2_sheet.csv", True),
+    ("results/validation/notes.csv", True),
+])
+def test_V8_only_the_planned_validation_results_can_be_committed(path, ignored):
+    import subprocess
+    found = subprocess.run(["git", "check-ignore", "--no-index", "-q", path], cwd=REPO, capture_output=True)
+    assert (found.returncode == 0) == ignored
