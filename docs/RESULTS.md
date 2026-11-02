@@ -1,6 +1,6 @@
 # Results in detail
 
-Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. Back to the [README](../README.md).
+Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. On 2 November 2026, a line naming the baseline in full was added under "What the terms mean". Back to the [README](../README.md).
 
 ## The result
 
@@ -25,6 +25,7 @@ The difference is +2.4 points, with a 95% interval of +0.5 to +4.1 points from a
 - Results: [results/eval/v1_test.json](../results/eval/v1_test.json) and [results/labels/v1_test.json](../results/labels/v1_test.json).
 
 **What the terms mean.**
+- *TF-IDF*: short for the baseline, TF-IDF word scores fed into a logistic regression (scikit-learn, with the settings in [config/tfidf.toml](../config/tfidf.toml)), trained on the 7,024 training complaints.
 - *Strict accuracy*: correct accepted labels divided by all complaints. A quarantined label counts as wrong.
 - *Re-weighted*: worked out for each product, then averaged with weights equal to each product's share of the 9,303 complaints in the pool.
 - *At the same coverage*: TF-IDF answers only as many complaints as the LLM accepted, its most confident ones, and the rest count as wrong. So neither method looks better by skipping hard cases.
