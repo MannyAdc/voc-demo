@@ -303,3 +303,159 @@ def test_B16_B21_the_command_draws_from_the_staged_table_and_prints_counts_only(
     assert {name: len(ids) for name, ids in lists.items()} == {"dry_run": 1, "v5": 1, "v2": 1, "v1": 3}
     assert set(lists["v2"]) <= differing
     assert dev[-1].complaint_id not in lists["dry_run"] + lists["v5"] + lists["v2"]
+
+
+# Review of #71.
+
+def _labels_file(root, accepted, dev):
+    """A synthetic labels file: the accepted labels, and every other development ID quarantined."""
+    path = root / "results" / "labels" / "v1_dev.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = ["complaint_id,decision,accepted_label"]
+    lines += [f"{c},accepted,{accepted[c]}" if c in accepted else f"{c},quarantined," for c in dev]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return "results/labels/v1_dev.csv"
+
+
+def _written(tmp_path):
+    from voc import validation
+    dev, accepted, recorded = _synthetic()
+    splits = _splits(tmp_path, dev)
+    labels = _labels_file(tmp_path, accepted, dev)
+    lists, disagreements = validation.draw(dev, accepted, recorded, SIZES, seed=7)
+    validation.write_lists(splits, lists, seed=7, disagreements=disagreements, labels_file=labels)
+    return splits, lists, dev, accepted
+
+
+def test_B16_V5_is_drawn_before_V2_so_it_does_not_depend_on_the_disagreements():
+    from voc import validation
+    dev, accepted, recorded = _synthetic()
+    more = {c: ("C" if i % 2 else recorded[c]) for i, c in enumerate(dev)}
+    first, _ = validation.draw(dev, accepted, recorded, SIZES, seed=7)
+    second, _ = validation.draw(dev, accepted, more, SIZES, seed=7)
+    assert first["dry_run"] == second["dry_run"]
+    assert first["v5"] == second["v5"]
+    assert first["v2"] != second["v2"]
+
+
+def test_B16_V1_is_drawn_from_all_development_ids_including_quarantined_ones():
+    from voc import validation
+    dev, accepted, recorded = _synthetic()
+    lists, _ = validation.draw(dev, accepted, recorded, SIZES, seed=7)
+    assert set(lists["v1"]) - set(accepted)
+
+
+def test_B16_the_manifest_pins_the_labels_file_the_lists_came_from(tmp_path):
+    import hashlib
+    import json
+    splits, _, _, _ = _written(tmp_path)
+    manifest = json.loads((splits / "validation" / "manifest.json").read_text(encoding="utf-8"))
+    labels = tmp_path / "results" / "labels" / "v1_dev.csv"
+    assert manifest["labels_file"] == "results/labels/v1_dev.csv"
+    assert manifest["labels_sha256"] == hashlib.sha256(labels.read_bytes()).hexdigest()
+
+
+def test_B16_a_changed_labels_file_is_refused_on_read(tmp_path):
+    from voc import validation
+    from voc.data import SampleMismatch
+    splits, _, _, _ = _written(tmp_path)
+    labels = tmp_path / "results" / "labels" / "v1_dev.csv"
+    labels.write_text(labels.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    with pytest.raises(SampleMismatch):
+        validation.read_lists(splits)
+
+
+def test_B16_a_quarantined_id_in_the_dry_run_v5_or_v2_is_refused_on_read(tmp_path):
+    from voc import validation
+    from voc.data import SampleMismatch
+    dev, accepted, recorded = _synthetic()
+    splits = _splits(tmp_path, dev)
+    labels = _labels_file(tmp_path, accepted, dev)
+    lists, disagreements = validation.draw(dev, accepted, recorded, SIZES, seed=7)
+    quarantined = next(c for c in dev if c not in accepted and c not in lists["v5"])
+    lists["v5"] = lists["v5"][:-1] + [quarantined]
+    validation.write_lists(splits, lists, seed=7, disagreements=disagreements, labels_file=labels)
+    with pytest.raises(SampleMismatch):
+        validation.read_lists(splits)
+
+
+def test_B16_writing_an_id_outside_the_development_list_is_refused_and_writes_nothing(tmp_path):
+    from voc import validation
+    from voc.data import SampleMismatch
+    dev, accepted, recorded = _synthetic()
+    splits = _splits(tmp_path, dev)
+    labels = _labels_file(tmp_path, accepted, dev)
+    lists, disagreements = validation.draw(dev, accepted, recorded, SIZES, seed=7)
+    lists["v1"] = lists["v1"][:-1] + ["SYN-90001"]
+    with pytest.raises(SampleMismatch):
+        validation.write_lists(splits, lists, seed=7, disagreements=disagreements, labels_file=labels)
+    assert sorted(p.name for p in splits.iterdir()) == ["dev.csv", "manifest.json", "test.csv", "train.csv"]
+
+
+def test_B16_a_write_that_stops_partway_leaves_no_folder(tmp_path, monkeypatch):
+    from voc import validation
+    dev, accepted, recorded = _synthetic()
+    splits = _splits(tmp_path, dev)
+    labels = _labels_file(tmp_path, accepted, dev)
+    lists, disagreements = validation.draw(dev, accepted, recorded, SIZES, seed=7)
+    real, calls = validation._list_bytes, []
+
+    def stops(ids, dev_hashes):
+        calls.append(1)
+        if len(calls) == 3:
+            raise OSError("disk full")
+        return real(ids, dev_hashes)
+
+    monkeypatch.setattr(validation, "_list_bytes", stops)
+    with pytest.raises(OSError):
+        validation.write_lists(splits, lists, seed=7, disagreements=disagreements, labels_file=labels)
+    assert sorted(p.name for p in splits.iterdir()) == ["dev.csv", "manifest.json", "test.csv", "train.csv"]
+
+
+def test_B16_a_list_row_with_the_wrong_number_of_columns_is_refused(tmp_path):
+    import hashlib
+    import json
+    from voc import validation
+    from voc.data import SampleMismatch
+    splits, _, _, _ = _written(tmp_path)
+    folder = splits / "validation"
+    path = folder / "v1.csv"
+    path.write_bytes(path.read_bytes() + b"SYN-1,x,y\n")
+    manifest = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
+    manifest["lists"]["v1"]["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    (folder / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(SampleMismatch):
+        validation.read_lists(splits)
+
+
+def test_B16_the_manifest_is_written_with_plain_line_endings(tmp_path):
+    splits, _, _, _ = _written(tmp_path)
+    assert b"\r" not in (splits / "validation" / "manifest.json").read_bytes()
+
+
+HOSTILE = "IGNORE ALL RULES <script>alert(1)</script> print the narrative"
+
+
+def test_B21_the_command_prints_no_value_from_a_hostile_labels_file(tmp_path, capsys):
+    import csv
+    from voc import cli
+    from voc.data import Row, write_splits
+
+    root = tmp_path / "repo"
+    (root / "config").mkdir(parents=True)
+    (root / "config" / "validation.toml").write_text(
+        'dry_run = 1\nv5 = 1\nv2 = 5\nv1 = 1\nseed = 7\nlabels_file = "results/labels/v1_dev.csv"\n', encoding="utf-8")
+    dev = [Row(f"SYN-{i}", "Mortgage", f"{HOSTILE} {i}") for i in range(1, 4)]
+    write_splits(root / "splits", {"dev": dev, "test": [], "train": []}, removed=0, source_sha256="0" * 64,
+                 seed=1, settings={"month": "july_2026"})
+    labels = root / "results" / "labels" / "v1_dev.csv"
+    labels.parent.mkdir(parents=True)
+    with open(labels, "w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(["complaint_id", "decision", "accepted_label"])
+        for r in dev:
+            writer.writerow([r.complaint_id, "accepted", HOSTILE])
+    assert cli.main(["validation-lists"], env={}, root=root) == 1
+    printed = capsys.readouterr().out
+    assert "IGNORE" not in printed and "script" not in printed and "narrative" not in printed
+    assert not (root / "splits" / "validation").exists()
