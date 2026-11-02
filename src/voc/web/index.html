@@ -15,10 +15,10 @@
     <p class="sub">Complaints to the US Consumer Financial Protection Bureau (CFPB), July 2026. An
       <span class="term-wrap">LLM <button type="button" class="term" aria-expanded="false" aria-controls="term-llm" aria-label="What is an LLM?">?</button></span>
       labels each complaint by product and quotes its evidence, and a script checks the quote. It is scored against
-      TF-IDF (term frequency, inverse document <span class="term-wrap">frequency) <button type="button" class="term" aria-expanded="false" aria-controls="term-tfidf" aria-label="What is TF-IDF?">?</button></span>,
-      a simple word-based model.</p>
+      TF-IDF (term frequency, inverse document <span class="term-wrap">frequency) <button type="button" class="term" aria-expanded="false" aria-controls="term-tfidf" aria-label="What is TF-IDF?">?</button></span>
+      with logistic regression, a simple word-based classifier.</p>
     <p class="term-note" id="term-llm" hidden><b>LLM</b>, a large language model (here claude-haiku-5-5). It reads the complaint, picks one of the 11 products and copies the sentence that shows why. A script checks that the sentence is really in the complaint.</p>
-    <p class="term-note" id="term-tfidf" hidden><b>TF-IDF</b> (term frequency, inverse document frequency), a simple word-based model. It learned which words go with each product from 7,024 other complaints, and suggests a product for every complaint. It is the baseline the LLM must beat.</p>
+    <p class="term-note" id="term-tfidf" hidden><b>TF-IDF</b> (term frequency, inverse document frequency) with logistic regression, a simple word-based classifier, called TF-IDF for short. TF-IDF turns each complaint into scores for its words and two-word phrases. A logistic regression, a standard statistical model, learned from 7,024 other complaints how strongly each score points to each product. It suggests a product for every complaint, with a confidence. It is the baseline the LLM must beat.</p>
   </div>
   <nav class="tabs" aria-label="Sections">
     <a href="#/" data-tab="overview">Overview</a>
@@ -102,7 +102,7 @@
         <dl class="glossary" id="glossary">
           <dt>CFPB</dt><dd>The US Consumer Financial Protection Bureau. It publishes the complaints, and its 11 products are the labels.</dd>
           <dt>LLM</dt><dd>A large language model, here claude-haiku-5-5. It labels each complaint and quotes its evidence.</dd>
-          <dt>TF-IDF</dt><dd>Short for term frequency, inverse document frequency. A simple word-based model, trained on 7,024 other complaints. The baseline the LLM must beat.</dd>
+          <dt>TF-IDF</dt><dd>Short for term frequency, inverse document frequency. Here it names the baseline: TF-IDF word scores fed into a logistic regression, a standard statistical model, trained on 7,024 other complaints. The baseline the LLM must beat.</dd>
           <dt>F1 score</dt><dd>For one product: a balance of how often its label is right and how many of its complaints are found. From 0 to 1.</dd>
           <dt>Re-weighted strict accuracy</dt><dd>Right labels over all complaints, with a quarantined complaint counted as wrong, averaged by each product's share.</dd>
           <dt>Coverage</dt><dd>The share of complaints that got a label.</dd>
