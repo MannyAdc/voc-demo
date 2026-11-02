@@ -8,6 +8,8 @@ import csv
 import hashlib
 import io
 import json
+import shutil
+import tempfile
 import tomllib
 from pathlib import Path
 
@@ -62,27 +64,44 @@ def _list_bytes(ids, dev):
     return out.getvalue().encode("utf-8")
 
 
-def write_lists(splits_dir, lists, seed, disagreements):
-    """Write the lists once, each ID with its development hash, and their manifest. Never regenerated."""
+def write_lists(splits_dir, lists, seed, disagreements, labels_file):
+    """Write the lists once, each ID with its development hash, and their manifest. Never regenerated.
+
+    `labels_file` is the labels file the lists were drawn from, relative to the folder that holds `splits/`.
+    Its hash goes in the manifest. Everything is written to a temporary folder first and then renamed, so a
+    write that stops partway leaves nothing behind.
+    """
     splits_dir = Path(splits_dir)
     folder = splits_dir / "validation"
     if folder.exists():
         raise SampleMismatch("the validation lists already exist, and they are never regenerated")
     manifest = _manifest(splits_dir)
     dev = _read_list(splits_dir, "dev", manifest)
-    folder.mkdir()
+    outside = {c for ids in lists.values() for c in ids} - set(dev)
+    if outside:
+        raise SampleMismatch(f"{len(outside)} IDs are not in the development list")
+    labels = (splits_dir.parent / labels_file).read_bytes()
     out = {"seed": seed, "accepted_disagreements": disagreements,
-           "dev_sha256": manifest["lists"]["dev"]["sha256"], "lists": {}}
-    for name in ORDER:
-        data = _list_bytes(lists[name], dev)
-        (folder / f"{name}.csv").write_bytes(data)
-        out["lists"][name] = {"count": len(lists[name]), "sha256": hashlib.sha256(data).hexdigest()}
-    (folder / "manifest.json").write_text(json.dumps(out, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+           "dev_sha256": manifest["lists"]["dev"]["sha256"], "labels_file": Path(labels_file).as_posix(),
+           "labels_sha256": hashlib.sha256(labels).hexdigest(), "lists": {}}
+    work = Path(tempfile.mkdtemp(prefix=".validation-", dir=splits_dir))
+    try:
+        for name in ORDER:
+            data = _list_bytes(lists[name], dev)
+            (work / f"{name}.csv").write_bytes(data)
+            out["lists"][name] = {"count": len(lists[name]), "sha256": hashlib.sha256(data).hexdigest()}
+        (work / "manifest.json").write_text(json.dumps(out, indent=2, sort_keys=True) + "\n", encoding="utf-8",
+                                            newline="\n")
+        work.rename(folder)
+    except BaseException:
+        shutil.rmtree(work, ignore_errors=True)
+        raise
 
 
 def read_lists(splits_dir):
     """The four lists, checked: each file against its hash, each ID and hash against the development list,
-    and the lists that must not share a case."""
+    the dry run, V5 and V2 against the accepted labels they were drawn from, and the lists that must not
+    share a case."""
     splits_dir = Path(splits_dir)
     folder = splits_dir / "validation"
     manifest = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
@@ -90,12 +109,19 @@ def read_lists(splits_dir):
     if manifest["dev_sha256"] != dev_manifest["lists"]["dev"]["sha256"]:
         raise SampleMismatch("the validation lists were drawn from another development list")
     dev = _read_list(splits_dir, "dev", dev_manifest)
+    labels = splits_dir.parent / manifest["labels_file"]
+    if hashlib.sha256(labels.read_bytes()).hexdigest() != manifest["labels_sha256"]:
+        raise SampleMismatch(f"{manifest['labels_file']} does not match its hash in the validation manifest")
+    with open(labels, encoding="utf-8", newline="") as f:
+        accepted = {r["complaint_id"] for r in csv.DictReader(f) if r["decision"] == "accepted"}
     lists = {}
     for name in ORDER:
         data = (folder / f"{name}.csv").read_bytes()
         if hashlib.sha256(data).hexdigest() != manifest["lists"][name]["sha256"]:
             raise SampleMismatch(f"splits/validation/{name}.csv does not match its hash in the manifest")
         rows = list(csv.reader(io.StringIO(data.decode("utf-8"))))[1:]
+        if any(len(row) != 2 for row in rows):
+            raise SampleMismatch(f"splits/validation/{name}.csv has a row that is not an ID and a hash")
         ids = [complaint_id for complaint_id, _ in rows]
         if len(set(ids)) != len(ids) or any(dev.get(c) != digest for c, digest in rows):
             raise SampleMismatch(f"splits/validation/{name}.csv holds an ID that is repeated, or not in the "
@@ -104,6 +130,8 @@ def read_lists(splits_dir):
     kept_apart = set(lists["dry_run"]) & set(lists["v5"]) or set(lists["v2"]) & set(lists["dry_run"] + lists["v5"])
     if kept_apart:
         raise SampleMismatch("the dry run, V5 and V2 lists share a case")
+    if not set(lists["dry_run"] + lists["v5"] + lists["v2"]) <= accepted:
+        raise SampleMismatch("the dry run, V5 or V2 list holds a complaint that is not an accepted label")
     return lists
 
 
@@ -124,7 +152,7 @@ def freeze(root):
         accepted = {r["complaint_id"]: r["accepted_label"] for r in csv.DictReader(f) if r["decision"] == "accepted"}
     recorded = {r.complaint_id: r.product for r in _rows(root / DB_PATH, splits_dir, manifest["month"], "dev", dev)}
     lists, disagreements = draw(dev, accepted, recorded, {name: config[name] for name in ORDER}, config["seed"])
-    write_lists(splits_dir, lists, config["seed"], disagreements)
+    write_lists(splits_dir, lists, config["seed"], disagreements, labels_file=config["labels_file"])
     return {"accepted": len(accepted), "disagreements": disagreements,
             "counts": {name: len(ids) for name, ids in lists.items()}}
 

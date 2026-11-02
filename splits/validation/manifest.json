@@ -1,6 +1,8 @@
 {
   "accepted_disagreements": 66,
   "dev_sha256": "628e76005de8e73006b84ae84bb316483ed0225895af0457c6896bd3899301b9",
+  "labels_file": "results/labels/v1_dev.csv",
+  "labels_sha256": "41068bb7e725c50947892e22459741d452b9a7f821b50df16c4199f605641658",
   "lists": {
     "dry_run": {
       "count": 10,

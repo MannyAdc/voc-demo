@@ -214,24 +214,20 @@ def _splits(tmp_path, dev):
 
 
 def test_B16_the_lists_are_written_once_and_read_back_with_their_hashes(tmp_path):
+    # Changed in the review of #71: `write_lists` also takes the labels file, so `_written` writes one.
     from voc import validation
     from voc.data import SampleMismatch
-    dev, accepted, recorded = _synthetic()
-    splits = _splits(tmp_path, dev)
-    lists, disagreements = validation.draw(dev, accepted, recorded, SIZES, seed=7)
-    validation.write_lists(splits, lists, seed=7, disagreements=disagreements)
+    splits, lists, _, _ = _written(tmp_path)
     assert validation.read_lists(splits) == lists
     with pytest.raises(SampleMismatch):
-        validation.write_lists(splits, lists, seed=7, disagreements=disagreements)
+        validation.write_lists(splits, lists, seed=7, disagreements=0, labels_file="results/labels/v1_dev.csv")
 
 
 def test_B16_a_changed_list_file_is_refused(tmp_path):
+    # Changed in the review of #71: `write_lists` also takes the labels file, so `_written` writes one.
     from voc import validation
     from voc.data import SampleMismatch
-    dev, accepted, recorded = _synthetic()
-    splits = _splits(tmp_path, dev)
-    lists, disagreements = validation.draw(dev, accepted, recorded, SIZES, seed=7)
-    validation.write_lists(splits, lists, seed=7, disagreements=disagreements)
+    splits, lists, _, _ = _written(tmp_path)
     path = splits / "validation" / "v2.csv"
     path.write_text(path.read_text(encoding="utf-8").replace(lists["v2"][0] + ",", "SYN-299,"), encoding="utf-8")
     with pytest.raises(SampleMismatch):
@@ -240,17 +236,20 @@ def test_B16_a_changed_list_file_is_refused(tmp_path):
 
 @pytest.mark.parametrize("change", ["not_dev", "overlap"])
 def test_B16_V7_lists_that_leave_the_development_set_or_overlap_are_refused_on_read(tmp_path, change):
+    # Changed in the review of #71: `write_lists` takes the labels file, and now refuses an ID outside the
+    # development list itself. So the refusal may come at the write or at the read.
     from voc import validation
     from voc.data import SampleMismatch
     dev, accepted, recorded = _synthetic()
     splits = _splits(tmp_path, dev)
+    labels = _labels_file(tmp_path, accepted, dev)
     lists, disagreements = validation.draw(dev, accepted, recorded, SIZES, seed=7)
     if change == "not_dev":
         lists["v1"] = lists["v1"][:-1] + ["SYN-90001"]
     else:
         lists["v2"] = lists["v2"][:-1] + [lists["v5"][0]]
-    validation.write_lists(splits, lists, seed=7, disagreements=disagreements)
     with pytest.raises(SampleMismatch):
+        validation.write_lists(splits, lists, seed=7, disagreements=disagreements, labels_file=labels)
         validation.read_lists(splits)
 
 
