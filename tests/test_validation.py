@@ -726,3 +726,146 @@ def test_V1_the_command_refuses_a_repeat_number_below_1(tmp_path, capsys, repeat
     with pytest.raises(SystemExit):
         cli.main(["consistency", "--repeat", repeat], env={"LLM_BACKEND": "mock"}, root=root)
     assert "--repeat" in capsys.readouterr().err
+
+
+# Review of #72.
+
+def _git_project(root):
+    """Commit the temp project, so the ledger and the caller can check `config/budget.toml` against main (B8)."""
+    import os
+    import subprocess
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    for args in (("init", "-q", "-b", "main"), ("add", "."), ("commit", "-q", "-m", "Start"),
+                 ("update-ref", "refs/remotes/origin/main", "refs/heads/main")):
+        subprocess.run(["git", "-c", "user.name=synthetic", "-c", "user.email=synthetic@example.invalid",
+                        "-c", "commit.gpgsign=false", *args], cwd=root, env=env, check=True, capture_output=True)
+
+
+@pytest.fixture
+def fake_home(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    return home
+
+
+class _FakeApi:
+    """Stands in for the api backend: answers every prompt with a quote that is not in the text."""
+
+    def __init__(self):
+        self.calls = 0
+
+    def __call__(self, prompt, settings):
+        import json
+        from voc.replay import Answer
+        self.calls += 1
+        return Answer(json.dumps({"label": "Mortgage", "quote": "nothing like this is in the text"}), 1000, 200,
+                      "end_turn")
+
+
+def _v1_prompts(root, dev):
+    from voc.baselines import cut_text
+    from voc.labels import load_labels
+    from voc.pipeline import definitions, load_prompt_version
+    from voc.prompt import build_prompt
+    labels = load_labels(root / "config" / "labels.toml")
+    names, version = [label.name for label in labels], load_prompt_version(root, "v1")
+    return version, [build_prompt(version.instructions, names, cut_text(r.narrative)[0], complaint_id=r.complaint_id,
+                                  definitions=definitions(labels)).prompt for r in dev[:3]]
+
+
+def test_V1_V9_the_api_path_calls_fresh_through_the_ledger_even_when_the_originals_are_recorded(
+        tmp_path, fake_home, capsys, monkeypatch):
+    import json
+    from voc import backends, budget, cli
+    from voc.replay import Caller
+    root, dev = _v1_project(tmp_path)
+    _git_project(root)
+    budget.init_ledger(root)
+    fake = _FakeApi()
+    monkeypatch.setattr(backends, "make_backend", lambda *a, **k: fake)
+    version, prompts = _v1_prompts(root, dev)
+    original = Caller("api", version.settings["model"], version.settings, backend=fake, root=root)
+    for prompt in prompts:  # the answers of 29 October, recorded with no repeat number
+        assert original.call(prompt).source == "live"
+    before_calls, before_used = fake.calls, budget.Ledger().state()["used"]
+    assert cli.main(["consistency", "--repeat", "1", "--approved"], env={"LLM_BACKEND": "api"}, root=root) == 0
+    assert fake.calls == before_calls + 3
+    summary = json.loads((root / "results" / "validation" / "v1_consistency_r1.json").read_text(encoding="utf-8"))
+    assert summary["live_calls"] == 3 and summary["replayed_calls"] == 0
+    assert summary["ledger_charged_tokens"] == budget.Ledger().state()["used"] - before_used > 0
+    capsys.readouterr()
+
+
+def test_V9_tokens_left_subtracts_reserved_tokens_and_refuses_an_open_overrun():
+    from voc import consistency
+    state = {"cap": 1000, "trial_cap": 200, "margin_confirmed": True, "used": 100, "reserved": 50, "overrun": None}
+    assert consistency.tokens_left(state) == 850
+    with pytest.raises(consistency.ConsistencyError):
+        consistency.tokens_left({**state, "overrun": {"reservation": "r1"}})
+
+
+def test_V1_a_run_with_a_pipeline_failure_writes_no_results(tmp_path, capsys):
+    import json
+    from voc import cli
+    root, dev = _v1_project(tmp_path)
+    _, prompts = _v1_prompts(root, dev)
+    items = [{"prompt": p, "text": json.dumps({"label": "Mortgage", "quote": "not in the text at all"})}
+             for p in prompts[:2]]  # the third complaint gets a model error from the mock backend
+    fixtures = tmp_path / "mock.json"
+    fixtures.write_text(json.dumps(items), encoding="utf-8")
+    env = {"LLM_BACKEND": "mock", "VOC_MOCK_FIXTURES": str(fixtures)}
+    assert cli.main(["consistency", "--repeat", "1", "--approved"], env=env, root=root) == 1
+    assert "failed" in capsys.readouterr().out
+    assert not (root / "results" / "validation").exists() or not any((root / "results" / "validation").iterdir())
+
+
+def test_V1_a_results_write_that_fails_partway_leaves_no_results(tmp_path, capsys, monkeypatch):
+    import json
+    from voc import cli, consistency
+    root, dev = _v1_project(tmp_path)
+    _, prompts = _v1_prompts(root, dev)
+    items = [{"prompt": p, "text": json.dumps({"label": "Mortgage", "quote": "not in the text at all"})}
+             for p in prompts]
+    fixtures = tmp_path / "mock.json"
+    fixtures.write_text(json.dumps(items), encoding="utf-8")
+
+    def broken(*args, **kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(consistency, "_summary_json", broken)
+    env = {"LLM_BACKEND": "mock", "VOC_MOCK_FIXTURES": str(fixtures)}
+    assert cli.main(["consistency", "--repeat", "1", "--approved"], env=env, root=root) == 1
+    folder = root / "results" / "validation"
+    assert not folder.exists() or not any(folder.iterdir())
+    capsys.readouterr()
+
+
+def test_V9_the_estimate_counts_the_answers_already_recorded_under_the_repeat():
+    from voc import consistency
+    from voc.labels import load_labels
+    from voc.pipeline import Complaint
+    complaints = [Complaint(c, t) for c, t in V1_TEXTS.items()]
+    old = {c: {"input_tokens": "1000", "output_tokens": "200"} for c in V1_TEXTS}
+    prices = {"synthetic-model": {"long_context_threshold": 100000, "input_per_mtok": "0.10",
+                                  "output_per_mtok": "0.50", "long_input_per_mtok": "0.50",
+                                  "long_output_per_mtok": "2.50"}}
+    seen = []
+
+    def recorded(prompt):
+        seen.append(prompt)
+        return len(seen) == 1
+
+    got = consistency.estimate(complaints, _v1_version(), load_labels(REPO / "config" / "labels.toml"), old, prices,
+                               margin=100, tokens_left=None, is_recorded=recorded)
+    assert got["already_recorded"] == 1
+    assert any("already recorded" in line for line in consistency.format_estimate(got, 1, "synthetic-model"))
+
+
+def test_V1_the_printed_summary_names_the_replayed_calls():
+    from voc import consistency
+    rows = [{"decision": "both_accepted", "label": "same", "quote": "same"}]
+    summary = {**consistency.summarise(rows, repeat=1), "cost_usd": "0", "live_calls": 0, "replayed_calls": 1}
+    assert any("replayed" in line for line in consistency.format_summary(summary, []))
