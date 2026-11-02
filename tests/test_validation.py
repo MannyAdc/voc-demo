@@ -514,7 +514,8 @@ def _v1_version():
 
 
 class _FakeCall:
-    """A fake recorded, ledgered call that answers by the complaint ID in the prompt."""
+    """A fake recorded, ledgered call that answers by the complaint text in the prompt."""
+    # Docstring changed in the review of #72: it finds the complaint by its text, not its ID.
 
     def __init__(self, answers):
         self.answers, self.prompts = answers, []

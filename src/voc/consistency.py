@@ -10,9 +10,11 @@ worst case the ledger will reserve and the tokens left (V9). Only IDs, labels, p
 written or printed (B21, V8).
 """
 import csv
+import hashlib
 import io
 import json
 import math
+import os
 import time
 from decimal import Decimal
 from pathlib import Path
@@ -20,10 +22,10 @@ from pathlib import Path
 from voc.baselines import cut_text
 from voc.budget import worst_case
 from voc.costs import call_cost
-from voc.decision import before_call
+from voc.decision import MODEL_ERROR, NOT_RUN_BUDGET, before_call
 from voc.pipeline import _proposed, definitions, label_complaints
 from voc.prompt import build_prompt
-from voc.replay import MAX_RETRIES
+from voc.replay import MAX_RETRIES, recording_key, recordings_dir
 
 PROMPT = "v1"
 DECISION = ("both_accepted", "both_quarantined", "changed")
@@ -124,12 +126,26 @@ def rows_csv(rows):
     return out.getvalue()
 
 
-def estimate(complaints, version, labels, old, prices, margin, tokens_left):
+def tokens_left(state):
+    """The cap left for this run: the effective cap less the tokens used and reserved (as the final run's check).
+    An open overrun refuses."""
+    from voc.budget import effective_cap
+
+    if state.get("overrun") is not None:
+        raise ConsistencyError("a ledger overrun is open. Clear it with `voc ledger clear-overrun` first")
+    return effective_cap(state) - state["used"] - state["reserved"]
+
+
+def estimate(complaints, version, labels, old, prices, margin, tokens_left, is_recorded=None):
     """The calls, the expected cost from the recorded tokens of the same complaints, and the worst case the
-    ledger will reserve, retries included. Refused when the worst case is over the tokens left."""
+    ledger will reserve, retries included. Refused when the worst case is over the tokens left.
+
+    `is_recorded(prompt)` says whether an answer is already recorded under this repeat number. Those are
+    replayed at no cost, so the printout says how many there are.
+    """
     names, defined = [label.name for label in labels], definitions(labels)
     model, limit = version.settings["model"], version.settings["max_tokens"]
-    calls, expected, worst = 0, Decimal(0), 0
+    calls, expected, worst, recorded = 0, Decimal(0), 0, 0
     for complaint in complaints:
         text, _ = cut_text(complaint.narrative)
         if before_call(text):
@@ -137,6 +153,7 @@ def estimate(complaints, version, labels, old, prices, margin, tokens_left):
         prompt = build_prompt(version.instructions, names, text, complaint_id=complaint.complaint_id,
                               definitions=defined).prompt
         calls += 1
+        recorded += bool(is_recorded and is_recorded(prompt))
         worst += worst_case(prompt, limit, margin)
         before = old[complaint.complaint_id]
         try:
@@ -148,7 +165,7 @@ def estimate(complaints, version, labels, old, prices, margin, tokens_left):
         raise ConsistencyError(f"the cap has {tokens_left:,} tokens left, and this run needs up to {worst:,} in the "
                                "worst case, retries included")
     return {"calls": calls, "expected_cost_usd": str(expected), "worst_case_tokens": worst,
-            "tokens_left": tokens_left}
+            "tokens_left": tokens_left, "already_recorded": recorded}
 
 
 def result_paths(root, repeat):
@@ -174,10 +191,12 @@ def _complaints(root):
 
 
 def _old(root):
-    """The recorded answers, from the labels file the lists were drawn from (checked by `read_lists`)."""
+    """The recorded answers, from the labels file the lists were drawn from, read once and checked by its hash."""
     manifest = json.loads((Path(root) / "splits" / "validation" / "manifest.json").read_text(encoding="utf-8"))
-    with open(Path(root) / manifest["labels_file"], encoding="utf-8", newline="") as f:
-        return {r["complaint_id"]: r for r in csv.DictReader(f)}
+    data = (Path(root) / manifest["labels_file"]).read_bytes()
+    if hashlib.sha256(data).hexdigest() != manifest["labels_sha256"]:
+        raise ConsistencyError(f"{manifest['labels_file']} does not match its hash in the validation manifest")
+    return {r["complaint_id"]: r for r in csv.DictReader(io.StringIO(data.decode("utf-8")))}
 
 
 def format_estimate(figures, repeat, model):
@@ -187,6 +206,7 @@ def format_estimate(figures, repeat, model):
             f"expected cost: ${Decimal(figures['expected_cost_usd']):.4f}, from the recorded tokens of the same "
             "complaints",
             f"worst case: {figures['worst_case_tokens']:,} tokens reserved at most, retries included",
+            f"already recorded under repeat {repeat}: {figures['already_recorded']}, replayed at no cost",
             "tokens left: no ledger for the mock backend" if left is None else f"tokens left: {left:,}"]
 
 
@@ -199,14 +219,36 @@ def format_summary(summary, paths):
                          f"{low:.1%} to {high:.1%})")
     lines.append(f"quote not compared: {summary['quote_not_compared']}")
     lines.append(f"cost: ${Decimal(summary['cost_usd']):.4f} for {summary['live_calls']} live calls")
+    lines.append(f"replayed calls: {summary['replayed_calls']}")
     lines += [f"written to {p.as_posix()}" for p in paths]
     return lines
+
+
+def _summary_json(summary):
+    return json.dumps(summary, indent=2, sort_keys=True) + "\n"
+
+
+def _write_results(paths, rows, summary):
+    """Both files are written to temporary files first and then renamed, so a write that fails partway leaves
+    neither, and the repeat stays open."""
+    folder = paths[0].parent
+    folder.mkdir(parents=True, exist_ok=True)
+    temporary = [folder / f".{p.name}.tmp" for p in paths]
+    try:
+        temporary[0].write_text(rows_csv(rows), encoding="utf-8", newline="\n")
+        temporary[1].write_text(_summary_json(summary), encoding="utf-8", newline="\n")
+        for temp, path in zip(temporary, paths):
+            os.replace(temp, path)
+    except BaseException:
+        for temp in temporary:
+            temp.unlink(missing_ok=True)
+        raise
 
 
 def command(config, root, repeat, approved):
     """`voc consistency`. Returns the lines to print."""
     from voc import backends
-    from voc.budget import Ledger, effective_cap, load_config
+    from voc.budget import Ledger, load_config
     from voc.costs import load_prices
     from voc.labels import load_labels
     from voc.pipeline import load_prompt_version
@@ -224,13 +266,15 @@ def command(config, root, repeat, approved):
     complaints, old = _complaints(root), _old(root)
     prices = load_prices(root / "config" / "prices.toml")
     model, settings = version.settings["model"], version.settings
-    ledger, tokens_left = None, None
+    ledger, left, is_recorded = None, None, None
     if backend_name == "api":
         ledger = Ledger()
-        state = ledger.state()
-        tokens_left = effective_cap(state) - state["used"]
-    figures = estimate(complaints, version, labels, old, prices, load_config(root)["input_margin_tokens"],
-                       tokens_left)
+        left = tokens_left(ledger.state())
+
+        def is_recorded(prompt):
+            return (recordings_dir() / f"{recording_key('api', model, settings, prompt, repeat)}.json").exists()
+    figures = estimate(complaints, version, labels, old, prices, load_config(root)["input_margin_tokens"], left,
+                       is_recorded)
     lines = format_estimate(figures, repeat, model)
     if not approved:
         return lines + ["no call made. Run it again with --approved once the owner has approved these figures"]
@@ -250,6 +294,10 @@ def command(config, root, repeat, approved):
     used_before = ledger.state()["used"] if ledger else None
     started = time.monotonic()
     rows = relabel(complaints, version, labels, call, backend_name, repeat, old)
+    failed = sum(r["new_reason"] in (MODEL_ERROR, NOT_RUN_BUDGET) for r in rows)
+    if failed:
+        raise ConsistencyError(f"{failed} complaints failed with a model error or at the cap, so no results are "
+                               f"written. The answers so far are recorded. Run repeat {repeat} again to finish")
     summary = summarise(rows, repeat)
     live = [r for r in rows if r["source"] == "live" and r["input_tokens"] is not None]
     cost = sum((call_cost(prices, model, r["input_tokens"], r["output_tokens"]) for r in live), Decimal(0))
@@ -260,7 +308,5 @@ def command(config, root, repeat, approved):
                     "output_tokens": sum(r["output_tokens"] for r in live), "cost_usd": str(cost)})
     if ledger is not None:
         summary["ledger_charged_tokens"] = ledger.state()["used"] - used_before
-    paths[0].parent.mkdir(parents=True, exist_ok=True)
-    paths[0].write_text(rows_csv(rows), encoding="utf-8", newline="\n")
-    paths[1].write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+    _write_results(paths, rows, summary)
     return lines + format_summary(summary, [p.relative_to(root) for p in paths])

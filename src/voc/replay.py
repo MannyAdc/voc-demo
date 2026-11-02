@@ -10,12 +10,14 @@ neither the worst-case estimate nor the recording key. Settings must be JSON
 values (tuples become lists).
 
 A recording is keyed by a SHA-256 hash of the backend, the model, the
-settings (sorted) and the exact prompt. V1 (spec 003) may add a repeat
-number to the key material, never to what is sent, so a fresh run of the
-same prompt is recorded apart. With no repeat number the key is as before. It holds only that key material, the
-answer text, the token use and the live cost in tokens. It never holds
-headers or keys. Failed, refused and cut-off calls are never stored, and
-neither are calls with no full usage report.
+settings (sorted) and the exact prompt. A recording holds only that key
+material, the answer text, the token use and the live cost in tokens. It
+never holds headers or keys. Failed, refused and cut-off calls are never
+stored, and neither are calls with no full usage report.
+
+V1 (spec 003) may add a repeat number to the key material, never to what is
+sent, so a fresh run of the same prompt is recorded apart. With no repeat
+number the key is exactly as before.
 
 Recordings live in the home folder next to the ledger, so all worktrees share
 one cache. A recorded answer is served with no backend and no ledger, so it
