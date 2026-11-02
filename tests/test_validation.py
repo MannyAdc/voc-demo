@@ -965,3 +965,230 @@ def test_V8_only_the_planned_validation_results_can_be_committed(tmp_path, path,
     found = subprocess.run(["git", "check-ignore", "--no-index", "-q", path], cwd=tmp_path, capture_output=True)
     assert found.returncode in (0, 1)
     assert (found.returncode == 0) == ignored
+
+
+# V2 and V3: the review sheets and their import (spec 003). Synthetic fixture rows and a fake home folder only.
+
+def _sheet_project(tmp_path):
+    """A temp project with the synthetic fixture staged: 2 accepted labels in V2's list, and 3 quarantined
+    development complaints (quote not in the text, an unparseable answer, a label not in the list), with
+    their recorded answers in the fake home folder."""
+    import csv
+    import json
+    import shutil
+    from voc import validation
+    from voc.baselines import cut_text
+    from voc.data import Row, write_splits
+    from voc.labels import load_labels
+    from voc.load import DB_PATH, load_month
+    from voc.replay import recordings_dir
+
+    fixture = REPO / "tests" / "fixtures" / "dbt" / "complaints.csv"
+    with open(fixture, encoding="utf-8", newline="") as f:
+        rows = [r for r in csv.DictReader(f) if r["Consumer complaint narrative"].strip()]
+    root = tmp_path / "repo"
+    (root / "config").mkdir(parents=True)
+    shutil.copy(REPO / "config" / "labels.toml", root / "config" / "labels.toml")
+    load_month(root / DB_PATH, fixture, "july_2026",
+               [label.name for label in load_labels(root / "config" / "labels.toml")])
+    dev = [Row(r["Complaint ID"], r["Product"], r["Consumer complaint narrative"]) for r in rows]
+    write_splits(root / "splits", {"dev": dev, "test": [], "train": []}, removed=0, source_sha256="0" * 64,
+                 seed=1, settings={"month": "july_2026"})
+    other = {r.complaint_id: ("Mortgage" if r.product != "Mortgage" else "Credit card") for r in dev}
+    fields = ["complaint_id", "proposed_label", "quote_start", "quote_end", "decision", "reason", "accepted_label",
+              "recording_key"]
+    labels_file = root / "results" / "labels" / "v1_dev.csv"
+    labels_file.parent.mkdir(parents=True)
+    recordings_dir().mkdir(parents=True, exist_ok=True)
+    answers = {}
+    with open(labels_file, "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
+        writer.writeheader()
+        for i, r in enumerate(dev):
+            key = f"{i:064x}"
+            text = cut_text(r.narrative)[0]
+            if i < 4:  # accepted, the first 2 with a label that differs from the recorded product
+                label = other[r.complaint_id] if i < 2 else r.product
+                writer.writerow({"complaint_id": r.complaint_id, "proposed_label": label, "quote_start": 0,
+                                 "quote_end": 12, "decision": "accepted", "reason": "", "accepted_label": label,
+                                 "recording_key": key})
+                continue
+            reason = ("quote_not_in_text", "unparseable", "invalid_label")[i - 4]
+            proposed = {"quote_not_in_text": r.product, "unparseable": "", "invalid_label": "(not in list)"}[reason]
+            answers[r.complaint_id] = {"quote_not_in_text": {"label": r.product, "quote": "SYN a quote never there"},
+                                       "unparseable": None,
+                                       "invalid_label": {"label": "SYN no such product", "quote": text[:12]}}[reason]
+            writer.writerow({"complaint_id": r.complaint_id, "proposed_label": proposed, "quote_start": "",
+                             "quote_end": "", "decision": "quarantined", "reason": reason, "accepted_label": "",
+                             "recording_key": key})
+            body = "not json at all" if answers[r.complaint_id] is None else json.dumps(answers[r.complaint_id])
+            (recordings_dir() / f"{key}.json").write_text(json.dumps({"key": key, "text": body}), encoding="utf-8")
+    lists = {"dry_run": [], "v5": [], "v2": [r.complaint_id for r in dev[:2]], "v1": []}
+    validation.write_lists(root / "splits", lists, seed=1, disagreements=2, labels_file="results/labels/v1_dev.csv")
+    return root, dev, answers
+
+
+def _read_sheet(path):
+    import csv
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        return list(csv.DictReader(f))
+
+
+def test_V2_V8_the_v2_sheet_shows_the_text_the_llm_label_and_quote_and_the_consumers_choice(tmp_path, fake_home,
+                                                                                           capsys):
+    from voc import cli, review
+    from voc.baselines import cut_text
+    root, dev, _ = _sheet_project(tmp_path)
+    assert cli.main(["review", "sheet", "v2"], env={}, root=root) == 0
+    printed = capsys.readouterr().out
+    rows = _read_sheet(review.sheet_path("v2"))
+    assert [r["complaint_id"] for r in rows] == [r.complaint_id for r in dev[:2]]
+    for sheet, row in zip(rows, dev[:2]):
+        text = cut_text(row.narrative)[0]
+        assert sheet["complaint_text"] == text
+        assert sheet["llm_quote"] == text[0:12]
+        assert sheet["consumer_choice"] == row.product
+        assert sheet["llm_label"] != row.product
+        assert sheet["code"] == ""
+    assert "llm_right" in printed and "consumer_right" in printed
+    for row in dev:
+        assert row.narrative[:20] not in printed
+
+
+def test_V3_the_v3_sheet_shows_each_quarantine_with_its_reason_and_the_proposed_answer(tmp_path, fake_home, capsys):
+    from voc import cli, review
+    root, dev, answers = _sheet_project(tmp_path)
+    assert cli.main(["review", "sheet", "v3"], env={}, root=root) == 0
+    rows = {r["complaint_id"]: r for r in _read_sheet(review.sheet_path("v3"))}
+    assert set(rows) == {r.complaint_id for r in dev[4:7]}
+    by_reason = {r["reason"]: r for r in rows.values()}
+    assert by_reason["quote_not_in_text"]["proposed_quote"] == "SYN a quote never there"
+    assert by_reason["invalid_label"]["proposed_label"] == "SYN no such product"
+    assert "no label or quote could be read" in by_reason["unparseable"]["proposed_label"]
+    assert "no label or quote could be read" in by_reason["unparseable"]["proposed_quote"]
+    capsys.readouterr()
+
+
+def test_V8_a_sheet_that_already_exists_is_never_written_over(tmp_path, fake_home, capsys):
+    from voc import cli, review
+    root, _, _ = _sheet_project(tmp_path)
+    assert cli.main(["review", "sheet", "v2"], env={}, root=root) == 0
+    path = review.sheet_path("v2")
+    path.write_text(path.read_text(encoding="utf-8-sig").replace(",\n", ",llm_right\n"), encoding="utf-8")
+    before = path.read_bytes()
+    assert cli.main(["review", "sheet", "v2"], env={}, root=root) == 1
+    assert "already" in capsys.readouterr().out
+    assert path.read_bytes() == before
+
+
+def _fill(path, codes):
+    """Fill the code column, as the owner would in a spreadsheet, and save it as UTF-8 with Windows line ends."""
+    import csv
+    import io
+    rows = _read_sheet(path)
+    out = io.StringIO()
+    writer = csv.DictWriter(out, fieldnames=list(rows[0]), lineterminator="\r\n")
+    writer.writeheader()
+    for row, code in zip(rows, codes):
+        writer.writerow({**row, "code": code})
+    path.write_bytes(b"\xef\xbb\xbf" + out.getvalue().encode("utf-8"))
+
+
+def test_V2_V8_the_import_reads_only_ids_and_codes_and_writes_them(tmp_path, fake_home, capsys):
+    import csv
+    from voc import cli, review
+    root, dev, _ = _sheet_project(tmp_path)
+    assert cli.main(["review", "sheet", "v2"], env={}, root=root) == 0
+    _fill(review.sheet_path("v2"), ["llm_right", " both_plausible "])
+    assert cli.main(["review", "import", "v2"], env={}, root=root) == 0
+    printed = capsys.readouterr().out
+    written = root / "results" / "validation" / "v2_codes.csv"
+    with open(written, encoding="utf-8", newline="") as f:
+        rows = list(csv.DictReader(f))
+    assert list(rows[0]) == ["complaint_id", "code"]
+    assert [(r["complaint_id"], r["code"]) for r in rows] == [(dev[0].complaint_id, "llm_right"),
+                                                             (dev[1].complaint_id, "both_plausible")]
+    assert b"\r" not in written.read_bytes()
+    for row in dev:
+        assert row.narrative[:20] not in written.read_text(encoding="utf-8") and row.narrative[:20] not in printed
+
+
+@pytest.mark.parametrize("change", ["blank", "unknown_code", "missing_id", "repeated_id", "unknown_id"])
+def test_V2_V3_V5_a_bad_sheet_is_refused_and_nothing_is_written(tmp_path, fake_home, capsys, change):
+    import csv
+    import io
+    from voc import cli, review
+    root, dev, _ = _sheet_project(tmp_path)
+    assert cli.main(["review", "sheet", "v2"], env={}, root=root) == 0
+    path = review.sheet_path("v2")
+    _fill(path, ["llm_right", "unclear"])
+    rows = _read_sheet(path)
+    if change == "blank":
+        rows[1]["code"] = ""
+    elif change == "unknown_code":
+        rows[1]["code"] = "maybe"
+    elif change == "missing_id":
+        rows = rows[:1]
+    elif change == "repeated_id":
+        rows = rows + rows[:1]
+    else:
+        rows[1]["complaint_id"] = "SYN-999"
+    out = io.StringIO()
+    writer = csv.DictWriter(out, fieldnames=list(rows[0]), lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    path.write_text(out.getvalue(), encoding="utf-8")
+    assert cli.main(["review", "import", "v2"], env={}, root=root) == 1
+    printed = capsys.readouterr().out
+    assert not (root / "results" / "validation" / "v2_codes.csv").exists()
+    for row in dev:
+        assert row.narrative[:20] not in printed
+
+
+def test_V2_an_import_does_not_replace_earlier_codes_without_replace(tmp_path, fake_home, capsys):
+    from voc import cli, review
+    root, _, _ = _sheet_project(tmp_path)
+    assert cli.main(["review", "sheet", "v2"], env={}, root=root) == 0
+    _fill(review.sheet_path("v2"), ["llm_right", "unclear"])
+    assert cli.main(["review", "import", "v2"], env={}, root=root) == 0
+    assert cli.main(["review", "import", "v2"], env={}, root=root) == 1
+    assert cli.main(["review", "import", "v2", "--replace"], env={}, root=root) == 0
+    capsys.readouterr()
+
+
+def test_V2_V10_the_summary_gives_each_code_and_the_label_noise_as_a_lower_and_an_upper_figure():
+    from voc import consistency, review
+    codes = {f"SYN-{i}": code for i, code in enumerate(["llm_right"] * 5 + ["both_plausible"] * 3 +
+                                                       ["consumer_right"] * 10 + ["unclear"] * 2)}
+    summary = review.summarise_codes("v2", codes)
+    assert summary["cases"] == 20
+    assert summary["codes"]["llm_right"]["count"] == 5
+    assert summary["codes"]["llm_right"]["interval"] == pytest.approx(list(consistency.wilson(5, 20)))
+    assert summary["label_noise"]["lower"]["count"] == 5
+    assert summary["label_noise"]["upper"]["count"] == 8
+    assert summary["label_noise"]["upper"]["interval"] == pytest.approx(list(consistency.wilson(8, 20)))
+
+
+def test_V3_the_v3_import_keeps_each_reason_with_its_code(tmp_path, fake_home, capsys):
+    import csv
+    from voc import cli, review
+    root, dev, _ = _sheet_project(tmp_path)
+    assert cli.main(["review", "sheet", "v3"], env={}, root=root) == 0
+    _fill(review.sheet_path("v3"), ["check_right", "check_wrong", "unclear"])
+    assert cli.main(["review", "import", "v3"], env={}, root=root) == 0
+    with open(root / "results" / "validation" / "v3_codes.csv", encoding="utf-8", newline="") as f:
+        rows = list(csv.DictReader(f))
+    assert list(rows[0]) == ["complaint_id", "reason", "code"]
+    assert {r["reason"] for r in rows} == {"quote_not_in_text", "unparseable", "invalid_label"}
+    assert "check_right: 1" in capsys.readouterr().out
+
+
+def test_V7_the_sheets_hold_only_development_ids_from_their_lists(tmp_path, fake_home, capsys):
+    from voc import cli, review
+    from voc.data import read_splits
+    root, _, _ = _sheet_project(tmp_path)
+    dev = set(read_splits(root / "splits")["dev"])
+    for piece in ("v2", "v3"):
+        assert cli.main(["review", "sheet", piece], env={}, root=root) == 0
+        assert {r["complaint_id"] for r in _read_sheet(review.sheet_path(piece))} <= dev
+    capsys.readouterr()
