@@ -1,0 +1,25 @@
+{
+  "accepted_disagreements": 66,
+  "dev_sha256": "628e76005de8e73006b84ae84bb316483ed0225895af0457c6896bd3899301b9",
+  "labels_file": "results/labels/v1_dev.csv",
+  "labels_sha256": "41068bb7e725c50947892e22459741d452b9a7f821b50df16c4199f605641658",
+  "lists": {
+    "dry_run": {
+      "count": 10,
+      "sha256": "23cf6d8836839ba34a18fa587a63f483c0cb6f9debbf4783fcccda416f0fe1d9"
+    },
+    "v1": {
+      "count": 100,
+      "sha256": "a156b51a1e4ca151355c720cec02ca63d86a6fd4afa37b7e3092524c47a62b98"
+    },
+    "v2": {
+      "count": 40,
+      "sha256": "c4bc1775ac78d5f8f1ed90b3ad58a3166c9235a145c98bfa522cf2ec17766d4e"
+    },
+    "v5": {
+      "count": 50,
+      "sha256": "56cc9e3fecaccc67301f397bbd71aec25b23e92844bb4f82ce49369de3cca201"
+    }
+  },
+  "seed": 20261103
+}
