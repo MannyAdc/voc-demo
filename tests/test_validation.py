@@ -97,3 +97,44 @@ def test_V8_the_read_guard_blocks_the_review_folder(tmp_path, tool, tool_input):
     filled = {key: value.replace("{review}", str(review_folder)) for key, value in tool_input.items()}
     decision = _read_guard().decide(tool, filled, env={}, home=home, root=tmp_path / "repo")
     assert decision and decision[0] == "deny"
+
+
+# Review of #70.
+
+def test_V8_a_review_folder_that_resolves_inside_the_repo_is_refused(tmp_path, monkeypatch):
+    from voc import review
+    repo = tmp_path / "repo"
+    monkeypatch.setattr(review, "REPO_ROOT", repo)
+    monkeypatch.setattr(budget, "voc_home", lambda: repo / "linked")
+    with pytest.raises(review.ReviewError):
+        review.inside_review_dir(repo / "linked" / "review" / "v2_sheet.csv")
+    with pytest.raises(review.ReviewError):
+        review.sheet_path("v2")
+
+
+def test_V8_the_sheet_path_goes_through_the_folder_check(home, monkeypatch):
+    from voc import review
+    seen = []
+    monkeypatch.setattr(review, "inside_review_dir", lambda path: seen.append(path) or path)
+    review.sheet_path("v3")
+    assert seen == [review.review_dir() / "v3_sheet.csv"]
+
+
+def test_V8_the_review_folder_itself_is_refused(home):
+    from voc import review
+    with pytest.raises(review.ReviewError):
+        review.inside_review_dir(review.review_dir())
+
+
+def test_V8_a_link_inside_the_folder_that_points_outside_is_refused(home, tmp_path):
+    from voc import review
+    folder = review.review_dir()
+    folder.mkdir(parents=True)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    try:
+        (folder / "link").symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("this machine cannot make links (Windows without the permission). CI on Linux runs it.")
+    with pytest.raises(review.ReviewError):
+        review.inside_review_dir(folder / "link" / "v2_sheet.csv")
