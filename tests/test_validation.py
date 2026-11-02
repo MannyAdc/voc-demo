@@ -523,7 +523,9 @@ class _FakeCall:
         import json
         from voc.replay import Reply
         self.prompts.append(prompt)
-        cid = next(c for c in self.answers if c in prompt)
+        # Changed in the green commit: the prompt does not carry the complaint ID as plain text, so the fake
+        # finds the complaint by its text.
+        cid = next(c for c in self.answers if V1_TEXTS[c] in prompt)
         label, quote = self.answers[cid]
         return Reply(json.dumps({"label": label, "quote": quote}), "live", 100, 20, 120, 120, 1)
 
