@@ -325,6 +325,28 @@ Every test feeds the checks synthetic `gh pr view` JSON. No test runs `gh` or op
 - any tracked file with the CFPB header row and a non-`SYN-` ID fails (review)
 - dbt build with data tests runs, with usage stats off (review, deferred to T011)
 
+## Validation review ([spec 003](../specs/003-validation-review/spec.md)), `tests/test_validation.py`
+
+Added on 2 November 2026. Each piece adds its tests in its own pull request, failing first.
+
+- no validation command accepts a test or training ID (V7)
+- no results file of the validation review holds narrative text, a quote or a judge reason, on hostile synthetic text (V8)
+- the review sheet is written only inside the review folder, the sheet command refuses any other folder, and the import reads only the ID and code columns (V8)
+- no judge prompt and no V3 or V5 sheet holds the consumer's recorded product (V8)
+- a paid command prints the calls, the expected cost, the worst-case tokens and the tokens left before any call, and makes no call without `--approved` (V9)
+- the Wilson interval and the bootstrap interval match known values on fixed data (V10)
+- the four frozen lists are drawn from the development set only, with a fixed seed, in the spec's order: V5 never shares a case with the dry run, V2 never with V5 or the dry run, and all are checked like the other lists (V1, V2, V5, B16)
+- a repeat number changes the recording key but not the prompt or the settings sent, and no repeat number leaves the key exactly as before (V1)
+- the comparison counts a changed decision, a missing label and a quote that is not compared, as the spec says (V1)
+- the quote comparison by positions gives same, overlapping and apart correctly (V1)
+- the import refuses a missing, repeated or unknown ID and a blank or unknown code, and then writes nothing (V2, V3, V5)
+- the label noise share is reported as a lower and an upper figure (V2)
+- the judge's answer outside the three ratings is `unparseable`, listed apart and left out of the agreement, the kappa and the table (V5)
+- the judge's main run refuses while the owner's ratings are missing, and never includes a dry-run ID (V5)
+- Cohen's kappa and the confusion table match hand-worked values on synthetic ratings (V5)
+- the hybrid uses the baseline at a top probability of at least 0.9 and the LLM otherwise, a quarantined answer counts as wrong, and it is scored as B10 scores (V6)
+- V6 reads the test run's summary file only, never a per-complaint test file (V7)
+
 ## Later features (listed now, specified later)
 
 - API: typed schemas, input checks, paging, error messages, request logging
