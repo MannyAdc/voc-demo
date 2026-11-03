@@ -1544,3 +1544,191 @@ def test_V5_V8_the_owners_v5_sheet_is_blind_and_its_import_takes_the_three_ratin
     assert cli.main(["review", "import", "v5"], env={}, root=root) == 0
     assert (root / "results" / "validation" / "v5_codes.csv").exists()
     capsys.readouterr()
+
+
+# Review of #75.
+
+def test_V5_B7_three_failed_cases_in_a_row_stop_the_run():
+    from voc import judge
+    from voc.replay import ModelError
+
+    calls = []
+
+    def failing(prompt):
+        calls.append(prompt)
+        raise ModelError("the model call ended with stop reason max_tokens")
+
+    cases = [judge.Item(f"SYN-{i}", f"SYN prompt {i}", "Mortgage", "a b c", "a b c d") for i in range(1, 6)]
+    with pytest.raises(judge.JudgeError):
+        judge.judge(cases, failing, "fake", judge.load_judge(REPO))
+    assert len(calls) == 3
+
+
+def test_V5_the_committed_judge_has_the_labellers_output_limit():
+    import tomllib
+    from voc import judge
+    with open(REPO / "config" / "prompts" / "v1.toml", "rb") as f:
+        labeller = tomllib.load(f)["settings"]["max_tokens"]
+    assert judge.load_judge(REPO).settings["max_tokens"] >= labeller
+
+
+def test_V5_the_margin_check_counts_replayed_answers_too():
+    from voc import judge
+    from voc.budget import input_estimate
+    rows = [{"complaint_id": "SYN-1", "source": "live", "input_tokens": 10},
+            {"complaint_id": "SYN-2", "source": "replay", "input_tokens": 12},
+            {"complaint_id": "SYN-3", "source": "mock", "input_tokens": None}]
+    prompts = {"SYN-1": "SYN a", "SYN-2": "SYN b", "SYN-3": "SYN c"}
+    assert judge.margin_pairs(rows, prompts, 100) == [(input_estimate("SYN a", 100), 10),
+                                                      (input_estimate("SYN b", 100), 12)]
+
+
+def _ready_files(root, dev, margin_ok, judge_name="judge_v1"):
+    import json
+    folder = root / "results" / "validation"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "v5_dry_run.json").write_text(json.dumps({"margin_ok": margin_ok, "judge": judge_name}),
+                                            encoding="utf-8")
+    (folder / "v5_codes.csv").write_text(f"complaint_id,code\n{dev[1].complaint_id},supports\n"
+                                         f"{dev[2].complaint_id},partly\n", encoding="utf-8")
+    return folder
+
+
+def test_V5_a_dry_run_that_checked_no_call_says_so(tmp_path, fake_home, capsys):
+    from voc import cli
+    root, dev = _judge_project(tmp_path)
+    _ready_files(root, dev, None)
+    env = _judge_fixtures(tmp_path, root, "main")
+    assert cli.main(["judge", "main", "--approved"], env=env, root=root) == 1
+    assert "no call" in capsys.readouterr().out
+
+
+def test_V5_V8_the_dry_run_writes_no_ratings_and_no_reasons(tmp_path, fake_home, capsys):
+    import json
+    from voc import cli, review
+    root, dev = _judge_project(tmp_path)
+    env = _judge_fixtures(tmp_path, root, "dry_run")
+    assert cli.main(["judge", "dry-run", "--approved"], env=env, root=root) == 0
+    printed = capsys.readouterr().out
+    summary = json.loads((root / "results" / "validation" / "v5_dry_run.json").read_text(encoding="utf-8"))
+    assert "ratings" not in summary and "supports" not in printed
+    assert summary["judge"] == "judge_v1" and set(summary["keys"]) == {dev[0].complaint_id}
+    assert not review.review_dir().exists() or not any(review.review_dir().iterdir())
+
+
+def test_V5_V8_the_owner_writes_the_dry_runs_reasons_sheet_from_the_recordings(tmp_path, fake_home, capsys):
+    import json
+    from voc import cli, review
+    from voc.replay import recordings_dir
+    root, dev = _judge_project(tmp_path)
+    env = _judge_fixtures(tmp_path, root, "dry_run")
+    assert cli.main(["judge", "dry-run", "--approved"], env=env, root=root) == 0
+    keys = json.loads((root / "results" / "validation" / "v5_dry_run.json").read_text(encoding="utf-8"))["keys"]
+    for key in keys.values():
+        (recordings_dir() / f"{key}.json").write_text(json.dumps(
+            {"key": key, "text": json.dumps({"rating": "partly", "reason": "=SYN reason words"})}), encoding="utf-8")
+    assert cli.main(["review", "sheet", "v5_dry_run"], env={}, root=root) == 0
+    rows = _read_sheet(review.sheet_path("v5_dry_run"))
+    assert [r["complaint_id"] for r in rows] == [dev[0].complaint_id]
+    assert rows[0]["rating"] == "partly" and rows[0]["reason"] == "'=SYN reason words"
+    capsys.readouterr()
+
+
+@pytest.mark.parametrize("name", ["../budget", "v1", "judge_x", "judge_v1.toml"])
+def test_V5_a_judge_name_that_is_not_a_judge_version_is_refused(tmp_path, fake_home, capsys, name):
+    from voc import cli
+    root, _ = _judge_project(tmp_path)
+    assert cli.main(["judge", "dry-run", "--judge", name], env={"LLM_BACKEND": "mock"}, root=root) == 1
+    assert "judge" in capsys.readouterr().out
+
+
+def test_V5_the_main_run_uses_the_dry_runs_judge_or_its_one_change(tmp_path, fake_home, capsys):
+    import shutil
+    from voc import cli
+    root, dev = _judge_project(tmp_path)
+    _ready_files(root, dev, True, judge_name="judge_v1")
+    shutil.copy(root / "config" / "prompts" / "judge_v1.toml", root / "config" / "prompts" / "judge_v3.toml")
+    text = (root / "config" / "prompts" / "judge_v3.toml").read_text(encoding="utf-8")
+    (root / "config" / "prompts" / "judge_v3.toml").write_text(text.replace('"judge_v1"', '"judge_v3"'),
+                                                               encoding="utf-8")
+    assert cli.main(["judge", "main", "--judge", "judge_v3"], env={"LLM_BACKEND": "mock"}, root=root) == 1
+    assert "judge" in capsys.readouterr().out
+
+
+def test_V5_V8_no_prompt_holds_the_consumers_product(tmp_path, fake_home, monkeypatch):
+    from voc import judge, review
+    from voc.data import Row
+    root, dev = _judge_project(tmp_path)
+    real = review._staged
+
+    def marked(root_, ids):
+        return {c: Row(c, "SYN-UNIQUE-CONSUMER-PRODUCT", r.narrative) for c, r in real(root_, ids).items()}
+
+    monkeypatch.setattr(review, "_staged", marked)
+    for piece in ("dry_run", "main"):
+        assert all("SYN-UNIQUE-CONSUMER-PRODUCT" not in case.prompt for case in judge.items(root, piece))
+
+
+def test_V5_the_v5_import_refuses_a_code_from_another_review(tmp_path, fake_home, capsys):
+    from voc import cli, review
+    root, _ = _judge_project(tmp_path)
+    assert cli.main(["review", "sheet", "v5"], env={}, root=root) == 0
+    _fill(review.sheet_path("v5"), ["supports", "llm_right"])
+    assert cli.main(["review", "import", "v5"], env={}, root=root) == 1
+    assert "not one of" in capsys.readouterr().out
+
+
+def test_V5_the_owners_ratings_cannot_be_imported_again_once_the_judge_has_run(tmp_path, fake_home, capsys):
+    from voc import cli, review
+    root, dev = _judge_project(tmp_path)
+    assert cli.main(["review", "sheet", "v5"], env={}, root=root) == 0
+    _fill(review.sheet_path("v5"), ["supports", "partly"])
+    assert cli.main(["review", "import", "v5"], env={}, root=root) == 0
+    (root / "results" / "validation" / "v5_judge.csv").write_text("complaint_id,rating\n", encoding="utf-8")
+    assert cli.main(["review", "import", "v5", "--replace"], env={}, root=root) == 1
+    assert "judge" in capsys.readouterr().out
+
+
+def test_V9_the_expected_cost_assumes_600_output_tokens_per_call():
+    import math
+    from decimal import Decimal
+    from voc import judge
+    from voc.costs import call_cost, load_prices
+    version = judge.load_judge(REPO)
+    cases = [judge.Item("SYN-1", "x" * 4000, "Mortgage", "a b c", "a b c d")]
+    prices = load_prices(REPO / "config" / "prices.toml")
+    got = judge.estimate(cases, version, prices, margin=100, tokens_left=None)
+    assert Decimal(got["expected_cost_usd"]) == call_cost(prices, version.settings["model"], math.ceil(4000 / 4), 600)
+
+
+def test_V5_V9_the_api_dry_run_calls_through_the_ledger_and_checks_a_committed_clean_rubric(
+        tmp_path, fake_home, capsys, monkeypatch):
+    import json
+    from voc import backends, budget, cli
+
+    class FakeSonnet:
+        def __init__(self):
+            self.calls = 0
+
+        def __call__(self, prompt, settings):
+            from voc.replay import Answer
+            self.calls += 1
+            return Answer(json.dumps({"rating": "supports", "reason": "SYN"}), 50, 20, "end_turn")
+
+    root, dev = _judge_project(tmp_path)
+    _git_project(root)
+    budget.init_ledger(root)
+    fake = FakeSonnet()
+    monkeypatch.setattr(backends, "make_backend", lambda *a, **k: fake)
+    rubric = root / "config" / "prompts" / "judge_v1.toml"
+    original = rubric.read_text(encoding="utf-8")
+    rubric.write_text(original + "\n# an uncommitted change\n", encoding="utf-8")
+    assert cli.main(["judge", "dry-run", "--approved"], env={"LLM_BACKEND": "api"}, root=root) == 1
+    assert "committed" in capsys.readouterr().out and fake.calls == 0
+    rubric.write_text(original, encoding="utf-8")
+    used = budget.Ledger().state()["used"]
+    assert cli.main(["judge", "dry-run", "--approved"], env={"LLM_BACKEND": "api"}, root=root) == 0
+    summary = json.loads((root / "results" / "validation" / "v5_dry_run.json").read_text(encoding="utf-8"))
+    assert fake.calls == 1 and summary["margin_ok"] is True and summary["calls_checked"] == 1
+    assert budget.Ledger().state()["used"] - used == summary["ledger_charged_tokens"] > 0
+    capsys.readouterr()
