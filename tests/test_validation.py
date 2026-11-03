@@ -1543,7 +1543,8 @@ def test_V5_V8_the_owners_v5_sheet_is_blind_and_its_import_takes_the_three_ratin
     assert cli.main(["review", "sheet", "v5"], env={}, root=root) == 0
     rows = _read_sheet(review.sheet_path("v5"))
     assert [r["complaint_id"] for r in rows] == [dev[1].complaint_id, dev[2].complaint_id]
-    assert set(rows[0]) == {"complaint_id", "llm_label", "llm_quote", "complaint_text", "code"}
+    # Changed for the V5 redo: the sheet also gives what the label covers, as the judge was told.
+    assert set(rows[0]) == {"complaint_id", "llm_label", "label_covers", "llm_quote", "complaint_text", "code"}
     _fill(review.sheet_path("v5"), ["supports", "does_not_support"])
     assert cli.main(["review", "import", "v5"], env={}, root=root) == 0
     assert (root / "results" / "validation" / "v5_codes.csv").exists()
@@ -1873,3 +1874,76 @@ def test_V5_a_live_run_also_needs_the_label_list_committed_and_unchanged(tmp_pat
     labels.write_bytes(labels.read_bytes() + b"\n# an uncommitted change\n")
     assert cli.main(["judge", "dry-run", "--approved"], env={"LLM_BACKEND": "api"}, root=root) == 1
     assert "committed" in capsys.readouterr().out
+
+
+# V5's redo (spec 003): the owner's first ratings were withdrawn, because their sheet did not state the judge's
+# question. The redo's sheet states it and gives what each label covers.
+
+def test_V5_the_v5_sheet_gives_what_the_label_covers(tmp_path, fake_home, capsys):
+    from voc import cli, review
+    from voc.labels import load_labels
+    from voc.pipeline import definitions
+    root, dev = _judge_project(tmp_path)
+    assert cli.main(["review", "sheet", "v5"], env={}, root=root) == 0
+    defined = definitions(load_labels(root / "config" / "labels.toml"))
+    rows = _read_sheet(review.sheet_path("v5"))
+    assert len(rows) == 2  # changed in the review of #78, so an empty sheet cannot pass
+    assert all(r["label_covers"] == defined[r["llm_label"]] for r in rows)
+    assert "consumer_choice" not in rows[0] and "rating" not in rows[0]
+    capsys.readouterr()
+
+
+def test_V5_writing_the_v5_sheet_prints_the_judges_question_and_the_three_ratings(tmp_path, fake_home, capsys):
+    from voc import cli
+    root, _ = _judge_project(tmp_path)
+    assert cli.main(["review", "sheet", "v5"], env={}, root=root) == 0
+    printed = capsys.readouterr().out
+    assert "on its own" in printed
+    for rating in ("supports:", "partly:", "does_not_support:"):
+        assert rating in printed
+
+
+def test_V5_the_redo_can_be_imported_once_after_the_judges_run_and_not_again(tmp_path, fake_home, capsys):
+    from voc import cli, review
+    root, _ = _judge_project(tmp_path)
+    folder = root / "results" / "validation"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "v5_judge.csv").write_text("complaint_id,rating\n", encoding="utf-8")
+    (folder / "v5_judge.json").write_text("{}", encoding="utf-8")
+    assert cli.main(["review", "sheet", "v5"], env={}, root=root) == 0
+    _fill(review.sheet_path("v5"), ["supports", "partly"])
+    assert cli.main(["review", "import", "v5"], env={}, root=root) == 0
+    assert (folder / "v5_codes.csv").exists()
+    assert cli.main(["review", "import", "v5", "--replace"], env={}, root=root) == 1
+    assert "judge" in capsys.readouterr().out
+
+
+# Review of #78.
+
+def test_V5_an_import_of_a_sheet_without_label_covers_is_refused_so_the_old_sheet_cannot_be_the_redo(
+        tmp_path, fake_home, capsys):
+    import csv
+    import io
+    from voc import cli, review
+    root, dev = _judge_project(tmp_path)
+    path = review.sheet_path("v5")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\r\n")
+    writer.writerow(["complaint_id", "llm_label", "llm_quote", "complaint_text", "code"])  # the first sheet's columns
+    for r in dev[1:3]:
+        writer.writerow([r.complaint_id, "Mortgage", "a b c", "SYN text", "supports"])
+    path.write_bytes(b"\xef\xbb\xbf" + out.getvalue().encode("utf-8"))
+    assert cli.main(["review", "import", "v5"], env={}, root=root) == 1
+    assert "label_covers" in capsys.readouterr().out
+    assert not (root / "results" / "validation" / "v5_codes.csv").exists()
+
+
+def test_V5_the_printed_ratings_are_the_rubrics_own_words():
+    import tomllib
+    from voc import review
+    with open(REPO / "config" / "prompts" / "judge_v1.toml", "rb") as f:
+        rubric = tomllib.load(f)["instructions"]
+    for line in review.V5_QUESTION[1:4]:
+        rating, text = line.split(": ", 1)
+        assert f'"{rating}": {text}.' in rubric, rating

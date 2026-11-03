@@ -1426,3 +1426,24 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - A first try to update the description was refused by the read guard, because the description text held the word that the guard denies in a command. Nothing ran. The text was then written to a file first.
 - About 21:06 (exact time not recorded) The first try of the withdrawal commit was refused: `tests/test_hooks.py::test_a_merge_commit_runs_the_same_gate`, "Permission denied" in its scratch repo. The tenth such refusal since 2 November. #77, which retries such a step, is not merged yet. Retried.
 - 22:33 `main` merged into `chore/v5-dry-run` after #77. Only this file conflicted. Both blocks are kept as written: `main`'s first, then this branch's.
+- 21:52 CI green on `c382bc0`. Merge verdict PENDING, then MERGE after Claude's judgement. #77 marked ready.
+- 22:18 The owner merged #77 (time from GitHub).
+- 22:33 `main` merged into `chore/v5-dry-run` after #77, in `fca90b5`, the first commit whose gate had the retry. 22:47 CI green. Merge verdict PENDING, then MERGE after Claude's judgement: the withdrawal came after the review and is the owner's decision applied, one file removed with the reason logged. #76 marked ready.
+- About 22:48 (exact time not recorded) Claude removed its two finished worktrees, `../voc-demo-flake` and `../voc-demo-val`, after checking each was clean and merged into `main`, under the owner's earlier "ok for cleaning". Their branches are kept.
+- 23:03 The owner merged #76 (time from GitHub).
+- 23:03 Work start on `feat/v5-redo-sheet`, from `main` at `9e42b75`: the one redo of the owner's V5 ratings.
+- Red `d554a42` at 23:04: 3 new tests in `tests/test_validation.py`. All failed, and none was carried over. The first commit since #77 that passed the gate at the first try.
+- The change:
+  - `src/voc/review.py`: the V5 sheet gives `label_covers`, what each label covers, as the judge was told. Writing it prints the judge's question and its three ratings as `config/prompts/judge_v1.toml` words them. The V5 import may come after the judge's main run once, while no V5 ratings are imported, and is refused after that.
+  - Spec 003: the blinding rule and the one redo, with its reason and its limits.
+  - One existing test changed, with a comment: the blind sheet's columns include `label_covers`.
+- 23:24 Checked by hand: 418 tests in `tests/test_validation.py`, `tests/test_hooks.py` and `tests/test_analyst.py` pass, and 1 skips. The full suite runs in the gate.
+- 23:24 Green `0c08296`, pushed. #78 opened as a draft at about 23:33, with a reviewer.
+- 23:35 Reviewer findings posted on #78, with Claude's checks. 1 serious: the one redo could be used up by importing the withdrawn first ratings, because the first sheet is probably still in the owner's review folder, the sheet command does not write over it, and the import read only the ID and code columns. Minor: the printed question was not tied to the rubric by a test, the spec read as if the sheet holds the question, deleting `v5_codes.csv` would open the import again, two limits were missing, the main-run rule did not point to the redo, and the log had entries out of order. Nits: a test that could pass on an empty sheet, "nor give", and an unchecked claim.
+- Between 23:35 and 23:36 (exact time not recorded) Owner: "go" for all.
+- Corrections of the entries above, which stay as written:
+  - The entries from "21:52 CI green on `c382bc0`" to "23:03 The owner merged #76" were logged late, at 23:24. "22:33 `main` merged into `chore/v5-dry-run`" is logged twice: on #76's branch at 22:33, and again in that late block.
+  - "The first commit since #77 that passed the gate at the first try" is not right: the merge commit `fca90b5` also passed at its first try.
+- Red ``95ac8cd` at 23:37`: 2 new tests. 1 failed. 1 passed at once and pins that the three printed ratings are the rubric's own words. None was carried over.
+- The fixes: a V5 import needs the sheet's `label_covers` column, so the first sheet cannot be imported as the redo. The spec says the question is printed in the owner's terminal, that the import needs `label_covers`, that deleting `v5_codes.csv` would open it again, and the two more limits (the owner read the judge's 10 dry-run answers, and the first sheet may still be on disk), and the main-run rule points to the redo. One test now checks the number of rows, with a comment.
+- 23:56 Checked by hand with `.venv/Scripts/python.exe -m pytest tests/test_validation.py tests/test_hooks.py tests/test_analyst.py`: 420 tests pass and 1 skips. The full suite runs in the gate.
