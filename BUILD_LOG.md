@@ -1426,3 +1426,15 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - A first try to update the description was refused by the read guard, because the description text held the word that the guard denies in a command. Nothing ran. The text was then written to a file first.
 - About 21:06 (exact time not recorded) The first try of the withdrawal commit was refused: `tests/test_hooks.py::test_a_merge_commit_runs_the_same_gate`, "Permission denied" in its scratch repo. The tenth such refusal since 2 November. #77, which retries such a step, is not merged yet. Retried.
 - 22:33 `main` merged into `chore/v5-dry-run` after #77. Only this file conflicted. Both blocks are kept as written: `main`'s first, then this branch's.
+- 21:52 CI green on `c382bc0`. Merge verdict PENDING, then MERGE after Claude's judgement. #77 marked ready.
+- 22:18 The owner merged #77 (time from GitHub).
+- 22:33 `main` merged into `chore/v5-dry-run` after #77, in `fca90b5`, the first commit whose gate had the retry. 22:47 CI green. Merge verdict PENDING, then MERGE after Claude's judgement: the withdrawal came after the review and is the owner's decision applied, one file removed with the reason logged. #76 marked ready.
+- About 22:48 (exact time not recorded) Claude removed its two finished worktrees, `../voc-demo-flake` and `../voc-demo-val`, after checking each was clean and merged into `main`, under the owner's earlier "ok for cleaning". Their branches are kept.
+- 23:03 The owner merged #76 (time from GitHub).
+- 23:03 Work start on `feat/v5-redo-sheet`, from `main` at `9e42b75`: the one redo of the owner's V5 ratings.
+- Red `d554a42` at 23:04: 3 new tests in `tests/test_validation.py`. All failed, and none was carried over. The first commit since #77 that passed the gate at the first try.
+- The change:
+  - `src/voc/review.py`: the V5 sheet gives `label_covers`, what each label covers, as the judge was told. Writing it prints the judge's question and its three ratings as `config/prompts/judge_v1.toml` words them. The V5 import may come after the judge's main run once, while no V5 ratings are imported, and is refused after that.
+  - Spec 003: the blinding rule and the one redo, with its reason and its limits.
+  - One existing test changed, with a comment: the blind sheet's columns include `label_covers`.
+- 23:24 Checked by hand: 418 tests in `tests/test_validation.py`, `tests/test_hooks.py` and `tests/test_analyst.py` pass, and 1 skips. The full suite runs in the gate.

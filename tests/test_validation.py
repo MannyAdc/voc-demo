@@ -1543,7 +1543,8 @@ def test_V5_V8_the_owners_v5_sheet_is_blind_and_its_import_takes_the_three_ratin
     assert cli.main(["review", "sheet", "v5"], env={}, root=root) == 0
     rows = _read_sheet(review.sheet_path("v5"))
     assert [r["complaint_id"] for r in rows] == [dev[1].complaint_id, dev[2].complaint_id]
-    assert set(rows[0]) == {"complaint_id", "llm_label", "llm_quote", "complaint_text", "code"}
+    # Changed for the V5 redo: the sheet also gives what the label covers, as the judge was told.
+    assert set(rows[0]) == {"complaint_id", "llm_label", "label_covers", "llm_quote", "complaint_text", "code"}
     _fill(review.sheet_path("v5"), ["supports", "does_not_support"])
     assert cli.main(["review", "import", "v5"], env={}, root=root) == 0
     assert (root / "results" / "validation" / "v5_codes.csv").exists()

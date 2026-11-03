@@ -24,9 +24,19 @@ CODES = {"v2": ("llm_right", "consumer_right", "both_plausible", "unclear"),
 # V5's sheet is blind: no judge rating and no consumer's product (V5, V8).
 SHEET_FIELDS = {"v2": ("complaint_id", "consumer_choice", "llm_label", "llm_quote", "complaint_text", "code"),
                 "v3": ("complaint_id", "reason", "proposed_label", "proposed_quote", "complaint_text", "code"),
-                "v5": ("complaint_id", "llm_label", "llm_quote", "complaint_text", "code"),
+                "v5": ("complaint_id", "llm_label", "label_covers", "llm_quote", "complaint_text", "code"),
                 "v5_dry_run": ("complaint_id", "rating", "reason", "llm_label", "llm_quote", "complaint_text")}
 NO_ANSWER = "(no label or quote could be read)"
+# V5: the judge's question and ratings, as `config/prompts/judge_v1.toml` words them, printed with the owner's
+# sheet. The first sheet gave neither, so its ratings answered another question and were withdrawn (BUILD_LOG.md).
+V5_QUESTION = (
+    "the question, as the judge was asked it: does the quote, on its own, support the label?",
+    "supports: the quote on its own makes clear that the complaint is about this product",
+    "partly: the quote is about the product's area but does not on its own make this product clear, or it fits "
+    "other products just as well",
+    "does_not_support: the quote does not point to this product",
+    "use the complaint only to understand the quote, and do not judge whether another label would be better",
+    "label_covers says what the label covers, as the judge was told")
 NO_CALL = "(no call was made, so there is no answer)"
 # The quarantine reasons decided with no model call, so with no recording.
 NO_CALL_REASONS = ("no_narrative", "not_run_budget")
@@ -176,6 +186,11 @@ def sheet_rows(root, piece):
     _check_piece(piece, sheet=True)
     if piece == "v5_dry_run":
         return _dry_run_rows(root)
+    if piece == "v5":
+        from voc.labels import load_labels
+        from voc.pipeline import definitions
+
+        defined = definitions(load_labels(Path(root) / "config" / "labels.toml"))
     recorded = _recorded(root)
     ids = _ids(root, piece, recorded)
     staged = _staged(root, ids)
@@ -188,6 +203,8 @@ def sheet_rows(root, piece):
                    "complaint_text": text, "code": ""}
             if piece == "v2":
                 row["consumer_choice"] = staged[complaint_id].product
+            else:
+                row["label_covers"] = defined[old["accepted_label"]]
             rows.append(row)
         else:
             label, quote = _proposed_answer(root, old)
@@ -306,9 +323,10 @@ def summarise_codes(piece, codes):
 def import_codes(root, piece, replace=False):
     """Read the owner's codes and write them, with V3's reasons, to the results. Returns the summary."""
     judged = [Path(root) / "results" / "validation" / name for name in ("v5_judge.csv", "v5_judge.json")]
-    if piece == "v5" and any(path.exists() for path in judged):
-        raise ReviewError("the judge's main run has already rated these, so the owner's V5 ratings stay as "
-                          "imported (V5 is blind)")
+    if piece == "v5" and any(path.exists() for path in judged) and codes_path(root, "v5").exists():
+        # The one redo (spec 003): the first ratings were withdrawn, so the redo may come after the judge's run.
+        raise ReviewError("the judge's main run has already rated these, and the owner's V5 ratings are imported, "
+                          "so they stay as they are (V5 is blind)")
     codes = read_codes(root, piece)
     path = codes_path(root, piece)
     if path.exists() and not replace:
@@ -344,8 +362,9 @@ def format_sheet(result):
     if not result["codes"]:  # the dry run's ratings and reasons, to read only
         return [f"{result['piece']} sheet: {result['complaints']} complaints",
                 f"written to {_home_relative(result['path'])}", "it is for reading only and has no import"]
+    question = list(V5_QUESTION) if result["piece"] == "v5" else []
     return [f"{result['piece']} sheet: {result['complaints']} complaints",
-            f"written to {_home_relative(result['path'])}",
+            f"written to {_home_relative(result['path'])}", *question,
             f"fill the code column with one of: {', '.join(result['codes'])}",
             f"then run `voc review import {result['piece']}`"]
 
