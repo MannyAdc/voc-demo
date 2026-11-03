@@ -12,3 +12,14 @@ input_per_mtok = "0.10"
 output_per_mtok = "0.50"
 long_input_per_mtok = "0.50"
 long_output_per_mtok = "2.50"
+
+[models.claude-sonnet-5-5]
+source = "https://platform.claude.com/docs/en/about-claude/pricing"
+checked = "2026-11-02"
+# The judge of V5 (spec 003). Sonnet 5.5 has its full context window at standard prices, with no higher price
+# for a long prompt (pricing page, "Long context pricing"), so the long prices equal the normal ones.
+long_context_threshold = 1000000
+input_per_mtok = "2"
+output_per_mtok = "10"
+long_input_per_mtok = "2"
+long_output_per_mtok = "10"

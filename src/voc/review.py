@@ -16,11 +16,15 @@ from pathlib import Path
 from voc import budget
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SHEETS = {"v2": "v2_sheet.csv", "v3": "v3_sheet.csv", "v5": "v5_sheet.csv"}
+# `v5_dry_run` holds the judge's dry run ratings and reasons, written by `voc judge dry-run` for the owner only.
+SHEETS = {"v2": "v2_sheet.csv", "v3": "v3_sheet.csv", "v5": "v5_sheet.csv", "v5_dry_run": "v5_dry_run_reasons.csv"}
 CODES = {"v2": ("llm_right", "consumer_right", "both_plausible", "unclear"),
-         "v3": ("check_right", "check_wrong", "unclear")}
+         "v3": ("check_right", "check_wrong", "unclear"),
+         "v5": ("supports", "partly", "does_not_support")}
+# V5's sheet is blind: no judge rating and no consumer's product (V5, V8).
 SHEET_FIELDS = {"v2": ("complaint_id", "consumer_choice", "llm_label", "llm_quote", "complaint_text", "code"),
-                "v3": ("complaint_id", "reason", "proposed_label", "proposed_quote", "complaint_text", "code")}
+                "v3": ("complaint_id", "reason", "proposed_label", "proposed_quote", "complaint_text", "code"),
+                "v5": ("complaint_id", "llm_label", "llm_quote", "complaint_text", "code")}
 NO_ANSWER = "(no label or quote could be read)"
 NO_CALL = "(no call was made, so there is no answer)"
 # The quarantine reasons decided with no model call, so with no recording.
@@ -70,7 +74,7 @@ def codes_path(root, piece):
 
 def _check_piece(piece):
     if piece not in CODES:
-        raise ReviewError("the sheet and import commands cover v2 and v3")
+        raise ReviewError("the sheet and import commands cover v2, v3 and v5")
 
 
 def _recorded(root):
@@ -80,11 +84,11 @@ def _recorded(root):
 
 
 def _ids(root, piece, recorded):
-    """V2's frozen list, or every quarantined development complaint for V3 (V7)."""
+    """V2's or V5's frozen list, or every quarantined development complaint for V3 (V7)."""
     from voc.validation import read_lists
 
-    if piece == "v2":
-        return read_lists(Path(root) / "splits")["v2"]
+    if piece in ("v2", "v5"):
+        return read_lists(Path(root) / "splits")[piece]
     read_lists(Path(root) / "splits")  # checks the labels file the quarantines come from
     from voc.pipeline import _id_number
 
@@ -149,11 +153,13 @@ def sheet_rows(root, piece):
     rows = []
     for complaint_id in ids:
         old, text = recorded[complaint_id], cut_text(staged[complaint_id].narrative)[0]
-        if piece == "v2":
+        if piece in ("v2", "v5"):
             start, end = int(old["quote_start"]), int(old["quote_end"])
-            rows.append({"complaint_id": complaint_id, "consumer_choice": staged[complaint_id].product,
-                         "llm_label": old["accepted_label"], "llm_quote": text[start:end], "complaint_text": text,
-                         "code": ""})
+            row = {"complaint_id": complaint_id, "llm_label": old["accepted_label"], "llm_quote": text[start:end],
+                   "complaint_text": text, "code": ""}
+            if piece == "v2":
+                row["consumer_choice"] = staged[complaint_id].product
+            rows.append(row)
         else:
             label, quote = _proposed_answer(root, old)
             rows.append({"complaint_id": complaint_id, "reason": old["reason"], "proposed_label": label,
@@ -274,7 +280,7 @@ def import_codes(root, piece, replace=False):
     path = codes_path(root, piece)
     if path.exists() and not replace:
         raise ReviewError(f"{piece}_codes.csv already exists. Use --replace to import the sheet again")
-    fields = ["complaint_id", "code"] if piece == "v2" else ["complaint_id", "reason", "code"]
+    fields = ["complaint_id", "reason", "code"] if piece == "v3" else ["complaint_id", "code"]
     recorded = _recorded(root) if piece == "v3" else {}
     out = io.StringIO()
     writer = csv.DictWriter(out, fieldnames=fields, lineterminator="\n")
