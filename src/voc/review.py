@@ -10,6 +10,7 @@ import csv
 import io
 import json
 import os
+import re
 from pathlib import Path
 
 from voc import budget
@@ -21,6 +22,13 @@ CODES = {"v2": ("llm_right", "consumer_right", "both_plausible", "unclear"),
 SHEET_FIELDS = {"v2": ("complaint_id", "consumer_choice", "llm_label", "llm_quote", "complaint_text", "code"),
                 "v3": ("complaint_id", "reason", "proposed_label", "proposed_quote", "complaint_text", "code")}
 NO_ANSWER = "(no label or quote could be read)"
+NO_CALL = "(no call was made, so there is no answer)"
+# The quarantine reasons decided with no model call, so with no recording.
+NO_CALL_REASONS = ("no_narrative", "not_run_budget")
+KEY = re.compile(r"^[0-9a-f]{64}$")
+ID = re.compile(r"^(?:\d{1,12}|SYN-\d{1,12})$")
+# A spreadsheet runs a cell that starts with one of these as a formula.
+FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
 
 
 class ReviewError(ValueError):
@@ -99,23 +107,34 @@ def _staged(root, ids):
 
 
 def _proposed_answer(root, row):
-    """The proposed label and quote of a quarantined answer, from its recording, for the owner's sheet only."""
+    """The proposed label and quote of a quarantined answer, from its recording, for the owner's sheet only.
+
+    A quarantine decided with no call has no answer. An unparseable answer, or a model error with no usable
+    answer, has none that can be read. Each says so on the sheet instead of stopping it.
+    """
     from voc.labels import load_labels
     from voc.prompt import parse_answer
     from voc.replay import recordings_dir
 
+    key = row["recording_key"]
+    if row["reason"] in NO_CALL_REASONS or row["reason"].startswith("boundary") or not key:
+        return NO_CALL, NO_CALL
+    if not KEY.match(key):
+        raise ReviewError(f"{row['complaint_id']} has a recording key that is not a SHA-256 hash")
     if row["reason"] == "unparseable":
         return NO_ANSWER, NO_ANSWER
-    key = row["recording_key"]
-    path = recordings_dir() / f"{key}.json"
     try:
-        record = json.loads(path.read_text(encoding="utf-8"))
+        record = json.loads((recordings_dir() / f"{key}.json").read_text(encoding="utf-8"))
         text = record["text"] if record["key"] == key else None
     except (OSError, ValueError, KeyError, TypeError):
         text = None
     if not isinstance(text, str):
-        raise ReviewError("a recorded answer of a quarantined complaint is missing or cannot be read")
+        if row["reason"] == "model_error":
+            return NO_ANSWER, NO_ANSWER
+        raise ReviewError(f"the recorded answer of {row['complaint_id']} is missing or cannot be read")
     parsed = parse_answer(text, [label.name for label in load_labels(Path(root) / "config" / "labels.toml")])
+    if not parsed.label and not parsed.quote:
+        return NO_ANSWER, NO_ANSWER
     return parsed.label or "", parsed.quote or ""
 
 
@@ -142,6 +161,12 @@ def sheet_rows(root, piece):
     return rows
 
 
+def safe_cell(value):
+    """A cell as the owner's spreadsheet should show it: text that starts like a formula gets a leading
+    apostrophe, so it is shown, never run. Only the text columns, which the import never reads, go through it."""
+    return "'" + value if isinstance(value, str) and value.startswith(FORMULA_START) else value
+
+
 def _write_atomic(path, data, encoding):
     temp = path.with_name(f".{path.name}.tmp")
     try:
@@ -161,7 +186,9 @@ def write_sheet(root, piece):
     out = io.StringIO()
     writer = csv.DictWriter(out, fieldnames=SHEET_FIELDS[piece], lineterminator="\r\n")
     writer.writeheader()
-    writer.writerows(rows)
+    for row in rows:
+        writer.writerow({key: value if key in ("complaint_id", "code") else safe_cell(value)
+                         for key, value in row.items()})
     path.parent.mkdir(parents=True, exist_ok=True)
     _write_atomic(path, out.getvalue(), "utf-8-sig")  # with the mark spreadsheets need to read it as UTF-8
     return {"piece": piece, "complaints": len(rows), "path": path, "codes": CODES[piece]}
@@ -172,7 +199,14 @@ def _sheet_text(path):
     try:
         return data.decode("utf-8-sig")
     except UnicodeDecodeError:
-        return data.decode("cp1252")  # a spreadsheet that saved it in the Windows code page
+        # A spreadsheet that saved it in the Windows code page. Only the ID and code columns are read, and they
+        # are plain ASCII, so a byte the code page does not define is replaced, never a reason to stop.
+        return data.decode("cp1252", errors="replace")
+
+
+def _shown(value, number):
+    """A value from the sheet for a refusal: the value if it looks like a complaint ID, else its row number (B21)."""
+    return value if ID.match(value) else f"the value on row {number}"
 
 
 def read_codes(root, piece):
@@ -182,15 +216,22 @@ def read_codes(root, piece):
     path = sheet_path(piece)
     if not path.exists():
         raise ReviewError(f"there is no {piece} sheet. Write it with `voc review sheet {piece}` first")
-    reader = csv.DictReader(io.StringIO(_sheet_text(path)))
-    if not {"complaint_id", "code"} <= set(reader.fieldnames or []):
-        raise ReviewError(f"the {piece} sheet has no complaint_id or code column")
+    reader = csv.reader(io.StringIO(_sheet_text(path)))
+    header = [name.strip().lower() for name in next(reader, [])]
+    if not {"complaint_id", "code"} <= set(header):
+        hint = " It looks saved with semicolons: save it as comma-separated CSV" if ";" in "".join(header) else ""
+        raise ReviewError(f"the {piece} sheet has no complaint_id or code column.{hint}")
+    at_id, at_code = header.index("complaint_id"), header.index("code")
     wanted = _ids(root, piece, _recorded(root))
     codes, problems = {}, []
-    for row in reader:
-        complaint_id, code = (row["complaint_id"] or "").strip(), (row["code"] or "").strip()
+    for number, cells in enumerate(reader, start=1):
+        if not any(cell.strip() for cell in cells):
+            continue  # a row a spreadsheet left empty
+        complaint_id = cells[at_id].strip() if at_id < len(cells) else ""
+        code = cells[at_code].strip() if at_code < len(cells) else ""
         if complaint_id not in wanted:
-            problems.append(f"{complaint_id or '(blank)'} is not on the {piece} list")
+            problems.append(f"{_shown(complaint_id, number) if complaint_id else f'row {number}'} is not on the "
+                            f"{piece} list")
         elif complaint_id in codes:
             problems.append(f"{complaint_id} appears more than once")
         elif not code:
@@ -245,12 +286,24 @@ def import_codes(root, piece, replace=False):
         writer.writerow(row)
     path.parent.mkdir(parents=True, exist_ok=True)
     _write_atomic(path, out.getvalue(), "utf-8")
-    return summarise_codes(piece, codes)
+    summary = summarise_codes(piece, codes)
+    if piece == "v3":
+        summary["list"] = [{"complaint_id": c, "reason": recorded[c]["reason"], "code": code}
+                           for c, code in codes.items()]
+    return summary
+
+
+def _home_relative(path):
+    """The path with the home folder written as `~`, so a printout does not show the login name."""
+    try:
+        return "~/" + Path(path).relative_to(Path.home()).as_posix()
+    except ValueError:
+        return Path(path).as_posix()
 
 
 def format_sheet(result):
     return [f"{result['piece']} sheet: {result['complaints']} complaints",
-            f"written to {result['path']}",
+            f"written to {_home_relative(result['path'])}",
             f"fill the code column with one of: {', '.join(result['codes'])}",
             f"then run `voc review import {result['piece']}`"]
 
@@ -264,6 +317,8 @@ def format_codes(summary, root):
         low, high = figure["interval"]
         lines.append(f"label noise, {bound} figure: {figure['count']} ({figure['share']:.1%}, 95% interval "
                      f"{low:.1%} to {high:.1%})")
+    for entry in summary.get("list", []):
+        lines.append(f"{entry['complaint_id']}: {entry['reason']}, {entry['code']}")
     if summary["cases"] < 30:
         lines.append(f"only {summary['cases']} cases, so every share is uncertain")
     lines.append(f"written to {codes_path(root, summary['piece']).relative_to(Path(root)).as_posix()}")

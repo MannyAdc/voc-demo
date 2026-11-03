@@ -17,6 +17,9 @@ as a shell command. That is a text check, so it also covers `cat`,
 the owner runs `show`, in the owner's own terminal. `git show` is allowed.
 A command containing the word `final` asks the owner. A command containing
 `--with-text` is denied: only the owner starts the app with complaint text (A10).
+A command that runs `voc review sheet` or `voc review import` is denied: only
+the owner writes and reads the review sheets, which hold complaint text (spec
+003, V8). A mention of them in other text, such as in backticks, is allowed.
 """
 import json
 import os
@@ -33,6 +36,8 @@ SHOW = re.compile(r"(?<![\w.-])show(?![\w-])", re.IGNORECASE)
 FINAL = re.compile(r"(?<![a-z])final(?![a-z])", re.IGNORECASE)
 # A10: the dashboard's text flag. Claude never passes it, so it never sees real complaint text there.
 WITH_TEXT = re.compile(r"--with-text\b", re.IGNORECASE)
+# V8: `voc review sheet` and `voc review import`, run as a command (voc, voc.exe or python -m voc.cli).
+REVIEW_SHEETS = re.compile(r"(?:^|[\s/\\])voc(?:\.exe|\.cli)?\s+review\s+(?:sheet|import)\b", re.IGNORECASE)
 ASSIGNMENT = re.compile(r"^\w+=\S*$")
 DRIVE = re.compile(r"^([a-z]):/")
 # Checked on command text after lower-casing and turning backslashes into slashes.
@@ -177,6 +182,9 @@ def decide(tool_name, tool_input, env, home, root):
             return ("deny", "read guard: only the owner runs `show`, in the owner's own terminal.")
         if WITH_TEXT.search(command):
             return ("deny", "text guard: only the owner passes --with-text, in the owner's own terminal (A10).")
+        if REVIEW_SHEETS.search(command):
+            return ("deny", "review guard: only the owner runs `voc review sheet` and `voc review import`, in the "
+                            "owner's own terminal (V8).")
         if FINAL.search(command):
             return ("ask", "final guard: this command contains `final`. Only the owner decides a final run.")
     search = tool_name in SEARCH_TOOLS

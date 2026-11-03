@@ -1282,7 +1282,9 @@ def test_V2_the_import_reads_a_sheet_saved_in_the_windows_code_page_with_a_renam
     writer.writerow(["Complaint_ID ", "consumer_choice", "my note", " Code"])
     for row, code in zip(rows, ["llm_right", "consumer_right"]):
         writer.writerow([row["complaint_id"], row["consumer_choice"], "café", code])
-    path.write_bytes(out.getvalue().encode("cp1252") + b"\x81")
+    # Changed in the green commit: the undefined byte sits inside a text cell, as a spreadsheet would leave it,
+    # not on a line of its own, which made a row with no ID.
+    path.write_bytes(out.getvalue().encode("cp1252").replace(b"caf\xe9", b"caf\xe9\x81"))
     assert cli.main(["review", "import", "v2"], env={}, root=root) == 0
     assert "llm_right: 1" in capsys.readouterr().out
 
