@@ -28,7 +28,7 @@ NO_CALL_REASONS = ("no_narrative", "not_run_budget")
 KEY = re.compile(r"^[0-9a-f]{64}$")
 ID = re.compile(r"^(?:\d{1,12}|SYN-\d{1,12})$")
 # A spreadsheet runs a cell that starts with one of these as a formula.
-FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+FORMULA_START = ("=", "+", "-", "@", "\t", "\r", "\n")
 
 
 class ReviewError(ValueError):
@@ -224,7 +224,7 @@ def read_codes(root, piece):
     at_id, at_code = header.index("complaint_id"), header.index("code")
     wanted = _ids(root, piece, _recorded(root))
     codes, problems = {}, []
-    for number, cells in enumerate(reader, start=1):
+    for number, cells in enumerate(reader, start=2):  # the header is row 1, as the spreadsheet shows it
         if not any(cell.strip() for cell in cells):
             continue  # a row a spreadsheet left empty
         complaint_id = cells[at_id].strip() if at_id < len(cells) else ""

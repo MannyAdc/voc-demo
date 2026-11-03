@@ -1114,7 +1114,8 @@ def test_V2_V8_the_import_reads_only_ids_and_codes_and_writes_them(tmp_path, fak
 
 
 @pytest.mark.parametrize("change", ["blank", "unknown_code", "missing_id", "repeated_id", "unknown_id"])
-def test_V2_V3_V5_a_bad_sheet_is_refused_and_nothing_is_written(tmp_path, fake_home, capsys, change):
+def test_V2_a_bad_sheet_is_refused_and_nothing_is_written(tmp_path, fake_home, capsys, change):
+    # Renamed in the third review of #73: it covers V2. V3 has its own tests, and V5 comes with pull request 6.
     import csv
     import io
     from voc import cli, review
@@ -1240,7 +1241,8 @@ def test_V8_B21_a_refusal_never_prints_a_value_that_is_not_an_id(tmp_path, fake_
     assert cli.main(["review", "import", "v2"], env={}, root=root) == 1
     printed = capsys.readouterr().out
     assert "narrative words" not in printed
-    assert "row 2" in printed
+    # Changed in the third review of #73: rows are numbered as the spreadsheet shows them, header first.
+    assert "row 3" in printed
 
 
 def _quarantine(reason, key):

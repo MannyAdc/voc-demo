@@ -940,11 +940,12 @@ def test_V8_claude_may_not_run_the_review_sheet_or_import_commands(read_guard, p
 
 @pytest.mark.parametrize("command", [
     "git commit -m 'Add the V2 and V3 review sheets'",
-    "gh pr create --title x --body 'the owner runs `voc review sheet v2`'",
     "uv run voc review --help",
     "uv run pytest tests/test_validation.py -k review",
 ])
 def test_V8_other_commands_that_mention_the_review_are_still_allowed(read_guard, places, command):
+    # Changed in the third review of #73: a mention of the two commands in quoted text is now denied too,
+    # because Bash runs backticks inside double quotes. That case moved to the denied list.
     assert _read_decision(read_guard, places, "Bash", {"command": command}) is None
 
 
