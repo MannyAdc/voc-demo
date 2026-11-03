@@ -16,11 +16,16 @@ from pathlib import Path
 from voc import budget
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SHEETS = {"v2": "v2_sheet.csv", "v3": "v3_sheet.csv", "v5": "v5_sheet.csv"}
+# `v5_dry_run` holds the judge's dry run ratings and reasons, read from the recordings, for the owner only.
+SHEETS = {"v2": "v2_sheet.csv", "v3": "v3_sheet.csv", "v5": "v5_sheet.csv", "v5_dry_run": "v5_dry_run_reasons.csv"}
 CODES = {"v2": ("llm_right", "consumer_right", "both_plausible", "unclear"),
-         "v3": ("check_right", "check_wrong", "unclear")}
+         "v3": ("check_right", "check_wrong", "unclear"),
+         "v5": ("supports", "partly", "does_not_support")}
+# V5's sheet is blind: no judge rating and no consumer's product (V5, V8).
 SHEET_FIELDS = {"v2": ("complaint_id", "consumer_choice", "llm_label", "llm_quote", "complaint_text", "code"),
-                "v3": ("complaint_id", "reason", "proposed_label", "proposed_quote", "complaint_text", "code")}
+                "v3": ("complaint_id", "reason", "proposed_label", "proposed_quote", "complaint_text", "code"),
+                "v5": ("complaint_id", "llm_label", "llm_quote", "complaint_text", "code"),
+                "v5_dry_run": ("complaint_id", "rating", "reason", "llm_label", "llm_quote", "complaint_text")}
 NO_ANSWER = "(no label or quote could be read)"
 NO_CALL = "(no call was made, so there is no answer)"
 # The quarantine reasons decided with no model call, so with no recording.
@@ -68,9 +73,9 @@ def codes_path(root, piece):
     return Path(root) / "results" / "validation" / f"{piece}_codes.csv"
 
 
-def _check_piece(piece):
-    if piece not in CODES:
-        raise ReviewError("the sheet and import commands cover v2 and v3")
+def _check_piece(piece, sheet=False):
+    if piece not in (SHEET_FIELDS if sheet else CODES):
+        raise ReviewError("the sheet command covers v2, v3, v5 and v5_dry_run, and the import v2, v3 and v5")
 
 
 def _recorded(root):
@@ -80,11 +85,11 @@ def _recorded(root):
 
 
 def _ids(root, piece, recorded):
-    """V2's frozen list, or every quarantined development complaint for V3 (V7)."""
+    """V2's or V5's frozen list, or every quarantined development complaint for V3 (V7)."""
     from voc.validation import read_lists
 
-    if piece == "v2":
-        return read_lists(Path(root) / "splits")["v2"]
+    if piece in ("v2", "v5"):
+        return read_lists(Path(root) / "splits")[piece]
     read_lists(Path(root) / "splits")  # checks the labels file the quarantines come from
     from voc.pipeline import _id_number
 
@@ -138,22 +143,52 @@ def _proposed_answer(root, row):
     return parsed.label or "", parsed.quote or ""
 
 
+def _dry_run_rows(root):
+    """The judge's dry run ratings and reasons, from its recordings, with each case's label, quote and text."""
+    from voc import judge
+    from voc.replay import recordings_dir
+
+    summary_path = judge.result_paths(root)["dry_run"]
+    if not summary_path.exists():
+        raise ReviewError("the judge's dry run has not been run")
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    keys = summary.get("keys", {})
+    rows = []
+    for case in judge.items(root, "dry_run", judge.load_judge(root, summary["judge"])):
+        key = keys.get(case.complaint_id, "")
+        if not KEY.match(key):
+            raise ReviewError(f"{case.complaint_id} has no recording key in the dry run's summary")
+        try:
+            record = json.loads((recordings_dir() / f"{key}.json").read_text(encoding="utf-8"))
+            text = record["text"] if record["key"] == key else None
+        except (OSError, ValueError, KeyError, TypeError):
+            text = None
+        rating, reason = judge.parse_rating(text) if isinstance(text, str) else ("(no recording)", "")
+        rows.append({"complaint_id": case.complaint_id, "rating": rating, "reason": reason, "llm_label": case.label,
+                     "llm_quote": case.quote, "complaint_text": case.text})
+    return rows
+
+
 def sheet_rows(root, piece):
     """The sheet's rows. They hold complaint text, so only the owner's sheet ever gets them."""
     from voc.baselines import cut_text
 
-    _check_piece(piece)
+    _check_piece(piece, sheet=True)
+    if piece == "v5_dry_run":
+        return _dry_run_rows(root)
     recorded = _recorded(root)
     ids = _ids(root, piece, recorded)
     staged = _staged(root, ids)
     rows = []
     for complaint_id in ids:
         old, text = recorded[complaint_id], cut_text(staged[complaint_id].narrative)[0]
-        if piece == "v2":
+        if piece in ("v2", "v5"):
             start, end = int(old["quote_start"]), int(old["quote_end"])
-            rows.append({"complaint_id": complaint_id, "consumer_choice": staged[complaint_id].product,
-                         "llm_label": old["accepted_label"], "llm_quote": text[start:end], "complaint_text": text,
-                         "code": ""})
+            row = {"complaint_id": complaint_id, "llm_label": old["accepted_label"], "llm_quote": text[start:end],
+                   "complaint_text": text, "code": ""}
+            if piece == "v2":
+                row["consumer_choice"] = staged[complaint_id].product
+            rows.append(row)
         else:
             label, quote = _proposed_answer(root, old)
             rows.append({"complaint_id": complaint_id, "reason": old["reason"], "proposed_label": label,
@@ -187,11 +222,11 @@ def write_sheet(root, piece):
     writer = csv.DictWriter(out, fieldnames=SHEET_FIELDS[piece], lineterminator="\r\n")
     writer.writeheader()
     for row in rows:
-        writer.writerow({key: value if key in ("complaint_id", "code") else safe_cell(value)
+        writer.writerow({key: value if key in ("complaint_id", "code", "rating") else safe_cell(value)
                          for key, value in row.items()})
     path.parent.mkdir(parents=True, exist_ok=True)
     _write_atomic(path, out.getvalue(), "utf-8-sig")  # with the mark spreadsheets need to read it as UTF-8
-    return {"piece": piece, "complaints": len(rows), "path": path, "codes": CODES[piece]}
+    return {"piece": piece, "complaints": len(rows), "path": path, "codes": CODES.get(piece, ())}
 
 
 def _sheet_text(path):
@@ -270,11 +305,15 @@ def summarise_codes(piece, codes):
 
 def import_codes(root, piece, replace=False):
     """Read the owner's codes and write them, with V3's reasons, to the results. Returns the summary."""
+    judged = [Path(root) / "results" / "validation" / name for name in ("v5_judge.csv", "v5_judge.json")]
+    if piece == "v5" and any(path.exists() for path in judged):
+        raise ReviewError("the judge's main run has already rated these, so the owner's V5 ratings stay as "
+                          "imported (V5 is blind)")
     codes = read_codes(root, piece)
     path = codes_path(root, piece)
     if path.exists() and not replace:
         raise ReviewError(f"{piece}_codes.csv already exists. Use --replace to import the sheet again")
-    fields = ["complaint_id", "code"] if piece == "v2" else ["complaint_id", "reason", "code"]
+    fields = ["complaint_id", "reason", "code"] if piece == "v3" else ["complaint_id", "code"]
     recorded = _recorded(root) if piece == "v3" else {}
     out = io.StringIO()
     writer = csv.DictWriter(out, fieldnames=fields, lineterminator="\n")
@@ -302,6 +341,9 @@ def _home_relative(path):
 
 
 def format_sheet(result):
+    if not result["codes"]:  # the dry run's ratings and reasons, to read only
+        return [f"{result['piece']} sheet: {result['complaints']} complaints",
+                f"written to {_home_relative(result['path'])}", "it is for reading only and has no import"]
     return [f"{result['piece']} sheet: {result['complaints']} complaints",
             f"written to {_home_relative(result['path'])}",
             f"fill the code column with one of: {', '.join(result['codes'])}",

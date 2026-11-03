@@ -22,6 +22,7 @@ from voc.env import settings
 from voc.audit import AuditError
 from voc.consistency import ConsistencyError
 from voc.review import ReviewError
+from voc.judge import JudgeError
 from voc.evaluate import EvaluationError
 from voc.injection import InjectionError
 from voc.testrun import TestRunError
@@ -156,6 +157,12 @@ def _review_import(config, root, args):
     from voc.review import format_codes, import_codes
 
     print("\n".join(format_codes(import_codes(root, args.piece, replace=args.replace), root)))
+
+
+def _judge(config, root, args):
+    from voc.judge import command
+
+    print("\n".join(command(config, root, args.action.replace("-", "_"), args.approved, args.judge)))
 
 
 def _repeat(value):
@@ -299,7 +306,8 @@ def _evaluate(config, root, args):
 
 COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample,
             "validation-lists": _validation_lists, "consistency": _consistency,
-            ("review", "sheet"): _review_sheet, ("review", "import"): _review_import, "label": _label,
+            ("review", "sheet"): _review_sheet, ("review", "import"): _review_import,
+            ("judge", "dry-run"): _judge, ("judge", "main"): _judge, "label": _label,
             "evaluate": _evaluate, "final": _test_run, "audit": _audit, "serve": _serve,
             ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt, ("dbt", "lineage"): _dbt,
             ("ledger", "init"): _ledger_init, ("ledger", "raise"): _ledger_raise,
@@ -327,10 +335,20 @@ def main(argv=None, env=None, root=None):
                                        "because a sheet holds complaint text")
     rv_actions = rv.add_subparsers(dest="action", required=True)
     sh = rv_actions.add_parser("sheet", help="write the sheet in the review folder, once")
-    sh.add_argument("piece", choices=("v2", "v3"), help="which review")
+    sh.add_argument("piece", choices=("v2", "v3", "v5", "v5_dry_run"), help="which review, or the judge's dry run")
     im = rv_actions.add_parser("import", help="read only the ID and code columns back, printing counts only")
-    im.add_argument("piece", choices=("v2", "v3"), help="which review")
+    im.add_argument("piece", choices=("v2", "v3", "v5"), help="which review")
     im.add_argument("--replace", action="store_true", help="write over codes imported before")
+    jd = sub.add_parser("judge", help="V5: the judge rates whether each quote supports its label, printing counts "
+                                      "only. No call without --approved (spec 003)")
+    jd_actions = jd.add_subparsers(dest="action", required=True)
+    for action, text in (("dry-run", "rate the dry run's own cases, which are never reported, and check the margin"),
+                         ("main", "rate every accepted development label but the dry run's, after the owner's "
+                                  "V5 ratings")):
+        step = jd_actions.add_parser(action, help=text)
+        step.add_argument("--approved", action="store_true", help="make the calls. Only after the owner approved "
+                                                                  "the figures printed without it")
+        step.add_argument("--judge", default="judge_v1", help="the judge's rubric, from config/prompts")
     lb = sub.add_parser("label", help="label development complaints with the LLM, printing counts only (B3, B21)")
     lb.add_argument("set", choices=("dev", "quick", "injection"),
                     help="the development set, its fixed 50-complaint part, or the synthetic injection set")
@@ -380,11 +398,12 @@ def main(argv=None, env=None, root=None):
     root = Path.cwd() if root is None else Path(root)
     config = settings(dict(os.environ) if env is None else env, root)
     try:
-        command = (args.command, args.action) if args.command in ("ledger", "dbt", "review") else args.command
+        command = (args.command, args.action) if args.command in ("ledger", "dbt", "review", "judge") \
+            else args.command
         COMMANDS[command](config, root, args)
     except (DataFileError, BudgetError, DbtError, SampleMismatch, BackendError, RecordingMissing,
             RecordingCorrupt, RunStopped, EvaluationError, AuditError, InjectionError, TestRunError,
-            ConsistencyError, ReviewError) as err:
+            ConsistencyError, ReviewError, JudgeError) as err:
         print(f"error: {err}")
         return 1
     # B21: the type only, never the message. The spec also asks for the row number and the
