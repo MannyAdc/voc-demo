@@ -1733,3 +1733,139 @@ def test_V5_V9_the_api_dry_run_calls_through_the_ledger_and_checks_a_committed_c
     assert fake.calls == 1 and summary["margin_ok"] is True and summary["calls_checked"] == 1
     assert budget.Ledger().state()["used"] - used == summary["ledger_charged_tokens"] > 0
     capsys.readouterr()
+
+
+# Second review of #75.
+
+def test_V5_a_summary_with_no_margin_result_does_not_count_as_the_one_dry_run(tmp_path, fake_home, capsys):
+    import json
+    from voc import cli
+    root, _ = _judge_project(tmp_path)
+    folder = root / "results" / "validation"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "v5_dry_run.json").write_text(json.dumps({"margin_ok": None, "judge": "judge_v1"}), encoding="utf-8")
+    assert cli.main(["judge", "dry-run"], env={"LLM_BACKEND": "mock"}, root=root) == 0
+    (folder / "v5_dry_run.json").write_text(json.dumps({"margin_ok": True, "judge": "judge_v1"}), encoding="utf-8")
+    assert cli.main(["judge", "dry-run"], env={"LLM_BACKEND": "mock"}, root=root) == 1
+    assert "runs once" in capsys.readouterr().out
+
+
+def test_V5_the_dry_run_reports_no_rating_outcome_at_all(tmp_path, fake_home, capsys):
+    import json
+    from voc import cli
+    root, _ = _judge_project(tmp_path)
+    env = _judge_fixtures(tmp_path, root, "dry_run")
+    assert cli.main(["judge", "dry-run", "--approved"], env=env, root=root) == 0
+    printed = capsys.readouterr().out
+    summary = json.loads((root / "results" / "validation" / "v5_dry_run.json").read_text(encoding="utf-8"))
+    assert "unparseable" not in summary and "unparseable" not in printed
+
+
+def _judge_v2(root, settings_change=None):
+    text = (root / "config" / "prompts" / "judge_v1.toml").read_text(encoding="utf-8")
+    text = text.replace('name = "judge_v1"', 'name = "judge_v2"').replace("Rate whether", "SYN v2: rate whether")
+    if settings_change:
+        text = text.replace(*settings_change)
+    (root / "config" / "prompts" / "judge_v2.toml").write_text(text, encoding="utf-8")
+
+
+def test_V5_the_one_change_may_change_the_instructions_only(tmp_path, fake_home, capsys):
+    from voc import cli
+    root, dev = _judge_project(tmp_path)
+    _ready_files(root, dev, True)
+    _judge_v2(root, ("max_tokens = 2048", "max_tokens = 4096"))
+    assert cli.main(["judge", "main", "--judge", "judge_v2"], env={"LLM_BACKEND": "mock"}, root=root) == 1
+    assert "only its instructions" in capsys.readouterr().out
+
+
+def test_V5_once_the_one_change_exists_the_main_run_uses_it(tmp_path, fake_home, capsys):
+    import json
+    from voc import cli, judge
+    root, dev = _judge_project(tmp_path)
+    folder = _ready_files(root, dev, True)
+    _judge_v2(root)
+    assert cli.main(["judge", "main", "--judge", "judge_v1"], env={"LLM_BACKEND": "mock"}, root=root) == 1
+    assert "judge_v2" in capsys.readouterr().out
+    items = [{"prompt": case.prompt, "text": json.dumps({"rating": "supports", "reason": "SYN"})}
+             for case in judge.items(root, "main", judge.load_judge(root, "judge_v2"))]
+    fixtures = tmp_path / "v2.json"
+    fixtures.write_text(json.dumps(items), encoding="utf-8")
+    env = {"LLM_BACKEND": "mock", "VOC_MOCK_FIXTURES": str(fixtures)}
+    assert cli.main(["judge", "main", "--judge", "judge_v2", "--approved"], env=env, root=root) == 0
+    assert json.loads((folder / "v5_judge.json").read_text(encoding="utf-8"))["judge"] == "judge_v2"
+    capsys.readouterr()
+
+
+def test_V5_without_git_the_rubric_check_says_so(monkeypatch):
+    from voc import judge
+
+    def missing(*args, **kwargs):
+        raise FileNotFoundError("git")
+
+    monkeypatch.setattr(judge.subprocess, "run", missing)
+    with pytest.raises(judge.JudgeError) as refused:
+        judge._rubric_committed(REPO, "judge_v1")
+    assert "git" in str(refused.value)
+
+
+@pytest.mark.parametrize("name", ["../budget", "v1", "judge_x", "judge_v1.toml", "judge_v0"])
+def test_V5_a_bad_judge_name_is_refused_with_the_naming_rule(tmp_path, fake_home, capsys, name):
+    from voc import cli
+    root, _ = _judge_project(tmp_path)
+    assert cli.main(["judge", "dry-run", "--judge", name], env={"LLM_BACKEND": "mock"}, root=root) == 1
+    assert "judge_v and a number" in capsys.readouterr().out
+
+
+def test_V5_B7_the_failure_count_resets_after_a_good_answer():
+    import json
+    from voc import judge
+    from voc.replay import ModelError, Reply
+    pattern = iter([False, False, True, False, False, True, False, False])
+
+    def sometimes(prompt):
+        if next(pattern):
+            return Reply(json.dumps({"rating": "supports", "reason": "SYN"}), "live", 10, 5, 15, 15, 1)
+        raise ModelError("the model call failed")
+
+    cases = [judge.Item(f"SYN-{i}", f"SYN prompt {i}", "Mortgage", "a b c", "a b c d") for i in range(1, 9)]
+    rows, _ = judge.judge(cases, sometimes, "fake", judge.load_judge(REPO))
+    assert len(rows) == 8 and sum(bool(r.get("failed")) for r in rows) == 6
+
+
+def test_V5_B7_a_run_stopped_after_three_failures_writes_nothing(tmp_path, fake_home, capsys):
+    import json
+    from voc import cli
+    root, dev = _judge_project(tmp_path)
+    _ready_files(root, dev, True)
+    fixtures = tmp_path / "none.json"
+    fixtures.write_text(json.dumps([]), encoding="utf-8")  # every call fails: the mock has no answer
+    env = {"LLM_BACKEND": "mock", "VOC_MOCK_FIXTURES": str(fixtures)}
+    assert cli.main(["judge", "main", "--approved"], env=env, root=root) == 1
+    assert "in a row failed" in capsys.readouterr().out
+    folder = root / "results" / "validation"
+    assert not (folder / "v5_judge.csv").exists() and not (folder / "v5_judge.json").exists()
+
+
+def test_V5_the_owners_ratings_cannot_be_imported_again_once_the_judges_summary_exists(tmp_path, fake_home,
+                                                                                      capsys):
+    from voc import cli, review
+    root, _ = _judge_project(tmp_path)
+    assert cli.main(["review", "sheet", "v5"], env={}, root=root) == 0
+    _fill(review.sheet_path("v5"), ["supports", "partly"])
+    assert cli.main(["review", "import", "v5"], env={}, root=root) == 0
+    (root / "results" / "validation" / "v5_judge.json").write_text("{}", encoding="utf-8")
+    assert cli.main(["review", "import", "v5", "--replace"], env={}, root=root) == 1
+    assert "judge" in capsys.readouterr().out
+
+
+def test_V5_a_live_run_also_needs_the_label_list_committed_and_unchanged(tmp_path, fake_home, capsys,
+                                                                       monkeypatch):
+    from voc import backends, budget, cli
+    root, _ = _judge_project(tmp_path)
+    _git_project(root)
+    budget.init_ledger(root)
+    monkeypatch.setattr(backends, "make_backend", lambda *a, **k: pytest.fail("no backend may be built"))
+    labels = root / "config" / "labels.toml"
+    labels.write_bytes(labels.read_bytes() + b"\n# an uncommitted change\n")
+    assert cli.main(["judge", "dry-run", "--approved"], env={"LLM_BACKEND": "api"}, root=root) == 1
+    assert "committed" in capsys.readouterr().out
