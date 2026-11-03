@@ -1947,3 +1947,276 @@ def test_V5_the_printed_ratings_are_the_rubrics_own_words():
     for line in review.V5_QUESTION[1:4]:
         rating, text = line.split(": ", 1)
         assert f'"{rating}": {text}.' in rubric, rating
+
+
+# V6: cost against gain, and the hybrid (spec 003). Synthetic items and the synthetic fixture only, no model call.
+
+def _item(cid, product, llm, tfidf, confidence, reason=None):
+    from voc.metrics import Item
+    return Item(cid, product, None if reason else llm, reason, tfidf, confidence)
+
+
+def test_V6_the_hybrid_takes_tfidf_at_09_or_more_and_the_llm_otherwise_a_quarantine_counting_wrong():
+    from voc import hybrid
+    items = [_item("SYN-1", "A", "B", "A", 0.95),  # TF-IDF sure and right
+             _item("SYN-2", "A", "A", "B", 0.9),  # TF-IDF at exactly 0.9 answers, and is wrong
+             _item("SYN-3", "A", "A", "B", 0.5),  # the LLM answers, and is right
+             _item("SYN-4", "A", None, "A", 0.5, reason="quote_not_in_text")]  # the LLM held it back: wrong
+    right, by = hybrid.hybrid_answers(items)
+    assert right == [True, False, True, False]
+    assert by == ["tfidf", "tfidf", "llm", "llm"]
+
+
+def test_V6_V10_the_hybrid_is_scored_as_b10_with_a_paired_bootstrap_within_each_product():
+    from voc import hybrid
+    items = [_item("SYN-1", "A", "B", "A", 0.95), _item("SYN-2", "A", "A", "A", 0.5),
+             _item("SYN-3", "B", "B", "A", 0.95), _item("SYN-4", "B", "B", "B", 0.4)]
+    shares = {"A": 0.75, "B": 0.25}
+    got = hybrid.compare_hybrid(items, shares, resamples=200, seed=0)
+    # LLM alone: A 1 of 2, B 2 of 2, so 0.75 * 0.5 + 0.25 * 1. Hybrid: A 2 of 2, B 1 of 2, so 0.75 + 0.25 * 0.5.
+    assert got["llm_reweighted"] == pytest.approx(0.625)
+    assert got["hybrid_reweighted"] == pytest.approx(0.875)
+    assert got["difference"] == pytest.approx(0.25)
+    assert got["tfidf_share"] == pytest.approx(0.5)
+    again = hybrid.compare_hybrid(items, shares, resamples=200, seed=0)
+    assert got["interval"] == again["interval"] and len(got["interval"]) == 2
+
+
+@pytest.mark.parametrize("cost, difference, expected", [("0.2373", 0.024, "0.0098875"), ("0.2332", 0.0, None),
+                                                         ("0.2332", -0.01, None)])
+def test_V6_the_cost_per_extra_correct_label_is_the_cost_over_the_lead(cost, difference, expected):
+    from decimal import Decimal
+    from voc import hybrid
+    got = hybrid.cost_per_extra_correct(cost, difference)
+    assert (got is None) if expected is None else (abs(got - Decimal(expected)) < Decimal("1e-9"))
+
+
+def test_V6_time_at_scale_is_the_recorded_time_over_the_assumed_parallel_calls():
+    from voc import hybrid
+    assert hybrid.time_at_scale(2015.2, 10) == pytest.approx(201.52)
+
+
+def _v6_project(tmp_path):
+    """The synthetic fixture as the development set, its pool counts, and synthetic evaluation files."""
+    import csv
+    import json
+    import shutil
+    from voc.data import Row, write_splits
+    from voc.labels import load_labels
+    from voc.load import DB_PATH, load_month
+
+    fixture = REPO / "tests" / "fixtures" / "dbt" / "complaints.csv"
+    with open(fixture, encoding="utf-8", newline="") as f:
+        rows = [r for r in csv.DictReader(f) if r["Consumer complaint narrative"].strip()]
+    root = tmp_path / "repo"
+    (root / "config").mkdir(parents=True)
+    shutil.copy(REPO / "config" / "labels.toml", root / "config" / "labels.toml")
+    load_month(root / DB_PATH, fixture, "july_2026",
+               [label.name for label in load_labels(root / "config" / "labels.toml")])
+    dev = [Row(r["Complaint ID"], r["Product"], r["Consumer complaint narrative"]) for r in rows]
+    write_splits(root / "splits", {"dev": dev, "test": [], "train": []}, removed=0, source_sha256="0" * 64,
+                 seed=1, settings={"month": "july_2026"})
+    counts = {}
+    for r in dev:
+        counts[r.product] = counts.get(r.product, 0) + 1
+    (root / "config" / "pool.toml").write_text("".join(
+        f'[products."{p}"]\npool = {n}\ndev = {n}\ntest = 0\ntrain = 0\n\n' for p, n in counts.items()),
+        encoding="utf-8")
+    folder = root / "results" / "eval"
+    folder.mkdir(parents=True)
+    with open(folder / "v1_dev.csv", "w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(["complaint_id", "decision", "reason", "accepted_label", "tfidf_label", "tfidf_confidence"])
+        for i, r in enumerate(dev):
+            writer.writerow([r.complaint_id, "accepted", "", r.product, r.product, "0.95" if i % 2 else "0.4"])
+    # Changed in the review of #80: the test summary has its confusion tables, for the full-coverage view.
+    products = sorted(counts)
+    confusion = {"llm": [[p, p, 9] for p in products], "tfidf": [[p, p, 8] for p in products]}
+    summary = {"difference": 0.024, "llm": {"cost_per_1000_usd": "0.2373", "seconds_per_1000_complaints": 2015.2},
+               "confusion": confusion}
+    (folder / "v1_test.json").write_text(json.dumps(summary), encoding="utf-8")
+    (folder / "v1_dev.json").write_text(json.dumps({"difference": 0.006, "llm": {"cost_per_1000_usd": "0.2332"}}),
+                                        encoding="utf-8")
+    return root, dev
+
+
+def test_V6_V7_B21_the_command_writes_figures_only_reads_no_test_row_and_says_it_is_exploratory(tmp_path, capsys):
+    import json
+    from voc import cli
+    root, dev = _v6_project(tmp_path)  # no results/eval/v1_test.csv: the command must not need it (V7)
+    assert cli.main(["cost-hybrid"], env={}, root=root) == 0
+    printed = capsys.readouterr().out
+    written = root / "results" / "validation" / "v6_cost_hybrid.json"
+    figures = json.loads(written.read_text(encoding="utf-8"))
+    assert figures["hybrid"]["threshold"] == 0.9 and figures["hybrid"]["set"] == "dev"
+    assert "exploratory" in printed and "estimate" in printed
+    assert figures["time_at_scale"]["is"] == "an estimate, not measured"
+    for r in dev:
+        assert r.narrative[:20] not in printed and r.narrative[:20] not in written.read_text(encoding="utf-8")
+
+
+# Review of #80.
+
+def test_V6_V10_identical_methods_give_a_zero_difference_and_a_zero_interval():
+    from voc import hybrid
+    items = [_item("SYN-1", "A", "A", "B", 0.5), _item("SYN-2", "A", "B", "B", 0.4),
+             _item("SYN-3", "B", "B", "A", 0.3), _item("SYN-4", "B", "A", "A", 0.2)]  # TF-IDF never sure enough
+    got = hybrid.compare_hybrid(items, {"A": 0.5, "B": 0.5}, resamples=200, seed=0)
+    assert got["difference"] == 0 and got["interval"] == [0.0, 0.0] and got["tfidf_share"] == 0
+
+
+def test_V6_V10_the_interval_holds_the_difference():
+    from voc import hybrid
+    items = [_item(f"SYN-{i}", "A" if i % 2 else "B", "A" if i % 3 else "B", "A" if i % 2 else "B",
+                   0.95 if i % 4 == 0 else 0.5) for i in range(1, 41)]
+    got = hybrid.compare_hybrid(items, {"A": 0.6, "B": 0.4}, resamples=500, seed=0)
+    low, high = got["interval"]
+    assert low <= got["difference"] <= high
+
+
+@pytest.mark.parametrize("change", ["repeated", "missing_product"])
+def test_V6_items_that_repeat_a_complaint_or_miss_a_pool_product_are_refused(change):
+    from voc import hybrid
+    items = [_item("SYN-1", "A", "A", "A", 0.95), _item("SYN-2", "B", "B", "B", 0.5)]
+    shares = {"A": 0.5, "B": 0.5}
+    if change == "repeated":
+        items.append(items[0])
+    else:
+        shares = {"A": 0.4, "B": 0.4, "C": 0.2}
+    with pytest.raises(ValueError):
+        hybrid.compare_hybrid(items, shares, resamples=10, seed=0)
+
+
+def test_V6_the_full_coverage_lead_is_read_from_the_test_runs_confusion_tables():
+    from voc import hybrid
+    shares = {"A": 0.5, "B": 0.5}
+    confusion = {"llm": [["A", "A", 8], ["A", "quarantined", 2], ["B", "B", 9], ["B", "A", 1]],
+                 "tfidf": [["A", "A", 9], ["A", "B", 1], ["B", "B", 7], ["B", "A", 3]]}
+    llm, tfidf = hybrid.full_coverage_from_confusion(confusion, shares)
+    assert llm == pytest.approx(0.5 * 0.8 + 0.5 * 0.9) and tfidf == pytest.approx(0.5 * 0.9 + 0.5 * 0.7)
+
+
+def _v6_figures(tmp_path, capsys, extra_row=False):
+    import csv
+    import json
+    from voc import cli
+    root, dev = _v6_project(tmp_path)
+    test = json.loads((root / "results" / "eval" / "v1_test.json").read_text(encoding="utf-8"))
+    products = sorted({r.product for r in dev})
+    test["confusion"] = {"llm": [[p, p, 9] for p in products] + [[p, "quarantined", 1] for p in products],
+                         "tfidf": [[p, p, 8] for p in products] + [[p, products[0] if p != products[0] else
+                                                                     products[1], 2] for p in products]}
+    (root / "results" / "eval" / "v1_test.json").write_text(json.dumps(test), encoding="utf-8")
+    if extra_row:
+        with open(root / "results" / "eval" / "v1_dev.csv", "a", encoding="utf-8", newline="") as f:
+            csv.writer(f, lineterminator="\n").writerow(["SYN-9999", "accepted", "", "Mortgage", "Mortgage", "0.9"])
+    code = cli.main(["cost-hybrid"], env={}, root=root)
+    printed = capsys.readouterr().out
+    path = root / "results" / "validation" / "v6_cost_hybrid.json"
+    return code, printed, (json.loads(path.read_text(encoding="utf-8")) if path.exists() else None)
+
+
+def test_V6_the_cost_per_extra_correct_label_names_its_comparison_and_gives_both_views(tmp_path, capsys):
+    code, printed, figures = _v6_figures(tmp_path, capsys)
+    assert code == 0
+    cost = figures["cost_per_extra_correct_usd"]
+    assert set(cost["test"]) >= {"same_coverage", "full_coverage"} and set(cost["dev"]) >= {"same_coverage",
+                                                                                              "full_coverage"}
+    assert "at the same coverage" in cost["note"] and "approximates" in cost["note"]
+    assert "tuning" in cost["dev"]["figures_are"]
+    assert "at the same coverage" in printed and "every complaint" in printed
+
+
+def test_V6_the_hybrid_says_it_is_optimistic_and_why_and_labels_its_cost_saving_as_an_assumption(tmp_path, capsys):
+    code, printed, figures = _v6_figures(tmp_path, capsys)
+    assert code == 0 and "optimistic" in printed
+    assert "after the development results" in figures["hybrid"]["is"]
+    assert "costs the same" in figures["hybrid"]["hybrid_llm_cost_assumes"]
+
+
+def test_V6_V7_an_id_outside_the_development_list_is_refused(tmp_path, capsys):
+    code, printed, figures = _v6_figures(tmp_path, capsys, extra_row=True)
+    assert code == 1 and figures is None
+
+
+def test_V6_reader_facing_text_names_the_baseline_as_tfidf_with_logistic_regression(tmp_path, capsys):
+    # The baseline is TF-IDF features fed into a logistic regression (src/voc/baselines.py). Owner decision of
+    # 4 November: reader-facing text says "TF-IDF + LR", spelled out on first use. Data keys stay as they are.
+    import re
+    code, printed, figures = _v6_figures(tmp_path, capsys)
+    assert code == 0
+    texts = [printed, figures["cost_per_extra_correct_usd"]["note"], figures["hybrid"]["is"],
+             figures["hybrid"]["hybrid_llm_cost_assumes"]]
+    for text in texts:
+        assert not re.findall(r"TF-IDF(?! \+ LR| with logistic regression)", text), text[:80]
+    assert "TF-IDF with logistic regression (TF-IDF + LR)" in figures["cost_per_extra_correct_usd"]["note"]
+
+
+# Second review of #80.
+
+def test_V6_the_full_coverage_view_refuses_a_pool_product_missing_from_the_tables():
+    from voc import hybrid
+    confusion = {"llm": [["A", "A", 1]], "tfidf": [["A", "A", 1]]}
+    with pytest.raises(ValueError):
+        hybrid.full_coverage_from_confusion(confusion, {"A": 0.5, "B": 0.5})
+
+
+def test_V6_the_test_set_costs_and_leads_are_the_right_numbers_in_both_views(tmp_path, capsys):
+    from voc import hybrid
+    code, printed, figures = _v6_figures(tmp_path, capsys)
+    assert code == 0
+    # The test tables of `_v6_figures`: per product the LLM gets 9 of 10 and TF-IDF + LR 8 of 10, a lead of 10
+    # points, so $0.2373 per 1,000 over 100 extra correct labels per 1,000.
+    test = figures["cost_per_extra_correct_usd"]["test"]
+    assert test["lead_points"] == {"same_coverage": 2.4, "full_coverage": pytest.approx(10.0)}
+    assert test["full_coverage"] == "0.002373"
+    assert test["same_coverage"] == hybrid._money(hybrid.cost_per_extra_correct("0.2373", 0.024))
+
+
+def test_V6_the_development_full_coverage_and_hybrid_figures_are_the_right_numbers(tmp_path, capsys):
+    # A development file where the two methods differ: the LLM is quarantined on every fifth complaint,
+    # TF-IDF + LR is wrong on every third, and it is confident (0.95) on every other one.
+    import csv
+    import json
+    from voc import cli
+    root, dev = _v6_project(tmp_path)
+    products = sorted({r.product for r in dev})
+    rows = []
+    with open(root / "results" / "eval" / "v1_dev.csv", "w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(["complaint_id", "decision", "reason", "accepted_label", "tfidf_label", "tfidf_confidence"])
+        for i, r in enumerate(dev):
+            llm_right, tfidf_right, confident = i % 5 != 0, i % 3 != 0, i % 2 == 1
+            other = products[1] if r.product == products[0] else products[0]
+            writer.writerow([r.complaint_id, "accepted" if llm_right else "quarantined",
+                             "" if llm_right else "quote_not_found", r.product if llm_right else "",
+                             r.product if tfidf_right else other, "0.95" if confident else "0.4"])
+            rows.append((r.product, llm_right, tfidf_right, tfidf_right if confident else llm_right, confident))
+    assert cli.main(["cost-hybrid"], env={}, root=root) == 0
+    capsys.readouterr()
+    figures = json.loads((root / "results" / "validation" / "v6_cost_hybrid.json").read_text(encoding="utf-8"))
+
+    def reweighted(column):
+        # Pool shares equal the development counts here, so this is each product's share times its accuracy.
+        return sum(sum(row[column] for row in rows if row[0] == p) / len(rows) for p in products)
+
+    llm, tfidf, hyb = reweighted(1), reweighted(2), reweighted(3)
+    assert 0 < llm - tfidf and tfidf < hyb
+    dev_view = figures["cost_per_extra_correct_usd"]["dev"]
+    assert dev_view["lead_points"]["full_coverage"] == round((llm - tfidf) * 100, 2)
+    assert float(dev_view["full_coverage"]) == pytest.approx(0.2332 / ((llm - tfidf) * 1000), abs=1e-6)
+    assert figures["hybrid"]["llm_reweighted"] == pytest.approx(llm)
+    assert figures["hybrid"]["hybrid_reweighted"] == pytest.approx(hyb)
+    assert figures["hybrid"]["tfidf_share"] == pytest.approx(sum(row[4] for row in rows) / len(rows))
+
+
+def test_V6_the_printout_spells_out_the_baseline_and_says_points_only_approximate_labels(tmp_path, capsys):
+    code, printed, figures = _v6_figures(tmp_path, capsys)
+    assert code == 0
+    assert "TF-IDF with logistic regression (TF-IDF + LR)" in printed
+    assert "approximates" in printed
+
+
+def test_V6_the_refusal_of_an_id_outside_the_list_says_why(tmp_path, capsys):
+    code, printed, figures = _v6_figures(tmp_path, capsys, extra_row=True)
+    assert code == 1 and "exactly once" in printed

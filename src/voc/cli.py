@@ -22,6 +22,7 @@ from voc.env import settings
 from voc.audit import AuditError
 from voc.consistency import ConsistencyError
 from voc.review import ReviewError
+from voc.hybrid import HybridError
 from voc.judge import JudgeError
 from voc.evaluate import EvaluationError
 from voc.injection import InjectionError
@@ -163,6 +164,12 @@ def _judge(config, root, args):
     from voc.judge import command
 
     print("\n".join(command(config, root, args.action.replace("-", "_"), args.approved, args.judge)))
+
+
+def _cost_hybrid(config, root, args):
+    from voc.hybrid import run
+
+    print("\n".join(run(root)))
 
 
 def _repeat(value):
@@ -307,7 +314,8 @@ def _evaluate(config, root, args):
 COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample,
             "validation-lists": _validation_lists, "consistency": _consistency,
             ("review", "sheet"): _review_sheet, ("review", "import"): _review_import,
-            ("judge", "dry-run"): _judge, ("judge", "main"): _judge, "label": _label,
+            ("judge", "dry-run"): _judge, ("judge", "main"): _judge, "cost-hybrid": _cost_hybrid,
+            "label": _label,
             "evaluate": _evaluate, "final": _test_run, "audit": _audit, "serve": _serve,
             ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt, ("dbt", "lineage"): _dbt,
             ("ledger", "init"): _ledger_init, ("ledger", "raise"): _ledger_raise,
@@ -339,6 +347,8 @@ def main(argv=None, env=None, root=None):
     im = rv_actions.add_parser("import", help="read only the ID and code columns back, printing counts only")
     im.add_argument("piece", choices=("v2", "v3", "v5"), help="which review")
     im.add_argument("--replace", action="store_true", help="write over codes imported before")
+    sub.add_parser("cost-hybrid", help="V6: cost per extra correct label, time at scale and the hybrid on the "
+                                       "development set, from recorded results only (spec 003)")
     jd = sub.add_parser("judge", help="V5: the judge rates whether each quote supports its label, printing counts "
                                       "only. No call without --approved (spec 003)")
     jd_actions = jd.add_subparsers(dest="action", required=True)
@@ -403,7 +413,7 @@ def main(argv=None, env=None, root=None):
         COMMANDS[command](config, root, args)
     except (DataFileError, BudgetError, DbtError, SampleMismatch, BackendError, RecordingMissing,
             RecordingCorrupt, RunStopped, EvaluationError, AuditError, InjectionError, TestRunError,
-            ConsistencyError, ReviewError, JudgeError) as err:
+            ConsistencyError, ReviewError, JudgeError, HybridError) as err:
         print(f"error: {err}")
         return 1
     # B21: the type only, never the message. The spec also asks for the row number and the

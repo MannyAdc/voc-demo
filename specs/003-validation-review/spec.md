@@ -56,9 +56,9 @@ Drawn once, from the development set only, with a fixed seed, in this order, and
   - *The judge's main run* covers every accepted development label except the dry run: 351 calls. It never includes a dry-run ID. It writes the ratings to `results/validation/v5_judge.csv`.
   - *The report:* the judge's rating shares over the 351, with intervals. On the 50: the percent agreement, Cohen's kappa with its bootstrap interval, the 3 by 3 confusion table, and the IDs where the judge and the owner differ, with both ratings. An `unparseable` judge answer is listed by ID, counted apart, and left out of the agreement, the kappa and the table. No judge reason is reported. The owner may add a short note in their own words.
 - **V6. Cost against gain, and a hybrid.** From recorded results only, with no model call.
-  - *Cost per extra correct label* against the baseline: from the test run's published summary (`results/eval/v1_test.json`: the cost per 1,000 complaints and the lead in points), and the same from the development set's files.
+  - *Cost per extra correct label* against the baseline: from the test run's published summary (`results/eval/v1_test.json`: the cost per 1,000 complaints and the lead in points), and the same from the development set's files. Changed in the review of #80: in two views. At the same coverage, the headline rule fixed before the first run (B10), and with the baseline labelling every complaint, from the summary's confusion tables. A lead in re-weighted points only approximates extra correct labels per 1,000.
   - *Time per 1,000 at scale* is an estimate, labelled as one: the test run's published time per 1,000 (all its calls were live, in `results/eval/v1_test.json`), divided by an assumed number of calls in parallel. The development run cannot give it, because 63 of its 370 answers were replayed. No paid run measures it.
-  - *The hybrid,* fixed in advance, one rule for every product with no per-product split: the baseline answers when its top class probability is at least 0.9, otherwise the LLM's answer is used, and a quarantined LLM answer counts as wrong. It is scored on the development set only, as B10 scores: re-weighted strict accuracy, against the LLM alone, with the share each method answered and the paired bootstrap difference, drawn within each product. It is reported as exploratory and optimistic, because the prompt was tuned on the same set and no untouched test set is left to check it.
+  - *The hybrid,* fixed in advance, one rule for every product with no per-product split: the baseline answers when its top class probability is at least 0.9, otherwise the LLM's answer is used, and a quarantined LLM answer counts as wrong. It is scored on the development set only, as B10 scores: re-weighted strict accuracy, against the LLM alone, with the share each method answered and the paired bootstrap difference, drawn within each product. It is reported as exploratory and optimistic, because the prompt was tuned on the same set and no untouched test set is left to check it. Added in the review of #80: the 0.9 was fixed on 2 November, after the development results were published on 29 October, so it is reported that way too.
 - **V4. `docs/VALIDATION.md`.** A plain-language summary first: what we checked, what we found, what it means and what we would do next. Then the method and the figures, for technical readers. Results that do not favour the LLM are reported the same way as the rest. The README links it. Every figure has its command and file, as in the README.
 
 ## Pull requests, in order
@@ -79,6 +79,10 @@ Drawn once, from the development set only, with a fixed seed, in this order, and
 - A paid run with calls in parallel.
 - A hybrid with a different rule for each product.
 - Changing the labelling prompt.
+
+## Follow-ups, planned
+
+- The baseline's name. The baseline is TF-IDF features fed into a logistic regression (`voc.baselines`). Owner decision of 4 November: new reader-facing text says "TF-IDF + LR", spelled out on first use, from V6 on. The README, the docs and the dashboard, published on 1 November, still say "TF-IDF" as the short name, after naming it in full once. They are changed to "TF-IDF + LR" in their own wording-only pull request after `docs/VALIDATION.md`, with no number or conclusion changed. Code names and data keys keep "tfidf".
 
 ## Known limits
 
