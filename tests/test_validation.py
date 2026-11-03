@@ -1947,3 +1947,105 @@ def test_V5_the_printed_ratings_are_the_rubrics_own_words():
     for line in review.V5_QUESTION[1:4]:
         rating, text = line.split(": ", 1)
         assert f'"{rating}": {text}.' in rubric, rating
+
+
+# V6: cost against gain, and the hybrid (spec 003). Synthetic items and the synthetic fixture only, no model call.
+
+def _item(cid, product, llm, tfidf, confidence, reason=None):
+    from voc.metrics import Item
+    return Item(cid, product, None if reason else llm, reason, tfidf, confidence)
+
+
+def test_V6_the_hybrid_takes_tfidf_at_09_or_more_and_the_llm_otherwise_a_quarantine_counting_wrong():
+    from voc import hybrid
+    items = [_item("SYN-1", "A", "B", "A", 0.95),  # TF-IDF sure and right
+             _item("SYN-2", "A", "A", "B", 0.9),  # TF-IDF at exactly 0.9 answers, and is wrong
+             _item("SYN-3", "A", "A", "B", 0.5),  # the LLM answers, and is right
+             _item("SYN-4", "A", None, "A", 0.5, reason="quote_not_in_text")]  # the LLM held it back: wrong
+    right, by = hybrid.hybrid_answers(items)
+    assert right == [True, False, True, False]
+    assert by == ["tfidf", "tfidf", "llm", "llm"]
+
+
+def test_V6_V10_the_hybrid_is_scored_as_b10_with_a_paired_bootstrap_within_each_product():
+    from voc import hybrid
+    items = [_item("SYN-1", "A", "B", "A", 0.95), _item("SYN-2", "A", "A", "A", 0.5),
+             _item("SYN-3", "B", "B", "A", 0.95), _item("SYN-4", "B", "B", "B", 0.4)]
+    shares = {"A": 0.75, "B": 0.25}
+    got = hybrid.compare_hybrid(items, shares, resamples=200, seed=0)
+    # LLM alone: A 1 of 2, B 2 of 2, so 0.75 * 0.5 + 0.25 * 1. Hybrid: A 2 of 2, B 1 of 2, so 0.75 + 0.25 * 0.5.
+    assert got["llm_reweighted"] == pytest.approx(0.625)
+    assert got["hybrid_reweighted"] == pytest.approx(0.875)
+    assert got["difference"] == pytest.approx(0.25)
+    assert got["tfidf_share"] == pytest.approx(0.5)
+    again = hybrid.compare_hybrid(items, shares, resamples=200, seed=0)
+    assert got["interval"] == again["interval"] and len(got["interval"]) == 2
+
+
+@pytest.mark.parametrize("cost, difference, expected", [("0.2373", 0.024, "0.0098875"), ("0.2332", 0.0, None),
+                                                         ("0.2332", -0.01, None)])
+def test_V6_the_cost_per_extra_correct_label_is_the_cost_over_the_lead(cost, difference, expected):
+    from decimal import Decimal
+    from voc import hybrid
+    got = hybrid.cost_per_extra_correct(cost, difference)
+    assert (got is None) if expected is None else (abs(got - Decimal(expected)) < Decimal("1e-9"))
+
+
+def test_V6_time_at_scale_is_the_recorded_time_over_the_assumed_parallel_calls():
+    from voc import hybrid
+    assert hybrid.time_at_scale(2015.2, 10) == pytest.approx(201.52)
+
+
+def _v6_project(tmp_path):
+    """The synthetic fixture as the development set, its pool counts, and synthetic evaluation files."""
+    import csv
+    import json
+    import shutil
+    from voc.data import Row, write_splits
+    from voc.labels import load_labels
+    from voc.load import DB_PATH, load_month
+
+    fixture = REPO / "tests" / "fixtures" / "dbt" / "complaints.csv"
+    with open(fixture, encoding="utf-8", newline="") as f:
+        rows = [r for r in csv.DictReader(f) if r["Consumer complaint narrative"].strip()]
+    root = tmp_path / "repo"
+    (root / "config").mkdir(parents=True)
+    shutil.copy(REPO / "config" / "labels.toml", root / "config" / "labels.toml")
+    load_month(root / DB_PATH, fixture, "july_2026",
+               [label.name for label in load_labels(root / "config" / "labels.toml")])
+    dev = [Row(r["Complaint ID"], r["Product"], r["Consumer complaint narrative"]) for r in rows]
+    write_splits(root / "splits", {"dev": dev, "test": [], "train": []}, removed=0, source_sha256="0" * 64,
+                 seed=1, settings={"month": "july_2026"})
+    counts = {}
+    for r in dev:
+        counts[r.product] = counts.get(r.product, 0) + 1
+    (root / "config" / "pool.toml").write_text("".join(
+        f'[products."{p}"]\npool = {n}\ndev = {n}\ntest = 0\ntrain = 0\n\n' for p, n in counts.items()),
+        encoding="utf-8")
+    folder = root / "results" / "eval"
+    folder.mkdir(parents=True)
+    with open(folder / "v1_dev.csv", "w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(["complaint_id", "decision", "reason", "accepted_label", "tfidf_label", "tfidf_confidence"])
+        for i, r in enumerate(dev):
+            writer.writerow([r.complaint_id, "accepted", "", r.product, r.product, "0.95" if i % 2 else "0.4"])
+    summary = {"difference": 0.024, "llm": {"cost_per_1000_usd": "0.2373", "seconds_per_1000_complaints": 2015.2}}
+    (folder / "v1_test.json").write_text(json.dumps(summary), encoding="utf-8")
+    (folder / "v1_dev.json").write_text(json.dumps({"difference": 0.006, "llm": {"cost_per_1000_usd": "0.2332"}}),
+                                        encoding="utf-8")
+    return root, dev
+
+
+def test_V6_V7_B21_the_command_writes_figures_only_reads_no_test_row_and_says_it_is_exploratory(tmp_path, capsys):
+    import json
+    from voc import cli
+    root, dev = _v6_project(tmp_path)  # no results/eval/v1_test.csv: the command must not need it (V7)
+    assert cli.main(["cost-hybrid"], env={}, root=root) == 0
+    printed = capsys.readouterr().out
+    written = root / "results" / "validation" / "v6_cost_hybrid.json"
+    figures = json.loads(written.read_text(encoding="utf-8"))
+    assert figures["hybrid"]["threshold"] == 0.9 and figures["hybrid"]["set"] == "dev"
+    assert "exploratory" in printed and "estimate" in printed
+    assert figures["time_at_scale"]["is"] == "an estimate, not measured"
+    for r in dev:
+        assert r.narrative[:20] not in printed and r.narrative[:20] not in written.read_text(encoding="utf-8")
