@@ -335,7 +335,7 @@ def main(argv=None, env=None, root=None):
                                        "because a sheet holds complaint text")
     rv_actions = rv.add_subparsers(dest="action", required=True)
     sh = rv_actions.add_parser("sheet", help="write the sheet in the review folder, once")
-    sh.add_argument("piece", choices=("v2", "v3", "v5"), help="which review")
+    sh.add_argument("piece", choices=("v2", "v3", "v5", "v5_dry_run"), help="which review, or the judge's dry run")
     im = rv_actions.add_parser("import", help="read only the ID and code columns back, printing counts only")
     im.add_argument("piece", choices=("v2", "v3", "v5"), help="which review")
     im.add_argument("--replace", action="store_true", help="write over codes imported before")

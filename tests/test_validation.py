@@ -1468,12 +1468,11 @@ def test_V5_V8_the_dry_run_writes_counts_and_the_margin_check_and_puts_reasons_o
     assert cli.main(["judge", "dry-run", "--approved"], env=env, root=root) == 0
     printed = capsys.readouterr().out
     summary = json.loads((root / "results" / "validation" / "v5_dry_run.json").read_text(encoding="utf-8"))
-    assert summary["calls"] == 1 and summary["ratings"]["supports"]["count"] == 1
-    assert "margin_ok" in summary
+    # Changed in the review of #75: the dry run writes no ratings and no reasons sheet. The owner writes the
+    # sheet from the recordings with `voc review sheet v5_dry_run` (a newer test).
+    assert summary["calls"] == 1 and "margin_ok" in summary
     written = (root / "results" / "validation" / "v5_dry_run.json").read_text(encoding="utf-8")
     assert "SYN reason words" not in written and "SYN reason words" not in printed
-    reasons = review.sheet_path("v5_dry_run")
-    assert "SYN reason words" in reasons.read_text(encoding="utf-8-sig")
 
 
 def test_V5_the_margin_check_fails_when_a_call_used_more_input_than_was_reserved():
@@ -1514,7 +1513,8 @@ def test_V5_V7_the_main_run_rates_every_accepted_label_but_the_dry_run_and_write
     root, dev = _judge_project(tmp_path)
     folder = root / "results" / "validation"
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / "v5_dry_run.json").write_text(json.dumps({"margin_ok": True}), encoding="utf-8")
+    # Changed in the review of #75: a dry run's summary names its judge, which the main run must use.
+    (folder / "v5_dry_run.json").write_text(json.dumps({"margin_ok": True, "judge": "judge_v1"}), encoding="utf-8")
     (folder / "v5_codes.csv").write_text(f"complaint_id,code\n{dev[1].complaint_id},supports\n"
                                          f"{dev[2].complaint_id},partly\n", encoding="utf-8")
     env = _judge_fixtures(tmp_path, root, "main", rating="partly")
@@ -1721,11 +1721,12 @@ def test_V5_V9_the_api_dry_run_calls_through_the_ledger_and_checks_a_committed_c
     fake = FakeSonnet()
     monkeypatch.setattr(backends, "make_backend", lambda *a, **k: fake)
     rubric = root / "config" / "prompts" / "judge_v1.toml"
-    original = rubric.read_text(encoding="utf-8")
-    rubric.write_text(original + "\n# an uncommitted change\n", encoding="utf-8")
+    # Changed in the green commit: bytes, so restoring it keeps the committed line endings on Windows.
+    original = rubric.read_bytes()
+    rubric.write_bytes(original + b"\n# an uncommitted change\n")
     assert cli.main(["judge", "dry-run", "--approved"], env={"LLM_BACKEND": "api"}, root=root) == 1
     assert "committed" in capsys.readouterr().out and fake.calls == 0
-    rubric.write_text(original, encoding="utf-8")
+    rubric.write_bytes(original)
     used = budget.Ledger().state()["used"]
     assert cli.main(["judge", "dry-run", "--approved"], env={"LLM_BACKEND": "api"}, root=root) == 0
     summary = json.loads((root / "results" / "validation" / "v5_dry_run.json").read_text(encoding="utf-8"))

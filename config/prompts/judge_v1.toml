@@ -19,5 +19,5 @@ Answer with exactly one JSON object and nothing else:
 model = "claude-sonnet-5-5"
 effort = "low"
 thinking = "adaptive"
-max_tokens = 1024
+max_tokens = 2048
 api_version = "2023-06-01"

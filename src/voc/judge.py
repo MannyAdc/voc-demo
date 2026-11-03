@@ -5,20 +5,23 @@ each accepted development label's quote supports its label: `supports`, `partly`
 reads the label, what the label covers, the cut complaint text and the quote, never the consumer's product
 (V8). An answer outside the three ratings is `unparseable`.
 
-The dry run rates its own 10 cases first. They are never reported. It checks the ledger's input margin for
-this model (`config/budget.toml` asks a new model for its own check), and puts the judge's reasons in the
-owner's review folder only, so the owner can decide whether the rubric needs its one change. The main run
-rates every accepted development label except the dry run's, once the owner's blind V5 ratings are imported
-and the margin held.
+The dry run rates its own 10 cases first. They are never reported, so it writes only its call counts, the
+recording keys and the check of the ledger's input margin for this model (`config/budget.toml` asks a new
+model for its own check). The owner reads the judge's ratings and reasons from those recordings with
+`voc review sheet v5_dry_run`, to decide whether the rubric needs its one change. The main run rates every
+accepted development label except the dry run's, once the owner's blind V5 ratings are imported and the
+margin held, with the dry run's judge or its one change.
 
+Three failed cases in a row stop a run, as for the labeller (B7). A run with any failure writes no results.
 The judge's reasons are model text. They never reach a results file or a printout (V8, B21). Nothing runs live
-without `--approved` (V9).
+without `--approved` (V9), and a live run needs its rubric committed and unchanged.
 """
 import csv
 import io
 import json
 import math
 import re
+import subprocess
 import time
 import tomllib
 from dataclasses import dataclass
@@ -30,6 +33,7 @@ from voc.backends import API_VERSION
 from voc.baselines import cut_text
 from voc.budget import CapReached, input_estimate, worst_case
 from voc.costs import call_cost
+from voc.pipeline import FAILED_IN_A_ROW
 from voc.prompt import CLOSE_TAG, OPEN_TAG, BoundaryInText, boundary_reason
 from voc.replay import MAX_RETRIES, ModelError, recording_key
 
@@ -37,11 +41,12 @@ RATINGS = review.CODES["v5"]
 UNPARSEABLE = "unparseable"
 PIECES = ("dry_run", "main")
 JUDGE = "judge_v1"
+JUDGE_NAME = re.compile(r"^judge_v([1-9]\d*)$")
 FENCE = re.compile(r"\A```(?i:json)?[ \t]*\r?\n(.*?)\r?\n?```\Z", re.DOTALL)
-# The expected cost assumes 4 bytes of prompt per input token and 300 output tokens per call. The worst case,
-# which the ledger reserves, assumes nothing.
+# The expected cost assumes 4 bytes of prompt per input token and 600 output tokens per call, thinking
+# included. The worst case, which the ledger reserves, assumes nothing.
 BYTES_PER_TOKEN = 4
-EXPECTED_OUTPUT_TOKENS = 300
+EXPECTED_OUTPUT_TOKENS = 600
 FIELDS = ("complaint_id", "rating", "recording_key", "source", "input_tokens", "output_tokens")
 
 
@@ -66,7 +71,14 @@ class Item:
     text: str
 
 
+def _check_name(name):
+    if not isinstance(name, str) or not JUDGE_NAME.match(name):
+        raise JudgeError("a judge is named judge_v and a number, as in config/prompts/judge_v1.toml")
+    return name
+
+
 def load_judge(root, name=JUDGE):
+    _check_name(name)
     with open(Path(root) / "config" / "prompts" / f"{name}.toml", "rb") as f:
         raw = tomllib.load(f)
     if raw.get("name") != name:
@@ -141,29 +153,38 @@ def items(root, piece, version=None):
 
 
 def judge(cases, call, backend_name, version):
-    """Rate each case. Returns the rows (IDs, ratings, keys, tokens, no text) and the reasons by ID."""
+    """Rate each case. Returns the rows (IDs, ratings, keys, tokens, no text) and the reasons by ID. Three
+    failed cases in a row stop the run, so the cap is not spent on a setup that does not work (B7)."""
     model, settings = version.settings["model"], version.settings
-    rows, reasons = [], {}
+    rows, reasons, in_a_row = [], {}, 0
     for case in cases:
         row = {"complaint_id": case.complaint_id, "recording_key": recording_key(backend_name, model, settings,
-                                                                                 case.prompt),
-               "prompt_bytes": len(case.prompt.encode("utf-8"))}
+                                                                                 case.prompt)}
         try:
             reply = call(case.prompt)
-        except CapReached:
-            rows.append({**row, "rating": "", "failed": "not_run_budget"})
+        except (CapReached, ModelError) as err:
+            rows.append({**row, "rating": "", "failed": "not_run_budget" if isinstance(err, CapReached)
+                         else "model_error"})
+            in_a_row += 1
+            if in_a_row >= FAILED_IN_A_ROW:
+                raise JudgeError(f"{in_a_row} cases in a row failed, so the run stopped and wrote nothing, so the "
+                                 "cap is not spent on a setup that does not work") from None
             continue
-        except ModelError:
-            rows.append({**row, "rating": "", "failed": "model_error"})
-            continue
+        in_a_row = 0
         rating, reasons[case.complaint_id] = parse_rating(reply.text)
         rows.append({**row, "rating": rating, "source": reply.source, "input_tokens": reply.input_tokens,
                      "output_tokens": reply.output_tokens})
     return rows, reasons
 
 
+def margin_pairs(rows, prompts, margin):
+    """(reserved input estimate, real input tokens) for every answer with token counts, replayed ones too."""
+    return [(input_estimate(prompts[r["complaint_id"]], margin), r["input_tokens"]) for r in rows
+            if r.get("input_tokens") is not None]
+
+
 def margin_check(pairs):
-    """Each live call's (reserved input estimate, real input tokens). The margin held when no call went over."""
+    """The margin held when no call used more input tokens than were reserved for it."""
     if not pairs:
         return {"margin_ok": None, "closest": None, "calls_checked": 0}
     closest = min(estimate - real for estimate, real in pairs)
@@ -222,27 +243,34 @@ def _ratings_imported(root):
             and all(r["code"] in RATINGS for r in rows))
 
 
-def _ready_for_main(root, paths):
+def _ready_for_main(root, paths, judge_name):
+    """The main run waits for the dry run, the owner's ratings and a margin that held, and uses the dry run's
+    judge or its one change (V5)."""
     if not paths["dry_run"].exists():
         raise JudgeError("the dry run has not been run. Run `voc judge dry-run` first")
     if not _ratings_imported(root):
         raise JudgeError("the owner's V5 ratings are not all imported. The main run waits for them (V5)")
-    if json.loads(paths["dry_run"].read_text(encoding="utf-8")).get("margin_ok") is not True:
-        raise JudgeError("the dry run did not show that the ledger's input margin holds for this model. The "
+    dry = json.loads(paths["dry_run"].read_text(encoding="utf-8"))
+    if dry.get("margin_ok") is None:
+        raise JudgeError("the dry run checked no call with token counts, so the input margin is not known. "
+                         "It needs a dry run on the api backend")
+    if dry.get("margin_ok") is not True:
+        raise JudgeError("the dry run showed that the ledger's input margin does not hold for this model. The "
                          "owner decides a new margin first")
+    dry_judge = _check_name(dry.get("judge", ""))
+    allowed = {dry_judge, f"judge_v{int(JUDGE_NAME.match(dry_judge).group(1)) + 1}"}
+    if judge_name not in allowed:
+        raise JudgeError(f"the main run uses the dry run's judge or its one change: {' or '.join(sorted(allowed))}")
 
 
-def _reasons_sheet(cases, rows, reasons):
-    """The dry run's ratings and reasons, for the owner's review folder only."""
-    by_id = {r["complaint_id"]: r for r in rows}
-    out = io.StringIO()
-    writer = csv.writer(out, lineterminator="\r\n")
-    writer.writerow(["complaint_id", "rating", "reason", "llm_label", "llm_quote", "complaint_text"])
-    for case in cases:
-        writer.writerow([case.complaint_id, by_id[case.complaint_id]["rating"]]
-                        + [review.safe_cell(v) for v in (reasons.get(case.complaint_id, ""), case.label, case.quote,
-                                                         case.text)])
-    return out.getvalue()
+def _rubric_committed(root, name):
+    """A live run needs its rubric committed and unchanged, so the rubric a result came from can be read."""
+    path = f"config/prompts/{name}.toml"
+    tracked = subprocess.run(["git", "ls-files", "--error-unmatch", path], cwd=root, capture_output=True)
+    changed = subprocess.run(["git", "status", "--porcelain", "--", path], cwd=root, capture_output=True,
+                             text=True)
+    if tracked.returncode != 0 or changed.returncode != 0 or changed.stdout.strip():
+        raise JudgeError(f"the judge's rubric {path} must be committed and unchanged before a live run")
 
 
 def _rows_csv(rows):
@@ -273,6 +301,7 @@ def command(config, root, piece, approved, judge_name=JUDGE):
     from voc.replay import Answer, Caller, Reply
 
     root = Path(root)
+    _check_name(judge_name)
     backend_name = config.get("LLM_BACKEND", "")
     if backend_name not in ("api", "mock"):
         raise JudgeError("LLM_BACKEND must be api or mock")
@@ -282,7 +311,7 @@ def command(config, root, piece, approved, judge_name=JUDGE):
     if piece == "main":
         if paths["csv"].exists() or paths["json"].exists():
             raise JudgeError("the judge's main run has already been written")
-        _ready_for_main(root, paths)
+        _ready_for_main(root, paths, judge_name)
     version = load_judge(root, judge_name)
     cases = items(root, piece, version)
     prices = load_prices(root / "config" / "prices.toml")
@@ -305,40 +334,46 @@ def command(config, root, piece, approved, judge_name=JUDGE):
         def call(prompt):
             return Reply(backend(prompt, dict(settings)).text, "mock", None, None, 0, 0, 1)
     else:
+        _rubric_committed(root, judge_name)
         backend = backends.make_backend("api", env=config, model=model)
         call = Caller("api", model, settings, backend=backend, mode="live", root=root, ledger=ledger).call
     used_before = ledger.state()["used"] if ledger else None
     started = time.monotonic()
-    rows, reasons = judge(cases, call, backend_name, version)
+    rows, _ = judge(cases, call, backend_name, version)  # the reasons stay in the recordings (V8)
     failed = sum(bool(r.get("failed")) for r in rows)
     if failed:
         kept = "The answers so far are recorded. " if backend_name == "api" else ""
         raise JudgeError(f"{failed} cases failed with a model error or at the cap, so no results are written. "
                          f"{kept}Run it again to finish")
-    summary = summarise(rows)
     live = [r for r in rows if r.get("source") == "live" and r.get("input_tokens") is not None]
     cost = sum((call_cost(prices, model, r["input_tokens"], r["output_tokens"]) for r in live), Decimal(0))
-    prompts = {case.complaint_id: case.prompt for case in cases}
-    summary.update({"piece": piece, "judge": version.name, "model": model, "backend": backend_name,
-                    "calls": len(rows), "live_calls": len(live), "replayed_calls": sum(
-                        r.get("source") == "replay" for r in rows), "cost_usd": str(cost),
-                    "run_seconds": round(time.monotonic() - started, 1)})
+    summary = {"piece": piece, "judge": version.name, "model": model, "backend": backend_name, "calls": len(rows),
+               "live_calls": len(live), "replayed_calls": sum(r.get("source") == "replay" for r in rows),
+               "unparseable": sum(r["rating"] == UNPARSEABLE for r in rows), "cost_usd": str(cost),
+               "run_seconds": round(time.monotonic() - started, 1)}
     if ledger is not None:
         summary["ledger_charged_tokens"] = ledger.state()["used"] - used_before
     paths["dry_run"].parent.mkdir(parents=True, exist_ok=True)
-    if piece == "dry_run":
-        summary.update(margin_check([(input_estimate(prompts[r["complaint_id"]], margin), r["input_tokens"])
-                                     for r in live]))
-        sheet = review.sheet_path("v5_dry_run")
-        sheet.parent.mkdir(parents=True, exist_ok=True)
-        review._write_atomic(sheet, _reasons_sheet(cases, rows, reasons), "utf-8-sig")
+    if piece == "dry_run":  # never reported: no ratings, only the margin, the counts and the keys
+        prompts = {case.complaint_id: case.prompt for case in cases}
+        summary.update(margin_check(margin_pairs(rows, prompts, margin)))
+        summary["keys"] = {r["complaint_id"]: r["recording_key"] for r in rows}
         review._write_atomic(paths["dry_run"], json.dumps(summary, indent=2, sort_keys=True) + "\n", "utf-8")
-        written = [paths["dry_run"].relative_to(root).as_posix(), review._home_relative(sheet)]
-    else:
-        review._write_atomic(paths["csv"], _rows_csv(rows), "utf-8")
-        review._write_atomic(paths["json"], json.dumps(summary, indent=2, sort_keys=True) + "\n", "utf-8")
-        written = [p.relative_to(root).as_posix() for p in (paths["csv"], paths["json"])]
-    return lines + format_summary(summary) + [f"written to {w}" for w in written]
+        return lines + format_dry_run(summary) + [f"written to {paths['dry_run'].relative_to(root).as_posix()}",
+                                                  "the owner reads the ratings and reasons with "
+                                                  "`voc review sheet v5_dry_run`"]
+    summary.update(summarise(rows))
+    review._write_atomic(paths["csv"], _rows_csv(rows), "utf-8")
+    review._write_atomic(paths["json"], json.dumps(summary, indent=2, sort_keys=True) + "\n", "utf-8")
+    return lines + format_summary(summary) + [f"written to {p.relative_to(root).as_posix()}"
+                                              for p in (paths["csv"], paths["json"])]
+
+
+def format_dry_run(summary):
+    return [f"calls: {summary['calls']}, unparseable: {summary['unparseable']}",
+            f"input margin held: {summary['margin_ok']} ({summary['calls_checked']} calls checked)",
+            f"cost: ${Decimal(summary['cost_usd']):.4f} for {summary['live_calls']} live calls, "
+            f"{summary['replayed_calls']} replayed"]
 
 
 def format_summary(summary):
@@ -347,8 +382,6 @@ def format_summary(summary):
         low, high = figure["interval"]
         lines.append(f"{code}: {figure['count']} ({figure['share']:.1%}, 95% interval {low:.1%} to {high:.1%})")
     lines.append(f"unparseable: {summary['unparseable']}")
-    if "margin_ok" in summary:
-        lines.append(f"input margin held: {summary['margin_ok']} ({summary['calls_checked']} live calls checked)")
     lines.append(f"cost: ${Decimal(summary['cost_usd']):.4f} for {summary['live_calls']} live calls, "
                  f"{summary['replayed_calls']} replayed")
     return lines
