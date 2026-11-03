@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+import git_helper
+
 from voc.data import build_samples
 from voc.replay import Reply
 
@@ -36,7 +38,8 @@ def _text(product, i):
 
 
 def _git(root, *args):
-    return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, check=True).stdout
+    # Changed with tests/git_helper.py: a passing Windows file lock is tried again.
+    return git_helper.run(["git", *args], cwd=root, capture_output=True, text=True, check=True).stdout
 
 
 def _staged(db_path, rows):

@@ -4,10 +4,11 @@ The names here are invented tokens. The real deny list lives outside the repo.
 """
 import gzip
 import io
-import subprocess
 import zipfile
 
 import pytest
+
+import git_helper
 
 from voc.repo_checks import (
     CFPB_HEADER,
@@ -198,7 +199,8 @@ def test_an_unreadable_file_returns_none_but_images_are_allowed():
 
 
 def _git(repo, *args):
-    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", *args],
+    # Changed with tests/git_helper.py: a passing Windows file lock is tried again.
+    git_helper.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", *args],
                    cwd=repo, check=True, capture_output=True)
 
 

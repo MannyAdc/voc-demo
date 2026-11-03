@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+import git_helper
+
 CAP = 1_000
 MARGIN = 100
 OUTPUT_LIMIT = 50
@@ -44,7 +46,8 @@ def replay():
 
 def _git(repo, *args):
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-    return subprocess.run(["git", "-c", "user.name=synthetic", "-c", "user.email=synthetic@example.invalid",
+    # Changed with tests/git_helper.py: a passing Windows file lock is tried again.
+    return git_helper.run(["git", "-c", "user.name=synthetic", "-c", "user.email=synthetic@example.invalid",
                            "-c", "commit.gpgsign=false", *args],
                           cwd=repo, env=env, check=True, capture_output=True, text=True).stdout.strip()
 

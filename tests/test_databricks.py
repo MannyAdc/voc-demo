@@ -12,6 +12,8 @@ import tomllib
 from pathlib import Path
 
 import pytest
+
+import git_helper
 import yaml
 
 from voc import cli, dbt_run
@@ -294,7 +296,8 @@ def test_B14_the_fixture_script_main_prepares_and_runs_the_databricks_build(tmp_
 def test_B14_git_ignores_any_seed_file_so_a_seed_cannot_be_committed_by_accident(tmp_path):
     # Changed in the green commit of the review of #43: the gate runs the tests on a copy of the staged
     # files, which is not a git checkout. So the repo's .gitignore is checked in a new temp repo.
-    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    # Changed with tests/git_helper.py: a passing Windows file lock is tried again.
+    git_helper.run(["git", "init", "-q", str(tmp_path)], check=True)
     shutil.copy(REPO / ".gitignore", tmp_path / ".gitignore")
     for name in ("staged_complaints.csv", "test_list.csv"):
         result = subprocess.run(["git", "check-ignore", "-q", f"dbt/seeds/{name}"], cwd=tmp_path)

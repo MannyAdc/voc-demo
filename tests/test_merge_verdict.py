@@ -6,10 +6,11 @@ build a small git repo in a temporary folder.
 """
 import json
 import re
-import subprocess
 from pathlib import Path
 
 import pytest
+
+import git_helper
 
 REPO = Path(__file__).resolve().parents[1]
 GIT = ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false"]
@@ -487,7 +488,8 @@ def test_T006b_fetch_adds_each_commits_files_with_read_only_calls(mv):
 
 
 def _git(repo, *args):
-    result = subprocess.run([*GIT, *args], cwd=repo, check=True, capture_output=True, text=True)
+    # Changed with tests/git_helper.py: a passing Windows file lock is tried again.
+    result = git_helper.run([*GIT, *args], cwd=repo, check=True, capture_output=True, text=True)
     return result.stdout.strip()
 
 
