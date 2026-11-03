@@ -19,6 +19,8 @@ from pathlib import Path
 
 import pytest
 
+import git_helper
+
 from voc.repo_checks import CFPB_HEADER
 
 HOOKS = Path(__file__).resolve().parent.parent / ".claude" / "hooks"
@@ -112,7 +114,8 @@ def test_a_commit_message_that_mentions_n_is_allowed(gate):
 
 
 def _git(repo, *args, env=None):
-    return subprocess.run(
+    # Changed with tests/git_helper.py: a passing Windows file lock is tried again.
+    return git_helper.run(
         ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", *args],
         cwd=repo, check=True, capture_output=True, text=True, env=env)
 
@@ -342,7 +345,8 @@ def test_the_gate_output_folder_comes_from_the_environment(hooked, tmp_path):
 
 
 def _commit(repo, env, *args):
-    return subprocess.run(
+    # Changed with tests/git_helper.py: a passing Windows file lock is tried again.
+    return git_helper.run(
         ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", *args],
         cwd=repo, capture_output=True, text=True, env=env)
 
@@ -369,7 +373,8 @@ def test_a_merge_commit_runs_the_same_gate(hooked):
     _write(repo, "notes.md", "x\n")
     _git(repo, "add", "notes.md")
     _assert_committed(_commit(repo, env, "-m", "main moves on"))
-    merge = subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+    # Changed with tests/git_helper.py: a passing Windows file lock is tried again.
+    merge = git_helper.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid",
                             "merge", "--no-ff", "-q", "-m", "merge", "side"],
                            cwd=repo, capture_output=True, text=True, env=env)
     assert merge.returncode != 0

@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+import git_helper
+
 from voc import budget
 
 REPO = Path(__file__).resolve().parents[1]
@@ -738,7 +740,8 @@ def _git_project(root):
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     for args in (("init", "-q", "-b", "main"), ("add", "."), ("commit", "-q", "-m", "Start"),
                  ("update-ref", "refs/remotes/origin/main", "refs/heads/main")):
-        subprocess.run(["git", "-c", "user.name=synthetic", "-c", "user.email=synthetic@example.invalid",
+        # Changed with tests/git_helper.py: a passing Windows file lock is tried again.
+        git_helper.run(["git", "-c", "user.name=synthetic", "-c", "user.email=synthetic@example.invalid",
                         "-c", "commit.gpgsign=false", *args], cwd=root, env=env, check=True, capture_output=True)
 
 

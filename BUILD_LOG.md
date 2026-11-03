@@ -1376,3 +1376,10 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
   - Spec 003: the rule changes, and a known limit for a case that fails every time.
   - One test renamed, with a comment.
 - 18:11 Checked by hand: 614 tests in 6 affected test files pass, and 1 skips. The full suite runs in the gate.
+- Between 20:04 and 20:13 (exact time not recorded) Owner: "go" for fixing the gate's flaky refusals before the round-2 sheet, as Claude recommended: the test helpers retry only a git step that reports "Permission denied". The owner did not choose an antivirus exclusion, which is the owner's own setting.
+- 20:13 Work start on `fix/git-lock-retry`, in `../voc-demo-flake`, from `main` at the merge of #75. Set up first this time: `uv sync --native-tls` and a copy of the ignored names deny list, the two steps missed on 2 November.
+- Red `4d70163` at 20:14: 5 tests in the new `tests/test_git_helper.py`, with a fake `subprocess.run`, so no git runs in them. All failed, and none was carried over. Before the commit, the helper was first imported at the top of the file, which broke collection while it did not exist. It is imported inside each test instead, as the other test files do.
+- The change:
+  - `tests/git_helper.py`: `run()` is `subprocess.run` for git, tried again, twice at most and half a second apart, only when the step failed and git's error says "Permission denied". Any other failure, such as a hook's expected refusal, is returned or raised at once.
+  - The git helpers of 8 test files use it, each with a comment: `test_hooks.py` (`_git`, `_commit` and the merge), `test_budget.py`, `test_replay.py`, `test_repo_checks.py`, `test_injection.py`, `test_test_run.py`, `test_merge_verdict.py` and `test_validation.py`. What each test checks is unchanged.
+- 20:48 Checked by hand: 657 tests in those 9 test files pass, and 1 skips. The full suite runs in the gate.

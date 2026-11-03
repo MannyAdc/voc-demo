@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+import git_helper
+
 from voc.labels import load_labels
 from voc.prompt import build_prompt
 
@@ -50,7 +52,8 @@ def repo(tmp_path):
 def _git(root, *args):
     import subprocess
 
-    result = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
+    # Changed with tests/git_helper.py: a passing Windows file lock is tried again.
+    result = git_helper.run(["git", *args], cwd=root, capture_output=True, text=True)
     assert result.returncode == 0, f"git {args[0]} failed:\n{result.stdout}\n{result.stderr}"
     return result.stdout
 
