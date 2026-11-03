@@ -71,3 +71,34 @@ def test_text_output_is_read_too_and_the_caller_options_are_passed_on(monkeypatc
     result = git_helper.run(["git", "status"], cwd="repo", text=True, env={"A": "1"})
     assert result.stdout == "ok"
     assert all(kwargs["cwd"] == "repo" and kwargs["env"] == {"A": "1"} for _, kwargs in fake.calls)
+
+
+# Review of #77.
+
+def test_check_raises_after_all_three_tries_with_the_last_error_output(monkeypatch):
+    import git_helper
+    fake = FakeRun(_done(128, LOCK), _done(128, LOCK), _done(128, LOCK))
+    monkeypatch.setattr(git_helper.subprocess, "run", fake)
+    monkeypatch.setattr(git_helper.time, "sleep", lambda seconds: None)
+    with pytest.raises(subprocess.CalledProcessError) as raised:
+        git_helper.run(["git", "add", "."], check=True)
+    assert len(fake.calls) == 3
+    assert raised.value.returncode == 128 and raised.value.stderr == LOCK
+
+
+def test_the_error_output_is_captured_when_the_caller_gives_none(monkeypatch):
+    import git_helper
+    fake = FakeRun(_done(0))
+    monkeypatch.setattr(git_helper.subprocess, "run", fake)
+    git_helper.run(["git", "init", "-q"])
+    assert fake.calls[0][1]["capture_output"] is True
+
+
+def test_a_caller_that_sets_stdout_alone_keeps_it_and_the_error_output_is_captured(monkeypatch):
+    import git_helper
+    fake = FakeRun(_done(0))
+    monkeypatch.setattr(git_helper.subprocess, "run", fake)
+    git_helper.run(["git", "init", "-q"], stdout=subprocess.DEVNULL)
+    kwargs = fake.calls[0][1]
+    assert kwargs["stdout"] == subprocess.DEVNULL and kwargs["stderr"] == subprocess.PIPE
+    assert "capture_output" not in kwargs
