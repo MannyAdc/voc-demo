@@ -2220,3 +2220,103 @@ def test_V6_the_printout_spells_out_the_baseline_and_says_points_only_approximat
 def test_V6_the_refusal_of_an_id_outside_the_list_says_why(tmp_path, capsys):
     code, printed, figures = _v6_figures(tmp_path, capsys, extra_row=True)
     assert code == 1 and "exactly once" in printed
+
+
+# V5's agreement figures, from the committed IDs and ratings only (V10, for docs/VALIDATION.md).
+
+def _agreement_project(tmp_path, owner, judge, listed=None):
+    """The three files `voc judge agreement` reads: the frozen V5 list, the owner's codes and the judge's
+    ratings. IDs and ratings only."""
+    root = tmp_path / "repo"
+    (root / "splits" / "validation").mkdir(parents=True)
+    (root / "results" / "validation").mkdir(parents=True)
+    ids = sorted(owner) if listed is None else listed
+    (root / "splits" / "validation" / "v5.csv").write_text(
+        "complaint_id,content_hash\n" + "".join(f"{i},{'0' * 64}\n" for i in ids), encoding="utf-8")
+    (root / "results" / "validation" / "v5_codes.csv").write_text(
+        "complaint_id,code\n" + "".join(f"{i},{c}\n" for i, c in owner.items()), encoding="utf-8")
+    (root / "results" / "validation" / "v5_judge.csv").write_text(
+        "complaint_id,rating,recording_key,source,input_tokens,output_tokens\n"
+        + "".join(f"{i},{r},{'a' * 64},live,100,10\n" for i, r in judge.items()), encoding="utf-8")
+    return root
+
+
+def _agreement_run(tmp_path, capsys, owner, judge, listed=None):
+    import json
+    from voc import cli
+    root = _agreement_project(tmp_path, owner, judge, listed)
+    code = cli.main(["judge", "agreement"], env={}, root=root)
+    printed = capsys.readouterr().out
+    path = root / "results" / "validation" / "v5_agreement.json"
+    return code, printed, (json.loads(path.read_text(encoding="utf-8")) if path.exists() else None)
+
+
+def test_V5_kappa_is_the_agreement_beyond_chance_on_a_hand_worked_example():
+    from voc import judge
+    s, p, d = "supports", "partly", "does_not_support"
+    # Agreement 3 of 4. The owner's shares are 1/2, 1/4, 1/4 and the judge's 1/4, 1/2, 1/4, so chance
+    # agreement is 1/8 + 1/8 + 1/16 = 5/16, and kappa (3/4 - 5/16) / (1 - 5/16) = 7/11.
+    figures = judge.agreement([(s, s), (s, p), (p, p), (d, d)])
+    assert figures["agreement"] == pytest.approx(0.75)
+    assert figures["chance_agreement"] == pytest.approx(5 / 16)
+    assert figures["kappa"] == pytest.approx(7 / 11)
+
+
+def test_V5_the_table_and_who_was_stricter_count_each_pair_once():
+    from voc import judge
+    s, p, d = "supports", "partly", "does_not_support"
+    figures = judge.agreement([(s, s), (s, p), (s, d), (p, s), (d, d)])
+    assert figures["table"]["supports"] == {"supports": 1, "partly": 1, "does_not_support": 1}
+    assert figures["table"]["partly"] == {"supports": 1, "partly": 0, "does_not_support": 0}
+    assert figures["judge_stricter"] == 2 and figures["owner_stricter"] == 1
+
+
+def test_V10_V5_the_kappa_interval_is_a_bootstrap_of_2000_draws_with_seed_0_and_repeats():
+    from voc import judge
+    s, p, d = "supports", "partly", "does_not_support"
+    pairs = [(s, s)] * 20 + [(s, p)] * 8 + [(p, p)] * 6 + [(d, d)] * 3 + [(p, d)] * 3
+    first, second = judge.agreement(pairs), judge.agreement(pairs)
+    assert first["interval"] == second["interval"]
+    assert first["draws"] == 2000 and first["seed"] == 0
+    low, high = first["interval"]
+    assert low < first["kappa"] < high
+
+
+def test_V5_the_command_writes_ids_and_figures_only_and_lists_the_differences(tmp_path, capsys):
+    owner = {"SYN-1": "supports", "SYN-2": "supports", "SYN-3": "partly", "SYN-4": "does_not_support"}
+    rated = {"SYN-1": "supports", "SYN-2": "partly", "SYN-3": "partly", "SYN-4": "does_not_support",
+             "SYN-5": "supports"}
+    code, printed, figures = _agreement_run(tmp_path, capsys, owner, rated)
+    assert code == 0
+    assert figures["pairs"] == 4 and figures["agreement"] == pytest.approx(0.75)
+    assert figures["differences"] == [{"complaint_id": "SYN-2", "owner": "supports", "judge": "partly"}]
+    assert "kappa" in printed and "written to results/validation/v5_agreement.json" in printed
+    assert not {"reason", "quote", "text", "narrative"} & set(figures)
+
+
+def test_V5_an_unparseable_judge_answer_is_listed_by_id_and_left_out(tmp_path, capsys):
+    owner = {"SYN-1": "supports", "SYN-2": "partly", "SYN-3": "supports"}
+    rated = {"SYN-1": "supports", "SYN-2": "partly", "SYN-3": "unparseable"}
+    code, printed, figures = _agreement_run(tmp_path, capsys, owner, rated)
+    assert code == 0
+    assert figures["pairs"] == 2 and figures["unparseable"] == ["SYN-3"]
+    assert figures["agreement"] == pytest.approx(1.0)
+
+
+def test_V5_V7_codes_that_are_not_the_frozen_list_are_refused_with_the_reason(tmp_path, capsys):
+    owner = {"SYN-1": "supports", "SYN-2": "partly"}
+    rated = {"SYN-1": "supports", "SYN-2": "partly", "SYN-3": "partly"}
+    code, printed, figures = _agreement_run(tmp_path, capsys, owner, rated, listed=["SYN-1", "SYN-3"])
+    assert code == 1 and figures is None and "splits/validation/v5.csv" in printed
+
+
+def test_V5_an_owner_code_without_a_judge_rating_is_refused(tmp_path, capsys):
+    owner = {"SYN-1": "supports", "SYN-2": "partly"}
+    code, printed, figures = _agreement_run(tmp_path, capsys, owner, {"SYN-1": "supports"})
+    assert code == 1 and figures is None and "v5_judge.csv" in printed
+
+
+def test_V5_a_code_outside_the_three_ratings_is_refused(tmp_path, capsys):
+    owner = {"SYN-1": "supports", "SYN-2": "maybe"}
+    code, printed, figures = _agreement_run(tmp_path, capsys, owner, {"SYN-1": "supports", "SYN-2": "partly"})
+    assert code == 1 and figures is None and "v5_codes.csv" in printed
