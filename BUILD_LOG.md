@@ -1365,3 +1365,14 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
   - 3 existing tests changed in this commit, each with a comment: the dry run test no longer expects ratings or a reasons sheet, the main run test's dry run summary names its judge, and the api test restores the rubric as bytes, because on Windows text mode wrote other line endings and git saw a change.
 - 17:29 Checked by hand: 600 tests in 6 affected test files pass, and 1 skips. The full suite runs in the gate.
 - 17:30 The estimate, with no call: `LLM_BACKEND=api .venv/Scripts/voc.exe judge dry-run` printed 10 calls, expected cost $0.0739, worst case 147,942 tokens, 36,121,996 tokens left.
+- 17:44 CI green on `a72f00e`. The fixes were larger than the first commit, so Claude asked a fresh reviewer to read the fix commits.
+- 17:48 Second reviewer's findings posted on #75, with Claude's checks. Nothing serious. All 8 earlier findings are fixed, and every spend path is safe. Minor: a mock dry run's summary blocked the real one, the dry run still reported an unparseable count, one case that fails every time blocks the main run, the one rubric change was checked by name only, a missing git gave an unclear message, and weak tests. Nits: a test name, the re-import check looked at the CSV only, a log line, and `config/labels.toml` was not checked as committed.
+- The owner asked about the case that fails every time. Claude explained what counts as a failure, why it blocks the run, that each rerun costs about one Sonnet call, that the labeller's 2,279 calls (370 in the development run and 1,909 in the test run, by their quarantine reasons) and V1's 100 had no model error, and the two choices. Owner: defer it, as Claude recommended, and "go" for the rest.
+- Correction of the entry "3 existing tests changed in this commit", which stays as written: the api test was new in the red commit `3e62a37`, so two existing tests and one new red test changed in that green commit, each with a comment.
+- Red `ad06dcd` at 17:52: 14 new test cases. 7 failed. 7 passed at once and pin behaviour that was already right: the naming rule's message (5 names), the failure count reset after a good answer, and nothing written after 3 failures in a row. None was carried over.
+- The fixes:
+  - `src/voc/judge.py`: only a summary with a margin result counts as the one dry run. The dry run reports no rating outcome. The one change may change only the instructions, and once it exists the main run uses it. A live run needs `config/labels.toml` committed and unchanged too. Without git, the check says so.
+  - `src/voc/review.py`: the re-import refusal looks at the judge's CSV and JSON.
+  - Spec 003: the rule changes, and a known limit for a case that fails every time.
+  - One test renamed, with a comment.
+- 18:11 Checked by hand: 614 tests in 6 affected test files pass, and 1 skips. The full suite runs in the gate.

@@ -1459,7 +1459,7 @@ def test_V5_V9_without_approved_the_dry_run_prints_the_figures_and_makes_no_call
     assert not (root / "results" / "validation" / "v5_dry_run.json").exists()
 
 
-def test_V5_V8_the_dry_run_writes_counts_and_the_margin_check_and_puts_reasons_only_in_the_review_folder(
+def test_V5_V8_the_dry_run_writes_counts_and_the_margin_check_and_no_reasons(  # renamed in the review of #75
         tmp_path, fake_home, capsys):
     import json
     from voc import cli, review

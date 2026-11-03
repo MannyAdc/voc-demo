@@ -305,7 +305,8 @@ def summarise_codes(piece, codes):
 
 def import_codes(root, piece, replace=False):
     """Read the owner's codes and write them, with V3's reasons, to the results. Returns the summary."""
-    if piece == "v5" and (Path(root) / "results" / "validation" / "v5_judge.csv").exists():
+    judged = [Path(root) / "results" / "validation" / name for name in ("v5_judge.csv", "v5_judge.json")]
+    if piece == "v5" and any(path.exists() for path in judged):
         raise ReviewError("the judge's main run has already rated these, so the owner's V5 ratings stay as "
                           "imported (V5 is blind)")
     codes = read_codes(root, piece)

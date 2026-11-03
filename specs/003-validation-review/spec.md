@@ -48,7 +48,7 @@ Drawn once, from the development set only, with a fixed seed, in this order, and
   - *The rubric* is written in `config/prompts/judge_v1.toml` before any judge call. The dry run on its 10 comes first. They are never reported. After the dry run the rubric may change once, as `judge_v2.toml`, committed before any reported case runs. The version used is then frozen.
   - *The token margin.* The ledger's input margin in `config/budget.toml` was checked on Haiku only. The dry run checks every answer's real input tokens, replayed ones too, against its reserved estimate. If any call goes over, or none had token counts, the main run waits, and the owner decides a new margin, merged in its own pull request.
   - *The dry run is never reported.* It writes only its call counts, the margin check and the recording keys. The owner reads its ratings and reasons with `voc review sheet v5_dry_run`, which only the owner runs. *Added on 3 November after the review of #75, with the next three rules.*
-  - *The rubric in use.* A judge is named `judge_v` and a number. The main run uses the dry run's judge or its one change, the next number. A live run needs the rubric committed and unchanged.
+  - *The rubric in use.* A judge is named `judge_v` and a number. The one change, the next number, may change only the instructions, not the settings. Once it exists, the main run uses it, and otherwise the dry run's judge. A live run needs the rubric and `config/labels.toml`, which both go into the prompt, committed and unchanged. A dry run's summary with no margin result, such as a mock run's, does not count as the one dry run.
   - *Failures.* Three failed cases in a row stop a run, as for the labeller (B7), and a run with any failure writes no results. The judge's output limit is the labeller's, 2,048 tokens.
   - *Blinding.* Once the judge's main run exists, the owner's V5 ratings cannot be imported again.
   - *The owner's ratings.* V5's 50, rated blind with the same three ratings, through `voc review sheet v5` and `voc review import v5`. The sheet holds no judge rating and no consumer's product. The judge's main run refuses until these ratings are imported.
@@ -84,6 +84,7 @@ Drawn once, from the development set only, with a fixed seed, in this order, and
 - Every sample is small. The intervals are wide, and the text says so.
 - The consumer's recorded product is the answer key and is itself noisy. V2 measures how noisy, on 40 cases only.
 - The judge's reasons are model text and stay local, so a reader of the repo sees ratings, not reasons.
+- V5: as for V1 below, a case whose call fails the same way every time, such as a refusal, blocks the judge's main run, and every rerun pays for that one call again. The run stops after 3 failures in a row, so a rerun costs little. The owner decides what to do if it happens. *Added on 3 November after the second review of #75.*
 - V1: a complaint whose call fails the same way every time is never recorded, so every rerun of that repeat
   pays for it again and the repeat cannot finish. The run stops after 3 failures in a row, so each rerun costs
   little. The owner decides what to do if it happens. *Added on 3 November after the second review of #72.*

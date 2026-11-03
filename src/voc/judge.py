@@ -258,19 +258,31 @@ def _ready_for_main(root, paths, judge_name):
         raise JudgeError("the dry run showed that the ledger's input margin does not hold for this model. The "
                          "owner decides a new margin first")
     dry_judge = _check_name(dry.get("judge", ""))
-    allowed = {dry_judge, f"judge_v{int(JUDGE_NAME.match(dry_judge).group(1)) + 1}"}
-    if judge_name not in allowed:
-        raise JudgeError(f"the main run uses the dry run's judge or its one change: {' or '.join(sorted(allowed))}")
+    change = f"judge_v{int(JUDGE_NAME.match(dry_judge).group(1)) + 1}"
+    if (Path(root) / "config" / "prompts" / f"{change}.toml").exists():
+        if load_judge(root, change).settings != load_judge(root, dry_judge).settings:
+            raise JudgeError(f"{change}, the rubric's one change, may change only its instructions, not its settings")
+        expected = change  # once the one change exists, the main run uses it
+    else:
+        expected = dry_judge
+    if judge_name != expected:
+        raise JudgeError(f"the main run uses {expected}: the dry run's judge, or its one change once that exists")
 
 
 def _rubric_committed(root, name):
-    """A live run needs its rubric committed and unchanged, so the rubric a result came from can be read."""
-    path = f"config/prompts/{name}.toml"
-    tracked = subprocess.run(["git", "ls-files", "--error-unmatch", path], cwd=root, capture_output=True)
-    changed = subprocess.run(["git", "status", "--porcelain", "--", path], cwd=root, capture_output=True,
-                             text=True)
-    if tracked.returncode != 0 or changed.returncode != 0 or changed.stdout.strip():
-        raise JudgeError(f"the judge's rubric {path} must be committed and unchanged before a live run")
+    """A live run needs its rubric and the label list, which both go into the prompt, committed and unchanged,
+    so what a result came from can be read."""
+    for path in (f"config/prompts/{name}.toml", "config/labels.toml"):
+        try:
+            tracked = subprocess.run(["git", "ls-files", "--error-unmatch", path], cwd=root, capture_output=True,
+                                     timeout=60)
+            changed = subprocess.run(["git", "status", "--porcelain", "--", path], cwd=root, capture_output=True,
+                                     text=True, timeout=60)
+        except (OSError, subprocess.SubprocessError):
+            raise JudgeError("git is needed to check that the judge's files are committed, and it did not run") \
+                from None
+        if tracked.returncode != 0 or changed.returncode != 0 or changed.stdout.strip():
+            raise JudgeError(f"{path} must be committed and unchanged before a live run of the judge")
 
 
 def _rows_csv(rows):
@@ -306,8 +318,9 @@ def command(config, root, piece, approved, judge_name=JUDGE):
     if backend_name not in ("api", "mock"):
         raise JudgeError("LLM_BACKEND must be api or mock")
     paths = result_paths(root)
-    if piece == "dry_run" and paths["dry_run"].exists():
-        raise JudgeError("the dry run has already been run, and it runs once")
+    if piece == "dry_run" and paths["dry_run"].exists() and json.loads(
+            paths["dry_run"].read_text(encoding="utf-8")).get("margin_ok") is not None:
+        raise JudgeError("the dry run has already been run, and it runs once")  # a mock run's summary has no margin
     if piece == "main":
         if paths["csv"].exists() or paths["json"].exists():
             raise JudgeError("the judge's main run has already been written")
@@ -349,8 +362,7 @@ def command(config, root, piece, approved, judge_name=JUDGE):
     cost = sum((call_cost(prices, model, r["input_tokens"], r["output_tokens"]) for r in live), Decimal(0))
     summary = {"piece": piece, "judge": version.name, "model": model, "backend": backend_name, "calls": len(rows),
                "live_calls": len(live), "replayed_calls": sum(r.get("source") == "replay" for r in rows),
-               "unparseable": sum(r["rating"] == UNPARSEABLE for r in rows), "cost_usd": str(cost),
-               "run_seconds": round(time.monotonic() - started, 1)}
+               "cost_usd": str(cost), "run_seconds": round(time.monotonic() - started, 1)}
     if ledger is not None:
         summary["ledger_charged_tokens"] = ledger.state()["used"] - used_before
     paths["dry_run"].parent.mkdir(parents=True, exist_ok=True)
@@ -370,7 +382,7 @@ def command(config, root, piece, approved, judge_name=JUDGE):
 
 
 def format_dry_run(summary):
-    return [f"calls: {summary['calls']}, unparseable: {summary['unparseable']}",
+    return [f"calls: {summary['calls']}",
             f"input margin held: {summary['margin_ok']} ({summary['calls_checked']} calls checked)",
             f"cost: ${Decimal(summary['cost_usd']):.4f} for {summary['live_calls']} live calls, "
             f"{summary['replayed_calls']} replayed"]
