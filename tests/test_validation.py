@@ -2137,3 +2137,16 @@ def test_V6_the_hybrid_says_it_is_optimistic_and_why_and_labels_its_cost_saving_
 def test_V6_V7_an_id_outside_the_development_list_is_refused(tmp_path, capsys):
     code, printed, figures = _v6_figures(tmp_path, capsys, extra_row=True)
     assert code == 1 and figures is None
+
+
+def test_V6_reader_facing_text_names_the_baseline_as_tfidf_with_logistic_regression(tmp_path, capsys):
+    # The baseline is TF-IDF features fed into a logistic regression (src/voc/baselines.py). Owner decision of
+    # 4 November: reader-facing text says "TF-IDF + LR", spelled out on first use. Data keys stay as they are.
+    import re
+    code, printed, figures = _v6_figures(tmp_path, capsys)
+    assert code == 0
+    texts = [printed, figures["cost_per_extra_correct_usd"]["note"], figures["hybrid"]["is"],
+             figures["hybrid"]["hybrid_llm_cost_assumes"]]
+    for text in texts:
+        assert not re.findall(r"TF-IDF(?! \+ LR| with logistic regression)", text), text[:80]
+    assert "TF-IDF with logistic regression (TF-IDF + LR)" in figures["cost_per_extra_correct_usd"]["note"]
