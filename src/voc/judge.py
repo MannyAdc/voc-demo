@@ -12,6 +12,9 @@ model for its own check). The owner reads the judge's ratings and reasons from t
 accepted development label except the dry run's, once the owner's blind V5 ratings are imported and the
 margin held, with the dry run's judge or its one change.
 
+`voc judge agreement` recomputes the figures `docs/VALIDATION.md` reports on the 50 the owner rated, from the
+committed IDs and ratings only, with no model call (V10).
+
 Three failed cases in a row stop a run, as for the labeller (B7). A run with any failure writes no results.
 The judge's reasons are model text. They never reach a results file or a printout (V8, B21). Nothing runs live
 without `--approved` (V9), and a live run needs its rubric committed and unchanged.
@@ -20,6 +23,7 @@ import csv
 import io
 import json
 import math
+import random
 import re
 import subprocess
 import time
@@ -396,4 +400,80 @@ def format_summary(summary):
     lines.append(f"unparseable: {summary['unparseable']}")
     lines.append(f"cost: ${Decimal(summary['cost_usd']):.4f} for {summary['live_calls']} live calls, "
                  f"{summary['replayed_calls']} replayed")
+    return lines
+
+
+AGREEMENT_DRAWS = 2000
+AGREEMENT_SEED = 0
+
+
+def agreement(pairs, draws=AGREEMENT_DRAWS, seed=AGREEMENT_SEED):
+    """The owner's and the judge's ratings of the same quotes, as (owner, judge) pairs: the percent agreement
+    with its Wilson interval, Cohen's kappa with a bootstrap interval (V10), the 3 by 3 table, and who was the
+    stricter where they differ. Each draw takes as many pairs as there are, with replacement. A draw whose
+    chance agreement is 1 has no kappa and is left out."""
+    from voc.consistency import wilson
+
+    def kappa(sample):
+        n = len(sample)
+        observed = sum(o == r for o, r in sample) / n
+        chance = sum(sum(o == c for o, _ in sample) / n * sum(r == c for _, r in sample) / n for c in RATINGS)
+        return observed, chance, (None if chance == 1 else (observed - chance) / (1 - chance))
+
+    observed, chance, value = kappa(pairs)
+    rng = random.Random(seed)
+    kappas = sorted(k for k in (kappa([rng.choice(pairs) for _ in pairs])[2] for _ in range(draws)) if k is not None)
+    strictness = {code: n for n, code in enumerate(RATINGS)}
+    matches = sum(o == r for o, r in pairs)
+    return {"pairs": len(pairs), "agreement": observed, "agreement_interval": list(wilson(matches, len(pairs))),
+            "chance_agreement": chance, "kappa": value,
+            "interval": [kappas[int(0.025 * len(kappas))], kappas[int(0.975 * len(kappas)) - 1]],
+            "draws": draws, "seed": seed,
+            "table": {o: {r: sum(pair == (o, r) for pair in pairs) for r in RATINGS} for o in RATINGS},
+            "judge_stricter": sum(strictness[r] > strictness[o] for o, r in pairs),
+            "owner_stricter": sum(strictness[o] > strictness[r] for o, r in pairs)}
+
+
+def _id_column(path, column):
+    with open(path, encoding="utf-8", newline="") as f:
+        return [(row["complaint_id"], row.get(column)) for row in csv.DictReader(f)]
+
+
+def agreement_command(root):
+    """`voc judge agreement`. Writes `results/validation/v5_agreement.json` and returns the lines to print."""
+    root = Path(root)
+    listed = [cid for cid, _ in _id_column(root / "splits" / "validation" / "v5.csv", "content_hash")]
+    codes = _id_column(root / "results" / "validation" / "v5_codes.csv", "code")
+    if len(codes) != len({cid for cid, _ in codes}) or {cid for cid, _ in codes} != set(listed):
+        raise JudgeError("results/validation/v5_codes.csv does not hold each ID of splits/validation/v5.csv "
+                         "exactly once")
+    if any(code not in RATINGS for _, code in codes):
+        raise JudgeError("results/validation/v5_codes.csv holds a code outside the three ratings")
+    ratings = dict(_id_column(root / "results" / "validation" / "v5_judge.csv", "rating"))
+    missing = [cid for cid, _ in codes if ratings.get(cid) not in RATINGS + (UNPARSEABLE,)]
+    if missing:
+        raise JudgeError(f"results/validation/v5_judge.csv has no rating for {len(missing)} of the "
+                         f"{len(codes)} rated IDs")
+    owner = dict(codes)
+    unparseable = sorted(cid for cid in owner if ratings[cid] == UNPARSEABLE)
+    ids = sorted(cid for cid in owner if ratings[cid] != UNPARSEABLE)
+    figures = {**agreement([(owner[cid], ratings[cid]) for cid in ids]), "unparseable": unparseable,
+               "differences": [{"complaint_id": cid, "owner": owner[cid], "judge": ratings[cid]}
+                               for cid in ids if owner[cid] != ratings[cid]],
+               "from": "results/validation/v5_codes.csv and v5_judge.csv, IDs and ratings only, in sorted ID order"}
+    path = root / "results" / "validation" / "v5_agreement.json"
+    path.write_text(json.dumps(figures, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+    return format_agreement(figures) + [f"written to {path.relative_to(root).as_posix()}"]
+
+
+def format_agreement(figures):
+    low, high = figures["agreement_interval"]
+    k_low, k_high = figures["interval"]
+    lines = [f"pairs: {figures['pairs']}, unparseable and left out: {len(figures['unparseable'])}",
+             f"agreement: {figures['agreement']:.1%} (95% interval {low:.1%} to {high:.1%})",
+             f"Cohen's kappa: {figures['kappa']:.3f}, chance agreement {figures['chance_agreement']:.3f}, 95% "
+             f"bootstrap interval {k_low:.3f} to {k_high:.3f} ({figures['draws']} draws, seed {figures['seed']})",
+             f"the judge was the stricter in {figures['judge_stricter']}, the owner in {figures['owner_stricter']}"]
+    for owner, row in figures["table"].items():
+        lines.append(f"owner {owner}: judge " + ", ".join(f"{r} {n}" for r, n in row.items()))
     return lines

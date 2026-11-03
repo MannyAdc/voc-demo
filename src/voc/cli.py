@@ -166,6 +166,12 @@ def _judge(config, root, args):
     print("\n".join(command(config, root, args.action.replace("-", "_"), args.approved, args.judge)))
 
 
+def _judge_agreement(config, root, args):
+    from voc.judge import agreement_command
+
+    print("\n".join(agreement_command(root)))
+
+
 def _cost_hybrid(config, root, args):
     from voc.hybrid import run
 
@@ -314,7 +320,8 @@ def _evaluate(config, root, args):
 COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample,
             "validation-lists": _validation_lists, "consistency": _consistency,
             ("review", "sheet"): _review_sheet, ("review", "import"): _review_import,
-            ("judge", "dry-run"): _judge, ("judge", "main"): _judge, "cost-hybrid": _cost_hybrid,
+            ("judge", "dry-run"): _judge, ("judge", "main"): _judge,
+            ("judge", "agreement"): _judge_agreement, "cost-hybrid": _cost_hybrid,
             "label": _label,
             "evaluate": _evaluate, "final": _test_run, "audit": _audit, "serve": _serve,
             ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt, ("dbt", "lineage"): _dbt,
@@ -359,6 +366,8 @@ def main(argv=None, env=None, root=None):
         step.add_argument("--approved", action="store_true", help="make the calls. Only after the owner approved "
                                                                   "the figures printed without it")
         step.add_argument("--judge", default="judge_v1", help="the judge's rubric, from config/prompts")
+    jd_actions.add_parser("agreement", help="recompute the owner's and the judge's agreement on the 50, from the "
+                                            "committed IDs and ratings only, with no model call")
     lb = sub.add_parser("label", help="label development complaints with the LLM, printing counts only (B3, B21)")
     lb.add_argument("set", choices=("dev", "quick", "injection"),
                     help="the development set, its fixed 50-complaint part, or the synthetic injection set")
