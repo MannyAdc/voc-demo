@@ -1,0 +1,27 @@
+{
+  "backend": "api",
+  "calls": 10,
+  "calls_checked": 10,
+  "closest": 1249,
+  "cost_usd": "0.024326",
+  "judge": "judge_v1",
+  "keys": {
+    "23777406": "357fd1d9254dce4cab3249ce45720e50d0bf16314111d25fa2c9aa52c3772e65",
+    "23918008": "69b9416e7e7271b717ec44d809617df04332294a1954ed9e231d55f17c0d35a7",
+    "23949399": "16d978cc7fe2a9d140c3ccdfe43a1fdff68a3ebb5d187f80f343b4c37a62daef",
+    "23967280": "60cbff23abc9383c8fd2e3c49641af9413a47c88aa3ed50dc8a21d7122d9ff1b",
+    "23995706": "3dcf7f0ccfe072e9a71777cf0eedcd51224c89333ef3f992cce709a5ec0a8446",
+    "24022001": "89b9e8a31a4cb77618ad9fae4a6fd187deb6780f1e9dae993763f77450bb4ca9",
+    "24156287": "497fa589eec6c16e47ab5f987e51c27bcd993816245293b34f9712d22f72f3b8",
+    "24178563": "2a385b9796e8147ed8045370f1ba934f2a55270ab2f9029f26eea9398c74d14d",
+    "24182498": "0a846b9123a0319dcf318461b7330d2d19ee27ef6449cb2bf7e8dcf619311fd4",
+    "24288201": "65e264035699b86a07be1f48d1a198d9c7626cfce053fd0dcfd6c54467d30b88"
+  },
+  "ledger_charged_tokens": 9627,
+  "live_calls": 10,
+  "margin_ok": true,
+  "model": "claude-sonnet-5-5",
+  "piece": "dry_run",
+  "replayed_calls": 0,
+  "run_seconds": 19.9
+}

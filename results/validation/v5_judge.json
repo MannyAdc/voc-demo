@@ -1,0 +1,40 @@
+{
+  "backend": "api",
+  "calls": 351,
+  "cases": 351,
+  "cost_usd": "0.829388",
+  "judge": "judge_v1",
+  "ledger_charged_tokens": 324662,
+  "live_calls": 351,
+  "model": "claude-sonnet-5-5",
+  "piece": "main",
+  "ratings": {
+    "does_not_support": {
+      "count": 13,
+      "interval": [
+        0.02177006656651086,
+        0.06232830295949736
+      ],
+      "share": 0.037037037037037035
+    },
+    "partly": {
+      "count": 125,
+      "interval": [
+        0.3078343691406878,
+        0.40753158569662556
+      ],
+      "share": 0.3561253561253561
+    },
+    "supports": {
+      "count": 213,
+      "interval": [
+        0.5548447109613368,
+        0.6565172037634304
+      ],
+      "share": 0.6068376068376068
+    }
+  },
+  "replayed_calls": 0,
+  "run_seconds": 739.9,
+  "unparseable": 0
+}
