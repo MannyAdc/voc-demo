@@ -920,3 +920,59 @@ def test_a_hook_prints_a_deny_decision_as_json(read_guard):
                             capture_output=True, text=True)
     assert result.returncode == 0
     assert '"permissionDecision": "deny"' in result.stdout
+
+
+# V8 (spec 003): the review sheets hold complaint text, so only the owner runs the commands that write or read them.
+
+@pytest.mark.parametrize("tool, command", [
+    ("Bash", "uv run --native-tls voc review sheet v2"),
+    ("Bash", ".venv/Scripts/voc.exe review import v3"),
+    ("PowerShell", r".venv\Scripts\voc.exe review sheet v2"),
+    ("Bash", "cd repo && voc review import v2 --replace"),
+    ("Bash", "python -m voc.cli review sheet v3"),
+    ("Monitor", "voc  review   SHEET v2"),
+])
+def test_V8_claude_may_not_run_the_review_sheet_or_import_commands(read_guard, places, tool, command):
+    decision = _read_decision(read_guard, places, tool, {"command": command})
+    assert decision and decision[0] == "deny"
+    assert "owner" in decision[1]
+
+
+@pytest.mark.parametrize("command", [
+    "git commit -m 'Add the V2 and V3 review sheets'",
+    "uv run voc review --help",
+    "uv run pytest tests/test_validation.py -k review",
+])
+def test_V8_other_commands_that_mention_the_review_are_still_allowed(read_guard, places, command):
+    # Changed in the third review of #73: a mention of the two commands in quoted text is now denied too,
+    # because Bash runs backticks inside double quotes. That case moved to the denied list.
+    assert _read_decision(read_guard, places, "Bash", {"command": command}) is None
+
+
+# Third review of #73: forms of the two commands the first rule missed.
+
+@pytest.mark.parametrize("tool, command", [
+    ("PowerShell", r'& ".venv\Scripts\voc.exe" review sheet v2'),
+    ("Bash", '"voc" review import v2'),
+    ("Bash", 'voc "review" sheet v2'),
+    ("Bash", "cd repo;voc review sheet v2"),
+    ("Bash", "echo $(voc review import v2)"),
+    ("Bash", "voc review \\\n  sheet v2"),
+    ("Bash", "python -c \"from voc import review; review.write_sheet('.', 'v2')\""),
+    ("Bash", "python -c \"import voc.review as r; r.import_codes('.', 'v3')\""),
+    ("Bash", 'gh pr comment 1 --body "the owner runs `voc review import v3`"'),
+    ("Bash", "git commit -m 'Guard voc review sheet and import'"),
+])
+def test_V8_every_form_that_names_the_review_sheet_or_import_commands_is_denied(read_guard, places, tool, command):
+    decision = _read_decision(read_guard, places, tool, {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("command", [
+    "git commit -m 'Add the V2 and V3 review sheets'",
+    "uv run voc review --help",
+    "uv run pytest tests/test_validation.py -k review",
+    "gh pr comment 73 -F review73.md",
+])
+def test_V8_commands_that_do_not_name_the_two_commands_stay_allowed(read_guard, places, command):
+    assert _read_decision(read_guard, places, "Bash", {"command": command}) is None

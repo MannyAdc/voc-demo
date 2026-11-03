@@ -21,6 +21,7 @@ from voc.dbt_run import DbtError
 from voc.env import settings
 from voc.audit import AuditError
 from voc.consistency import ConsistencyError
+from voc.review import ReviewError
 from voc.evaluate import EvaluationError
 from voc.injection import InjectionError
 from voc.testrun import TestRunError
@@ -143,6 +144,18 @@ def _consistency(config, root, args):
     from voc.consistency import command
 
     print("\n".join(command(config, root, args.repeat, args.approved)))
+
+
+def _review_sheet(config, root, args):
+    from voc.review import format_sheet, write_sheet
+
+    print("\n".join(format_sheet(write_sheet(root, args.piece))))
+
+
+def _review_import(config, root, args):
+    from voc.review import format_codes, import_codes
+
+    print("\n".join(format_codes(import_codes(root, args.piece, replace=args.replace), root)))
 
 
 def _repeat(value):
@@ -285,7 +298,8 @@ def _evaluate(config, root, args):
 
 
 COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample,
-            "validation-lists": _validation_lists, "consistency": _consistency, "label": _label,
+            "validation-lists": _validation_lists, "consistency": _consistency,
+            ("review", "sheet"): _review_sheet, ("review", "import"): _review_import, "label": _label,
             "evaluate": _evaluate, "final": _test_run, "audit": _audit, "serve": _serve,
             ("dbt", "build"): _dbt, ("dbt", "docs"): _dbt, ("dbt", "lineage"): _dbt,
             ("ledger", "init"): _ledger_init, ("ledger", "raise"): _ledger_raise,
@@ -309,6 +323,14 @@ def main(argv=None, env=None, root=None):
                                                                   "recording key only")
     co.add_argument("--approved", action="store_true", help="make the calls. Only after the owner approved the "
                                                             "figures printed without it")
+    rv = sub.add_parser("review", help="V2 and V3: the owner's review sheets (spec 003). The owner runs these, "
+                                       "because a sheet holds complaint text")
+    rv_actions = rv.add_subparsers(dest="action", required=True)
+    sh = rv_actions.add_parser("sheet", help="write the sheet in the review folder, once")
+    sh.add_argument("piece", choices=("v2", "v3"), help="which review")
+    im = rv_actions.add_parser("import", help="read only the ID and code columns back, printing counts only")
+    im.add_argument("piece", choices=("v2", "v3"), help="which review")
+    im.add_argument("--replace", action="store_true", help="write over codes imported before")
     lb = sub.add_parser("label", help="label development complaints with the LLM, printing counts only (B3, B21)")
     lb.add_argument("set", choices=("dev", "quick", "injection"),
                     help="the development set, its fixed 50-complaint part, or the synthetic injection set")
@@ -358,11 +380,11 @@ def main(argv=None, env=None, root=None):
     root = Path.cwd() if root is None else Path(root)
     config = settings(dict(os.environ) if env is None else env, root)
     try:
-        command = (args.command, args.action) if args.command in ("ledger", "dbt") else args.command
+        command = (args.command, args.action) if args.command in ("ledger", "dbt", "review") else args.command
         COMMANDS[command](config, root, args)
     except (DataFileError, BudgetError, DbtError, SampleMismatch, BackendError, RecordingMissing,
             RecordingCorrupt, RunStopped, EvaluationError, AuditError, InjectionError, TestRunError,
-            ConsistencyError) as err:
+            ConsistencyError, ReviewError) as err:
         print(f"error: {err}")
         return 1
     # B21: the type only, never the message. The spec also asks for the row number and the
