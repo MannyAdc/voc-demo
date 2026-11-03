@@ -1,18 +1,35 @@
 {
   "cost_per_extra_correct_usd": {
-    "dev": "0.037929",
-    "from": "results/eval/v1_test.json and v1_dev.json: cost per 1,000 over the lead in re-weighted points per 1,000",
-    "test": "0.009891"
+    "dev": {
+      "figures_are": "tuning figures, development set (B10)",
+      "full_coverage": null,
+      "lead_points": {
+        "full_coverage": -0.48,
+        "same_coverage": 0.61
+      },
+      "same_coverage": "0.037929"
+    },
+    "from": "results/eval/v1_test.json (its difference and confusion tables), v1_dev.json and v1_dev.csv",
+    "note": "each run's cost per 1,000 complaints over its lead in re-weighted points per 1,000, against TF-IDF at the same coverage (the headline rule, B10) and against TF-IDF labelling every complaint. A lead in re-weighted points only approximates extra correct labels per 1,000",
+    "test": {
+      "full_coverage": "0.016312",
+      "lead_points": {
+        "full_coverage": 1.45,
+        "same_coverage": 2.4
+      },
+      "same_coverage": "0.009891"
+    }
   },
   "hybrid": {
     "difference": 0.021538208050623453,
+    "hybrid_llm_cost_assumes": "every complaint costs the same to label, so the LLM's cost falls by the share TF-IDF answers",
     "hybrid_llm_cost_per_1000_usd": "0.185299",
     "hybrid_reweighted": 0.819108620944433,
     "interval": [
       0.008076573539327558,
       0.03768234994250787
     ],
-    "is": "exploratory and optimistic: the prompt was tuned on this set, and no untouched test set is left to check it",
+    "is": "exploratory and optimistic: the prompt was tuned on this set, the 0.9 threshold was fixed on 2 November, after the development results were published on 29 October, and no untouched test set is left to check it",
     "llm_cost_per_1000_usd": "0.2332",
     "llm_reweighted": 0.7975704128938096,
     "resamples": 2000,

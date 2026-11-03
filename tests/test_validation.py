@@ -2029,7 +2029,11 @@ def _v6_project(tmp_path):
         writer.writerow(["complaint_id", "decision", "reason", "accepted_label", "tfidf_label", "tfidf_confidence"])
         for i, r in enumerate(dev):
             writer.writerow([r.complaint_id, "accepted", "", r.product, r.product, "0.95" if i % 2 else "0.4"])
-    summary = {"difference": 0.024, "llm": {"cost_per_1000_usd": "0.2373", "seconds_per_1000_complaints": 2015.2}}
+    # Changed in the review of #80: the test summary has its confusion tables, for the full-coverage view.
+    products = sorted(counts)
+    confusion = {"llm": [[p, p, 9] for p in products], "tfidf": [[p, p, 8] for p in products]}
+    summary = {"difference": 0.024, "llm": {"cost_per_1000_usd": "0.2373", "seconds_per_1000_complaints": 2015.2},
+               "confusion": confusion}
     (folder / "v1_test.json").write_text(json.dumps(summary), encoding="utf-8")
     (folder / "v1_dev.json").write_text(json.dumps({"difference": 0.006, "llm": {"cost_per_1000_usd": "0.2332"}}),
                                         encoding="utf-8")
