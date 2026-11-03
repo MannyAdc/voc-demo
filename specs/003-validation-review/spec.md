@@ -80,6 +80,10 @@ Drawn once, from the development set only, with a fixed seed, in this order, and
 - A hybrid with a different rule for each product.
 - Changing the labelling prompt.
 
+## Follow-ups, planned
+
+- The baseline's name. The baseline is TF-IDF features fed into a logistic regression (`voc.baselines`). Owner decision of 4 November: new reader-facing text says "TF-IDF + LR", spelled out on first use, from V6 on. The README, the docs and the dashboard, published on 1 November, still say "TF-IDF" as the short name, after naming it in full once. They are changed to "TF-IDF + LR" in their own wording-only pull request after `docs/VALIDATION.md`, with no number or conclusion changed. Code names and data keys keep "tfidf".
+
 ## Known limits
 
 - Every sample is small. The intervals are wide, and the text says so.

@@ -10,7 +10,7 @@
       "same_coverage": "0.037929"
     },
     "from": "results/eval/v1_test.json (its difference and confusion tables), v1_dev.json and v1_dev.csv",
-    "note": "each run's cost per 1,000 complaints over its lead in re-weighted points per 1,000, against TF-IDF at the same coverage (the headline rule, B10) and against TF-IDF labelling every complaint. A lead in re-weighted points only approximates extra correct labels per 1,000",
+    "note": "each run's cost per 1,000 complaints over its lead in re-weighted points per 1,000, against TF-IDF with logistic regression (TF-IDF + LR) at the same coverage (the headline rule, B10) and against TF-IDF + LR labelling every complaint. A lead in re-weighted points only approximates extra correct labels per 1,000",
     "test": {
       "full_coverage": "0.016312",
       "lead_points": {
@@ -22,7 +22,7 @@
   },
   "hybrid": {
     "difference": 0.021538208050623453,
-    "hybrid_llm_cost_assumes": "every complaint costs the same to label, so the LLM's cost falls by the share TF-IDF answers",
+    "hybrid_llm_cost_assumes": "every complaint costs the same to label, so the LLM's cost falls by the share TF-IDF + LR answers",
     "hybrid_llm_cost_per_1000_usd": "0.185299",
     "hybrid_reweighted": 0.819108620944433,
     "interval": [

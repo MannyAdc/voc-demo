@@ -1,20 +1,21 @@
 """V6: cost against gain, and one hybrid (specs/003-validation-review/spec.md). No model call.
 
-- Cost per extra correct label against TF-IDF: each run's cost per 1,000 complaints over its lead in
-  re-weighted points per 1,000, in two views. At the same coverage, the headline rule fixed before the first
-  run (B10): TF-IDF answers only as many complaints as the LLM accepted. And with TF-IDF labelling every
-  complaint. A lead in re-weighted points only approximates extra correct labels per 1,000. The test figures
+- Cost per extra correct label against TF-IDF with logistic regression (TF-IDF + LR, `voc.baselines`): each
+  run's cost per 1,000 complaints over its lead in re-weighted points per 1,000, in two views. At the same
+  coverage, the headline rule fixed before the first run (B10): TF-IDF + LR answers only as many complaints as
+  the LLM accepted. And with TF-IDF + LR labelling every complaint. A lead in re-weighted points only approximates extra correct labels per 1,000. The test figures
   come from the test run's published summary, `results/eval/v1_test.json`, only, never a per-complaint test
   file (V7). The development figures are tuning figures (B10).
 - Time per 1,000 at scale: an estimate, labelled as one. The test run's time per 1,000, whose calls were all
   live and sent one at a time, over an assumed number of calls in parallel. No paid run measures it.
-- The hybrid, fixed in advance of its run: TF-IDF answers when its top class probability is at least 0.9,
+- The hybrid, fixed in advance of its run: TF-IDF + LR answers when its top class probability is at least 0.9,
   otherwise the LLM's answer is used, and a quarantined LLM answer counts as wrong. One rule for every product.
   It is scored on the development set only, as B10 scores, against the LLM alone, with the paired bootstrap
   drawn within each product. It is exploratory and optimistic: the prompt was tuned on the same set, the 0.9
   was fixed after the development results were published, and no untouched test set is left to check it.
 
-Only figures are written or printed (B21).
+Only figures are written or printed (B21). Reader-facing text says "TF-IDF + LR" (owner decision, 4 November).
+Data keys such as `tfidf_share` keep their names.
 """
 import csv
 import json
@@ -33,8 +34,9 @@ HYBRID_IS = ("exploratory and optimistic: the prompt was tuned on this set, the 
              "2 November, after the development results were published on 29 October, and no untouched test "
              "set is left to check it")
 COST_NOTE = ("each run's cost per 1,000 complaints over its lead in re-weighted points per 1,000, against TF-IDF "
-             "at the same coverage (the headline rule, B10) and against TF-IDF labelling every complaint. A lead "
-             "in re-weighted points only approximates extra correct labels per 1,000")
+             "with logistic regression (TF-IDF + LR) at the same coverage (the headline rule, B10) and against "
+             "TF-IDF + LR labelling every complaint. A lead in re-weighted points only approximates extra correct "
+             "labels per 1,000")
 
 
 def hybrid_answers(items, threshold=THRESHOLD):
@@ -178,7 +180,7 @@ def run(root):
                    "llm_cost_per_1000_usd": str(dev_cost),
                    "hybrid_llm_cost_per_1000_usd": _money(dev_cost * Decimal(str(1 - compared["tfidf_share"]))),
                    "hybrid_llm_cost_assumes": "every complaint costs the same to label, so the LLM's cost falls by "
-                                              "the share TF-IDF answers"},
+                                              "the share TF-IDF + LR answers"},
     }
     path = root / "results" / "validation" / "v6_cost_hybrid.json"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -201,17 +203,17 @@ def format_figures(figures):
     for name, label in (("test", "test set"), ("dev", "development set, tuning figures")):
         view = cost[name]
         lead = view["lead_points"]
-        lines.append(f"cost per extra correct label, {label}: {_dollars(view['same_coverage'])} against TF-IDF at "
-                     f"the same coverage (lead {lead['same_coverage']:+.2f} points), "
-                     f"{_dollars(view['full_coverage'])} against TF-IDF labelling every complaint "
+        lines.append(f"cost per extra correct label, {label}: {_dollars(view['same_coverage'])} against TF-IDF + LR "
+                     f"at the same coverage (lead {lead['same_coverage']:+.2f} points), "
+                     f"{_dollars(view['full_coverage'])} against TF-IDF + LR labelling every complaint "
                      f"(lead {lead['full_coverage']:+.2f} points)")
     lines += ["time per 1,000 at scale, an estimate: " + ", ".join(
                   f"{s} seconds with {n} calls at a time" for n, s in time_["seconds_per_1000"].items()),
-              f"hybrid (TF-IDF at {hyb['threshold']} or more, else the LLM), exploratory and optimistic, "
+              f"hybrid (TF-IDF + LR at {hyb['threshold']} or more, else the LLM), exploratory and optimistic, "
               f"development set only: {hyb['hybrid_reweighted']:.1%} against the LLM alone "
               f"{hyb['llm_reweighted']:.1%}, difference {hyb['difference'] * 100:+.1f} points (95% interval "
               f"{low * 100:+.1f} to {high * 100:+.1f})",
-              f"TF-IDF answers {hyb['tfidf_share']:.1%}, so the LLM cost per 1,000 would be "
+              f"TF-IDF + LR answers {hyb['tfidf_share']:.1%}, so the LLM cost per 1,000 would be "
               f"${hyb['hybrid_llm_cost_per_1000_usd']} instead of ${hyb['llm_cost_per_1000_usd']}, if every "
               "complaint costs the same"]
     return lines
