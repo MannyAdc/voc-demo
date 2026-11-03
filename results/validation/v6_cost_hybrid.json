@@ -1,0 +1,33 @@
+{
+  "cost_per_extra_correct_usd": {
+    "dev": "0.037929",
+    "from": "results/eval/v1_test.json and v1_dev.json: cost per 1,000 over the lead in re-weighted points per 1,000",
+    "test": "0.009891"
+  },
+  "hybrid": {
+    "difference": 0.021538208050623453,
+    "hybrid_llm_cost_per_1000_usd": "0.185299",
+    "hybrid_reweighted": 0.819108620944433,
+    "interval": [
+      0.008076573539327558,
+      0.03768234994250787
+    ],
+    "is": "exploratory and optimistic: the prompt was tuned on this set, and no untouched test set is left to check it",
+    "llm_cost_per_1000_usd": "0.2332",
+    "llm_reweighted": 0.7975704128938096,
+    "resamples": 2000,
+    "seed": 0,
+    "set": "dev",
+    "tfidf_share": 0.20540540540540542,
+    "threshold": 0.9
+  },
+  "time_at_scale": {
+    "assumes": "the test run's calls, sent one at a time, run this many at a time, with no rate limit",
+    "is": "an estimate, not measured",
+    "measured_seconds_per_1000": 2015.2,
+    "seconds_per_1000": {
+      "10": 201.5,
+      "50": 40.3
+    }
+  }
+}
