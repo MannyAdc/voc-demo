@@ -2049,3 +2049,87 @@ def test_V6_V7_B21_the_command_writes_figures_only_reads_no_test_row_and_says_it
     assert figures["time_at_scale"]["is"] == "an estimate, not measured"
     for r in dev:
         assert r.narrative[:20] not in printed and r.narrative[:20] not in written.read_text(encoding="utf-8")
+
+
+# Review of #80.
+
+def test_V6_V10_identical_methods_give_a_zero_difference_and_a_zero_interval():
+    from voc import hybrid
+    items = [_item("SYN-1", "A", "A", "B", 0.5), _item("SYN-2", "A", "B", "B", 0.4),
+             _item("SYN-3", "B", "B", "A", 0.3), _item("SYN-4", "B", "A", "A", 0.2)]  # TF-IDF never sure enough
+    got = hybrid.compare_hybrid(items, {"A": 0.5, "B": 0.5}, resamples=200, seed=0)
+    assert got["difference"] == 0 and got["interval"] == [0.0, 0.0] and got["tfidf_share"] == 0
+
+
+def test_V6_V10_the_interval_holds_the_difference():
+    from voc import hybrid
+    items = [_item(f"SYN-{i}", "A" if i % 2 else "B", "A" if i % 3 else "B", "A" if i % 2 else "B",
+                   0.95 if i % 4 == 0 else 0.5) for i in range(1, 41)]
+    got = hybrid.compare_hybrid(items, {"A": 0.6, "B": 0.4}, resamples=500, seed=0)
+    low, high = got["interval"]
+    assert low <= got["difference"] <= high
+
+
+@pytest.mark.parametrize("change", ["repeated", "missing_product"])
+def test_V6_items_that_repeat_a_complaint_or_miss_a_pool_product_are_refused(change):
+    from voc import hybrid
+    items = [_item("SYN-1", "A", "A", "A", 0.95), _item("SYN-2", "B", "B", "B", 0.5)]
+    shares = {"A": 0.5, "B": 0.5}
+    if change == "repeated":
+        items.append(items[0])
+    else:
+        shares = {"A": 0.4, "B": 0.4, "C": 0.2}
+    with pytest.raises(ValueError):
+        hybrid.compare_hybrid(items, shares, resamples=10, seed=0)
+
+
+def test_V6_the_full_coverage_lead_is_read_from_the_test_runs_confusion_tables():
+    from voc import hybrid
+    shares = {"A": 0.5, "B": 0.5}
+    confusion = {"llm": [["A", "A", 8], ["A", "quarantined", 2], ["B", "B", 9], ["B", "A", 1]],
+                 "tfidf": [["A", "A", 9], ["A", "B", 1], ["B", "B", 7], ["B", "A", 3]]}
+    llm, tfidf = hybrid.full_coverage_from_confusion(confusion, shares)
+    assert llm == pytest.approx(0.5 * 0.8 + 0.5 * 0.9) and tfidf == pytest.approx(0.5 * 0.9 + 0.5 * 0.7)
+
+
+def _v6_figures(tmp_path, capsys, extra_row=False):
+    import csv
+    import json
+    from voc import cli
+    root, dev = _v6_project(tmp_path)
+    test = json.loads((root / "results" / "eval" / "v1_test.json").read_text(encoding="utf-8"))
+    products = sorted({r.product for r in dev})
+    test["confusion"] = {"llm": [[p, p, 9] for p in products] + [[p, "quarantined", 1] for p in products],
+                         "tfidf": [[p, p, 8] for p in products] + [[p, products[0] if p != products[0] else
+                                                                     products[1], 2] for p in products]}
+    (root / "results" / "eval" / "v1_test.json").write_text(json.dumps(test), encoding="utf-8")
+    if extra_row:
+        with open(root / "results" / "eval" / "v1_dev.csv", "a", encoding="utf-8", newline="") as f:
+            csv.writer(f, lineterminator="\n").writerow(["SYN-9999", "accepted", "", "Mortgage", "Mortgage", "0.9"])
+    code = cli.main(["cost-hybrid"], env={}, root=root)
+    printed = capsys.readouterr().out
+    path = root / "results" / "validation" / "v6_cost_hybrid.json"
+    return code, printed, (json.loads(path.read_text(encoding="utf-8")) if path.exists() else None)
+
+
+def test_V6_the_cost_per_extra_correct_label_names_its_comparison_and_gives_both_views(tmp_path, capsys):
+    code, printed, figures = _v6_figures(tmp_path, capsys)
+    assert code == 0
+    cost = figures["cost_per_extra_correct_usd"]
+    assert set(cost["test"]) >= {"same_coverage", "full_coverage"} and set(cost["dev"]) >= {"same_coverage",
+                                                                                              "full_coverage"}
+    assert "at the same coverage" in cost["note"] and "approximates" in cost["note"]
+    assert "tuning" in cost["dev"]["figures_are"]
+    assert "at the same coverage" in printed and "every complaint" in printed
+
+
+def test_V6_the_hybrid_says_it_is_optimistic_and_why_and_labels_its_cost_saving_as_an_assumption(tmp_path, capsys):
+    code, printed, figures = _v6_figures(tmp_path, capsys)
+    assert code == 0 and "optimistic" in printed
+    assert "after the development results" in figures["hybrid"]["is"]
+    assert "costs the same" in figures["hybrid"]["hybrid_llm_cost_assumes"]
+
+
+def test_V6_V7_an_id_outside_the_development_list_is_refused(tmp_path, capsys):
+    code, printed, figures = _v6_figures(tmp_path, capsys, extra_row=True)
+    assert code == 1 and figures is None
