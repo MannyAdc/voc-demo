@@ -1,0 +1,10 @@
+complaint_id,reason,code
+23815221,quote_not_in_text,check_right
+23826723,quote_not_in_text,check_right
+23881362,quote_not_in_text,check_right
+23921571,quote_not_in_text,check_right
+24013665,quote_not_in_text,check_right
+24024367,quote_not_in_text,check_right
+24138262,unparseable,check_right
+24144032,unparseable,check_right
+24393317,quote_not_in_text,check_right
