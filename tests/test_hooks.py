@@ -946,3 +946,32 @@ def test_V8_claude_may_not_run_the_review_sheet_or_import_commands(read_guard, p
 ])
 def test_V8_other_commands_that_mention_the_review_are_still_allowed(read_guard, places, command):
     assert _read_decision(read_guard, places, "Bash", {"command": command}) is None
+
+
+# Third review of #73: forms of the two commands the first rule missed.
+
+@pytest.mark.parametrize("tool, command", [
+    ("PowerShell", r'& ".venv\Scripts\voc.exe" review sheet v2'),
+    ("Bash", '"voc" review import v2'),
+    ("Bash", 'voc "review" sheet v2'),
+    ("Bash", "cd repo;voc review sheet v2"),
+    ("Bash", "echo $(voc review import v2)"),
+    ("Bash", "voc review \\\n  sheet v2"),
+    ("Bash", "python -c \"from voc import review; review.write_sheet('.', 'v2')\""),
+    ("Bash", "python -c \"import voc.review as r; r.import_codes('.', 'v3')\""),
+    ("Bash", 'gh pr comment 1 --body "the owner runs `voc review import v3`"'),
+    ("Bash", "git commit -m 'Guard voc review sheet and import'"),
+])
+def test_V8_every_form_that_names_the_review_sheet_or_import_commands_is_denied(read_guard, places, tool, command):
+    decision = _read_decision(read_guard, places, tool, {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("command", [
+    "git commit -m 'Add the V2 and V3 review sheets'",
+    "uv run voc review --help",
+    "uv run pytest tests/test_validation.py -k review",
+    "gh pr comment 73 -F review73.md",
+])
+def test_V8_commands_that_do_not_name_the_two_commands_stay_allowed(read_guard, places, command):
+    assert _read_decision(read_guard, places, "Bash", {"command": command}) is None

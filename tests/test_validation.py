@@ -1330,3 +1330,44 @@ def test_V3_the_v3_printout_lists_each_id_with_its_reason_and_code(tmp_path, fak
     printed = capsys.readouterr().out
     for row, code in zip(rows, ["check_right", "check_wrong", "unclear"]):
         assert f"{row['complaint_id']}: {row['reason']}, {code}" in printed
+
+
+# Third review of #73.
+
+def test_V8_a_cell_that_starts_with_a_line_break_is_shown_as_text():
+    from voc import review
+    assert review.safe_cell("\nSYN text") == "'\nSYN text"
+
+
+def test_V8_a_refusal_gives_the_row_number_the_spreadsheet_shows(tmp_path, fake_home, capsys):
+    from voc import cli, review
+    root, dev, _ = _sheet_project(tmp_path)
+    assert cli.main(["review", "sheet", "v2"], env={}, root=root) == 0
+    path = review.sheet_path("v2")
+    _fill(path, ["llm_right", "unclear"])
+    text = path.read_bytes().decode("utf-8-sig")
+    path.write_bytes(text.replace(dev[1].complaint_id + ",", "SYN words in the ID column,", 1).encode("utf-8"))
+    assert cli.main(["review", "import", "v2"], env={}, root=root) == 1
+    assert "row 3" in capsys.readouterr().out  # the header is row 1, so the second complaint is row 3
+
+
+@pytest.mark.parametrize("reason, key, expected", [
+    ("no_narrative", "", "no call"), ("not_run_budget", "c" * 64, "no call"), ("boundary_in_text", "", "no call"),
+    ("model_error", "b" * 64, "could be read"), ("unparseable", "a" * 64, "could be read"),
+])
+def test_V3_each_quarantine_without_an_answer_says_why(fake_home, reason, key, expected):
+    from voc import review
+    from voc.replay import recordings_dir
+    recordings_dir().mkdir(parents=True, exist_ok=True)
+    label, quote = review._proposed_answer(REPO, _quarantine(reason, key))
+    assert expected in label and expected in quote
+
+
+@pytest.mark.parametrize("code, reason", [("", "has no code"), ("llm_right", "not one of")])
+def test_V3_a_bad_v3_sheet_is_refused_for_its_own_reason(tmp_path, fake_home, capsys, code, reason):
+    from voc import cli, review
+    root, _, _ = _sheet_project(tmp_path)
+    assert cli.main(["review", "sheet", "v3"], env={}, root=root) == 0
+    _fill(review.sheet_path("v3"), ["check_right", "check_wrong", code])
+    assert cli.main(["review", "import", "v3"], env={}, root=root) == 1
+    assert reason in capsys.readouterr().out
