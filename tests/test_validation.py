@@ -1915,3 +1915,34 @@ def test_V5_the_redo_can_be_imported_once_after_the_judges_run_and_not_again(tmp
     assert (folder / "v5_codes.csv").exists()
     assert cli.main(["review", "import", "v5", "--replace"], env={}, root=root) == 1
     assert "judge" in capsys.readouterr().out
+
+
+# Review of #78.
+
+def test_V5_an_import_of_a_sheet_without_label_covers_is_refused_so_the_old_sheet_cannot_be_the_redo(
+        tmp_path, fake_home, capsys):
+    import csv
+    import io
+    from voc import cli, review
+    root, dev = _judge_project(tmp_path)
+    path = review.sheet_path("v5")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\r\n")
+    writer.writerow(["complaint_id", "llm_label", "llm_quote", "complaint_text", "code"])  # the first sheet's columns
+    for r in dev[1:3]:
+        writer.writerow([r.complaint_id, "Mortgage", "a b c", "SYN text", "supports"])
+    path.write_bytes(b"\xef\xbb\xbf" + out.getvalue().encode("utf-8"))
+    assert cli.main(["review", "import", "v5"], env={}, root=root) == 1
+    assert "label_covers" in capsys.readouterr().out
+    assert not (root / "results" / "validation" / "v5_codes.csv").exists()
+
+
+def test_V5_the_printed_ratings_are_the_rubrics_own_words():
+    import tomllib
+    from voc import review
+    with open(REPO / "config" / "prompts" / "judge_v1.toml", "rb") as f:
+        rubric = tomllib.load(f)["instructions"]
+    for line in review.V5_QUESTION[1:4]:
+        rating, text = line.split(": ", 1)
+        assert f'"{rating}": {text}.' in rubric, rating
