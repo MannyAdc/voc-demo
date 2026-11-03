@@ -1438,3 +1438,12 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
   - Spec 003: the blinding rule and the one redo, with its reason and its limits.
   - One existing test changed, with a comment: the blind sheet's columns include `label_covers`.
 - 23:24 Checked by hand: 418 tests in `tests/test_validation.py`, `tests/test_hooks.py` and `tests/test_analyst.py` pass, and 1 skips. The full suite runs in the gate.
+- 23:24 Green `0c08296`, pushed. #78 opened as a draft at about 23:33, with a reviewer.
+- 23:35 Reviewer findings posted on #78, with Claude's checks. 1 serious: the one redo could be used up by importing the withdrawn first ratings, because the first sheet is probably still in the owner's review folder, the sheet command does not write over it, and the import read only the ID and code columns. Minor: the printed question was not tied to the rubric by a test, the spec read as if the sheet holds the question, deleting `v5_codes.csv` would open the import again, two limits were missing, the main-run rule did not point to the redo, and the log had entries out of order. Nits: a test that could pass on an empty sheet, "nor give", and an unchecked claim.
+- Between 23:35 and 23:36 (exact time not recorded) Owner: "go" for all.
+- Corrections of the entries above, which stay as written:
+  - The entries from "21:52 CI green on `c382bc0`" to "23:03 The owner merged #76" were logged late, at 23:24. "22:33 `main` merged into `chore/v5-dry-run`" is logged twice: on #76's branch at 22:33, and again in that late block.
+  - "The first commit since #77 that passed the gate at the first try" is not right: the merge commit `fca90b5` also passed at its first try.
+- Red ``95ac8cd` at 23:37`: 2 new tests. 1 failed. 1 passed at once and pins that the three printed ratings are the rubric's own words. None was carried over.
+- The fixes: a V5 import needs the sheet's `label_covers` column, so the first sheet cannot be imported as the redo. The spec says the question is printed in the owner's terminal, that the import needs `label_covers`, that deleting `v5_codes.csv` would open it again, and the two more limits (the owner read the judge's 10 dry-run answers, and the first sheet may still be on disk), and the main-run rule points to the redo. One test now checks the number of rows, with a comment.
+- 23:56 Checked by hand with `.venv/Scripts/python.exe -m pytest tests/test_validation.py tests/test_hooks.py tests/test_analyst.py`: 420 tests pass and 1 skips. The full suite runs in the gate.

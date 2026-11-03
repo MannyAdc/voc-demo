@@ -1887,6 +1887,7 @@ def test_V5_the_v5_sheet_gives_what_the_label_covers(tmp_path, fake_home, capsys
     assert cli.main(["review", "sheet", "v5"], env={}, root=root) == 0
     defined = definitions(load_labels(root / "config" / "labels.toml"))
     rows = _read_sheet(review.sheet_path("v5"))
+    assert len(rows) == 2  # changed in the review of #78, so an empty sheet cannot pass
     assert all(r["label_covers"] == defined[r["llm_label"]] for r in rows)
     assert "consumer_choice" not in rows[0] and "rating" not in rows[0]
     capsys.readouterr()

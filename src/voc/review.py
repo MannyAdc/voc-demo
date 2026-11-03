@@ -273,6 +273,10 @@ def read_codes(root, piece):
     if not {"complaint_id", "code"} <= set(header):
         hint = " It looks saved with semicolons: save it as comma-separated CSV" if ";" in "".join(header) else ""
         raise ReviewError(f"the {piece} sheet has no complaint_id or code column.{hint}")
+    if piece == "v5" and "label_covers" not in header:
+        # Only the redo's sheet has it, so the withdrawn first sheet can never be imported as the redo.
+        raise ReviewError("the v5 sheet has no label_covers column, so it is not the redo's sheet. Move the old "
+                          "sheet away and write a new one with `voc review sheet v5`")
     at_id, at_code = header.index("complaint_id"), header.index("code")
     wanted = _ids(root, piece, _recorded(root))
     codes, problems = {}, []
