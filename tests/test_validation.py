@@ -2150,3 +2150,73 @@ def test_V6_reader_facing_text_names_the_baseline_as_tfidf_with_logistic_regress
     for text in texts:
         assert not re.findall(r"TF-IDF(?! \+ LR| with logistic regression)", text), text[:80]
     assert "TF-IDF with logistic regression (TF-IDF + LR)" in figures["cost_per_extra_correct_usd"]["note"]
+
+
+# Second review of #80.
+
+def test_V6_the_full_coverage_view_refuses_a_pool_product_missing_from_the_tables():
+    from voc import hybrid
+    confusion = {"llm": [["A", "A", 1]], "tfidf": [["A", "A", 1]]}
+    with pytest.raises(ValueError):
+        hybrid.full_coverage_from_confusion(confusion, {"A": 0.5, "B": 0.5})
+
+
+def test_V6_the_test_set_costs_and_leads_are_the_right_numbers_in_both_views(tmp_path, capsys):
+    from voc import hybrid
+    code, printed, figures = _v6_figures(tmp_path, capsys)
+    assert code == 0
+    # The test tables of `_v6_figures`: per product the LLM gets 9 of 10 and TF-IDF + LR 8 of 10, a lead of 10
+    # points, so $0.2373 per 1,000 over 100 extra correct labels per 1,000.
+    test = figures["cost_per_extra_correct_usd"]["test"]
+    assert test["lead_points"] == {"same_coverage": 2.4, "full_coverage": pytest.approx(10.0)}
+    assert test["full_coverage"] == "0.002373"
+    assert test["same_coverage"] == hybrid._money(hybrid.cost_per_extra_correct("0.2373", 0.024))
+
+
+def test_V6_the_development_full_coverage_and_hybrid_figures_are_the_right_numbers(tmp_path, capsys):
+    # A development file where the two methods differ: the LLM is quarantined on every fifth complaint,
+    # TF-IDF + LR is wrong on every third, and it is confident (0.95) on every other one.
+    import csv
+    import json
+    from voc import cli
+    root, dev = _v6_project(tmp_path)
+    products = sorted({r.product for r in dev})
+    rows = []
+    with open(root / "results" / "eval" / "v1_dev.csv", "w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(["complaint_id", "decision", "reason", "accepted_label", "tfidf_label", "tfidf_confidence"])
+        for i, r in enumerate(dev):
+            llm_right, tfidf_right, confident = i % 5 != 0, i % 3 != 0, i % 2 == 1
+            other = products[1] if r.product == products[0] else products[0]
+            writer.writerow([r.complaint_id, "accepted" if llm_right else "quarantined",
+                             "" if llm_right else "quote_not_found", r.product if llm_right else "",
+                             r.product if tfidf_right else other, "0.95" if confident else "0.4"])
+            rows.append((r.product, llm_right, tfidf_right, tfidf_right if confident else llm_right, confident))
+    assert cli.main(["cost-hybrid"], env={}, root=root) == 0
+    capsys.readouterr()
+    figures = json.loads((root / "results" / "validation" / "v6_cost_hybrid.json").read_text(encoding="utf-8"))
+
+    def reweighted(column):
+        # Pool shares equal the development counts here, so this is each product's share times its accuracy.
+        return sum(sum(row[column] for row in rows if row[0] == p) / len(rows) for p in products)
+
+    llm, tfidf, hyb = reweighted(1), reweighted(2), reweighted(3)
+    assert 0 < llm - tfidf and tfidf < hyb
+    dev_view = figures["cost_per_extra_correct_usd"]["dev"]
+    assert dev_view["lead_points"]["full_coverage"] == round((llm - tfidf) * 100, 2)
+    assert float(dev_view["full_coverage"]) == pytest.approx(0.2332 / ((llm - tfidf) * 1000), abs=1e-6)
+    assert figures["hybrid"]["llm_reweighted"] == pytest.approx(llm)
+    assert figures["hybrid"]["hybrid_reweighted"] == pytest.approx(hyb)
+    assert figures["hybrid"]["tfidf_share"] == pytest.approx(sum(row[4] for row in rows) / len(rows))
+
+
+def test_V6_the_printout_spells_out_the_baseline_and_says_points_only_approximate_labels(tmp_path, capsys):
+    code, printed, figures = _v6_figures(tmp_path, capsys)
+    assert code == 0
+    assert "TF-IDF with logistic regression (TF-IDF + LR)" in printed
+    assert "approximates" in printed
+
+
+def test_V6_the_refusal_of_an_id_outside_the_list_says_why(tmp_path, capsys):
+    code, printed, figures = _v6_figures(tmp_path, capsys, extra_row=True)
+    assert code == 1 and "exactly once" in printed
