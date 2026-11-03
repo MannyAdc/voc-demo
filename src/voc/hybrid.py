@@ -3,8 +3,8 @@
 - Cost per extra correct label against TF-IDF with logistic regression (TF-IDF + LR, `voc.baselines`): each
   run's cost per 1,000 complaints over its lead in re-weighted points per 1,000, in two views. At the same
   coverage, the headline rule fixed before the first run (B10): TF-IDF + LR answers only as many complaints as
-  the LLM accepted. And with TF-IDF + LR labelling every complaint. A lead in re-weighted points only approximates extra correct labels per 1,000. The test figures
-  come from the test run's published summary, `results/eval/v1_test.json`, only, never a per-complaint test
+  the LLM accepted. And with TF-IDF + LR labelling every complaint. A lead in re-weighted points only
+  approximates extra correct labels per 1,000. The test figures come from the test run's published summary, `results/eval/v1_test.json`, only, never a per-complaint test
   file (V7). The development figures are tuning figures (B10).
 - Time per 1,000 at scale: an estimate, labelled as one. The test run's time per 1,000, whose calls were all
   live and sent one at a time, over an assumed number of calls in parallel. No paid run measures it.
@@ -19,7 +19,6 @@ Data keys such as `tfidf_share` keep their names.
 """
 import csv
 import json
-import tomllib
 from decimal import Decimal
 from pathlib import Path
 
@@ -37,6 +36,10 @@ COST_NOTE = ("each run's cost per 1,000 complaints over its lead in re-weighted 
              "with logistic regression (TF-IDF + LR) at the same coverage (the headline rule, B10) and against "
              "TF-IDF + LR labelling every complaint. A lead in re-weighted points only approximates extra correct "
              "labels per 1,000")
+
+
+class HybridError(ValueError):
+    """A V6 input that does not fit. Its message holds only file names, counts and fixed text (B21)."""
 
 
 def hybrid_answers(items, threshold=THRESHOLD):
@@ -60,7 +63,7 @@ def compare_hybrid(items, shares, threshold=THRESHOLD, resamples=RESAMPLES, seed
     items = metrics._real(items)  # refuses repeated complaints and unusable confidences, as `compare` does
     missing = sorted(set(shares) - {i.product for i in items})
     if missing:
-        raise ValueError(f"pool Products missing from the items: {len(missing)} of {len(shares)}")
+        raise HybridError(f"pool Products missing from the items: {len(missing)} of {len(shares)}")
 
     def score(sample):
         right, by = hybrid_answers(sample, threshold)
@@ -84,8 +87,14 @@ def compare_hybrid(items, shares, threshold=THRESHOLD, resamples=RESAMPLES, seed
 
 
 def full_coverage_from_confusion(confusion, shares):
-    """The LLM's and TF-IDF's re-weighted strict accuracy from a run's confusion tables of
-    [recorded, predicted, count], where TF-IDF labels every complaint and a quarantined LLM answer is wrong."""
+    """The LLM's and TF-IDF + LR's re-weighted strict accuracy from a run's confusion tables of
+    [recorded, predicted, count], where TF-IDF + LR labels every complaint and a quarantined LLM answer is wrong.
+    Refuses tables that leave out a pool Product, as `compare_hybrid` does."""
+    for name in ("llm", "tfidf"):
+        missing = sorted(set(shares) - {recorded for recorded, _, _ in confusion[name]})
+        if missing:
+            raise HybridError(f"pool Products missing from the {name} confusion table: {len(missing)} of "
+                              f"{len(shares)}")
 
     def reweighted(rows):
         by_product = {}
@@ -115,16 +124,9 @@ def _summary(root, name):
     return json.loads((Path(root) / "results" / "eval" / f"v1_{name}.json").read_text(encoding="utf-8"))
 
 
-def _pool_shares(root):
-    with open(Path(root) / "config" / "pool.toml", "rb") as f:
-        products = tomllib.load(f)["products"]
-    total = sum(entry["pool"] for entry in products.values())
-    return {product: entry["pool"] / total for product, entry in products.items()}
-
-
 def _items(root):
-    """The development items: the committed LLM and TF-IDF answers, and the recorded product from the staged
-    table, checked against the development list."""
+    """The development items: the committed LLM and TF-IDF + LR answers, and the recorded product from the staged
+    table, checked against the development list. The pool shares are checked against the lists (B18)."""
     from voc.data import _manifest, read_splits
     from voc.evaluate import _rows, pool_shares
     from voc.load import DB_PATH
@@ -141,7 +143,7 @@ def _items(root):
         rows = list(csv.DictReader(f))
     ids = [r["complaint_id"] for r in rows]
     if len(ids) != len(set(ids)) or set(ids) != set(products):
-        raise ValueError("results/eval/v1_dev.csv does not hold each development complaint exactly once")
+        raise HybridError("results/eval/v1_dev.csv does not hold each development complaint exactly once")
     items = [metrics.Item(r["complaint_id"], products[r["complaint_id"]], r["accepted_label"] or None,
                           r["reason"] or None, r["tfidf_label"], float(r["tfidf_confidence"])) for r in rows]
     return items, shares
@@ -159,7 +161,7 @@ def run(root):
     test, dev = _summary(root, "test"), _summary(root, "dev")
     items, shares = _items(root)
     compared = compare_hybrid(items, shares)
-    test_llm, test_tfidf = full_coverage_from_confusion(test["confusion"], _pool_shares(root))
+    test_llm, test_tfidf = full_coverage_from_confusion(test["confusion"], shares)
     dev_llm = metrics._reweighted(items, [i.llm_right for i in items], shares)
     dev_tfidf = metrics._reweighted(items, [i.tfidf_right for i in items], shares)
     dev_cost = Decimal(str(dev["llm"]["cost_per_1000_usd"]))
@@ -199,7 +201,8 @@ def _dollars(value):
 def format_figures(figures):
     cost, time_, hyb = figures["cost_per_extra_correct_usd"], figures["time_at_scale"], figures["hybrid"]
     low, high = hyb["interval"]
-    lines = []
+    lines = ["the baseline is TF-IDF with logistic regression (TF-IDF + LR). A lead in re-weighted points only "
+             "approximates extra correct labels per 1,000"]
     for name, label in (("test", "test set"), ("dev", "development set, tuning figures")):
         view = cost[name]
         lead = view["lead_points"]

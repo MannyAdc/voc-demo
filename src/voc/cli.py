@@ -22,6 +22,7 @@ from voc.env import settings
 from voc.audit import AuditError
 from voc.consistency import ConsistencyError
 from voc.review import ReviewError
+from voc.hybrid import HybridError
 from voc.judge import JudgeError
 from voc.evaluate import EvaluationError
 from voc.injection import InjectionError
@@ -412,7 +413,7 @@ def main(argv=None, env=None, root=None):
         COMMANDS[command](config, root, args)
     except (DataFileError, BudgetError, DbtError, SampleMismatch, BackendError, RecordingMissing,
             RecordingCorrupt, RunStopped, EvaluationError, AuditError, InjectionError, TestRunError,
-            ConsistencyError, ReviewError, JudgeError) as err:
+            ConsistencyError, ReviewError, JudgeError, HybridError) as err:
         print(f"error: {err}")
         return 1
     # B21: the type only, never the message. The spec also asks for the row number and the
