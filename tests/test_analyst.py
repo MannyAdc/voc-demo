@@ -17,6 +17,8 @@ from pathlib import Path
 
 import pytest
 
+import git_helper
+
 from voc.labels import load_labels
 from voc.load import DB_PATH, load_month
 
@@ -229,7 +231,8 @@ def test_A12_a_review_needs_the_page_header_so_another_site_cannot_send_one(root
 
 def test_A12_the_reviews_file_can_be_committed(tmp_path):
     # The reviews file holds IDs, labels and fixed reasons only, so it is a results file that git keeps.
-    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    # Changed with tests/git_helper.py: a passing Windows file lock is tried again.
+    git_helper.run(["git", "init", "-q", str(tmp_path)], check=True)
     shutil.copy(REPO / ".gitignore", tmp_path / ".gitignore")
     result = subprocess.run(["git", "check-ignore", "-q", "results/reviews/v1_dev.csv"], cwd=tmp_path)
     assert result.returncode == 1

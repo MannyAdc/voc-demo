@@ -4,7 +4,6 @@ The names here are invented tokens. The real deny list lives outside the repo.
 """
 import gzip
 import io
-import subprocess
 import zipfile
 
 import pytest

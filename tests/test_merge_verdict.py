@@ -6,7 +6,6 @@ build a small git repo in a temporary folder.
 """
 import json
 import re
-import subprocess
 from pathlib import Path
 
 import pytest

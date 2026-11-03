@@ -50,8 +50,6 @@ def repo(tmp_path):
 
 
 def _git(root, *args):
-    import subprocess
-
     # Changed with tests/git_helper.py: a passing Windows file lock is tried again.
     result = git_helper.run(["git", *args], cwd=root, capture_output=True, text=True)
     assert result.returncode == 0, f"git {args[0]} failed:\n{result.stdout}\n{result.stderr}"

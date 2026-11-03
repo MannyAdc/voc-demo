@@ -964,7 +964,8 @@ def test_V8_only_the_planned_validation_results_can_be_committed(tmp_path, path,
     import shutil
     import subprocess
     shutil.copy(REPO / ".gitignore", tmp_path / ".gitignore")
-    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True, capture_output=True)
+    # Changed with tests/git_helper.py: a passing Windows file lock is tried again.
+    git_helper.run(["git", "init", "-q"], cwd=tmp_path, check=True, capture_output=True)
     found = subprocess.run(["git", "check-ignore", "--no-index", "-q", path], cwd=tmp_path, capture_output=True)
     assert found.returncode in (0, 1)
     assert (found.returncode == 0) == ignored
