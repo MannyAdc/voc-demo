@@ -102,9 +102,16 @@ def _ids(root, piece, recorded):
     if piece in ("v2", "v5"):
         return read_lists(Path(root) / "splits")[piece]
     read_lists(Path(root) / "splits")  # checks the labels file the quarantines come from
+    from voc.data import _manifest, _read_list
     from voc.pipeline import _id_number
 
-    return sorted((c for c, r in recorded.items() if r["decision"] == "quarantined"), key=_id_number)
+    quarantined = sorted((c for c, r in recorded.items() if r["decision"] == "quarantined"), key=_id_number)
+    dev = _read_list(Path(root) / "splits", "dev", _manifest(Path(root) / "splits"))
+    outside = [c for c in quarantined if c not in dev]
+    if outside:  # added in the review of #82 (V7)
+        raise ReviewError(f"{len(outside)} quarantined complaints in results/labels/v1_dev.csv are not in the "
+                          "development list")
+    return quarantined
 
 
 def _staged(root, ids):
@@ -278,10 +285,16 @@ def read_codes(root, piece):
         # Only the redo's sheet has it, so the withdrawn first sheet can never be imported as the redo.
         raise ReviewError("the v5 sheet has no label_covers column, so it is not the redo's sheet. Move the old "
                           "sheet away and write a new one with `voc review sheet v5`")
+    return _checked_codes(header, reader, _ids(root, piece, _recorded(root)), piece, "the sheet")
+
+
+def _checked_codes(header, rows, wanted, piece, source):
+    """The codes by ID, in the list's order, from rows of cells under a header, as the import and the summary
+    read them. Refused unless every listed ID appears exactly once with a code from the list. The refusal names
+    IDs and counts only."""
     at_id, at_code = header.index("complaint_id"), header.index("code")
-    wanted = _ids(root, piece, _recorded(root))
     codes, problems = {}, []
-    for number, cells in enumerate(reader, start=2):  # the header is row 1, as the spreadsheet shows it
+    for number, cells in enumerate(rows, start=2):  # the header is row 1, as the spreadsheet shows it
         if not any(cell.strip() for cell in cells):
             continue  # a row a spreadsheet left empty
         complaint_id = cells[at_id].strip() if at_id < len(cells) else ""
@@ -300,7 +313,7 @@ def read_codes(root, piece):
     if missing:
         problems.append(f"{len(missing)} listed complaints are missing: {', '.join(missing)}")
     if problems:
-        raise ReviewError("the sheet is refused and nothing is written: " + ". ".join(problems))
+        raise ReviewError(f"{source} is refused and nothing is written: " + ". ".join(problems))
     return {c: codes[c] for c in wanted}
 
 
@@ -360,29 +373,37 @@ def summary_path(root, piece):
 
 
 def summarise_committed(root, piece):
-    """V2's or V3's figures from the committed codes, checked against the frozen V2 list or the quarantined
-    development complaints (V7), and for V3 against the labels file's reasons. Writes `<piece>_summary.json`."""
+    """V2's or V3's figures from the committed codes, checked as the import checks the sheet, against the frozen
+    V2 list or the quarantined development complaints (V7), and for V3 against the labels file's reasons. Writes
+    `<piece>_summary.json`. A refused run leaves an older summary as it is, and git shows any change to it."""
     if piece not in ("v2", "v3"):
         raise ReviewError("the summary covers v2 and v3")
     recorded = _recorded(root)
     listed = _ids(root, piece, recorded)
-    name = f"{piece}_codes.csv"
-    with open(codes_path(root, piece), encoding="utf-8", newline="") as f:
-        rows = list(csv.DictReader(f))
-    ids = [row["complaint_id"] for row in rows]
-    if len(ids) != len(set(ids)) or set(ids) != set(listed):
-        raise ReviewError(f"{name} does not hold each listed ID exactly once")
-    if any(row["code"] not in CODES[piece] for row in rows):
-        raise ReviewError(f"{name} holds a code outside the list")
-    if piece == "v3" and any(row["reason"] != recorded[row["complaint_id"]]["reason"] for row in rows):
-        raise ReviewError(f"{name} holds a reason that differs from results/labels/v1_dev.csv")
-    summary = summarise_codes(piece, {row["complaint_id"]: row["code"] for row in rows})
+    name = f"results/validation/{piece}_codes.csv"
+    path = codes_path(root, piece)
+    if not path.exists():
+        raise ReviewError(f"there is no {name}. The owner's import writes it")
+    reader = csv.reader(io.StringIO(path.read_text(encoding="utf-8-sig")))
+    header = [cell.strip().lower() for cell in next(reader, [])]
+    if not {"complaint_id", "code"} <= set(header):
+        raise ReviewError(f"{name} has no complaint_id or code column")
+    if piece == "v3" and "reason" not in header:
+        raise ReviewError(f"{name} has no reason column")
+    rows = list(reader)
+    codes = _checked_codes(header, rows, listed, piece, name)
+    summary = summarise_codes(piece, codes)
     if piece == "v3":
-        summary["list"] = [{"complaint_id": row["complaint_id"], "reason": row["reason"], "code": row["code"]}
-                           for row in rows]
-    summary["from"] = f"results/validation/{name}, IDs{', reasons' if piece == 'v3' else ''} and codes only"
-    path = summary_path(root, piece)
-    path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+        at_id, at_reason = header.index("complaint_id"), header.index("reason")
+        reasons = {cells[at_id].strip(): cells[at_reason].strip() for cells in rows
+                   if max(at_id, at_reason) < len(cells)}
+        changed = [c for c in codes if reasons.get(c) != recorded[c]["reason"]]
+        if changed:
+            raise ReviewError(f"{name} is refused and nothing is written: {len(changed)} reasons differ from "
+                              f"results/labels/v1_dev.csv: {', '.join(changed)}")
+        summary["list"] = [{"complaint_id": c, "reason": reasons[c], "code": code} for c, code in codes.items()]
+    summary["from"] = f"recomputed from the IDs{', reasons' if piece == 'v3' else ''} and codes in {name}"
+    _write_atomic(summary_path(root, piece), json.dumps(summary, indent=2, sort_keys=True) + "\n", "utf-8")
     return summary
 
 

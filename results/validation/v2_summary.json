@@ -34,7 +34,7 @@
       "share": 0.2
     }
   },
-  "from": "results/validation/v2_codes.csv, IDs and codes only",
+  "from": "recomputed from the IDs and codes in results/validation/v2_codes.csv",
   "label_noise": {
     "lower": {
       "count": 25,

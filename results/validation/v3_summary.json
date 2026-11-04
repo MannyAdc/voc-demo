@@ -26,7 +26,7 @@
       "share": 0.0
     }
   },
-  "from": "results/validation/v3_codes.csv, IDs, reasons and codes only",
+  "from": "recomputed from the IDs, reasons and codes in results/validation/v3_codes.csv",
   "list": [
     {
       "code": "check_right",
