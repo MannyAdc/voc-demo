@@ -20,7 +20,9 @@ Requirement IDs are `J1`, `J2` and so on. Tests are named `test_J<number>_...`.
 - **Databricks webhooks** use HTTP Basic sign-in or OAuth, with no signature. A job's payload has `event_type` (such as `jobs.on_success`), `run.run_id` and the job's ID (docs.databricks.com, "Add notifications on a job").
 - **Databricks tokens.** The `jobs` scope covers starting a job and reading a run. A token with no scope has full access. Unused tokens are revoked after 90 days (docs.databricks.com, "personal access tokens", last updated 7 October 2026).
 - **Spend limits.** The Claude Console sets spend limits per organization and per workspace, not per API key, and the default workspace cannot have one. Some keys are made inside one workspace. Others pick a workspace with a header on each request. A limit the owner sets stops requests with HTTP 400 ("You have reached your specified workspace API usage limits"). The docs do not say whether spend can go slightly past it (platform.claude.com, "Rate limits" and "Workspaces").
-- **GitHub Environments.** On a public repo, required reviewers and main-only branch rules are available, and an environment's secrets reach only jobs that name it. A pull request's run has the ref `refs/pull/N/merge`, so a main-only rule keeps it out. A job that names the environment waits for a required reviewer. A `repository_dispatch` needs a token with contents write. The repo is public, so Actions logs are public (docs.github.com).
+- **GitHub Environments.** On a public repo, required reviewers and main-only branch rules are available, and an environment's secrets reach only jobs that name it. A pull request's run has the ref `refs/pull/N/merge`, so a main-only rule keeps it out. A job that names the environment waits for a required reviewer. Starting a workflow with `workflow_dispatch` needs a fine-grained token with "Actions" write only. A `repository_dispatch` needs "Contents" write, which also covers creating commits and files, so it is not used ("Permissions required for fine-grained personal access tokens"). The repo is public, so Actions logs are public (docs.github.com).
+- **`main` is protected.** An active ruleset on the default branch, with no one allowed to bypass it, blocks deletion and force pushes, and requires a pull request and the checks `tests`, `repo-checks` and `secret-scan` (read with `gh api` on 4 November 2026). So no token can push to `main`.
+- **Azure Functions Flex Consumption.** "The lowest maximum scale is currently `1`", and the maximum instance count is set on the app (learn.microsoft.com, "Flex Consumption plan", 15 September 2026).
 - **XGBoost.** `xgboost==3.4.1`, released on 15 August 2026, with a Windows wheel, for Python 3.12 and later. Its docs show a scipy.sparse CSR matrix loaded with `xgb.DMatrix(csr)`, and say its scikit-learn interface builds "a DMatrix or a QuantileDMatrix" from the input ("Python Package Introduction"). scikit-learn's `GradientBoostingClassifier` also takes sparse input. XGBoost is used by owner decision.
 - **The model's training data.** The README and `docs/LIMITS.md` say the July complaints cannot be in the model's training data, because it ends in June 2026. That does not hold for June. June narratives could be published from early June, after the company's response or 15 days, so some may have been public within the month the training data ends.
 
@@ -48,20 +50,21 @@ The constitution allows "the CFPB Consumer Complaint Database, July 2026 export,
   1. The owner uploads the June file to a folder `voc_raw/incoming/` in the volume.
   2. Its arrival starts a Databricks job (file-arrival trigger): it checks the file against its pin, then runs the same dbt models as the July build, then writes the June sample's rows to a table. It prints counts only.
   3. When the job succeeds, its webhook notification goes to the receiver (J10).
-  4. The receiver starts the labelling workflow with a `repository_dispatch`.
+  4. The receiver starts the labelling workflow with a `workflow_dispatch` on `main`, passing the Databricks run ID.
   5. The labelling workflow (J11) waits for the owner's approval, then labels and scores.
   6. It pushes a results branch. Claude opens the draft pull request from it, as usual (owner decision). The repo setting that lets Actions open pull requests stays off.
   - The laptop path, `voc label` and `voc evaluate`, keeps working. On mock or replay, both paths give the same files.
 - **J10. The receiver.** A small Azure Function, apart from the public app, which stays read-only.
+  - Its maximum instance count is 1, the lowest allowed, with the 512 MB instance size and no always-ready instance, so a flood of calls queues or is refused instead of scaling up cost.
   - It replies at once (202) and does the work afterwards, through a queue in its own storage account.
   - It checks each caller. The Databricks webhook carries HTTP Basic sign-in with a secret, and the receiver then asks Databricks itself whether that `run.run_id` really succeeded for the June job, with a token of `jobs` scope. The workflow's result message back to the receiver (step 7 below) carries an HMAC-SHA256 signature of the raw body with a shared secret and a timestamp, checked with a constant-time compare, refused if older than 5 minutes.
   - It ignores a duplicate. Each event's ID (Databricks: the run ID and event type, GitHub: a delivery ID) is stored, and a repeat is acknowledged and dropped.
   - It retries failures. A failed call to GitHub or Databricks is retried with backoff up to 5 times by the queue, then moved to a failure queue and logged, with IDs and counts only.
-  - It holds no complaint text. Its secrets are in its own app settings.
+  - It holds no complaint text. Its secrets (the Basic sign-in details, the HMAC secret and both tokens) are in an Azure Key Vault, read by the Function's managed identity. Its app settings hold only Key Vault references, and no secret is in code, a log or the repo. It logs IDs, event types, statuses and counts only.
   - The outbound webhook: when the labelling workflow ends, it posts a signed result message (status, counts and the commit) to the receiver, which logs it.
   - Tests for each: a bad signature, an old timestamp, a duplicate, a slow reply, and a retry that ends in the failure queue.
 - **J11. The labelling workflow.**
-  - Started only by `repository_dispatch` from the receiver or by the owner with `workflow_dispatch`. Claude never starts it.
+  - Started only by `workflow_dispatch` on `main`, from the receiver or by the owner. Claude never starts it.
   - Permissions per job. A labelling job in the protected environment `june-run` (main only, the owner as required reviewer, "prevent self-review" off so the owner can approve a run the owner's dispatch started) holds the secrets and has read-only repo access. A second job, with no secrets, pushes the results branch.
   - One run at a time (a `concurrency` group), and every action pinned by its commit SHA.
   - Before labelling, it checks the sample's IDs and content hashes against `splits/june/` (B16).
@@ -70,7 +73,7 @@ The constitution allows "the CFPB Consumer Complaint Database, July 2026 export,
 - **J12. The spend cap.** A separate workspace in the Claude Console, made by the owner, for cloud runs only, with a key made inside it, and a monthly spend limit of $5 (owner decision). The workflow refuses unless the API's `anthropic-workspace-id` response header names that workspace. It keeps its own ledger, with a cap of 15 million tokens for this run. Because the worst-case reservation for about 2,080 calls is about 38 million tokens (the July test run's reservation, 35,233,329 for 1,909 calls, scaled), the workflow labels in batches that each fit the cap and the $5 limit. A 400 "usage limits" answer stops the run with no retry. A 429 is retried only when it has a `retry-after` header.
 - **J13. Tokens and secrets.**
   - `june-run` environment secrets: the API key, a Databricks token with the `sql` scope and the scope for the Files API (to be named from `GET /api/2.0/token-scopes` before it is made), and the HMAC secret.
-  - The receiver's app settings: a Databricks token with the `jobs` scope only, a GitHub fine-grained token for this repo with contents write only (needed for `repository_dispatch`), the Basic sign-in secret and the HMAC secret.
+  - The receiver's Key Vault: a Databricks token with the `jobs` scope only, a GitHub fine-grained token for this repo only with "Actions" read and write and nothing else (GitHub adds "Metadata" read to every fine-grained token), the Basic sign-in details and the HMAC secret. With "Actions" write the token can start, re-run or cancel this repo's workflows, but cannot push code, open a pull request or read secrets, and `main`'s ruleset blocks any push there anyway.
   - Each token lasts 30 days, enough for the run and a rerun, and is revoked after. The owner's existing token, scope `sql`, expires on 6 November, so new ones are made when the run is near.
 - **J14. Claude's access.** The read guard also denies Databricks CLI and SQL commands that name the volume `voc_raw` or the June tables, and `gh run view --log` and `gh run download` for the June workflow. Claude reads only the results branch.
 - **J15. A backup.** Free Edition may delete an inactive account and may shut compute down for a day. The owner keeps the June file and, after the run, a copy of the June recordings, on the laptop's backup, as for the exports.
@@ -84,8 +87,9 @@ The constitution allows "the CFPB Consumer Complaint Database, July 2026 export,
 | Databricks Free Edition, GitHub Actions on a public repo | $0 | $0 |
 | The receiver: Azure Functions Flex Consumption, Australia East | $0 (free grant: 250,000 runs and 100,000 GB-seconds a month) | $0 at this use |
 | Its storage account (queue, event IDs, function code), Hot LRS | none | under $0.10 (data $0.02 per GB, operations $0.0044 to $0.055 per 10,000, Azure Retail Prices API, 4 November 2026) |
+| Its Key Vault, Standard | none | under $0.01 ($0.03 per 10,000 operations, Australia East, same source) |
 
-The owner approves the Azure Function and its storage account before they are made.
+The owner approves the Azure Function, its storage account and its Key Vault before they are made.
 
 ## Pull requests, in order
 
@@ -104,8 +108,8 @@ The owner approves the Azure Function and its storage account before they are ma
 - Upload the June file to the volume, and keep a backup.
 - Make the cloud workspace, a key inside it and its $5 limit in the Claude Console.
 - Make the `june-run` environment, its secrets and its main-only rule.
-- Make the Databricks tokens and the GitHub fine-grained token when the run is near.
-- Approve and create the Azure Function and its storage account.
+- Make the Databricks tokens and the GitHub fine-grained token (this repo only, "Actions" read and write only) when the run is near.
+- Approve and create the Azure Function (maximum instance count 1), its storage account and its Key Vault.
 - Approve the labelling run, then the results pull request's CI.
 - Delete the Databricks test jobs made on 4 November.
 
