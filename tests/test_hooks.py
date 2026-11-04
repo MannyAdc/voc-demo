@@ -985,3 +985,41 @@ def test_V8_every_form_that_names_the_review_sheet_or_import_commands_is_denied(
 ])
 def test_V8_commands_that_do_not_name_the_two_commands_stay_allowed(read_guard, places, command):
     assert _read_decision(read_guard, places, "Bash", {"command": command}) is None
+
+
+# 4 November 2026: the CFPB's current bulk export is `complaints.csv.zip` from files.consumerfinance.gov/ccdb/,
+# and its CSV is `complaints.csv`. The guard knew an export only by the name the archive files and the pins use,
+# so these passed (BUILD_LOG.md, 4 November). The synthetic fixtures keep their names and stay allowed.
+
+@pytest.mark.parametrize("path", ["complaints.csv.zip", "downloads/complaints.csv.zip", "downloads/complaints.csv",
+                                  "Downloads/COMPLAINTS.CSV"])
+def test_B21_reading_the_bulk_export_by_its_own_name_is_blocked(read_guard, places, path):
+    decision = _read_decision(read_guard, places, "Read", {"file_path": str(places["root"] / path)})
+    assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("tool, command", [
+    ("Bash", "curl -s -r 0-65535 https://files.consumerfinance.gov/ccdb/complaints.csv.zip"),
+    ("Bash", "curl -s -o x.zip https://files.consumerfinance.gov/ccdb/"),
+    ("Bash", "unzip -p ~/Downloads/complaints.csv.zip | head -1"),
+    ("Bash", "head -1 /tmp/complaints.csv"),
+    ("Bash", "python scripts/download.py /tmp/new"),
+    ("PowerShell", r"Invoke-WebRequest https://files.consumerfinance.gov/ccdb/complaints.csv.zip -OutFile c.zip"),
+    ("PowerShell", r"Get-Content C:\Users\someone\Downloads\complaints.csv -TotalCount 1"),
+])
+def test_B21_a_command_naming_the_bulk_export_or_its_download_is_blocked(read_guard, places, tool, command):
+    decision = _read_decision(read_guard, places, tool, {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("tool, tool_input", [
+    ("Read", {"file_path": "tests/fixtures/dbt/complaints.csv"}),
+    ("Bash", {"command": "uv run python scripts/dbt_fixture_build.py tests/fixtures/dbt/complaints.csv work"}),
+    ("Bash", {"command": "head -3 tests/fixtures/pipeline/synthetic_complaints.csv"}),
+    ("Bash", {"command": "ls work/seeds/staged_complaints.csv"}),
+    ("Bash", {"command": ".venv/Scripts/python.exe -m pytest tests/test_download.py -q"}),
+])
+def test_B21_the_synthetic_fixtures_named_complaints_stay_allowed(read_guard, places, tool, tool_input):
+    if "file_path" in tool_input:
+        tool_input = {"file_path": str(places["root"] / tool_input["file_path"])}
+    assert not _read_decision(read_guard, places, tool, tool_input)
