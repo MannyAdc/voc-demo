@@ -1023,3 +1023,51 @@ def test_B21_the_synthetic_fixtures_named_complaints_stay_allowed(read_guard, pl
     if "file_path" in tool_input:
         tool_input = {"file_path": str(places["root"] / tool_input["file_path"])}
     assert not _read_decision(read_guard, places, tool, tool_input)
+
+
+# Review of #86: one name rule for both checks, any copy or suffix of the bulk export's names, and only the one
+# synthetic fixture in this repo allowed. `scripts/download.py` is denied only when it is run.
+
+@pytest.mark.parametrize("path", ["downloads/complaints (1).csv.zip", "downloads/complaints.csv.part",
+                                  "downloads/complaints.csv.zip.part", "downloads/complaints.csv.gz",
+                                  "tests/fixtures/dbt/complaints.csv.zip"])
+def test_B21_every_copy_and_suffix_of_the_bulk_export_name_is_blocked_for_file_tools(read_guard, places, path):
+    decision = _read_decision(read_guard, places, "Read", {"file_path": str(places["root"] / path)})
+    assert decision and decision[0] == "deny"
+
+
+def test_B21_a_fixtures_folder_outside_the_repo_is_not_a_disguise_for_file_tools(read_guard, places):
+    for path in (places["root"].parent / "fixtures" / "complaints.csv",
+                 places["root"].parent / "tests" / "fixtures" / "dbt" / "complaints.csv"):
+        decision = _read_decision(read_guard, places, "Read", {"file_path": str(path)})
+        assert decision and decision[0] == "deny", path
+
+
+@pytest.mark.parametrize("tool, command", [
+    ("Bash", 'head ~/Downloads/"complaints (1).csv.zip"'),
+    ("Bash", "head -1 /tmp/fixtures/dbt/complaints.csv"),
+    ("Bash", "cat downloads/complaints.csv.part"),
+    ("PowerShell", r"Get-Content C:\x\fixtures\dbt\complaints.csv -TotalCount 1"),
+    ("Bash", "curl -s -O https://files.consumerfinance.gov/f/documents/ccdb"),
+    ("Bash", r"python scripts\download.py C:\x"),
+    ("Bash", "uv run --native-tls python scripts/download.py /tmp/new"),
+    ("Bash", "py scripts/download.py x"),
+    ("Bash", ".venv/Scripts/python.exe scripts/download.py x"),
+    ("Bash", "uv run scripts/download.py x"),
+])
+def test_B21_copies_disguises_and_runs_of_the_download_are_blocked_in_commands(read_guard, places, tool, command):
+    decision = _read_decision(read_guard, places, tool, {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("command", [
+    "git diff -- scripts/download.py",
+    "git log --oneline -- scripts/download.py",
+    "uv run ruff check scripts/download.py",
+    'uv run python scripts/dbt_fixture_build.py "tests/fixtures/dbt/complaints.csv" work',
+    r"uv run python scripts\dbt_fixture_build.py tests\fixtures\dbt\complaints.csv work",
+    "uv run python scripts/dbt_fixture_build.py {root}/tests/fixtures/dbt/complaints.csv work",
+])
+def test_B21_harmless_commands_and_the_fixture_stay_allowed(read_guard, places, command):
+    command = command.replace("{root}", str(places["root"]))
+    assert not _read_decision(read_guard, places, "Bash", {"command": command})
