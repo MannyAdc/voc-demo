@@ -43,7 +43,7 @@ PR_FIELDS = ("number,state,isDraft,mergeable,isCrossRepository,baseRefName,headR
 EXIT_MERGE, EXIT_FIX_FIRST, EXIT_ERROR, EXIT_PENDING = 0, 1, 2, 3
 # The trial merge runs a pull request's tests on this machine. These never reach them.
 SECRET_WORDS = ("KEY", "TOKEN", "SECRET")
-DROPPED_VARS = ("VOC_DATA_DIR", "VOC_NEXT_DATA_DIR", "VOC_MOCK_FIXTURES")
+DROPPED_VARS = ("VOC_DATA_DIR", "VOC_NEXT_DATA_DIR", "VOC_JUNE_DATA_DIR", "VOC_MOCK_FIXTURES")
 RED_FILE = re.compile(r"tests/test_[^/]*\.py")
 CODE_SUFFIXES = (".py", ".sql", ".sh", ".ps1")
 # The dashboard page is its folder, whatever the file type (found on #51). requirements.txt is what Azure builds from.

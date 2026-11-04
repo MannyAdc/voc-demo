@@ -290,6 +290,9 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - data guard: writing a `.env` file is blocked
 - data guard: content that looks like an Anthropic key is blocked (the fake key is built while the test runs)
 - data guard: a normal source file is allowed
+- read guard: June's data folder (`VOC_JUNE_DATA_DIR`) is protected like July's, from the environment or `.env`, by file tools, searches and commands (spec 004, J6)
+- read guard: a command that runs the Databricks CLI, in any part of a line or by its full path, or names the volume `voc_raw`, is denied (spec 004, J14)
+- read guard: reading an Actions run log, starting, re-running or cancelling a workflow, approving a deployment, the environments and secrets APIs, and merging a pull request are denied, by `gh`, `gh.exe` by its full path, the REST API or GraphQL. Checking, viewing and commenting on a pull request, viewing a run without its log, and running the merge verdict stay allowed (spec 004, J14)
 
 ## Merge verdict (T006b), `tests/test_merge_verdict.py`
 
@@ -307,7 +310,7 @@ Every test feeds the checks synthetic `gh pr view` JSON. No test runs `gh` or op
 - parallel branches that share a file are FAIL, and the merge order is lowest number first (T006b)
 - the trial merge puts the branches together with no work tree, commit or hook, stops on a conflict, and runs the tests on the merged tree (T006b)
 - the trial merge refuses a pull request from a fork, or with no fork flag, before it fetches anything (T006b, review)
-- the trial merge's tests run with `LLM_BACKEND=mock`, and with no variable whose name holds KEY, TOKEN or SECRET and no data folder variable (T006b, review)
+- the trial merge's tests run with `LLM_BACKEND=mock`, and with no variable whose name holds KEY, TOKEN or SECRET and no data folder variable, June's included (T006b, review, spec 004 J6)
 - the verdict is one line: FIX FIRST with every failure (exit 1), PENDING while a FOR CLAUDE item is open and nothing fails (exit 3), or MERGE (exit 0). It never starts with MERGE while an item is open (T006b, review)
 - the script exits 2 when the data cannot be read, and on a crash prints only the error type (T006b, review)
 - the script never prints commit messages or comment text, and makes only read-only `gh` calls (T006b)
@@ -368,7 +371,7 @@ Added on 4 November 2026, revised twice the same day. Each piece adds its tests 
 - Job B checks the run entry's hashes and the June and July hashes, refuses unless the workspace header names the cloud workspace and the cap covers the whole worst case, stops on a 400 "usage limits" answer with no retry, is one task that refuses an approval for another Job A run or one already used, and writes only the two results files to the results volume (J11, J12)
 - The copy script reads only the two results file names, refuses any other file, and checks the columns, the label and reason lists, the IDs, the size limit and the CFPB header (J11)
 - recordings, the ledger and the fitted model never leave the volume, and complaint text never reaches GitHub (J4)
-- the read guard protects `VOC_JUNE_DATA_DIR`, the June volume and tables, all Actions run logs, and the approval workflow's start (J6, J14)
+- the read guard protects `VOC_JUNE_DATA_DIR`, the raw volume, all Actions run logs, and the approval workflow's start (J6, J14): written in pull request 2, listed under Hooks. The June tables are named in pull request 5, and Claude never runs the Databricks CLI at all
 - the laptop path and the cloud path give the same July results on mock or replay (J8)
 
 ## Later features (listed now, specified later)

@@ -1,8 +1,9 @@
 """Read guard (B21) and final guard (B17). PreToolUse on every tool.
 
 Denies any tool call that names a protected place: the raw data folders
-(`VOC_DATA_DIR` for July and `VOC_NEXT_DATA_DIR` for the next month, each
-from the environment or the local `.env`), the repo's `data` folder (the
+(`VOC_DATA_DIR` for July, `VOC_NEXT_DATA_DIR` for the next month and
+`VOC_JUNE_DATA_DIR` for June, each from the environment or the local
+`.env`), the repo's `data` folder (the
 DuckDB file, its write-ahead log and dbt's output), the home folder
 `.voc` (ledger, recordings and the home test log), any `.duckdb` file, a
 `recordings` folder, a CFPB export file (the archive's and the pins' `CCDB_Export`
@@ -25,6 +26,12 @@ or the module's sheet and import functions, is denied, as `show` is: only the
 owner writes and reads the review sheets, which hold complaint text (spec 003,
 V8). Quotes, backticks and line breaks are taken out before the check, so a
 mention inside a commit message or a quoted text is denied too.
+
+Spec 004, J14: a command that runs the Databricks CLI or names the volume
+`voc_raw` is denied. Claude's `gh` signs in as the owner, who approves the
+June run, so a command that reads an Actions run log, starts, re-runs or
+cancels a workflow, approves a deployment, uses the environments or secrets
+APIs, or merges a pull request, by `gh` or by the API, is denied too.
 """
 import json
 import os
@@ -55,6 +62,7 @@ SHELL_PATTERNS = (
     re.compile(r"(?:^|[\s/\"'=])recordings/"),
     re.compile(r"voc_data_dir"),
     re.compile(r"voc_next_data_dir"),
+    re.compile(r"voc_june_data_dir"),
     re.compile(r"ccdb_export"),
     # 4 November 2026: the CFPB's download paths, for the current bulk export (`/ccdb/`) and the narratives
     # archive (`/f/documents/CCDB_Export_...`, read from its FOIA page on 4 November). The export's own names are
@@ -78,8 +86,32 @@ TOKEN_EDGE = re.compile(r"[\s\"'=(<>|;&]")
 # A run of `scripts/download.py`, which fetches the bulk export. Naming it, as in `git diff`, stays allowed.
 RUNS_DOWNLOAD = re.compile(r"(?:\bpython[\w.]*|\bpy|\buv\s+run(?:\s+--?[\w-]+(?:=\S+)?)*)\s+(?:-\S+\s+)*[\"']?"
                            r"(?:\./)?scripts/download\.py\b")
-DATA_VARIABLES = ("VOC_DATA_DIR", "VOC_NEXT_DATA_DIR")  # July's folder and the next month's (add-on 1)
+# July's folder, the next month's (add-on 1) and June's (spec 004, J6)
+DATA_VARIABLES = ("VOC_DATA_DIR", "VOC_NEXT_DATA_DIR", "VOC_JUNE_DATA_DIR")
 DENIED = "read guard: this names raw data, the DuckDB file, recordings, the ledger or the `.env` file."
+# Spec 004, J14: the Databricks CLI as the command of any part of a line, and the raw volume `voc_raw` by name.
+DATABRICKS_CLI = re.compile(r"^(?:databricks|dbsqlcli)(?:\.exe)?$")
+RAW_VOLUME = "voc_raw"
+# Spec 004, J14: Claude's `gh` signs in as the owner, who approves the June run. Checked on command text after quotes
+# are taken out, lower-casing and turning backslashes into slashes, so `gh.exe` by its full path is covered too.
+GH = r"(?:^|[\s/&;|(])gh(?:\.exe)?\s+"
+OWNER_ACTIONS = tuple(re.compile(pattern) for pattern in (
+    GH + r"run\s+view\b[^;&|\n]*\s--log",  # a run's log, `--log` and `--log-failed`
+    GH + r"run\s+(?:download|rerun|cancel)\b",
+    GH + r"workflow\s+(?:run|enable|disable)\b",
+    GH + r"secret\b",
+    GH + r"pr\s+merge\b",
+    r"/actions/(?:runs|jobs)/\S*/logs\b",
+    r"/dispatches\b",  # a workflow's and the repo's
+    r"/rerun(?:-failed-jobs)?\b",
+    r"/(?:force-)?cancel\b",
+    r"pending_deployments",
+    r"/environments\b",
+    r"/secrets\b",
+    r"/pulls/[^/\s]+/merge\b",
+    r"/merges\b",
+    r"\b(?:mergepullrequest|enablepullrequestautomerge|approvedeployments)\b",  # GraphQL
+))
 
 
 def _normal(text):
@@ -195,6 +227,22 @@ def _runs_show(command):
     return False
 
 
+def _runs_databricks(command):
+    normal = _normal(REVIEW_NOISE.sub(" ", command))
+    if RAW_VOLUME in normal:
+        return True
+    for segment in SEGMENTS.split(normal):
+        words = [w for w in segment.split() if not ASSIGNMENT.match(w)]
+        if words and DATABRICKS_CLI.match(words[0].split("/")[-1]):
+            return True
+    return False
+
+
+def _uses_owner_actions(command):
+    normal = _normal(REVIEW_NOISE.sub(" ", command))
+    return any(p.search(normal) for p in OWNER_ACTIONS)
+
+
 def _strings(value, key=None):
     """Every string in the tool input, with the name of the field it came from."""
     if isinstance(value, str):
@@ -217,6 +265,13 @@ def decide(tool_name, tool_input, env, home, root):
             return ("deny", DENIED)
         if _runs_show(command):
             return ("deny", "read guard: only the owner runs `show`, in the owner's own terminal.")
+        if _runs_databricks(command):
+            return ("deny", "databricks guard: Claude never runs the Databricks CLI or names the volume `voc_raw` "
+                            "(spec 004, J14).")
+        if _uses_owner_actions(command):
+            return ("deny", "github guard: only the owner reads Actions run logs, starts, re-runs or cancels a "
+                            "workflow, approves a deployment, uses the environments and secrets APIs, or merges "
+                            "(spec 004, J14).")
         if WITH_TEXT.search(command):
             return ("deny", "text guard: only the owner passes --with-text, in the owner's own terminal (A10).")
         if REVIEW_SHEETS.search(REVIEW_NOISE.sub(" ", command)):
