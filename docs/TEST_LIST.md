@@ -341,6 +341,7 @@ Added on 2 November 2026. Each piece adds its tests in its own pull request, fai
 - the quote comparison by positions gives same, overlapping and apart correctly (V1)
 - the import refuses a missing, repeated or unknown ID and a blank or unknown code, and then writes nothing (V2, V3, V5)
 - the label noise share is reported as a lower and an upper figure (V2)
+- `voc review summary` recomputes V2's and V3's figures from the committed codes only, with no model call, refuses codes that are not the list, an unknown code or a changed V3 reason, and writes IDs, reasons, codes and figures only (V2, V3, V8, V10)
 - the judge's answer outside the three ratings is `unparseable`, listed apart and left out of the agreement, the kappa and the table (V5)
 - the judge's main run refuses while the owner's ratings are missing, and never includes a dry-run ID (V5)
 - Cohen's kappa and the confusion table match hand-worked values on synthetic ratings (V5)

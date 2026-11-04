@@ -5,6 +5,7 @@ which the read guard blocks for Claude. Each sheet has one fixed path. Errors na
 
 V2 and V3: the owner runs `voc review sheet` to write a sheet and `voc review import` to read the codes back.
 The import reads only the ID and code columns. What is committed holds IDs, reasons and codes only (V8).
+`voc review summary` recomputes the figures from the committed codes, with no sheet and no model call (V10).
 """
 import csv
 import io
@@ -354,6 +355,37 @@ def import_codes(root, piece, replace=False):
     return summary
 
 
+def summary_path(root, piece):
+    return Path(root) / "results" / "validation" / f"{piece}_summary.json"
+
+
+def summarise_committed(root, piece):
+    """V2's or V3's figures from the committed codes, checked against the frozen V2 list or the quarantined
+    development complaints (V7), and for V3 against the labels file's reasons. Writes `<piece>_summary.json`."""
+    if piece not in ("v2", "v3"):
+        raise ReviewError("the summary covers v2 and v3")
+    recorded = _recorded(root)
+    listed = _ids(root, piece, recorded)
+    name = f"{piece}_codes.csv"
+    with open(codes_path(root, piece), encoding="utf-8", newline="") as f:
+        rows = list(csv.DictReader(f))
+    ids = [row["complaint_id"] for row in rows]
+    if len(ids) != len(set(ids)) or set(ids) != set(listed):
+        raise ReviewError(f"{name} does not hold each listed ID exactly once")
+    if any(row["code"] not in CODES[piece] for row in rows):
+        raise ReviewError(f"{name} holds a code outside the list")
+    if piece == "v3" and any(row["reason"] != recorded[row["complaint_id"]]["reason"] for row in rows):
+        raise ReviewError(f"{name} holds a reason that differs from results/labels/v1_dev.csv")
+    summary = summarise_codes(piece, {row["complaint_id"]: row["code"] for row in rows})
+    if piece == "v3":
+        summary["list"] = [{"complaint_id": row["complaint_id"], "reason": row["reason"], "code": row["code"]}
+                           for row in rows]
+    summary["from"] = f"results/validation/{name}, IDs{', reasons' if piece == 'v3' else ''} and codes only"
+    path = summary_path(root, piece)
+    path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+    return summary
+
+
 def _home_relative(path):
     """The path with the home folder written as `~`, so a printout does not show the login name."""
     try:
@@ -373,7 +405,7 @@ def format_sheet(result):
             f"then run `voc review import {result['piece']}`"]
 
 
-def format_codes(summary, root):
+def format_codes(summary, root, written=None):
     lines = [f"{summary['piece']}: {summary['cases']} cases"]
     for code, figure in summary["codes"].items():
         low, high = figure["interval"]
@@ -386,5 +418,6 @@ def format_codes(summary, root):
         lines.append(f"{entry['complaint_id']}: {entry['reason']}, {entry['code']}")
     if summary["cases"] < 30:
         lines.append(f"only {summary['cases']} cases, so every share is uncertain")
-    lines.append(f"written to {codes_path(root, summary['piece']).relative_to(Path(root)).as_posix()}")
+    path = codes_path(root, summary["piece"]) if written is None else written
+    lines.append(f"written to {path.relative_to(Path(root)).as_posix()}")
     return lines
