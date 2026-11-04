@@ -7,7 +7,8 @@ DuckDB file, its write-ahead log and dbt's output), the home folder
 `.voc` (ledger, recordings and the home test log), any `.duckdb` file, a
 `recordings` folder, a CFPB export file (the archive's and the pins' `CCDB_Export`
 names, and the current bulk export's `complaints.csv` and `complaints.csv.zip`
-outside a `fixtures` folder), or the `.env` file that holds the
+with any copy number or suffix, except the synthetic fixture
+`tests/fixtures/dbt/complaints.csv` in this repo), or the `.env` file that holds the
 API key (`.env.example` is allowed). Every string in the tool input is
 checked as a path, except text the tool writes (such as `content`), after
 `..` is resolved. A search of a folder that holds the data folder or `.voc`
@@ -55,12 +56,10 @@ SHELL_PATTERNS = (
     re.compile(r"voc_data_dir"),
     re.compile(r"voc_next_data_dir"),
     re.compile(r"ccdb_export"),
-    # 4 November 2026: the CFPB's current bulk export has its own names, `complaints.csv.zip` and `complaints.csv`,
-    # from files.consumerfinance.gov/ccdb/, and `scripts/download.py` fetches it. The synthetic fixtures named
-    # `complaints.csv` under `fixtures/dbt/`, and `synthetic_` or `staged_complaints.csv`, stay allowed.
-    re.compile(r"(?<!fixtures/dbt/)(?<![\w-])complaints\.csv(?:\.zip)?\b"),
+    # 4 November 2026: the CFPB's download paths, for the current bulk export (`/ccdb/`) and the narratives
+    # archive (`/f/documents/CCDB_Export_...`, read from its FOIA page on 4 November). The export's own names are
+    # checked by `_names_bulk_export`, and a run of `scripts/download.py` by `RUNS_DOWNLOAD`.
     re.compile(r"files\.consumerfinance\.gov/(?:ccdb|f/documents/ccdb)"),
-    re.compile(r"(?:^|[\s/\"'=])scripts/download\.py\b"),
     re.compile(r"(?:^|[\s/\"'=])\.env(?![\w.])"),  # the key file, not `.env.example`
     # The repo's `data` folder (DuckDB file, write-ahead log, dbt output), named relative to the repo.
     re.compile(r"(?:^|[\s\"'=(])(?:\./)?data/"),
@@ -69,7 +68,16 @@ SHELL_PATTERNS = (
 )
 DATA_FOLDER = "data"
 DUCKDB_NAME = re.compile(r"\.duckdb(?:\.|$)")  # the DuckDB file and its `.wal` log
-BULK_EXPORT_NAMES = ("complaints.csv", "complaints.csv.zip")  # the CFPB's current bulk export, outside `fixtures`
+# The CFPB's current bulk export by its own names, `complaints.csv` and `complaints.csv.zip`, with a browser's copy
+# number (`complaints (1).csv.zip`) and any further suffix (`.part`, `.gz`). The one name allowed is the synthetic
+# fixture `tests/fixtures/dbt/complaints.csv` in this repo. A name with a word before it, such as
+# `synthetic_complaints.csv`, is not matched, so a renamed copy slips past: the guard is best effort (review of #86).
+BULK_EXPORT = re.compile(r"(?<![\w-])complaints(?: \(\d+\))?\.csv(?:\.[a-z0-9]+)*\b")
+FIXTURE = "tests/fixtures/dbt/complaints.csv"
+TOKEN_EDGE = re.compile(r"[\s\"'=(<>|;&]")
+# A run of `scripts/download.py`, which fetches the bulk export. Naming it, as in `git diff`, stays allowed.
+RUNS_DOWNLOAD = re.compile(r"(?:\bpython[\w.]*|\bpy|\buv\s+run(?:\s+--?[\w-]+(?:=\S+)?)*)\s+(?:-\S+\s+)*[\"']?"
+                           r"(?:\./)?scripts/download\.py\b")
 DATA_VARIABLES = ("VOC_DATA_DIR", "VOC_NEXT_DATA_DIR")  # July's folder and the next month's (add-on 1)
 DENIED = "read guard: this names raw data, the DuckDB file, recordings, the ledger or the `.env` file."
 
@@ -137,7 +145,20 @@ def _protected_path(value, home, root, places, search, inner=frozenset()):
             return True  # the search would cover a protected place
         parts = normal.split("/")
         if (DUCKDB_NAME.search(parts[-1]) or "recordings" in parts or "ccdb_export" in normal
-                or (parts[-1] in BULK_EXPORT_NAMES and "fixtures" not in parts) or parts[-1] == ".env"):
+                or (BULK_EXPORT.fullmatch(parts[-1]) and normal not in _clean(Path(root) / FIXTURE))
+                or parts[-1] == ".env"):
+            return True
+    return False
+
+
+def _names_bulk_export(normal, root):
+    """True if the command names the bulk export, other than the one synthetic fixture in this repo."""
+    allowed = {FIXTURE, "./" + FIXTURE}
+    for place in _clean(Path(root)):
+        allowed |= {f"{form}/{FIXTURE}" for form in _shell_forms(place)}
+    for match in BULK_EXPORT.finditer(normal):
+        edge = max((m.end() for m in TOKEN_EDGE.finditer(normal, 0, match.start())), default=0)
+        if match.group(0) != "complaints.csv" or normal[edge:match.end()] not in allowed:
             return True
     return False
 
@@ -151,8 +172,10 @@ def _shell_forms(place):
     return forms
 
 
-def _protected_command(command, places, data_dirs):
+def _protected_command(command, places, data_dirs, root):
     normal = _normal(command)
+    if _names_bulk_export(normal, root) or RUNS_DOWNLOAD.search(normal):
+        return True
     if any(form in normal for p in places for form in _shell_forms(p)):
         return True
     for data_dir in data_dirs:
@@ -190,7 +213,7 @@ def decide(tool_name, tool_input, env, home, root):
     inner = _inner_places(root)
     command = tool_input.get("command")
     if isinstance(command, str):
-        if _protected_command(command, places | inner, data_dirs):
+        if _protected_command(command, places | inner, data_dirs, root):
             return ("deny", DENIED)
         if _runs_show(command):
             return ("deny", "read guard: only the owner runs `show`, in the owner's own terminal.")
