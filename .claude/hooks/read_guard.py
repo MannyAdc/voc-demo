@@ -29,8 +29,8 @@ owner writes and reads the review sheets, which hold complaint text (spec 003,
 V8). Quotes, backticks and line breaks are taken out before the check, so a
 mention inside a commit message or a quoted text is denied too.
 
-Spec 004, J14: a command that runs the Databricks CLI, as any word of a line,
-or names its SDK, its saved sign-in `.databrickscfg` or the volume `voc_raw`,
+Spec 004, J14: a command that runs the Databricks or Azure CLI, as any word
+of a line, or names the Databricks SDK, its saved sign-in `.databrickscfg` or the volume `voc_raw`,
 is denied, and so is a file tool on that sign-in file. Claude's `gh` signs in
 as the owner, who approves the June run, so a command that reads an Actions
 run log or artifact, starts, re-runs, cancels or deletes a run, approves a
@@ -101,8 +101,9 @@ DENIED = "read guard: this names raw data, the DuckDB file, recordings, the ledg
 # Spec 004, J14: the Databricks CLI as any word of a line (`env databricks`, `bash -c databricks`, `uv run
 # databricks`), unless an earlier word is a command that only takes text, such as `git`, `gh` or `grep`. A path names
 # the CLI only as the first word or as an `.exe`, so `ls dbt/databricks` stays allowed. The word after `--group` or
-# `--with` names a package, not the CLI.
-DATABRICKS_CLI = re.compile(r"^(?:databricks|dbsqlcli)(?:\.exe)?$")
+# `--with` names a package, not the CLI. The Azure CLI too (owner decision, 5 November): signed in on the laptop,
+# it would act as the owner in Azure.
+CLOUD_CLI = re.compile(r"^(?:databricks|dbsqlcli|az)(?:\.exe|\.cmd)?$")
 TEXT_COMMANDS = re.compile(r"^(?:git|gh|grep|rg|echo|printf|select-string|sls|write-output|write-host)(?:\.exe)?$")
 PACKAGE_FLAGS = {"--group", "--only-group", "--extra", "--with", "--package"}
 # Its SDK and SQL connector, which sign in as the owner from the CLI's saved sign-in, and that file (review of #87).
@@ -110,8 +111,8 @@ DATABRICKS_SDK = re.compile(r"databricks\.sdk\b|\bworkspaceclient\b|\bfrom\s+dat
                             r"|databricks\.sql\b|\.databrickscfg\b")
 SAVED_SIGN_IN = ".databrickscfg"
 RAW_VOLUME = "voc_raw"
-DATABRICKS_DENIED = ("databricks guard: Claude never runs the Databricks CLI or SDK, reads its saved sign-in, or names "
-                     "the volume `voc_raw` (spec 004, J14). Text that names them goes in a file.")
+DATABRICKS_DENIED = ("cloud guard: Claude never runs the Databricks or Azure CLI or the Databricks SDK, reads its saved "
+                     "sign-in, or names the volume `voc_raw` (spec 004, J14). Text that names them goes in a file.")
 # Spec 004, J14: Claude's `gh` signs in as the owner, who approves the June run. Checked on command text after quotes
 # are taken out, lower-casing and turning backslashes into slashes, so `gh.exe` by its full path is covered too.
 GH = r"(?:^|[\s/&;|(])gh(?:\.exe)?\s+"
@@ -292,7 +293,7 @@ def _runs_databricks(command):
                 break
             if i and words[i - 1] in PACKAGE_FLAGS:
                 continue
-            if DATABRICKS_CLI.match(name) and (i == 0 or "/" not in word or name.endswith(".exe")):
+            if CLOUD_CLI.match(name) and (i == 0 or "/" not in word or name.endswith((".exe", ".cmd"))):
                 return True
     return False
 

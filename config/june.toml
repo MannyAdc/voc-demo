@@ -1,0 +1,6 @@
+# The June sample (spec 004, J6). Fixed before the sample is drawn. See docs/HOW_WE_MEASURE.md.
+month = "june_2026"
+# Cochran's margin of error (B25), at 95 percent and p = 0.5, with the finite pool correction.
+margin = 0.02
+# The seed of the stratified draw: the date these settings were fixed, 5 November 2026.
+seed = 20261105
