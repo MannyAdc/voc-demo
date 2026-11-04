@@ -25,3 +25,20 @@ file_name = "CCDB_Export_21_August_2026.csv"
 size_bytes = 177212547
 sha256 = "24b9fe7913c3405aebdc29f4ce23962e20071b5094b14c7a047434e2552f12d6"
 pinned_on = "2026-10-28"
+
+[june_2026]
+# Folder: VOC_JUNE_DATA_DIR. Used only for spec 004's one untouched test (constitution 2.1.0), sampled on the
+# laptop by `voc sample june` and labelled and scored once, in the cloud (J1, J6).
+# The CSV inside the CFPB archive's June zip, extracted by the owner. Name, size and SHA-256 printed by
+# `voc data-hash june_2026` on 5 November 2026.
+file_name = "CCDB_Export_19_June_2026.csv"
+size_bytes = 219864163
+sha256 = "4adca715ede2ac1780bf72d3735b34fb7d88616f2aa9468ea41357f414180850"
+# The row count, from the owner's check of the file on 4 November 2026 (spec 004, "What we know").
+rows = 620794
+# The zip as the archive serves it, which goes to the Databricks volume (pull request 5). Its size is from the
+# owner's check on 4 November, its SHA-256 from the owner's `Get-FileHash` on 5 November 2026.
+zip_file_name = "CCDB_Export_19_June_2026.zip"
+zip_size_bytes = 19624767
+zip_sha256 = "3021c8af9eeed4971a92f15be21c7ce08cf3c1337151de255e5b12bf782049df"
+pinned_on = "2026-11-05"

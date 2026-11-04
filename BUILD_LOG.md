@@ -1689,3 +1689,6 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - Red commit `b50eb2d`: only `tests/test_june_sample.py`, through the gate. Two of its five tests passed before the code change (the J2 spy and the seed), because the code already did that. They stay as checks.
 - Claude's choice, for the owner to see: the `final june` case was removed in the green commit, not a tests-only one, because the gate refuses a tests-only commit that deletes a test. The other three cases of that test stay.
 - 10:09 Green changes written: July's copies first, both files or neither, the month check, the guard's wording, the spec (J6, facts, setup steps, Known limits), CLAUDE.md, the test list and a June section in `docs/HOW_WE_MEASURE.md`.
+- Green commit `825c700`, through the gate.
+- The owner ran `voc data-hash june_2026` and `Get-FileHash` on the June zip in the owner's own terminal, and pasted the names, sizes and hashes. The CSV's size, 219,864,163 bytes, matches the owner's check of 4 November. The paste also showed the zip's full local path, which is not written anywhere.
+- 10:22 The June pin written in `config/data_files.toml`, in a commit of its own.
