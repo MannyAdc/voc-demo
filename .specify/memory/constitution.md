@@ -70,7 +70,9 @@ Rationale: three days of work should go into verification, not infrastructure.
   FastAPI with Pydantic, React with Vite and TypeScript, Playwright, GitHub Actions, gitleaks.
   Databricks Free Edition: dbt on its SQL warehouse (task T021), and for spec 004's cloud run, its jobs,
   its volume and the file-arrival trigger. For the same run only: an Azure Function with its storage queue
-  and table, and an Azure Key Vault.
+  and table, and an Azure Key Vault. That run's secrets live in a Databricks secret scope, GitHub environment
+  secrets and the Key Vault, as an exception to principle IV, and the Databricks Assistant is never used on
+  June or July data.
 - The LLM never runs inside a web request. Labelling is a batch job. The API only reads results.
 - LLM backend is chosen by `LLM_BACKEND` (`api` or `mock`). Tests and CI use `mock` only. There is no `cli` backend.
 

@@ -88,7 +88,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 
 ## Secrets
 
-- Keys only in environment variables or a git-ignored `.env`, which the command line loads at start-up.
+- Keys only in environment variables or a git-ignored `.env`, which the command line loads at start-up. Spec 004's cloud run is the one exception: its secrets live in a Databricks secret scope, GitHub environment secrets and an Azure Key Vault (constitution 2.1.0). Claude never approves a deployment, re-runs a cloud run or reads Actions run logs.
 - Never print, log or echo a key.
 - If a key leaks: rotate it at once. If a name leaks: tell the owner. Removing a leak from history is the only allowed rewrite, only before the repo is public, only by the owner's decision, and logged with its reason.
 
