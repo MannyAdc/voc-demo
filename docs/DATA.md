@@ -116,7 +116,7 @@ The samples were drawn on 28 October with `uv run --native-tls voc sample` (abou
   - An exact copy has the same text as an earlier narrative, after ignoring case and spacing.
   - A near-copy opens with the same six words as a kept narrative, and the two texts overlap closely. We split each text into its runs of five words in a row. We count the runs both texts share, and divide by the runs found in either text. A near-copy scores at least 0.9 (statisticians call this the Jaccard similarity of word 5-grams).
   - The lowest complaint ID of each group is kept.
-- **This copy test is strict.** Two changed words far apart in a 100-word text give about 0.81, so both texts are kept. A few close copies may therefore sit in both the training and the test set. That can only help TF-IDF, which learns from the training set. It cannot help the LLM, which learns nothing. So it does not flatter the LLM.
+- **This copy test is strict.** Two changed words far apart in a 100-word text give about 0.81, so both texts are kept. A few close copies may therefore sit in both the training and the test set. That can only help the baseline, TF-IDF with logistic regression (TF-IDF + LR), which learns from the training set. It cannot help the LLM, which learns nothing. So it does not flatter the LLM.
 - **The pool: 9,303 complaints.**
 
 Cochran's formula, with the correction for a pool of this size (see [How we measure](HOW_WE_MEASURE.md)):
@@ -125,7 +125,7 @@ Cochran's formula, with the correction for a pool of this size (see [How we meas
 |---|---|---|
 | Development | 5 points at most | 370 |
 | Test | 2 points at most (about 1.5 at 84 percent accuracy) | 1,909 |
-| Training, for TF-IDF only | not sampled | the remaining 7,024 |
+| Training, for TF-IDF + LR only | not sampled | the remaining 7,024 |
 
 Split across categories in proportion to the pool:
 
@@ -148,13 +148,13 @@ Split across categories in proportion to the pool:
 
 - In the **test set**, two categories fall below 30: prepaid card (28) and debt or credit management (19). Their per-category scores are shown as "too few to judge". They still count in the overall score.
 - In the **development set**, 7 of 11 categories are below 30. The development set is used to find error patterns, not to score categories, so no per-category score is reported from it.
-- **Why they were not over-sampled.** The pool has only 134 prepaid card and 91 debt or credit management complaints. Proportional sampling leaves 101 and 68 of them to train TF-IDF. Each extra one taken for the test set comes out of that.
+- **Why they were not over-sampled.** The pool has only 134 prepaid card and 91 debt or credit management complaints. Proportional sampling leaves 101 and 68 of them to train TF-IDF + LR. Each extra one taken for the test set comes out of that.
   - 2 more prepaid card and 11 more debt or credit management complaints would have reached 30, at a cost of 2 and 11 training examples. That was not done: 30 is only the floor for giving a score, and its margin is still wide.
-  - Proportional samples need no re-weighting. Over-sampled ones would. Re-weighting by pool shares (B10) would keep the overall figure's mix right, but it cannot give TF-IDF back its lost training examples.
+  - Proportional samples need no re-weighting. Over-sampled ones would. Re-weighting by pool shares (B10) would keep the overall figure's mix right, but it cannot give TF-IDF + LR back its lost training examples.
   - The samples were drawn in proportion and frozen on 28 October, before the first run. Decision 2 below keeps the result: "too few to judge".
   - [How we measure](HOW_WE_MEASURE.md) explains the difference between labelling a category and measuring it.
 
 ## Decisions (owner, 28 October)
 
 1. All 11 categories are used as they are, with no merging.
-2. Prepaid card and debt or credit management are "too few to judge" in the per-category test tables, and the development set gives no per-category scores. Small categories are where the two methods differ most. TF-IDF learns only from examples, and prepaid card has about 100 in training. The LLM reads the category's official sub-category list and needs no examples (zero-shot). So small categories are a fair test of that difference, and the README will report it with its limits: few test complaints, and definitions that are lists, not prose.
+2. Prepaid card and debt or credit management are "too few to judge" in the per-category test tables, and the development set gives no per-category scores. Small categories are where the two methods differ most. TF-IDF + LR learns only from examples, and prepaid card has about 100 in training. The LLM reads the category's official sub-category list and needs no examples (zero-shot). So small categories are a fair test of that difference, and the README will report it with its limits: few test complaints, and definitions that are lists, not prose.

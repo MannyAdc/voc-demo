@@ -4,11 +4,11 @@ Moved here from the README on 31 October 2026, word for word, except that refere
 
 ## The result
 
-The claim was fixed before the first run: **the LLM, with its quote check, beats TF-IDF at the same coverage** (rule B10 in the [spec](../specs/001-core-labelling-pipeline/spec.md)). It was judged once, on a frozen test set of 1,909 complaints. [How we measure](HOW_WE_MEASURE.md) explains the method in plain words.
+The claim was fixed before the first run: **the LLM, with its quote check, beats TF-IDF with logistic regression (TF-IDF + LR) at the same coverage** (rule B10 in the [spec](../specs/001-core-labelling-pipeline/spec.md)). It was judged once, on a frozen test set of 1,909 complaints. [How we measure](HOW_WE_MEASURE.md) explains the method in plain words.
 
-**Verdict: the LLM beats TF-IDF.**
+**Verdict: the LLM beats TF-IDF + LR.**
 
-| Test set, 1,909 complaints | LLM (claude-haiku-5-5, prompt v1) | TF-IDF at the same coverage |
+| Test set, 1,909 complaints | LLM (claude-haiku-5-5, prompt v1) | TF-IDF + LR at the same coverage |
 |---|---|---|
 | Re-weighted strict accuracy | **80.3%** | 77.9% |
 | Precision on accepted labels | 82.2% | 79.7% |
@@ -25,18 +25,18 @@ The difference is +2.4 points, with a 95% interval of +0.5 to +4.1 points from a
 - Results: [results/eval/v1_test.json](../results/eval/v1_test.json) and [results/labels/v1_test.json](../results/labels/v1_test.json).
 
 **What the terms mean.**
-- *TF-IDF*: short for the baseline, TF-IDF word scores fed into a logistic regression (scikit-learn, with the settings in [config/tfidf.toml](../config/tfidf.toml)), trained on the 7,024 training complaints.
+- *TF-IDF + LR*: short for the baseline, TF-IDF word scores fed into a logistic regression (scikit-learn, with the settings in [config/tfidf.toml](../config/tfidf.toml)), trained on the 7,024 training complaints.
 - *Strict accuracy*: correct accepted labels divided by all complaints. A quarantined label counts as wrong.
 - *Re-weighted*: worked out for each product, then averaged with weights equal to each product's share of the 9,303 complaints in the pool.
-- *At the same coverage*: TF-IDF answers only as many complaints as the LLM accepted, its most confident ones, and the rest count as wrong. So neither method looks better by skipping hard cases.
-- *Time per 1,000*: the LLM's calls were sent one at a time. TF-IDF's time counts labelling only, not training.
-- *Macro-F1*: the F1 score of each of the 11 products, averaged with equal weight. It is the one row not at matched coverage: TF-IDF's macro-F1 counts its label for every complaint.
+- *At the same coverage*: TF-IDF + LR answers only as many complaints as the LLM accepted, its most confident ones, and the rest count as wrong. So neither method looks better by skipping hard cases.
+- *Time per 1,000*: the LLM's calls were sent one at a time. TF-IDF + LR's time counts labelling only, not training.
+- *Macro-F1*: the F1 score of each of the 11 products, averaged with equal weight. It is the one row not at matched coverage: TF-IDF + LR's macro-F1 counts its label for every complaint.
 
 ### Per product, on the test set
 
-Here the LLM's quarantined labels count as wrong, and TF-IDF labels every complaint, at full coverage, not the matched coverage above. A product with fewer than 30 test complaints is "too few to judge".
+Here the LLM's quarantined labels count as wrong, and TF-IDF + LR labels every complaint, at full coverage, not the matched coverage above. A product with fewer than 30 test complaints is "too few to judge".
 
-| Product | Test complaints | F1, LLM | F1, TF-IDF |
+| Product | Test complaints | F1, LLM | F1, TF-IDF + LR |
 |---|---|---|---|
 | Debt collection | 452 | 0.833 | **0.863** |
 | Checking or savings account | 416 | **0.822** | 0.780 |
@@ -56,7 +56,7 @@ The LLM's clear weak spot is credit reporting. It gave that label to 168 accepte
 
 The development set (370 complaints) was used while building, so its figures are tuning figures only.
 
-| Development set, 370 complaints | LLM | TF-IDF at the same coverage |
+| Development set, 370 complaints | LLM | TF-IDF + LR at the same coverage |
 |---|---|---|
 | Re-weighted strict accuracy | 79.8% | 79.1% |
 | Precision on accepted labels | 81.7% | 81.2% |
@@ -69,7 +69,7 @@ Difference +0.6 points, from the unrounded figures (79.76% against 79.14%), 95% 
 ## Speed, Safety, Scale
 
 **Speed**
-- The LLM took 2,015.2 seconds per 1,000 complaints on the test run, with calls sent one at a time. TF-IDF took 0.707 seconds per 1,000.
+- The LLM took 2,015.2 seconds per 1,000 complaints on the test run, with calls sent one at a time. TF-IDF + LR took 0.707 seconds per 1,000.
 - The LLM cost $0.2373 per 1,000 complaints on the test run (claude-haiku-5-5, prompt v1). Labelling all 10,002 complaints with a narrative in the July file would cost about $2.37 at that rate ($0.4530015 / 1,909 x 10,002). With calls sent one at a time, it would take about 5.6 hours (2,015.2 seconds x 10.002). Both are projections, not runs.
 - Every answer is recorded, so on the machine that holds the recordings, a re-run of the same prompt replays it at no cost.
 
@@ -83,6 +83,6 @@ Difference +0.6 points, from the unrounded figures (79.76% against 79.14%), 95% 
 
 **Scale**
 - The July 2026 export holds 672,036 complaints. 10,002 of them (1.5 percent) have a narrative (`uv run --native-tls voc profile --write results/profile_july_2026.json`). `voc sample` removed 623 exact copies and 76 near-copies, so 9,303 remain ([docs/DATA.md](DATA.md)).
-- Sample sizes come from Cochran's formula: 370 for development and 1,909 for the frozen test set. The remaining 7,024 train TF-IDF ([docs/DATA.md](DATA.md)).
+- Sample sizes come from Cochran's formula: 370 for development and 1,909 for the frozen test set. The remaining 7,024 train TF-IDF + LR ([docs/DATA.md](DATA.md)).
 - Loading is incremental and keyed on complaint ID, so loading the same file again adds nothing. dbt builds the models and runs the data tests.
 - A scheduled GitHub Actions workflow runs load, dbt build, label and evaluate every day on a committed synthetic fixture, with the mock backend. Its figures are synthetic, not a result. It is one job that runs these four steps in order after its setup steps, and any failing step or data test fails the run (`.github/workflows/scheduled.yml`). A full scheduler such as Airflow would be worth it with many pipelines that depend on each other, retries for each step, or backfills of past months. Airflow is not installed.

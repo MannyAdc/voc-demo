@@ -37,8 +37,8 @@ async function get(path) {
   return response.json();
 }
 
-const VERDICT_WORDS = { beats: "the LLM beats TF-IDF", inconclusive: "inconclusive",
-                        does_not_beat: "the LLM does not beat TF-IDF" };
+const VERDICT_WORDS = { beats: "the LLM beats TF-IDF + LR", inconclusive: "inconclusive",
+                        does_not_beat: "the LLM does not beat TF-IDF + LR" };
 
 function headToHead(f) {
   put("llm-acc", pct(f.llm.reweighted_accuracy)); put("tf-acc", pct(f.tfidf.reweighted_accuracy));
@@ -51,7 +51,7 @@ function headToHead(f) {
       + ". " + num(f.complaints) + " complaints, " + num(f.resamples) + " paired bootstrap resamples.");
   if ([f.difference, low, high].every((v) => typeof v === "number")) drawInterval(f.difference, low, high);
   const who = $("who");
-  const names = { both: "both right", only_llm: "only the LLM", only_tfidf: "only TF-IDF", neither: "neither" };
+  const names = { both: "both right", only_llm: "only the LLM", only_tfidf: "only TF-IDF + LR", neither: "neither" };
   for (const key of ["both", "only_llm", "only_tfidf", "neither"]) {
     const cell = document.createElement("div");
     const b = document.createElement("b"); b.textContent = num(f.who_was_right[key]);
@@ -69,7 +69,7 @@ function developmentHeadToHead() {
   put("banner", "No test run is logged yet, so the head to head below is from the development set: tuning figures, "
       + "not a verdict.");
   put("who-note", "Each development complaint, by which method labelled it correctly: both, only one of them, or "
-      + "neither. TF-IDF counts as right only on the complaints it answered, its most confident ones. A held-back LLM "
+      + "neither. TF-IDF + LR counts as right only on the complaints it answered, its most confident ones. A held-back LLM "
       + "label counts as wrong.");
 }
 
@@ -118,7 +118,7 @@ function noVerdict(text) {
 
 function testVerdict(t) {
   // The claim's verdict, from the single logged test run. Not a tuning figure.
-  const words = { beats: "The LLM beats TF-IDF", inconclusive: "Inconclusive", does_not_beat: "The LLM does not beat TF-IDF" };
+  const words = { beats: "The LLM beats TF-IDF + LR", inconclusive: "Inconclusive", does_not_beat: "The LLM does not beat TF-IDF + LR" };
   const [low, high] = t.interval.length === 2 ? t.interval : [null, null];
   const pts = points;
   $("verdict-h").closest("section").classList.add("has-verdict");
@@ -184,10 +184,10 @@ function productBars(rows) {
       f1.textContent = "too few to judge";
     } else {
       const a = round3(c.llm_f1), b = round3(c.tfidf_f1);
-      f1.textContent = "LLM " + dec(c.llm_f1) + " / TF-IDF " + dec(c.tfidf_f1);
+      f1.textContent = "LLM " + dec(c.llm_f1) + " / TF-IDF + LR " + dec(c.tfidf_f1);
       if (a !== null && b !== null && b > a) {
         const flag = document.createElement("span"); flag.className = "flag"; flag.textContent = " !";
-        flag.title = "TF-IDF does better here: check before you report";
+        flag.title = "TF-IDF + LR does better here: check before you report";
         f1.appendChild(flag);
         item.classList.add("weak");
       }

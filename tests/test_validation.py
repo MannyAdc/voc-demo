@@ -2767,9 +2767,11 @@ def test_V4_the_write_up_has_no_em_dash():
 
 
 def test_V4_the_readme_links_the_write_up_in_one_line():
+    # Changed by the wording pull request: README line 100 also points to the write-up (owner decision,
+    # 4 November), so two lines, the "Read more" row and that one.
     readme = (REPO / "README.md").read_text(encoding="utf-8")
     lines = [line for line in readme.splitlines() if "docs/VALIDATION.md" in line]
-    assert len(lines) == 1
+    assert len(lines) == 2
 
 
 def test_V4_how_we_measure_explains_agreement_and_kappa_with_a_worked_example():
@@ -2906,6 +2908,15 @@ def test_V4_each_published_page_names_the_baseline_tfidf_plus_lr(name):
     text = (REPO / name).read_text(encoding="utf-8")
     assert not _bare_tfidf(text)
     assert "TF-IDF + LR" in text
+    if name.endswith(".html"):
+        # Changed in the green commit: as `tests/test_ui.py` reads the page, its visible text from after the
+        # heading. The title and the heading are short labels, and the line below them names the baseline in full,
+        # around a help button.
+        import re
+        visible = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", text[text.index("</h1>"):]))
+        assert visible.index("TF-IDF (term frequency") < visible.index("logistic regression (TF-IDF + LR)") <= \
+            visible.index("TF-IDF + LR") - len("logistic regression (")
+        return
     assert text.index("TF-IDF with logistic regression") < text.index("TF-IDF + LR")
 
 
