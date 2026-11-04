@@ -13,7 +13,9 @@ with any copy number or suffix, except the synthetic fixture
 API key (`.env.example` is allowed). Every string in the tool input is
 checked as a path, except text the tool writes (such as `content`), after
 `..` is resolved. A search of a folder that holds the data folder or `.voc`
-is denied too.
+is denied too. A command that names a `.dpapi` file, or a call that decrypts
+one, is denied, so a wildcard cannot find the owner's encrypted Databricks
+token in `.voc` without naming the folder (review of #87).
 
 Any tool input with a `command` field (Bash, PowerShell, Monitor) is checked
 as a shell command. That is a text check, so it also covers `cat`,
@@ -27,11 +29,16 @@ owner writes and reads the review sheets, which hold complaint text (spec 003,
 V8). Quotes, backticks and line breaks are taken out before the check, so a
 mention inside a commit message or a quoted text is denied too.
 
-Spec 004, J14: a command that runs the Databricks CLI or names the volume
-`voc_raw` is denied. Claude's `gh` signs in as the owner, who approves the
-June run, so a command that reads an Actions run log, starts, re-runs or
-cancels a workflow, approves a deployment, uses the environments or secrets
-APIs, or merges a pull request, by `gh` or by the API, is denied too.
+Spec 004, J14: a command that runs the Databricks CLI, as any word of a line,
+or names its SDK, its saved sign-in `.databrickscfg` or the volume `voc_raw`,
+is denied, and so is a file tool on that sign-in file. Claude's `gh` signs in
+as the owner, who approves the June run, so a command that reads an Actions
+run log or artifact, starts, re-runs, cancels or deletes a run, approves a
+deployment, uses the environments, secrets or variables APIs, writes through
+the REST API or a GraphQL mutation, changes the repo's settings, prints the
+token, sets an alias or an extension, or merges, by `gh` or by the API, is
+denied too. Flags between `gh`, its group and its subcommand change nothing.
+Reads through `gh api` stay allowed.
 """
 import json
 import os
@@ -69,6 +76,8 @@ SHELL_PATTERNS = (
     # checked by `_names_bulk_export`, and a run of `scripts/download.py` by `RUNS_DOWNLOAD`.
     re.compile(r"files\.consumerfinance\.gov/(?:ccdb|f/documents/ccdb)"),
     re.compile(r"(?:^|[\s/\"'=])\.env(?![\w.])"),  # the key file, not `.env.example`
+    # The owner's encrypted Databricks token in `.voc`, found by a wildcard, and the calls that decrypt it.
+    re.compile(r"\.dpapi\b|convertto-securestring|networkcredential|protecteddata|cryptunprotectdata"),
     # The repo's `data` folder (DuckDB file, write-ahead log, dbt output), named relative to the repo.
     re.compile(r"(?:^|[\s\"'=(])(?:\./)?data/"),
     re.compile(r"(?:^|[\s;&|(])(?:cd|ls|dir|gci|get-childitem|pushd|set-location|sl|tree|du|cat|type|gc|get-content"
@@ -89,29 +98,73 @@ RUNS_DOWNLOAD = re.compile(r"(?:\bpython[\w.]*|\bpy|\buv\s+run(?:\s+--?[\w-]+(?:
 # July's folder, the next month's (add-on 1) and June's (spec 004, J6)
 DATA_VARIABLES = ("VOC_DATA_DIR", "VOC_NEXT_DATA_DIR", "VOC_JUNE_DATA_DIR")
 DENIED = "read guard: this names raw data, the DuckDB file, recordings, the ledger or the `.env` file."
-# Spec 004, J14: the Databricks CLI as the command of any part of a line, and the raw volume `voc_raw` by name.
+# Spec 004, J14: the Databricks CLI as any word of a line (`env databricks`, `bash -c databricks`, `uv run
+# databricks`), unless an earlier word is a command that only takes text, such as `git`, `gh` or `grep`. A path names
+# the CLI only as the first word or as an `.exe`, so `ls dbt/databricks` stays allowed. The word after `--group` or
+# `--with` names a package, not the CLI.
 DATABRICKS_CLI = re.compile(r"^(?:databricks|dbsqlcli)(?:\.exe)?$")
+TEXT_COMMANDS = re.compile(r"^(?:git|gh|grep|rg|echo|printf|select-string|sls|write-output|write-host)(?:\.exe)?$")
+PACKAGE_FLAGS = {"--group", "--only-group", "--extra", "--with", "--package"}
+# Its SDK and SQL connector, which sign in as the owner from the CLI's saved sign-in, and that file (review of #87).
+DATABRICKS_SDK = re.compile(r"databricks\.sdk\b|\bworkspaceclient\b|\bfrom\s+databricks\s+import\s+sql\b"
+                            r"|databricks\.sql\b|\.databrickscfg\b")
+SAVED_SIGN_IN = ".databrickscfg"
 RAW_VOLUME = "voc_raw"
+DATABRICKS_DENIED = ("databricks guard: Claude never runs the Databricks CLI or SDK, reads its saved sign-in, or names "
+                     "the volume `voc_raw` (spec 004, J14). Text that names them goes in a file.")
 # Spec 004, J14: Claude's `gh` signs in as the owner, who approves the June run. Checked on command text after quotes
 # are taken out, lower-casing and turning backslashes into slashes, so `gh.exe` by its full path is covered too.
 GH = r"(?:^|[\s/&;|(])gh(?:\.exe)?\s+"
+# Flags, each with or without a value, between `gh`, its group and its subcommand: `gh pr -R o/r merge 85`.
+FLAGS = r"(?:-\S+(?:\s+(?!-)\S+)?\s+)*"
+# An API path on a repo, so `docs/environments.md` or `scripts/rerun.py` is not taken for one (review of #87).
+REPO = r"repos/[^/\s]+/[^/\s]+"
+
+
+def _gh(*words):
+    """`gh` and its words, with any flags before and between them."""
+    return GH + FLAGS + (r"\s+" + FLAGS).join(words)
+
+
 OWNER_ACTIONS = tuple(re.compile(pattern) for pattern in (
-    GH + r"run\s+view\b[^;&|\n]*\s--log",  # a run's log, `--log` and `--log-failed`
-    GH + r"run\s+(?:download|rerun|cancel)\b",
-    GH + r"workflow\s+(?:run|enable|disable)\b",
-    GH + r"secret\b",
-    GH + r"pr\s+merge\b",
-    r"/actions/(?:runs|jobs)/\S*/logs\b",
-    r"/dispatches\b",  # a workflow's and the repo's
-    r"/rerun(?:-failed-jobs)?\b",
-    r"/(?:force-)?cancel\b",
+    _gh("run", r"view\b[^;&|\n]*\s--log"),  # a run's log, `--log` and `--log-failed`
+    _gh("run", r"(?:download|rerun|cancel|delete)\b"),
+    _gh("workflow", r"(?:run|enable|disable)\b"),
+    _gh(r"secret\b"),
+    _gh("variable", r"(?:set|delete)\b"),
+    _gh("pr", r"merge\b"),
+    _gh("alias", r"(?:set|import|delete)\b"),  # an alias could stand for any denied command
+    _gh(r"(?:extension|extensions|ext)", r"(?:install|upgrade|create|exec)\b"),
+    _gh("auth", r"(?:token|refresh|login|logout|switch)\b"),
+    _gh("auth", r"status\b[^;&|\n]*\s-t\b"),
+    r"--show-token\b",
+    _gh("repo", r"(?:edit|delete|rename|archive|unarchive|sync|deploy-key|autolink)\b"),
+    REPO + r"/actions/(?:runs|jobs)/\S*/logs\b",
+    REPO + r"/actions/artifacts/\d+/\w+",  # an artifact's download
+    REPO + r"/\S*dispatches\b",  # a workflow's and the repo's
+    REPO + r"/actions/(?:runs|jobs)/\S*/(?:rerun(?:-failed-jobs)?|(?:force-)?cancel)\b",
+    REPO + r"/actions/workflows/\S*/(?:enable|disable)\b",
     r"pending_deployments",
-    r"/environments\b",
-    r"/secrets\b",
-    r"/pulls/[^/\s]+/merge\b",
-    r"/merges\b",
-    r"\b(?:mergepullrequest|enablepullrequestautomerge|approvedeployments)\b",  # GraphQL
+    REPO + r"/environments\b",
+    REPO + r"/(?:\S*/)?secrets\b",
+    REPO + r"/pulls/[^/\s]+/merge\b",
+    REPO + r"/merges\b",
+    REPO + r"/git/refs?\b",  # moving a branch, `main` included
+    r"\b(?:mergepullrequest|enablepullrequestautomerge|approvedeployments|mergebranch|createcommitonbranch"
+    r"|updaterefs?|createref|deleteref)\b",  # GraphQL
 ))
+# `gh api` writes with a method other than GET, or with fields and no method, which gh sends as a POST. In GraphQL,
+# a mutation, or a query read from a file, which the text check cannot see, is denied. Other reads stay allowed.
+GH_API = re.compile(GH + FLAGS + r"api\b")
+GRAPHQL = re.compile(r"\bgraphql\b")
+GRAPHQL_WRITE = re.compile(r"\bmutation\b|=@|--input\b")
+API_WRITE = re.compile(r"(?:-x|--method)[\s=]*(?:post|put|patch|delete)\b")
+API_FIELDS = re.compile(r"(?:^|\s)(?:-f|--field|--raw-field|--input)(?=[\s=]|$)")
+API_GET = re.compile(r"(?:-x|--method)[\s=]*get\b")
+GITHUB_DENIED = ("github guard: only the owner reads Actions run logs and artifacts, starts, re-runs, cancels or "
+                 "deletes a run, approves a deployment, uses the environments, secrets and variables APIs, writes "
+                 "through the API, changes the repo's settings, reads the token, sets an alias or an extension, or "
+                 "merges (spec 004, J14). Text that names them goes in a file.")
 
 
 def _normal(text):
@@ -129,7 +182,7 @@ def _clean(path):
 
 
 def _data_dirs(env, root):
-    """Every raw data folder named for July or the next month, in the environment or in `.env`.
+    """Every raw data folder named for July, the next month or June, in the environment or in `.env`.
 
     `voc.env.settings` lets the environment win and, inside `.env`, the last line win. The guard
     protects every value it finds, so it covers the folder the command line reads whatever the order.
@@ -229,18 +282,34 @@ def _runs_show(command):
 
 def _runs_databricks(command):
     normal = _normal(REVIEW_NOISE.sub(" ", command))
-    if RAW_VOLUME in normal:
+    if RAW_VOLUME in normal or DATABRICKS_SDK.search(normal):
         return True
     for segment in SEGMENTS.split(normal):
         words = [w for w in segment.split() if not ASSIGNMENT.match(w)]
-        if words and DATABRICKS_CLI.match(words[0].split("/")[-1]):
-            return True
+        for i, word in enumerate(words):
+            name = word.split("/")[-1]
+            if TEXT_COMMANDS.match(name):
+                break
+            if i and words[i - 1] in PACKAGE_FLAGS:
+                continue
+            if DATABRICKS_CLI.match(name) and (i == 0 or "/" not in word or name.endswith(".exe")):
+                return True
     return False
 
 
 def _uses_owner_actions(command):
     normal = _normal(REVIEW_NOISE.sub(" ", command))
-    return any(p.search(normal) for p in OWNER_ACTIONS)
+    if any(p.search(normal) for p in OWNER_ACTIONS):
+        return True
+    for segment in SEGMENTS.split(normal):
+        if not GH_API.search(segment):
+            continue
+        if GRAPHQL.search(segment):
+            if GRAPHQL_WRITE.search(segment):
+                return True
+        elif API_WRITE.search(segment) or (API_FIELDS.search(segment) and not API_GET.search(segment)):
+            return True
+    return False
 
 
 def _strings(value, key=None):
@@ -266,12 +335,9 @@ def decide(tool_name, tool_input, env, home, root):
         if _runs_show(command):
             return ("deny", "read guard: only the owner runs `show`, in the owner's own terminal.")
         if _runs_databricks(command):
-            return ("deny", "databricks guard: Claude never runs the Databricks CLI or names the volume `voc_raw` "
-                            "(spec 004, J14).")
+            return ("deny", DATABRICKS_DENIED)
         if _uses_owner_actions(command):
-            return ("deny", "github guard: only the owner reads Actions run logs, starts, re-runs or cancels a "
-                            "workflow, approves a deployment, uses the environments and secrets APIs, or merges "
-                            "(spec 004, J14).")
+            return ("deny", GITHUB_DENIED)
         if WITH_TEXT.search(command):
             return ("deny", "text guard: only the owner passes --with-text, in the owner's own terminal (A10).")
         if REVIEW_SHEETS.search(REVIEW_NOISE.sub(" ", command)):
@@ -283,6 +349,8 @@ def decide(tool_name, tool_input, env, home, root):
     for key, value in _strings(tool_input):
         if key in NOT_PATHS or key == "command" or (key == "pattern" and tool_name != "Glob"):
             continue
+        if value and _normal(value).split("/")[-1] == SAVED_SIGN_IN:
+            return ("deny", DATABRICKS_DENIED)
         if value and _protected_path(value, home, root, places, search, inner):
             return ("deny", DENIED)
     return None

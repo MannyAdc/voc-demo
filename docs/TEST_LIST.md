@@ -291,8 +291,11 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - data guard: content that looks like an Anthropic key is blocked (the fake key is built while the test runs)
 - data guard: a normal source file is allowed
 - read guard: June's data folder (`VOC_JUNE_DATA_DIR`) is protected like July's, from the environment or `.env`, by file tools, searches and commands (spec 004, J6)
-- read guard: a command that runs the Databricks CLI, in any part of a line or by its full path, or names the volume `voc_raw`, is denied (spec 004, J14)
+- read guard: a command that runs the Databricks CLI, as any word of a line unless an earlier word only takes text (`git`, `gh`, `grep`), or by its full path, or names its SDK, its saved sign-in `.databrickscfg` or the volume `voc_raw`, is denied. A file tool on `.databrickscfg` is denied too. `ls dbt/databricks` and `uv run --group databricks` stay allowed (spec 004, J14, review of #87)
+- read guard: a command that names a `.dpapi` file or a call that decrypts one is denied, so a wildcard cannot reach the owner's encrypted Databricks token in `.voc` (review of #87)
 - read guard: reading an Actions run log, starting, re-running or cancelling a workflow, approving a deployment, the environments and secrets APIs, and merging a pull request are denied, by `gh`, `gh.exe` by its full path, the REST API or GraphQL. Checking, viewing and commenting on a pull request, viewing a run without its log, and running the merge verdict stay allowed (spec 004, J14)
+- read guard: flags between `gh`, its group and its subcommand change nothing (`gh pr -R o/r merge`). Also denied: deleting a run, artifacts' downloads, the variables API, writes through `gh api` (any method but GET, or fields with no method), GraphQL mutations and queries read from a file, `git/refs`, aliases, extensions, `gh auth token`, `--show-token`, and the repo's settings by `gh repo edit` or the API. API paths count only after `repos/<owner>/<repo>/`, so `cat docs/environments.md` and `python scripts/rerun.py` stay allowed. Every J14 refusal names J14 (spec 004, J14, review of #87)
+- settings: permission deny rules remove the browser tools (Claude in Chrome, Chrome DevTools, the built-in browser, computer use and their enable tools) and deny WebFetch to `github.com`, `api.github.com`, `*.cloud.databricks.com` and `*.azuredatabricks.net` (spec 004, J14, owner decision of 5 November)
 
 ## Merge verdict (T006b), `tests/test_merge_verdict.py`
 
@@ -370,6 +373,7 @@ Added on 4 November 2026, revised twice the same day. Each piece adds its tests 
 - the approval workflow's YAML: started only by `workflow_dispatch` on `main`, its run ID input checked and passed through `env:`, permissions per job, the secrets only in the `june-run` job, one run at a time, actions pinned by SHA. A test can check only the YAML (J10)
 - Job B checks the run entry's hashes and the June and July hashes, refuses unless the workspace header names the cloud workspace and the cap covers the whole worst case, stops on a 400 "usage limits" answer with no retry, is one task that refuses an approval for another Job A run or one already used, and writes only the two results files to the results volume (J11, J12)
 - The copy script reads only the two results file names, refuses any other file, and checks the columns, the label and reason lists, the IDs, the size limit and the CFPB header (J11)
+- The copy script signs in only with the reader's credential, named in its call, and never with a default profile or the environment's `DATABRICKS_TOKEN` (J13, review of #87)
 - recordings, the ledger and the fitted model never leave the volume, and complaint text never reaches GitHub (J4)
 - the read guard protects `VOC_JUNE_DATA_DIR`, the raw volume, all Actions run logs, and the approval workflow's start (J6, J14): written in pull request 2, listed under Hooks. The June tables are named in pull request 5, and Claude never runs the Databricks CLI at all
 - the laptop path and the cloud path give the same July results on mock or replay (J8)
