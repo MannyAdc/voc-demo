@@ -148,7 +148,7 @@ Each line is in [BUILD_LOG.md](BUILD_LOG.md) on the day shown.
 
 Not done yet:
 
-- **A monthly feed with no person involved.** Once a month, a scheduled job would ask the CFPB's search API for last month's complaints as CSV, record the file's SHA-256, upload it to the Databricks volume, and run the same month build. The API takes `date_received_min`, `date_received_max` and `format=csv` ([its specification](https://github.com/cfpb/ccdb5-api/blob/main/swagger-config.yaml), read 31 October 2026). Not tested: whether its CSV has exactly the columns of the pinned exports. The load's column check would stop a run that differs.
+- **A monthly feed with no person involved: not possible with this data any more.** The CFPB stopped publishing complaint narratives on 14 August 2026 ([its announcement](https://www.consumerfinance.gov/about-us/newsroom/the-cfpb-to-cease-discretionary-publication-of-complaint-narratives-and-visualizations/)). New months come without the text the labeller reads: on 4 November 2026, the current export and the search API's CSV both lacked the narrative column, checked from the column names only. The narratives published until then are in the CFPB's [narratives archive](https://www.consumerfinance.gov/foia-requests/foia-electronic-reading-room/cfpb-consumer-complaint-database-narratives-archive/).
 - **Labelling from the warehouse.** Labelling and scoring read the complaints from Databricks and write the labels back, so no step needs the laptop.
 - **Call transcripts.** Text from speech-to-text, through the same quote check, so each label points to the moment in the call that supports it.
 - **Richer labels.** The issue, the sentiment and the root cause, each with its own checked quote.

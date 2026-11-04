@@ -351,6 +351,19 @@ Added on 2 November 2026. Each piece adds its tests in its own pull request, fai
 - the hybrid uses the baseline at a top probability of at least 0.9 and the LLM otherwise, a quarantined answer counts as wrong, and it is scored as B10 scores (V6)
 - V6 reads the test run's summary file only, never a per-complaint test file (V7)
 
+## June test and baselines ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
+
+Added on 4 November 2026. Each piece adds its tests in its own pull request, failing first.
+
+- the June sample is drawn from June only, shares no narrative with the July pool, follows Cochran's formula at e = 2 points, and is frozen with its hashes (J4)
+- no June label is scored until every method, the hybrid rule, the sample and the claims are committed, and June is scored once (J1)
+- no new method reads a July test row (J2)
+- gradient boosting and the transformer are scored at the same coverage, as TF-IDF + LR is (J5, J6)
+- the hybrid on June uses the rule fixed on 2 November, unchanged (J7)
+- the cloud run's key is read only by a job in the `june-run` environment, and a 400 "usage limits" answer stops the run with no retry (J9)
+- the cloud run writes recordings to the volume, never to git or a GitHub artifact, and its results pull request holds no complaint text (J10, J11)
+- the laptop path and the cloud path give the same results files on synthetic data (J8)
+
 ## Later features (listed now, specified later)
 
 - API: typed schemas, input checks, paging, error messages, request logging
