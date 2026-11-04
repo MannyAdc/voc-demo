@@ -136,7 +136,7 @@ Each line is in [BUILD_LOG.md](BUILD_LOG.md) on the day shown.
 - **Scope.** The human spot check of whether quotes support their labels was cut, and listed as a pending improvement. Databricks was kept. *(29 October)*
 - **Deploy to Azure the same day,** not on Saturday. *(30 October)*
 - **The spend cap.** When the cap refused the scored run, it was raised to 40,000,000 tokens. Changing the prompt's output limit after tuning, or relaxing the cap check, was turned down. *(29 October)*
-- **The monthly automatic feed is not built.** The audience's brief does not ask for it, and the time goes to the demo video. It is named as the next step below. *(31 October)*
+- **The monthly automatic feed is not built.** The audience's brief does not ask for it, and the time goes to the demo video. It is named as the next step below. *(31 October)* *Changed on 4 November: it is no longer possible with this data, as the next step below says.*
 
 ### How it reads
 
