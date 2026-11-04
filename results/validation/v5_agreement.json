@@ -1,0 +1,140 @@
+{
+  "agreement": 0.6,
+  "agreement_interval": [
+    0.4618118910275937,
+    0.7239181021375425
+  ],
+  "chance_agreement": 0.4968,
+  "differences": [
+    {
+      "complaint_id": "23743842",
+      "judge": "partly",
+      "owner": "supports"
+    },
+    {
+      "complaint_id": "23745215",
+      "judge": "partly",
+      "owner": "supports"
+    },
+    {
+      "complaint_id": "23753212",
+      "judge": "partly",
+      "owner": "supports"
+    },
+    {
+      "complaint_id": "23757866",
+      "judge": "supports",
+      "owner": "does_not_support"
+    },
+    {
+      "complaint_id": "23772160",
+      "judge": "partly",
+      "owner": "supports"
+    },
+    {
+      "complaint_id": "23806038",
+      "judge": "partly",
+      "owner": "supports"
+    },
+    {
+      "complaint_id": "23811505",
+      "judge": "does_not_support",
+      "owner": "supports"
+    },
+    {
+      "complaint_id": "23825512",
+      "judge": "supports",
+      "owner": "partly"
+    },
+    {
+      "complaint_id": "23841643",
+      "judge": "supports",
+      "owner": "does_not_support"
+    },
+    {
+      "complaint_id": "23872283",
+      "judge": "partly",
+      "owner": "supports"
+    },
+    {
+      "complaint_id": "23898952",
+      "judge": "does_not_support",
+      "owner": "supports"
+    },
+    {
+      "complaint_id": "23952603",
+      "judge": "partly",
+      "owner": "supports"
+    },
+    {
+      "complaint_id": "23954714",
+      "judge": "partly",
+      "owner": "does_not_support"
+    },
+    {
+      "complaint_id": "24021013",
+      "judge": "supports",
+      "owner": "partly"
+    },
+    {
+      "complaint_id": "24118968",
+      "judge": "does_not_support",
+      "owner": "partly"
+    },
+    {
+      "complaint_id": "24121748",
+      "judge": "partly",
+      "owner": "supports"
+    },
+    {
+      "complaint_id": "24163558",
+      "judge": "supports",
+      "owner": "partly"
+    },
+    {
+      "complaint_id": "24178190",
+      "judge": "partly",
+      "owner": "supports"
+    },
+    {
+      "complaint_id": "24212726",
+      "judge": "partly",
+      "owner": "supports"
+    },
+    {
+      "complaint_id": "24471471",
+      "judge": "partly",
+      "owner": "supports"
+    }
+  ],
+  "draws": 2000,
+  "draws_with_kappa": 2000,
+  "from": "splits/validation/v5.csv, results/validation/v5_codes.csv and v5_judge.csv, IDs and ratings only, in sorted ID order",
+  "judge_stricter": 14,
+  "kappa": 0.20508744038155796,
+  "kappa_interval": [
+    -0.009316770186335345,
+    0.43342776203966005
+  ],
+  "owner_stricter": 6,
+  "pairs": 50,
+  "seed": 0,
+  "table": {
+    "does_not_support": {
+      "does_not_support": 1,
+      "partly": 1,
+      "supports": 2
+    },
+    "partly": {
+      "does_not_support": 1,
+      "partly": 5,
+      "supports": 3
+    },
+    "supports": {
+      "does_not_support": 2,
+      "partly": 11,
+      "supports": 24
+    }
+  },
+  "unparseable": []
+}

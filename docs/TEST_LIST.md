@@ -344,6 +344,8 @@ Added on 2 November 2026. Each piece adds its tests in its own pull request, fai
 - the judge's answer outside the three ratings is `unparseable`, listed apart and left out of the agreement, the kappa and the table (V5)
 - the judge's main run refuses while the owner's ratings are missing, and never includes a dry-run ID (V5)
 - Cohen's kappa and the confusion table match hand-worked values on synthetic ratings (V5)
+- `voc judge agreement` recomputes the V5 figures from the committed IDs and ratings only, lists the differences by ID, and refuses codes that are not the frozen list, a missing judge rating or an unknown code (V5, V10)
+- `voc judge agreement` reads the V5 list checked against its hash and the development list, and refuses a repeated judge ID, a judge ID outside the development list, no pairs, an undefined kappa and more than 1% of bootstrap draws without a kappa (V5, V7, V10, review of #81)
 - the hybrid uses the baseline at a top probability of at least 0.9 and the LLM otherwise, a quarantined answer counts as wrong, and it is scored as B10 scores (V6)
 - V6 reads the test run's summary file only, never a per-complaint test file (V7)
 
