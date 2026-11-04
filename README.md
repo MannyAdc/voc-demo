@@ -184,6 +184,7 @@ Then open http://127.0.0.1:8000. Labelling real complaints, and loading a new mo
 |---|---|
 | [docs/RESULTS.md](docs/RESULTS.md) | The full results, per product, and Speed, Safety and Scale in detail |
 | [docs/HOW_WE_MEASURE.md](docs/HOW_WE_MEASURE.md) | The method, in plain words |
+| [docs/VALIDATION.md](docs/VALIDATION.md) | The validation review: how far the labeller can be trusted, checked from other sides |
 | [docs/PIPELINE.md](docs/PIPELINE.md) | How the pipeline works, Databricks, loading a new month |
 | [docs/STACK.md](docs/STACK.md) | Why this stack, and when to switch |
 | [docs/DATA.md](docs/DATA.md) | What the data holds |
