@@ -2545,3 +2545,117 @@ def _dev_ids():
     with open(REPO / "tests" / "fixtures" / "dbt" / "complaints.csv", encoding="utf-8", newline="") as f:
         return [Row(r["Complaint ID"], r["Product"], r["Consumer complaint narrative"])
                 for r in csv.DictReader(f) if r["Consumer complaint narrative"].strip()]
+
+
+# Review of #82: the summary checks the committed codes as the import checks the sheet.
+
+def _summary_raw(tmp_path, capsys, piece, text, project=None):
+    """Run `voc review summary` on a codes file written as given. `text(dev)` returns the file's text, or None
+    for no file. `project(root, dev)` may change the project first."""
+    import json
+    from voc import cli
+    root, dev, _ = _sheet_project(tmp_path)
+    if project:
+        project(root, dev)
+    path = root / "results" / "validation" / f"{piece}_codes.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    body = text(dev)
+    if body is not None:
+        path.write_bytes(body.encode("utf-8"))
+    code = cli.main(["review", "summary", piece], env={}, root=root)
+    printed = capsys.readouterr().out
+    out = root / "results" / "validation" / f"{piece}_summary.json"
+    return code, printed, (json.loads(out.read_text(encoding="utf-8")) if out.exists() else None), dev
+
+
+def _v2_text(*rows, header="complaint_id,code"):
+    return lambda dev: "\n".join([header] + [row(dev) for row in rows]) + "\n"
+
+
+def _v2_ok(n):
+    return lambda dev: f"{dev[n].complaint_id},llm_right"
+
+
+def test_V2_a_missing_codes_file_is_refused_with_the_reason(tmp_path, fake_home, capsys):
+    code, printed, figures, _ = _summary_raw(tmp_path, capsys, "v2", lambda dev: None)
+    assert code == 1 and figures is None and "there is no results/validation/v2_codes.csv" in printed
+
+
+def test_V2_a_codes_file_without_its_columns_is_refused_with_the_reason(tmp_path, fake_home, capsys):
+    code, printed, figures, _ = _summary_raw(tmp_path, capsys, "v2", _v2_text(_v2_ok(0), _v2_ok(1),
+                                                                              header="complaint_id,mark"))
+    assert code == 1 and figures is None and "no complaint_id or code column" in printed
+
+
+def test_V3_a_codes_file_without_the_reason_column_is_refused_with_the_reason(tmp_path, fake_home, capsys):
+    def text(dev):
+        return "complaint_id,code\n" + "".join(f"{c},check_right\n" for c in _v3_reasons(dev))
+    code, printed, figures, _ = _summary_raw(tmp_path, capsys, "v3", text)
+    assert code == 1 and figures is None and "no reason column" in printed
+
+
+def test_V2_a_codes_file_saved_with_a_byte_order_mark_is_read(tmp_path, fake_home, capsys):
+    code, printed, figures, _ = _summary_raw(tmp_path, capsys, "v2",
+                                             lambda dev: "﻿" + _v2_text(_v2_ok(0), _v2_ok(1))(dev))
+    assert code == 0 and figures["cases"] == 2
+
+
+@pytest.mark.parametrize("rows, words", [
+    ((_v2_ok(0), _v2_ok(1), _v2_ok(1)), "appears more than once"),
+    ((_v2_ok(0), _v2_ok(1), lambda dev: "SYN-777,llm_right"), "SYN-777 is not on the v2 list"),
+    ((_v2_ok(0), lambda dev: f"{dev[1].complaint_id},"), "has no code"),
+    ((_v2_ok(0), lambda dev: f"{dev[1].complaint_id},maybe"), "has a code that is not one of"),
+    ((_v2_ok(0),), "1 listed complaints are missing"),
+])
+def test_V2_each_problem_in_the_codes_file_is_named_as_the_import_names_it(tmp_path, fake_home, capsys, rows,
+                                                                           words):
+    code, printed, figures, _ = _summary_raw(tmp_path, capsys, "v2", _v2_text(*rows))
+    assert code == 1 and figures is None and words in printed and "v2_codes.csv" in printed
+
+
+def test_V2_spaces_around_ids_and_codes_are_ignored_as_the_import_ignores_them(tmp_path, fake_home, capsys):
+    code, printed, figures, _ = _summary_raw(
+        tmp_path, capsys, "v2", _v2_text(lambda dev: f" {dev[0].complaint_id} , llm_right ", _v2_ok(1)))
+    assert code == 0 and figures["codes"]["llm_right"]["count"] == 2
+
+
+def test_V3_the_list_follows_the_sorted_quarantine_order_whatever_the_file_order(tmp_path, fake_home, capsys):
+    from voc.pipeline import _id_number
+
+    def text(dev):
+        reasons = _v3_reasons(dev)
+        return "complaint_id,reason,code\n" + "".join(f"{c},{reasons[c]},check_right\n"
+                                                      for c in sorted(reasons, key=_id_number, reverse=True))
+    code, printed, figures, dev = _summary_raw(tmp_path, capsys, "v3", text)
+    assert code == 0
+    ids = [entry["complaint_id"] for entry in figures["list"]]
+    assert ids == sorted(_v3_reasons(dev), key=_id_number)
+
+
+def test_V3_V7_a_quarantined_id_outside_the_development_list_is_refused(tmp_path, fake_home, capsys):
+    import shutil
+    from voc import validation
+
+    def project(root, dev):
+        # A labels file with one more quarantined complaint that is not a development complaint, and the
+        # frozen lists written again from it, so their hash check passes.
+        labels = root / "results" / "labels" / "v1_dev.csv"
+        labels.write_bytes(labels.read_bytes() + b"SYN-888,,,,quarantined,unparseable,," + b"0" * 64 + b"\n")
+        shutil.rmtree(root / "splits" / "validation")
+        validation.write_lists(root / "splits", {"dry_run": [], "v5": [], "v2": [r.complaint_id for r in dev[:2]],
+                                                 "v1": []},
+                               seed=1, disagreements=2, labels_file="results/labels/v1_dev.csv")
+
+    def text(dev):
+        reasons = {**_v3_reasons(dev), "SYN-888": "unparseable"}
+        return "complaint_id,reason,code\n" + "".join(f"{c},{r},check_right\n" for c, r in reasons.items())
+    code, printed, figures, _ = _summary_raw(tmp_path, capsys, "v3", text, project)
+    assert code == 1 and figures is None and "development list" in printed
+
+
+def test_V8_the_v2_summary_holds_codes_label_noise_and_figures_only_and_says_where_they_come_from(
+        tmp_path, fake_home, capsys):
+    code, printed, figures, _ = _summary_raw(tmp_path, capsys, "v2", _v2_text(_v2_ok(0), _v2_ok(1)))
+    assert code == 0
+    assert set(figures) <= {"piece", "cases", "codes", "label_noise", "from"}
+    assert figures["from"].startswith("recomputed from the IDs and codes in results/validation/v2_codes.csv")
