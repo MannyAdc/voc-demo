@@ -2449,3 +2449,99 @@ def test_V5_the_printout_counts_the_differing_ids_and_the_file_names_every_sourc
     code, printed, figures = _agreement_run(tmp_path, capsys, owner, rated)
     assert code == 0 and "differing IDs: 2" in printed
     assert "splits/validation/v5.csv" in figures["from"]
+
+
+# V2's and V3's figures, from the committed codes only (V10, for docs/VALIDATION.md).
+
+def _summary_run(tmp_path, capsys, piece, codes, reasons=None):
+    """Write `results/validation/<piece>_codes.csv` into the sheet project and run `voc review summary`."""
+    import json
+    from voc import cli
+    root, dev, _ = _sheet_project(tmp_path)
+    path = root / "results" / "validation" / f"{piece}_codes.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if piece == "v3":
+        lines = ["complaint_id,reason,code"] + [f"{c},{reasons[c]},{code}" for c, code in codes(dev).items()]
+    else:
+        lines = ["complaint_id,code"] + [f"{c},{code}" for c, code in codes(dev).items()]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    code = cli.main(["review", "summary", piece], env={}, root=root)
+    printed = capsys.readouterr().out
+    out = root / "results" / "validation" / f"{piece}_summary.json"
+    return code, printed, (json.loads(out.read_text(encoding="utf-8")) if out.exists() else None), dev
+
+
+def _v3_reasons(dev):
+    # `_sheet_project` quarantines dev[4], dev[5] and dev[6].
+    return {dev[4].complaint_id: "quote_not_in_text", dev[5].complaint_id: "unparseable",
+            dev[6].complaint_id: "invalid_label"}
+
+
+def test_V2_V10_the_summary_recomputes_the_shares_and_the_label_noise_from_the_committed_codes(
+        tmp_path, fake_home, capsys):
+    from voc.consistency import wilson
+    code, printed, figures, dev = _summary_run(
+        tmp_path, capsys, "v2", lambda dev: {dev[0].complaint_id: "llm_right", dev[1].complaint_id: "both_plausible"})
+    assert code == 0
+    assert figures["cases"] == 2
+    assert figures["codes"]["llm_right"] == {"count": 1, "share": 0.5, "interval": list(wilson(1, 2))}
+    assert figures["label_noise"]["lower"]["count"] == 1 and figures["label_noise"]["upper"]["count"] == 2
+    assert "label noise, upper figure" in printed and "written to results/validation/v2_summary.json" in printed
+
+
+def test_V3_V10_the_summary_lists_ids_reasons_and_codes_and_says_the_sample_is_small(tmp_path, fake_home, capsys):
+    code, printed, figures, dev = _summary_run(
+        tmp_path, capsys, "v3", lambda dev: {c: "check_right" for c in _v3_reasons(dev)}, _v3_reasons(_dev_ids()))
+    assert code == 0
+    assert figures["codes"]["check_right"]["count"] == 3
+    assert {entry["reason"] for entry in figures["list"]} == {"quote_not_in_text", "unparseable", "invalid_label"}
+    assert "only 3 cases" in printed
+
+
+def test_V2_V7_codes_that_are_not_the_frozen_list_are_refused(tmp_path, fake_home, capsys):
+    code, printed, figures, _ = _summary_run(tmp_path, capsys, "v2", lambda dev: {dev[0].complaint_id: "llm_right"})
+    assert code == 1 and figures is None and "v2_codes.csv" in printed
+
+
+def test_V2_a_code_outside_the_list_is_refused(tmp_path, fake_home, capsys):
+    code, printed, figures, _ = _summary_run(
+        tmp_path, capsys, "v2", lambda dev: {dev[0].complaint_id: "llm_right", dev[1].complaint_id: "maybe"})
+    assert code == 1 and figures is None and "v2_codes.csv" in printed
+
+
+def test_V3_a_reason_that_differs_from_the_labels_file_is_refused(tmp_path, fake_home, capsys):
+    reasons = {**_v3_reasons(_dev_ids()), _dev_ids()[4].complaint_id: "unparseable"}
+    code, printed, figures, _ = _summary_run(
+        tmp_path, capsys, "v3", lambda dev: {c: "check_right" for c in _v3_reasons(dev)}, reasons)
+    assert code == 1 and figures is None and "reason" in printed
+
+
+def test_V8_the_summary_holds_ids_reasons_codes_and_figures_only(tmp_path, fake_home, capsys):
+    code, printed, figures, dev = _summary_run(
+        tmp_path, capsys, "v3", lambda dev: {c: "check_right" for c in _v3_reasons(dev)}, _v3_reasons(_dev_ids()))
+    assert code == 0
+    assert set(figures) <= {"piece", "cases", "codes", "list", "from"}
+    for row in dev:
+        assert row.narrative[:40] not in str(figures) and row.narrative[:40] not in printed
+
+
+def test_V8_the_summary_is_not_blocked_by_the_read_guard_and_makes_no_model_call(tmp_path, fake_home, capsys,
+                                                                                 monkeypatch):
+    from voc import backends
+    home = tmp_path / "home"
+    (home / ".voc").mkdir(parents=True, exist_ok=True)
+    assert not _read_guard().decide("Bash", {"command": "voc review summary v2"}, env={}, home=home,
+                                    root=tmp_path / "repo")
+    monkeypatch.setattr(backends, "make_backend", lambda *a, **k: pytest.fail("no backend may be built"))
+    code, _, _, _ = _summary_run(
+        tmp_path, capsys, "v2", lambda dev: {dev[0].complaint_id: "llm_right", dev[1].complaint_id: "unclear"})
+    assert code == 0
+
+
+def _dev_ids():
+    """The development rows of `_sheet_project`, in its order, read from the synthetic fixture."""
+    import csv
+    from voc.data import Row
+    with open(REPO / "tests" / "fixtures" / "dbt" / "complaints.csv", encoding="utf-8", newline="") as f:
+        return [Row(r["Complaint ID"], r["Product"], r["Consumer complaint narrative"])
+                for r in csv.DictReader(f) if r["Consumer complaint narrative"].strip()]
