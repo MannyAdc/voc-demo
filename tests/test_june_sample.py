@@ -261,3 +261,76 @@ def test_J1_the_laptop_never_loads_or_builds_june(project, capsys):
 def test_J1_the_laptop_has_no_june_set_to_label_or_score(argv):
     with pytest.raises(SystemExit):
         cli.main(argv, env={}, root=REPO)
+
+
+# The review of #88: the order of the copy removal, the July test rows, a half-written sample, the month and the seed.
+
+
+def test_J6_copies_of_july_go_before_copies_within_june(project):
+    """June A nearly copies a July training row, and June B nearly copies A but not the July row. With July's
+    copies removed first, A goes and B stays. The other order would lose both."""
+    train = _july_text(int(_july_list(project, "train")[0].split("-")[1]))
+    a = _near(train)
+    b = a + " today again"
+    _june(project, _june_rows(20) + [_june_row("SYN-7200", a), _june_row("SYN-7201", b)])
+    assert _sample(project) == 0
+    manifest = _manifest(project)
+    assert manifest["july_copies"] == 1 and manifest["near_copies"] == 0 and manifest["pool"] == 21
+    ids = _june_ids(project)
+    assert "SYN-7201" in ids and "SYN-7200" not in ids
+
+
+def test_J2_july_test_rows_are_never_asked_for_and_their_loss_changes_nothing(project, monkeypatch):
+    import voc.pipeline
+
+    asked = []
+    real = voc.pipeline._rows_by_id
+
+    def spy(db_path, month, ids):
+        asked.extend(ids)
+        return real(db_path, month, ids)
+
+    monkeypatch.setattr(voc.pipeline, "_rows_by_id", spy)
+    test_ids = set(read_splits(project / "splits")["test"])
+    con = connect(project / DB_PATH)
+    try:
+        con.execute(f"DELETE FROM {TABLE} WHERE list_contains(?::VARCHAR[], complaint_id)", [sorted(test_ids)])
+    finally:
+        con.close()
+    _june(project, _june_rows(30))
+    assert _sample(project) == 0 and _manifest(project)["pool"] == 30
+    lists = read_splits(project / "splits")
+    assert asked and not set(asked) & test_ids and set(asked) == set(lists["train"]) | set(lists["dev"])
+
+
+def test_J6_a_failed_write_leaves_no_half_sample(project, monkeypatch):
+    _june(project, _june_rows(20))
+
+    def fail(*args, **kwargs):
+        raise OSError("synthetic disk error")
+
+    with monkeypatch.context() as patched:
+        patched.setattr(Path, "write_text", fail)
+        assert _sample(project) == 1
+    assert not (project / "splits" / "june" / "june.csv").exists()
+    assert _sample(project) == 0
+
+
+def test_J6_settings_that_do_not_name_june_are_refused(project, capsys):
+    path = project / "config" / "june.toml"
+    path.write_text(path.read_text(encoding="utf-8").replace('"june_2026"', '"july_2026"'), encoding="utf-8")
+    _june(project, _june_rows(10))
+    assert _sample(project) == 1
+    assert "config/june.toml" in capsys.readouterr().out
+    assert not (project / "splits" / "june").exists()
+
+
+def test_J6_the_seed_in_the_settings_is_the_seed_of_the_draw(project):
+    _june(project, _june_rows(300) + _june_rows(100, start=2000, product="Credit card"))
+    assert _sample(project) == 0
+    first = _june_ids(project)
+    shutil.rmtree(project / "splits" / "june")
+    path = project / "config" / "june.toml"
+    path.write_text(path.read_text(encoding="utf-8").replace("seed = 20261105", "seed = 7"), encoding="utf-8")
+    assert _sample(project) == 0
+    assert _manifest(project)["seed"] == 7 and _june_ids(project) != first
