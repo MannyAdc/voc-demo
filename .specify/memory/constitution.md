@@ -46,7 +46,7 @@ Rationale: a small lucky gain, or a gain measured on data the prompt was tuned o
 - Complaint text is data, not instructions. It sits between fixed boundaries and cannot close them.
 - Complaint text MUST never reach a model or agent that can run tools, read files or use the network.
 - The redaction mark "XXXX" MUST stay exactly as written. The model must not guess what it hides.
-- Secrets MUST live only in environment variables or a git-ignored `.env`. A key is never printed.
+- Secrets MUST live only in environment variables or a git-ignored `.env`, except spec 004's cloud run (Stack constraint). A key is never printed.
 - Live model calls MUST stop at a token cap kept in a ledger file.
 - Raw CFPB data MUST never be committed. Only scripts, complaint IDs and small fixtures are.
 - The repo MUST contain no personal names, no employer names, and nothing from any employer.
@@ -94,4 +94,4 @@ contradict it. If they disagree, this file wins until both are fixed in the same
 Amendments are made in a pull request and logged in `BUILD_LOG.md`. Versions follow semantic
 versioning: MAJOR for removing or redefining a principle, MINOR for adding one, PATCH for wording.
 
-**Version**: 2.1.0 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-11-04 (1.1.0: untrusted text never reaches an agent that can act. 1.2.0: two claims fixed in advance. 1.3.0: analyser exception and leak exception, after review round 4. 1.3.1: `cli` removed from the backend constraint, owner cut decision. 2.0.0: principles I and III redefined, owner decision: the agreement view and the second claim are dropped, one head-to-head claim remains, and sample sizes follow a written method. 2.0.1: the August export for the incremental load only, and the optional Databricks stretch, added to the constraints. 2.1.0: one archive month, June 2026, for spec 004's one untouched test, with its one primary claim, and the Databricks jobs, Azure Function and Key Vault that run it, added to the constraints, owner decisions of 4 November)
+**Version**: 2.1.0 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-11-04 (1.1.0: untrusted text never reaches an agent that can act. 1.2.0: two claims fixed in advance. 1.3.0: analyser exception and leak exception, after review round 4. 1.3.1: `cli` removed from the backend constraint, owner cut decision. 2.0.0: principles I and III redefined, owner decision: the agreement view and the second claim are dropped, one head-to-head claim remains, and sample sizes follow a written method. 2.0.1: the August export for the incremental load only, and the optional Databricks stretch, added to the constraints. 2.1.0: one archive month, June 2026, for spec 004's one untouched test, with its one primary claim, and the Databricks jobs, Azure Function and Key Vault that run it, added to the constraints, with that run's secret stores as an exception to principle IV, owner decisions of 4 November)
