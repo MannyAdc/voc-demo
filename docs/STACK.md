@@ -1,6 +1,6 @@
 # Why this stack
 
-Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. Back to the [README](../README.md).
+Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. On 4 November 2026, the baseline, TF-IDF with logistic regression, got the short name TF-IDF + LR (owner decision). Back to the [README](../README.md).
 
 ## Why this stack
 
@@ -12,7 +12,7 @@ The judgement here is to use the simplest tool that does the job. No tool was ad
 
 **Anyone can run it.** The tests, the dbt build on the synthetic fixture and the dashboard need no account, no key and no money. After `uv sync`, each is one command (see "Run it yourself" in [PIPELINE.md](PIPELINE.md)). CI runs the same dbt build, with its data tests, on the committed synthetic fixture with no network (`.github/workflows/ci.yml`).
 
-**Time goes to verification, not infrastructure.** With no cluster or warehouse to set up, the time went to the quote check (`src/voc/evidence.py`), the evaluation against TF-IDF with logistic regression (TF-IDF + LR), with a paired bootstrap ([docs/HOW_WE_MEASURE.md](HOW_WE_MEASURE.md)), and the tests written before the code.
+**Time goes to verification, not infrastructure.** With no cluster or warehouse to set up, the time went to the quote check (`src/voc/evidence.py`), the evaluation against TF-IDF with logistic regression (TF-IDF + LR) with a paired bootstrap ([docs/HOW_WE_MEASURE.md](HOW_WE_MEASURE.md)), and the tests written before the code.
 
 **When to switch.**
 - The data no longer fits on one machine. Then the dbt models can move to a warehouse through its adapter. The Databricks run showed this on synthetic data, through another adapter. It did not show how a large load would move. *Added on 31 October:* the same models then ran on Databricks on the real July and August exports, 1,339,176 rows in the two files, with the same row counts as the local build ([PIPELINE.md](PIPELINE.md), "The real exports on Databricks"). That is two monthly files on the smallest warehouse, still not a large load.

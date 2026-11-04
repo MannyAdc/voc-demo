@@ -1,6 +1,6 @@
 # Results in detail
 
-Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. On 2 November 2026, a line naming the baseline in full was added under "What the terms mean". Back to the [README](../README.md).
+Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. On 2 November 2026, a line naming the baseline in full was added under "What the terms mean". On 4 November 2026, the baseline, TF-IDF with logistic regression, got the short name TF-IDF + LR (owner decision). Back to the [README](../README.md).
 
 ## The result
 

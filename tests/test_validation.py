@@ -2933,12 +2933,16 @@ def test_V4_the_dashboards_words_name_the_baseline_tfidf_plus_lr():
 def test_V4_readme_line_on_quotes_points_to_the_validation_review():
     readme = (REPO / "README.md").read_text(encoding="utf-8")
     assert "No human has checked that yet" not in readme
-    assert "The [validation review](docs/VALIDATION.md) checked that later" in readme
+    # Changed in the review of #84: the line says "checked how often it does", so it does not read as if the
+    # quotes passed.
+    assert "The [validation review](docs/VALIDATION.md) checked how often it does" in readme
 
 
 # Review of #84.
 
-NAME_NOTE = "On 4 November 2026, the baseline's short name became TF-IDF + LR (owner decision)."
+# Changed in the green commit: the note names the baseline in full first, so the page still does.
+NAME_NOTE = ("On 4 November 2026, the baseline, TF-IDF with logistic regression, "
+             "got the short name TF-IDF + LR (owner decision).")
 DATED_NOTE = "(the baseline's short name was updated on 4 November)"
 
 

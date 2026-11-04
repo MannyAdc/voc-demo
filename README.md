@@ -97,7 +97,7 @@ First the pipeline that labels the complaints, then how it was built.
 - Every model answer is recorded, so a re-run of the same prompt replays it at no cost.
 
 **🛡️ Safety**
-- Every accepted label has a quote that a script found in the text. That shows the quote is in the text, not that it supports the label. The [validation review](docs/VALIDATION.md) checked that later, on the development set.
+- Every accepted label has a quote that a script found in the text. That shows the quote is in the text, not that it supports the label. The [validation review](docs/VALIDATION.md) checked how often it does, later, on the development set.
 - 10 made-up complaints try to hijack the model. In one live run, none was obeyed: 9 reached the model, and 1 was caught by the script before any call (`uv run --native-tls voc label injection --prompt v1`, then `voc evaluate injection`).
 - Complaint text goes to the model as data, in a call with no tools. Every live call goes through a hard token cap and one shared ledger.
 

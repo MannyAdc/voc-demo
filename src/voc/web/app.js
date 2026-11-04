@@ -257,9 +257,13 @@ function versionsTable(rows) {
   if (!rows.length) return;
   const keep = ["Date", "Prompt", "What changed", "Complaints", "LLM accuracy", "TF-IDF accuracy", "Interval",
                 "Live cost"];
+  // The column names are EVAL_VERSIONS.md's, so they stay. The baseline's is shown by its short name.
+  const HEADERS = { "TF-IDF accuracy": "TF-IDF + LR accuracy" };
   const cols = keep.filter((c) => c in rows[0]);
   const head = table.createTHead().insertRow();
-  for (const c of cols) { const th = document.createElement("th"); th.textContent = c; head.appendChild(th); }
+  for (const c of cols) {
+    const th = document.createElement("th"); th.textContent = HEADERS[c] ?? c; head.appendChild(th);
+  }
   const body = table.createTBody();
   for (const r of rows) {
     const tr = body.insertRow();
