@@ -1345,3 +1345,24 @@ def test_J14_aliases_extensions_the_owners_token_and_repo_settings_are_denied(re
 def test_J14_the_browser_tools_and_webfetch_to_github_and_databricks_are_denied(rule):
     settings = json.loads((HOOKS.parent / "settings.json").read_text(encoding="utf-8"))
     assert rule in settings["permissions"]["deny"]
+
+
+# Owner decision of 5 November: the Azure CLI is denied like the Databricks CLI, as one more name. If the owner
+# signs in to it on the laptop, Claude's shell would act as the owner in Azure.
+@pytest.mark.parametrize("tool, command", [
+    ("Bash", "az keyvault secret list --vault-name x"),
+    ("Bash", "env az account get-access-token"),
+    ("Bash", "bash -c 'az login'"),
+    ("PowerShell", r"& 'C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\az.cmd' login"),
+])
+def test_J14_the_azure_cli_is_denied(read_guard, places, tool, command):
+    assert _j14_denied(_read_decision(read_guard, places, tool, {"command": command}))
+
+
+@pytest.mark.parametrize("command", [
+    "gh pr create --draft --title 'Deny az in the guard' --body-file x.md",
+    "git log --oneline -- docs/az.md",
+    "ls -az",
+])
+def test_J14_text_that_names_az_stays_allowed(read_guard, places, command):
+    assert not _read_decision(read_guard, places, "Bash", {"command": command})
