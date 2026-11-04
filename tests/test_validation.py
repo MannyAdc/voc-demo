@@ -2778,3 +2778,111 @@ def test_V4_how_we_measure_explains_agreement_and_kappa_with_a_worked_example():
     for words in ("luck", "kappa", "Worked example"):
         assert words in section, words
     assert "VALIDATION.md" in section
+
+
+# Review of #83.
+
+def _section(text, heading):
+    """The text under one heading, up to the next heading of the same level."""
+    level = heading.split(" ")[0]
+    start = text.index(heading)
+    following = [i for i in (text.find("\n" + level + " ", start + 1),) if i != -1]
+    return text[start:following[0]] if following else text[start:]
+
+
+def _kappa_section():
+    return _section((REPO / "docs" / "HOW_WE_MEASURE.md").read_text(encoding="utf-8"),
+                    "## How we check agreement between two raters")
+
+
+def test_V4_V2_says_the_coding_was_not_blind_in_its_limit_and_in_the_limits():
+    text = _write_up()
+    for part in (_section(text, "### V2:"), _section(text, "## Limits")):
+        assert "saw the LLM's label" in part
+
+
+def test_V4_V1_says_one_different_label_is_the_not_in_list_marker_and_two_decisions_changed():
+    v1 = _results("v1_consistency_r1.json")
+    part = _section(_write_up(), "### V1:")
+    assert "(not in list)" in part
+    assert f"{v1['decision']['changed']['count']} of {v1['complaints']}" in part
+
+
+def test_V4_V10_each_interval_matches_its_results_file():
+    text = _write_up()
+    v1, v2, v3, judge, agree = (_results(n) for n in ("v1_consistency_r1.json", "v2_summary.json",
+                                                      "v3_summary.json", "v5_judge.json", "v5_agreement.json"))
+    figures = [v1["label"]["same"]] + list(v1["quote"].values()) + list(v2["codes"].values())
+    figures += [v3["codes"]["check_right"]] + list(judge["ratings"].values())
+    for figure in figures:
+        low, high = figure["interval"]
+        assert f"{low:.1%} to {high:.1%}" in text, figure
+    low, high = agree["agreement_interval"]
+    assert f"{low:.1%} to {high:.1%}" in text
+
+
+def test_V4_V10_the_test_set_figures_and_the_review_cost_match_their_files():
+    import json
+    from decimal import Decimal
+    text = _write_up()
+    test = json.loads((REPO / "results" / "eval" / "v1_test.json").read_text(encoding="utf-8"))
+    v6 = _results("v6_cost_hybrid.json")
+    low, high = (v * 100 for v in v6["hybrid"]["interval"])
+    total = sum(Decimal(_results(n)["cost_usd"]) for n in ("v1_consistency_r1.json", "v5_dry_run.json",
+                                                            "v5_judge.json"))
+    cost = float(test["llm"]["cost_per_1000_usd"])
+    cents = [cost / (lead * 1000) * 100 for lead in reversed(test["interval"])]
+    for words in (f"+{test['difference'] * 100:.2f} points", f"${test['llm']['cost_per_1000_usd']}",
+                  f"{test['llm']['seconds_per_1000_complaints']:,} seconds", f"+{low:.1f} to +{high:.1f}",
+                  f"${total:.2f}", f"{cents[0]:.1f} to {cents[1]:.1f} cents"):
+        assert words in text, words
+
+
+def test_V4_V5_the_judges_figures_are_given_as_the_judges_with_the_owners_beside_them():
+    agree = _results("v5_agreement.json")
+    owner_supports = sum(agree["table"]["supports"].values())
+    text = _write_up()
+    assert "by the judge's ratings" in text
+    assert f"{owner_supports} of {agree['pairs']}" in _section(text, "### V5:")
+
+
+def test_V4_no_cause_is_claimed_without_a_measurement_and_no_set_is_carried_over():
+    text = _write_up()
+    assert "\"Partly\" is common because" not in text and "One possible reason" in text
+    assert "more reliable than the headline" not in text
+
+
+def test_V4_the_dates_and_the_samples_are_as_the_log_and_the_lists_say():
+    import json
+    text = _write_up()
+    manifest = json.loads((REPO / "splits" / "validation" / "manifest.json").read_text(encoding="utf-8"))
+    assert "from 3 to 4 November 2026" in text
+    assert f"40 of the {manifest['accepted_disagreements']} accepted disagreements" in text
+
+
+def test_V4_V5_the_worked_example_uses_the_figures_of_its_results_file():
+    agree = _results("v5_agreement.json")
+    section = _kappa_section()
+    owner = [sum(agree["table"][r].values()) for r in ("supports", "partly", "does_not_support")]
+    judge = [sum(agree["table"][o][r] for o in agree["table"]) for r in ("supports", "partly", "does_not_support")]
+    low, high = agree["kappa_interval"]
+    for words in [f"{n} (" for n in owner + judge] + [
+            f"{round(agree['agreement'] * agree['pairs'])} of {agree['pairs']}",
+            f"{agree['chance_agreement'] * 100:.2f}%", f"{agree['kappa']:.3f}",
+            f"{_signed(low, 2)} to {_signed(high, 2)}"]:
+        assert words in section, words
+
+
+def test_V4_the_new_text_has_no_em_dash_no_semicolon_and_no_author_citation():
+    import re
+    for text in (_write_up(), _kappa_section()):
+        assert "—" not in text and ";" not in text
+        assert not re.search(r"\((?:[A-Z][a-z]+(?: and [A-Z][a-z]+)?), (?:19|20)\d\d\)", text)
+
+
+def test_V4_each_plain_term_is_explained_or_linked_where_it_is_first_used():
+    text = _write_up()
+    for link in ("HOW_WE_MEASURE.md#one-more-fairness-rule", "HOW_WE_MEASURE.md#how-we-decide-who-wins",
+                 "HOW_WE_MEASURE.md#how-many-complaints-we-score"):
+        assert link in text, link
+    assert "re-weighted" in text and "95 times out of 100" in text
