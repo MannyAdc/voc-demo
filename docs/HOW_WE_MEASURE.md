@@ -113,7 +113,7 @@ The quote check sometimes sends an LLM label to quarantine. Quarantined labels c
 
 ## How we check agreement between two raters
 
-This is used in the [validation review](VALIDATION.md) (V5), where a person and a model judge each rated the same 50 quotes as "supports", "partly" or "does not support".
+This is used in the [validation review](VALIDATION.md) (V5). There, two raters each rated the same 50 quotes as "supports", "partly" or "does not support": the project's owner, and a second model used as a judge.
 
 **Agreement** is the simplest measure: the share of cases where the two gave the same rating.
 
@@ -126,10 +126,10 @@ This is used in the [validation review](VALIDATION.md) (V5), where a person and 
 **Worked example, with the real figures.**
 
 1. **Agreement.** The two gave the same rating to 30 of 50 quotes: 60%.
-2. **Luck.** The owner said "supports" for 37 of the 50 (74%), "partly" for 9 (18%) and "does not support" for 4 (8%). The judge said them for 29 (58%), 17 (34%) and 4 (8%). Two raters who gave ratings at random in those shares would both say "supports" 74% × 58% = 42.9% of the time, both say "partly" 18% × 34% = 6.1% of the time, and both say "does not support" 8% × 8% = 0.6% of the time. Together that is 49.7%, about half. That is the agreement luck alone would give.
-3. **Kappa.** Luck gives 49.7%, full agreement is 100%, and the two reached 60%. They covered (60 − 49.7) ÷ (100 − 49.7) = 10.3 ÷ 50.3 = 0.205 of the room, about a fifth. So kappa is 0.21.
-4. **The range.** With only 50 quotes, this is uncertain. As in the paired bootstrap above, we redraw the 50 pairs 2,000 times, with replacement, and work out kappa each time. The middle 95% of the 2,000 kappas runs from −0.01 to 0.43. So the true agreement beyond luck could be anywhere from about none to moderate. It is not high.
+2. **Luck.** The owner said "supports" for 37 (74%) of the 50, "partly" for 9 (18%) and "does not support" for 4 (8%). The judge said them for 29 (58%), 17 (34%) and 4 (8%). Two raters who gave ratings at random in those shares would both say "supports" 74% × 58% = 42.92% of the time, both say "partly" 18% × 34% = 6.12% of the time, and both say "does not support" 8% × 8% = 0.64% of the time. Together that is 49.68%, about half. That is the agreement luck alone would give.
+3. **Kappa.** Luck gives 49.68%, full agreement is 100%, and the two reached 60%. They covered (60 − 49.68) ÷ (100 − 49.68) = 10.32 ÷ 50.32 = 0.205 of the room, about a fifth. So kappa is 0.21.
+4. **The range.** With only 50 quotes, this is uncertain. As in the paired bootstrap above, we redraw the 50 pairs 2,000 times, with replacement, and work out kappa each time. The middle 95% of the 2,000 kappas runs from −0.01 to 0.43. So the true agreement beyond luck could be anywhere from about none to just under half of the room. It is not high.
 
-A common rough scale calls a kappa from 0.21 to 0.40 "fair" and from 0 to 0.20 "slight" (Landis and Koch, 1977). 0.21 sits on the line between the two. The scale is a convention, not a rule.
+A common rough scale calls a kappa from 0.21 to 0.40 "fair" and from 0 to 0.20 "slight". 0.21 sits on the line between the two. The scale is a convention, not a rule.
 
-**Why we use it.** Agreement alone flatters two raters who mostly give the same answer. Suppose each of two raters says "supports" for 9 quotes in 10, each without regard to the other. They would agree about 82% of the time by luck alone (90% × 90% + 10% × 10%). Kappa would show that as about 0. Kappa is the standard measure for two raters (Cohen, 1960).
+**Why we use it.** Agreement alone flatters two raters who mostly give the same answer. Suppose each of two raters says "supports" for 9 quotes in 10, each without regard to the other. They would agree about 82% of the time by luck alone (90% × 90% + 10% × 10%). Kappa would show that as about 0. Kappa is the standard measure of agreement between two raters.
