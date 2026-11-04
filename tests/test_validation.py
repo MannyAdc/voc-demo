@@ -2767,9 +2767,11 @@ def test_V4_the_write_up_has_no_em_dash():
 
 
 def test_V4_the_readme_links_the_write_up_in_one_line():
+    # Changed by the wording pull request: README line 100 also points to the write-up (owner decision,
+    # 4 November), so two lines, the "Read more" row and that one.
     readme = (REPO / "README.md").read_text(encoding="utf-8")
     lines = [line for line in readme.splitlines() if "docs/VALIDATION.md" in line]
-    assert len(lines) == 1
+    assert len(lines) == 2
 
 
 def test_V4_how_we_measure_explains_agreement_and_kappa_with_a_worked_example():
@@ -2886,3 +2888,101 @@ def test_V4_each_plain_term_is_explained_or_linked_where_it_is_first_used():
                  "HOW_WE_MEASURE.md#how-many-complaints-we-score"):
         assert link in text, link
     assert "re-weighted" in text and "95 times out of 100" in text
+
+
+# Spec 003, "Follow-ups, planned": the published texts name the baseline "TF-IDF + LR" (owner decision, 4 November).
+# "TF-IDF" alone stays only where it names the word-scoring step itself, or where a page quotes the word.
+
+PUBLISHED = ("README.md", "docs/HOW_WE_MEASURE.md", "docs/RESULTS.md", "docs/DATA.md", "docs/LIMITS.md",
+             "docs/STACK.md", "docs/USER.md", "src/voc/web/index.html")
+STEP = r"TF-IDF(?! \+ LR| with logistic regression| \(term frequency| word scores| scores for words| turns each)"
+
+
+def _bare_tfidf(text):
+    import re
+    return re.findall(r".{0,30}" + STEP + r".{0,20}", text.replace('"TF-IDF"', "the word"))
+
+
+@pytest.mark.parametrize("name", PUBLISHED)
+def test_V4_each_published_page_names_the_baseline_tfidf_plus_lr(name):
+    text = (REPO / name).read_text(encoding="utf-8")
+    assert not _bare_tfidf(text)
+    assert "TF-IDF + LR" in text
+    if name.endswith(".html"):
+        # Changed in the green commit: as `tests/test_ui.py` reads the page, its visible text from after the
+        # heading. The title and the heading are short labels, and the line below them names the baseline in full,
+        # around a help button.
+        import re
+        visible = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", text[text.index("</h1>"):]))
+        assert visible.index("TF-IDF (term frequency") < visible.index("logistic regression (TF-IDF + LR)") <= \
+            visible.index("TF-IDF + LR") - len("logistic regression (")
+        return
+    assert text.index("TF-IDF with logistic regression") < text.index("TF-IDF + LR")
+
+
+def test_V4_the_dashboards_words_name_the_baseline_tfidf_plus_lr():
+    import re
+    script = (REPO / "src" / "voc" / "web" / "app.js").read_text(encoding="utf-8")
+    # The column names come from EVAL_VERSIONS.md, so they keep their names, as data keys do.
+    words = [s for s in re.findall(r'"([^"]*)"', script) if "TF-IDF" in s and s != "TF-IDF accuracy"]
+    assert words and not [s for s in words if _bare_tfidf(s)]
+    from voc import api
+    assert "TF-IDF + LR" in api.PER_CATEGORY_NOTE and not _bare_tfidf(api.PER_CATEGORY_NOTE)
+
+
+def test_V4_readme_line_on_quotes_points_to_the_validation_review():
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    assert "No human has checked that yet" not in readme
+    # Changed in the review of #84: the line says "checked how often it does", so it does not read as if the
+    # quotes passed.
+    assert "The [validation review](docs/VALIDATION.md) checked how often it does" in readme
+
+
+# Review of #84.
+
+# Changed in the green commit: the note names the baseline in full first, so the page still does.
+NAME_NOTE = ("On 4 November 2026, the baseline, TF-IDF with logistic regression, "
+             "got the short name TF-IDF + LR (owner decision).")
+DATED_NOTE = "(the baseline's short name was updated on 4 November)"
+
+
+@pytest.mark.parametrize("name", ["docs/LIMITS.md", "docs/RESULTS.md", "docs/STACK.md"])
+def test_V4_a_page_moved_word_for_word_says_the_name_changed_since(name):
+    first_lines = (REPO / name).read_text(encoding="utf-8").splitlines()[:3]
+    moved = [line for line in first_lines if "word for word" in line]
+    assert moved and NAME_NOTE in moved[0]
+
+
+@pytest.mark.parametrize("name, dated", [("docs/DATA.md", "## Decisions (owner, 28 October)"),
+                                          ("docs/USER.md", "*Changed on 30 October (owner decision):*")])
+def test_V4_a_dated_record_that_now_says_tfidf_plus_lr_notes_the_new_name(name, dated):
+    text = (REPO / name).read_text(encoding="utf-8")
+    after = text[text.index(dated):]
+    first = after.index("TF-IDF + LR")
+    end = after.find("\n\n", first)
+    assert DATED_NOTE in after[first:end if end != -1 else None]
+
+
+def test_V4_the_method_tab_shows_the_baseline_column_as_tfidf_plus_lr_and_keeps_the_key():
+    script = (REPO / "src" / "voc" / "web" / "app.js").read_text(encoding="utf-8")
+    assert '"TF-IDF accuracy": "TF-IDF + LR accuracy"' in script
+    assert '"LLM accuracy", "TF-IDF accuracy", "Interval"' in script
+
+
+def test_V4_readme_line_on_quotes_does_not_read_as_if_they_passed():
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    assert "The [validation review](docs/VALIDATION.md) checked how often it does, later, on the development set." \
+        in readme
+
+
+def test_V4_the_help_button_comes_after_the_full_name_of_the_baseline():
+    import re
+    page = (REPO / "src" / "voc" / "web" / "index.html").read_text(encoding="utf-8")
+    subtitle = re.search(r'<p class="sub">(.*?)</p>', page, re.S).group(1)
+    assert subtitle.index("logistic regression (TF-IDF + LR)") < subtitle.index('aria-controls="term-tfidf"')
+    assert "Here it names the baseline" not in page
+
+
+def test_V4_the_stack_list_reads_as_one_item_for_the_evaluation():
+    stack = (REPO / "docs" / "STACK.md").read_text(encoding="utf-8")
+    assert "(TF-IDF + LR) with a paired bootstrap" in stack

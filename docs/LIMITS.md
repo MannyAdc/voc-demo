@@ -1,15 +1,15 @@
 # Limits
 
-Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. Back to the [README](../README.md).
+Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. On 4 November 2026, the baseline, TF-IDF with logistic regression, got the short name TF-IDF + LR (owner decision). Back to the [README](../README.md).
 
 ## Limits
 
-- The recorded product was chosen by the consumer, not by the CFPB, so some measured "errors" are label noise. TF-IDF learns from those same choices.
+- The recorded product was chosen by the consumer, not by the CFPB, so some measured "errors" are label noise. The baseline, TF-IDF with logistic regression (TF-IDF + LR), learns from those same choices.
 - The CFPB says its database "is not a statistical sample of consumers' experiences in the marketplace". The results describe this data only.
 - The 10,002 narratives are a 1.5 percent subset with a very different mix. Credit reporting is 618,208 complaints (92 percent of all), but only 463 of them, about 1 in 1,300, have a narrative (`results/profile_july_2026.json`, [docs/DATA.md](DATA.md)).
 - The model's training data cutoff is June 2026 ([models overview](https://platform.claude.com/docs/en/about-claude/models/overview), read 29 October 2026). The complaints were received in July 2026, so they cannot be in its training data.
 - The CFPB file changes over time, and only the current export can be downloaded. So the July file cannot be fetched again, and a reader cannot re-run the labelling from this repo alone.
-- Classifying is not the same as measuring. Prepaid card (28 test complaints) and debt or credit management (19) are too few to judge. Both methods still label them, and they count in the overall score. They were not over-sampled, because the pool has only 134 and 91 of them, and taking more for the test set would leave fewer for TF-IDF to train on. See "Small categories" in [docs/HOW_WE_MEASURE.md](HOW_WE_MEASURE.md) and in [docs/DATA.md](DATA.md).
+- Classifying is not the same as measuring. Prepaid card (28 test complaints) and debt or credit management (19) are too few to judge. Both methods still label them, and they count in the overall score. They were not over-sampled, because the pool has only 134 and 91 of them, and taking more for the test set would leave fewer for TF-IDF + LR to train on. See "Small categories" in [docs/HOW_WE_MEASURE.md](HOW_WE_MEASURE.md) and in [docs/DATA.md](DATA.md).
 - The tests prove the code's rules. They do not prove label quality, which the evaluation measures, or how a cloud deployment would be secured.
 - One model, one prompt version and one test run. The result says nothing about other months, other data or other industries.
 - `voc ledger raise` writes a line to BUILD_LOG.md, and `voc final` needs a clean working tree. So after a raise, that line must be committed or set aside before the scored run.

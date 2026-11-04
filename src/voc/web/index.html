@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Complaint labels: LLM against TF-IDF</title>
+<title>Complaint labels: LLM against TF-IDF + LR</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="/web/style.css">
 <script src="/web/app.js" defer></script>
@@ -11,14 +11,14 @@
 <body>
 <header>
   <div class="masthead">
-    <h1>Complaint labels: LLM against TF-IDF</h1>
+    <h1>Complaint labels: LLM against TF-IDF + LR</h1>
     <p class="sub">Complaints to the US Consumer Financial Protection Bureau (CFPB), July 2026. An
       <span class="term-wrap">LLM <button type="button" class="term" aria-expanded="false" aria-controls="term-llm" aria-label="What is an LLM?">?</button></span>
       labels each complaint by product and quotes its evidence, and a script checks the quote. It is scored against
-      TF-IDF (term frequency, inverse document <span class="term-wrap">frequency) <button type="button" class="term" aria-expanded="false" aria-controls="term-tfidf" aria-label="What is TF-IDF?">?</button></span>
-      with logistic regression, a simple word-based classifier.</p>
+      TF-IDF (term frequency, inverse document frequency)
+      with logistic regression (TF-IDF + LR) <span class="term-wrap"><button type="button" class="term" aria-expanded="false" aria-controls="term-tfidf" aria-label="What is TF-IDF + LR?">?</button></span>, a simple word-based classifier.</p>
     <p class="term-note" id="term-llm" hidden><b>LLM</b>, a large language model (here claude-haiku-5-5). It reads the complaint, picks one of the 11 products and copies the sentence that shows why. A script checks that the sentence is really in the complaint.</p>
-    <p class="term-note" id="term-tfidf" hidden><b>TF-IDF</b> (term frequency, inverse document frequency) with logistic regression, a simple word-based classifier, called TF-IDF for short. TF-IDF turns each complaint into scores for its words and two-word phrases. A logistic regression, a standard statistical model, learned from 7,024 other complaints how strongly each score points to each product. It suggests a product for every complaint, with a confidence. It is the baseline the LLM must beat.</p>
+    <p class="term-note" id="term-tfidf" hidden><b>TF-IDF + LR</b>: TF-IDF (term frequency, inverse document frequency) with logistic regression (LR), a simple word-based classifier. TF-IDF turns each complaint into scores for its words and two-word phrases. A logistic regression, a standard statistical model, learned from 7,024 other complaints how strongly each score points to each product. It suggests a product for every complaint, with a confidence. It is the baseline the LLM must beat.</p>
   </div>
   <nav class="tabs" aria-label="Sections">
     <a href="#/" data-tab="overview">Overview</a>
@@ -52,11 +52,11 @@
     <section class="card wide verdict-card" aria-labelledby="verdict-h">
       <h2 id="verdict-h">Verdict on the frozen test set</h2>
       <p class="verdict big" id="test-verdict">Loading the test run...</p>
-      <p class="note">Claim fixed before the first run: the LLM, with its quote check, beats TF-IDF at the same coverage. <span id="verdict-note"></span></p>
+      <p class="note">Claim fixed before the first run: the LLM, with its quote check, beats TF-IDF + LR at the same coverage. <span id="verdict-note"></span></p>
 
       <div id="per-product-block">
         <h3>Complaints by product, and how good each label is</h3>
-        <p class="note">Bars: test complaints per product. Figures: <span class="term-wrap">F1 score <button type="button" class="term" aria-expanded="false" aria-controls="term-f1" aria-label="What is F1?">?</button></span>, from 0 to 1, for the LLM and for TF-IDF. <span class="flag">!</span> marks a product where TF-IDF does better: check those labels before you report them.</p>
+        <p class="note">Bars: test complaints per product. Figures: <span class="term-wrap">F1 score <button type="button" class="term" aria-expanded="false" aria-controls="term-f1" aria-label="What is F1?">?</button></span>, from 0 to 1, for the LLM and for TF-IDF + LR. <span class="flag">!</span> marks a product where TF-IDF + LR does better: check those labels before you report them.</p>
         <p class="term-note" id="term-f1" hidden><b>F1 score</b> balances two things for one product: how often the label is right when the model names that product, and how many of that product's complaints it finds. 1 is perfect.</p>
         <ul class="bars" id="product-bars"></ul>
         <p class="note" id="per-note"></p>
@@ -64,7 +64,7 @@
           <summary>All test figures, as a table</summary>
           <div class="h2h" id="verdict-body">
             <table class="figures" aria-label="Test set figures for both methods">
-              <thead><tr><th></th><th>LLM</th><th>TF-IDF</th></tr></thead>
+              <thead><tr><th></th><th>LLM</th><th>TF-IDF + LR</th></tr></thead>
               <tbody>
                 <tr><th scope="row">Re-weighted strict accuracy</th><td id="t-llm-acc"></td><td id="t-tf-acc"></td></tr>
                 <tr><th scope="row">Precision on answered</th><td id="t-llm-prec"></td><td id="t-tf-prec"></td></tr>
@@ -74,14 +74,14 @@
               </tbody>
             </table>
             <div>
-              <h3>Difference, LLM minus TF-IDF</h3>
+              <h3>Difference, LLM minus TF-IDF + LR</h3>
               <svg id="test-interval" viewBox="0 0 320 90" role="img" aria-label="Test set difference and its 95 percent interval"></svg>
               <p class="note" id="test-run"></p>
             </div>
           </div>
-          <p class="term-note" id="term-coverage" hidden><b>Coverage</b>: the share of complaints that got a label. The LLM's quarantined complaints have none. TF-IDF answers only as many complaints as the LLM accepted, its most confident ones, so neither looks better by skipping hard cases.</p>
+          <p class="term-note" id="term-coverage" hidden><b>Coverage</b>: the share of complaints that got a label. The LLM's quarantined complaints have none. TF-IDF + LR answers only as many complaints as the LLM accepted, its most confident ones, so neither looks better by skipping hard cases.</p>
           <div class="scroll"><table class="queue" aria-label="F1 per product on the test set">
-            <thead><tr><th>Product</th><th>Test complaints</th><th>F1, LLM</th><th>F1, TF-IDF</th></tr></thead>
+            <thead><tr><th>Product</th><th>Test complaints</th><th>F1, LLM</th><th>F1, TF-IDF + LR</th></tr></thead>
             <tbody id="per-product"></tbody>
           </table></div>
         </details>
@@ -95,14 +95,14 @@
         <ul class="products" id="product-list"><li>Checking or savings account</li><li>Credit card</li><li>Credit reporting or other personal consumer reports</li><li>Debt collection</li><li>Debt or credit management</li><li>Money transfer, virtual currency, or money service</li><li>Mortgage</li><li>Payday loan, title loan, personal loan, or advance loan</li><li>Prepaid card</li><li>Student loan</li><li>Vehicle loan or lease</li></ul>
         <dl class="names">
           <div><dt>The AI's label</dt><dd>An LLM picks a product and copies the sentence that shows why. A script checks the sentence is really in the complaint. If not, the complaint waits for a person. <span class="small">(LLM, claude-haiku-5-5)</span></dd></div>
-          <div><dt>The word-based model's suggestion</dt><dd>A simple word-based classifier: TF-IDF scores for words and two-word phrases, fed into a logistic regression trained on 7,024 other complaints. It is the comparison the AI must beat. <span class="small">(TF-IDF with logistic regression)</span></dd></div>
+          <div><dt>The word-based model's suggestion</dt><dd>A simple word-based classifier: TF-IDF scores for words and two-word phrases, fed into a logistic regression trained on 7,024 other complaints. It is the comparison the AI must beat. <span class="small">(TF-IDF with logistic regression, TF-IDF + LR)</span></dd></div>
           <div><dt>The consumer's own choice</dt><dd>The product the consumer picked when filing. It is the answer key for scoring, and it is never shown to the AI. <span class="small">(recorded product)</span></dd></div>
         </dl>
         <h3>Glossary</h3>
         <dl class="glossary" id="glossary">
           <dt>CFPB</dt><dd>The US Consumer Financial Protection Bureau. It publishes the complaints, and its 11 products are the labels.</dd>
           <dt>LLM</dt><dd>A large language model, here claude-haiku-5-5. It labels each complaint and quotes its evidence.</dd>
-          <dt>TF-IDF</dt><dd>Short for term frequency, inverse document frequency. Here it names the baseline: TF-IDF scores for words and two-word phrases, fed into a logistic regression, a standard statistical model, trained on 7,024 other complaints. The baseline the LLM must beat.</dd>
+          <dt>TF-IDF + LR</dt><dd>Short for TF-IDF (term frequency, inverse document frequency) with LR (logistic regression): TF-IDF scores for words and two-word phrases, fed into a logistic regression, a standard statistical model, trained on 7,024 other complaints. The baseline the LLM must beat.</dd>
           <dt>F1 score</dt><dd>For one product: a balance of how often its label is right and how many of its complaints are found. From 0 to 1.</dd>
           <dt>Re-weighted strict accuracy</dt><dd>Right labels over all complaints, with a quarantined complaint counted as wrong, averaged by each product's share.</dd>
           <dt>Coverage</dt><dd>The share of complaints that got a label.</dd>
@@ -185,10 +185,10 @@
 
     <section class="card wide" aria-labelledby="h2h">
       <h2 id="h2h">Test set head to head <span class="tag">final test, scored once</span></h2>
-      <p class="note">Claim fixed before the first run: the LLM, with its quote check, beats TF-IDF at the same coverage. TF-IDF answers only its most confident complaints, as many as the LLM accepted.</p>
+      <p class="note">Claim fixed before the first run: the LLM, with its quote check, beats TF-IDF + LR at the same coverage. TF-IDF + LR answers only its most confident complaints, as many as the LLM accepted.</p>
       <div class="h2h">
         <table class="figures" aria-label="Figures for both methods">
-          <thead><tr><th></th><th>LLM</th><th>TF-IDF</th></tr></thead>
+          <thead><tr><th></th><th>LLM</th><th>TF-IDF + LR</th></tr></thead>
           <tbody>
             <tr><th scope="row">Re-weighted strict accuracy</th><td id="llm-acc"></td><td id="tf-acc"></td></tr>
             <tr><th scope="row">Precision on answered</th><td id="llm-prec"></td><td id="tf-prec"></td></tr>
@@ -197,20 +197,20 @@
           </tbody>
         </table>
         <div>
-          <h3>Difference, LLM minus TF-IDF</h3>
+          <h3>Difference, LLM minus TF-IDF + LR</h3>
           <svg id="interval" viewBox="0 0 320 90" role="img" aria-label="Difference and its 95 percent interval"></svg>
           <p class="verdict" id="verdict"></p>
         </div>
         <div>
           <h3>Who was right</h3>
           <div class="grid2" id="who"></div>
-          <p class="note" id="who-note">Each test complaint, by which method labelled it correctly: both, only one of them, or neither. TF-IDF counts as right only on the complaints it answered, its most confident ones. A held-back LLM label counts as wrong.</p>
+          <p class="note" id="who-note">Each test complaint, by which method labelled it correctly: both, only one of them, or neither. TF-IDF + LR counts as right only on the complaints it answered, its most confident ones. A held-back LLM label counts as wrong.</p>
         </div>
         <div>
           <h3>Precision against coverage</h3>
-          <svg id="curve" viewBox="0 0 320 200" role="img" aria-label="TF-IDF precision at each coverage, and the LLM point"></svg>
-          <p class="legend"><span class="key tf"></span>TF-IDF <span class="key llm"></span>LLM. The precision axis starts at 50%. A point below it is drawn on the axis as a hollow ring.</p>
-          <p class="note" id="curve-note">Coverage is the share of complaints a method answers. Precision is the share of its answers that are right. The line is TF-IDF. It gives each complaint a confidence score, so it can answer only its surest complaints: the fewer it answers, the more of its answers are right. The LLM gives no confidence score. It either gives a label with a quote that passed the script's check, or the complaint is held back. So it was measured at one coverage only, and it is one dot, not a line. Compare the dot with the line at the same coverage.</p>
+          <svg id="curve" viewBox="0 0 320 200" role="img" aria-label="TF-IDF + LR precision at each coverage, and the LLM point"></svg>
+          <p class="legend"><span class="key tf"></span>TF-IDF + LR <span class="key llm"></span>LLM. The precision axis starts at 50%. A point below it is drawn on the axis as a hollow ring.</p>
+          <p class="note" id="curve-note">Coverage is the share of complaints a method answers. Precision is the share of its answers that are right. The line is TF-IDF + LR. It gives each complaint a confidence score, so it can answer only its surest complaints: the fewer it answers, the more of its answers are right. The LLM gives no confidence score. It either gives a label with a quote that passed the script's check, or the complaint is held back. So it was measured at one coverage only, and it is one dot, not a line. Compare the dot with the line at the same coverage.</p>
         </div>
       </div>
     </section>
@@ -219,9 +219,9 @@
       <h2 id="speed">Speed <span class="tag">tuning figure, development set</span></h2>
       <dl class="stats">
         <div><dt>LLM cost per 1,000 complaints, if every answer was live</dt><dd id="llm-cost"></dd></div>
-        <div><dt>TF-IDF cost per 1,000</dt><dd id="tf-cost"></dd></div>
+        <div><dt>TF-IDF + LR cost per 1,000</dt><dd id="tf-cost"></dd></div>
         <div><dt>LLM time per 1,000</dt><dd id="llm-time"></dd></div>
-        <div><dt>TF-IDF time per 1,000 (labelling only)</dt><dd id="tf-time"></dd></div>
+        <div><dt>TF-IDF + LR time per 1,000 (labelling only)</dt><dd id="tf-time"></dd></div>
         <div><dt>Labelling run</dt><dd id="run-time"></dd></div>
       </dl>
       <p class="note" id="speed-note"></p>
@@ -247,14 +247,14 @@
         <div><dt>Categories</dt><dd id="categories"></dd></div>
         <div><dt>Training / development / test</dt><dd id="sets"></dd></div>
       </dl>
-      <p class="note">Training: only TF-IDF learns from these. The LLM is not trained. Development: used while building. Test: frozen and scored once. The development and test sizes come from Cochran's formula. Training is the rest of the pool.</p>
+      <p class="note">Training: only TF-IDF + LR learns from these. The LLM is not trained. Development: used while building. Test: frozen and scored once. The development and test sizes come from Cochran's formula. Training is the rest of the pool.</p>
     </section>
 
     <section class="card wide" aria-labelledby="queue-h">
       <h2 id="queue-h">Quarantine queue <span class="tag">tuning figure, development set</span></h2>
-      <p class="note">The LLM labels that the quote check did not accept, with the reason, the label the LLM proposed and the TF-IDF label. No complaint text is shown.</p>
+      <p class="note">The LLM labels that the quote check did not accept, with the reason, the label the LLM proposed and the TF-IDF + LR label. No complaint text is shown.</p>
       <div class="scroll"><table class="queue" aria-label="Quarantined complaints">
-        <thead><tr><th>Complaint</th><th>Reason</th><th>LLM proposed</th><th>TF-IDF</th></tr></thead>
+        <thead><tr><th>Complaint</th><th>Reason</th><th>LLM proposed</th><th>TF-IDF + LR</th></tr></thead>
         <tbody id="queue"></tbody>
       </table></div>
     </section>

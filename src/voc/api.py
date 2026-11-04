@@ -39,7 +39,7 @@ LOCAL_HOSTS = ["127.0.0.1", "localhost"]
 TUNING = "tuning figures. The verdict comes only from the single test run"
 VERDICT = "the claim's verdict, from the single logged test run (B10, B17)"
 # Shown on the page, so it names no rule number (review of #53). The rule is B10.
-PER_CATEGORY_NOTE = ("the LLM's quarantined labels count as wrong. TF-IDF here labels every complaint, at full "
+PER_CATEGORY_NOTE = ("the LLM's quarantined labels count as wrong. TF-IDF + LR here labels every complaint, at full "
                      "coverage, not the matched coverage of the headline figures")
 TEST_RUN_NUMBERS = ("complaints", "accepted", "quarantined", "run_seconds", "input_tokens", "output_tokens")
 # A row of runs/TEST_RUNS.md: | Date | Prompt | Test list hash | Model | Complaints | Reason |

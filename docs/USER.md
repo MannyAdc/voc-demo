@@ -21,7 +21,7 @@ Each complaint is a consumer's own description of a problem with a financial pro
 The screens give three answers for the same complaint. Each one is named the same way everywhere:
 
 - **The AI's label.** An AI model reads the complaint, picks one of the 11 products and copies the sentence that shows why. A script checks that the sentence is really in the complaint. If the check passes, the label is accepted. If it fails, the complaint goes to quarantine with the reason, and it has no label until a person decides. (Technical name: an LLM.)
-- **The word-based model's suggestion.** A simple model that learned which words go with each product from 7,024 other complaints. It suggests a product for every complaint. It is the comparison the AI must beat. (Technical name: TF-IDF with logistic regression, TF-IDF for short.)
+- **The word-based model's suggestion.** A simple model that learned which words go with each product from 7,024 other complaints. It suggests a product for every complaint. It is the comparison the AI must beat. (Technical name: TF-IDF with logistic regression, TF-IDF + LR for short.)
 - **The consumer's own choice.** When consumers file a complaint, they pick the product themselves. The CFPB records it. Here it is the answer key: it scores the AI, the word-based model and the analyst's decisions. It is never shown to the AI. (Technical name: the recorded product.)
 
 Counting complaints by product is the first step of Voice of the Customer: it shows where customers are unhappy. The same pattern would work for sales calls: label each call by issue, quote the evidence, and send failures to a person.
@@ -31,7 +31,7 @@ Counting complaints by product is the first step of Voice of the Customer: it sh
 A Voice of the Customer analyst at a financial-services company.
 
 - They read customer complaints every day and report what customers complain about.
-- They are not technical. They do not read code, run commands or know what TF-IDF is.
+- They are not technical. They do not read code, run commands or know what TF-IDF + LR is.
 - They need to trust a label before they report it. A wrong label in a report is worse than a missing one.
 - They work on their own laptop, inside the company network.
 
@@ -64,7 +64,7 @@ A Voice of the Customer analyst at a financial-services company.
 
 ## What they need from every screen
 
-- Plain words by default, such as "the consumer's own choice" and "waiting for a person". *Changed on 30 October (owner decision):* the core technical terms a technical reader looks for stay as the label, with a plain explanation right beside them: LLM, TF-IDF, F1, re-weighted strict accuracy and coverage. Each has a (?) button that opens a short note in place, and a glossary lists them all. Other terms are decided case by case.
+- Plain words by default, such as "the consumer's own choice" and "waiting for a person". *Changed on 30 October (owner decision):* the core technical terms a technical reader looks for stay as the label, with a plain explanation right beside them: LLM, TF-IDF + LR (the baseline's short name was updated on 4 November), F1, re-weighted strict accuracy and coverage. Each has a (?) button that opens a short note in place, and a glossary lists them all. Other terms are decided case by case.
 - A short "What is being labelled" box on the first screen, with the 11 products and the three answers named under "What is being labelled".
 - Clear empty, loading and error states. "No complaints in this product" is not the same as "the data did not load".
 - Keyboard use for every action, readable contrast, and a label on every control.
