@@ -159,7 +159,7 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - a command given IDs that do not match the committed list refuses to run (review)
 - a complaint whose narrative and Product hash has changed is refused (review)
 - the content hash covers narrative and Product together, so it does not reveal the Product (review)
-- samples are built only from rows of the pinned July file (review)
+- samples are built only from rows of the pinned July file (review), except spec 004's June sample, built only from the pinned June file (added on 4 November)
 - each list's hash matches its content (review)
 - the 50-ID quick-check list is a subset of the development list (review)
 - the test-ID hash loader returns only hashes, never text or labels (review)
@@ -353,21 +353,22 @@ Added on 2 November 2026. Each piece adds its tests in its own pull request, fai
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
-Added on 4 November 2026, revised the same day. Each piece adds its tests in its own pull request, failing first.
+Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
 
 - the June sample is drawn from June only, drops copies within June and copies of July's training and development sets, refuses a Product not in `config/labels.toml`, follows Cochran's formula at e = 2 points on June's pool, and is frozen with its hashes (J6)
-- no June label is scored until every method, the hybrid rule, the sample and the claims are committed, a June load refuses without its entry in `runs/JUNE_RUNS.md`, and that file only grows (J1)
+- the laptop refuses to score June, Job B refuses unless `runs/JUNE_RUNS.md` names the June list's hash and the frozen code's hash, and that file only grows (J1)
 - no June step reads a July test row (J2)
-- XGBoost fits and predicts on the CSR features, and is scored at the same coverage, chosen again in each resample, ties broken by ID (J7)
-- the primary claim is the hybrid against the LLM alone at full coverage, with the verdict words fixed, and the secondary comparisons carry no verdict (J8)
-- a cloud job's output, on hostile synthetic text, holds only IDs, labels, reasons, positions, decisions and counts (J5)
-- the receiver's settings: maximum instance count 1, and only Key Vault references in its app settings. It replies 202 at once, refuses a bad signature or an old timestamp, drops a duplicate event, confirms a Databricks run by asking Databricks, and moves a failed retry to the failure queue (J10)
-- the labelling workflow's YAML: started only by `workflow_dispatch` on `main`, permissions per job, the secrets only in the `june-run` job, one run at a time, actions pinned by SHA. A test can check only the YAML (J11)
-- the workflow refuses unless the API's workspace header names the cloud workspace, stops on a 400 "usage limits" answer with no retry, and labels in batches within its ledger cap (J12)
-- the workflow checks the sample's IDs and hashes against `splits/june/` before labelling (J11)
-- recordings and fitted models never reach git, an artifact or a cache (J4)
-- the read guard protects `VOC_JUNE_DATA_DIR`, the June volume and tables, and the June workflow's logs (J6, J14)
-- the laptop path and the cloud path give the same results files on mock or replay (J9)
+- the refit TF-IDF + LR reproduces the committed July development labels before it labels June (J7)
+- the primary claim is the hybrid against the LLM alone at full coverage, with the verdict words fixed, and the secondary comparison carries no verdict (J7)
+- every job and workflow entry point, on hostile synthetic text, prints only IDs, labels, reasons, positions, decisions and counts, with no traceback (J5)
+- Job A checks the pin and the sample's hashes, computes the approval figures and makes no model call (J8)
+- the receiver refuses a bad sign-in or signature and an old or future timestamp with 401, replies 202 before the work, drops a duplicate, confirms a Databricks run by asking Databricks, skips a dispatch already made, and moves a message to the failure queue after 5 tries (J9)
+- the receiver's settings: maximum instance count 1 for each function, and only Key Vault references in its app settings (J9)
+- the approval workflow's YAML: started only by `workflow_dispatch` on `main`, its run ID input checked and passed through `env:`, permissions per job, the secrets only in the `june-run` job, one run at a time, actions pinned by SHA. A test can check only the YAML (J10)
+- Job B checks the run entry's hashes and the June and July hashes, refuses unless the workspace header names the cloud workspace and the cap covers the whole worst case, stops on a 400 "usage limits" answer with no retry, and pushes only results files to a results branch (J11, J12)
+- recordings, the ledger and the fitted model never leave the volume, and complaint text never reaches GitHub (J4)
+- the read guard protects `VOC_JUNE_DATA_DIR`, the June volume and tables, all Actions run logs, and the approval workflow's start (J6, J14)
+- the laptop path and the cloud path give the same July results on mock or replay (J8)
 
 ## Later features (listed now, specified later)
 

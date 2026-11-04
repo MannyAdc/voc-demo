@@ -80,11 +80,11 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - There is no `cli` backend (cut on 28 October). Complaint text must never reach an agent that can act, and `claude -p` is one.
 - The LLM is not trained. Prompt versions are judged on the development set. Sample sizes and the label set come from `docs/DATA.md` (B24, B25).
 - Default model for iteration: `claude-haiku-5-5`.
-- Every live call goes through the record and replay cache and the token ledger. The ledger lives at one fixed path in the home folder, so all worktrees share one cap. The cap can only be lowered by an override.
+- Every live call goes through the record and replay cache and the token ledger. The ledger lives at one fixed path in the home folder, so all worktrees share one cap. The cap can only be lowered by an override. Spec 004's cloud run keeps its own ledger in the Databricks volume, with its own cap, and the cloud workspace's spend limit as the hard stop.
 - Samples are frozen by the committed ID and content-hash lists in `splits/`. Never regenerate them.
 - Claude never prints or reads narrative text, quotes or raw model answers from real data. Commands print only IDs, labels, reasons, positions and counts.
 - Error analysis runs through the analyser (a tool-less model call that answers with one cause from a fixed list). Claude sees only the causes and counts. The owner spot-checks 10 per round with `show` in the owner's own terminal. Claude never runs `show`. Notes hold IDs and short descriptions, never copied text.
-- Evaluation runs on the development set. The frozen test set is scored once, at the end, only when the owner says "final". Claude never passes `final` on its own.
+- Evaluation runs on the development set. The frozen test set is scored once, at the end, only when the owner says "final". Claude never passes `final` on its own. Spec 004's June test is scored once too, only by its cloud job after the owner approves the printed figures, and the laptop refuses to score June.
 
 ## Secrets
 

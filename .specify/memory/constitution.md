@@ -62,13 +62,15 @@ Rationale: three days of work should go into verification, not infrastructure.
 
 ## Constraints
 
-- Data: the CFPB Consumer Complaint Database, July 2026 export, for all labelling and evaluation.
-  One more month, June 2026 from the CFPB's narratives archive, is used only for the one untouched test
-  of spec 004. The August 2026 export is used only to show the incremental load. The Product and Issue fields
+- Data: the CFPB Consumer Complaint Database, July 2026 export, for all labelling and evaluation except
+  spec 004's one untouched test, which uses June 2026 from the CFPB's narratives archive. The August 2026
+  export is used only to show the incremental load. The Product and Issue fields
   are set by the consumer, so they are noisy labels. The data is not a statistical sample of consumers.
 - Stack: Python 3.13 with uv, pytest, DuckDB, dbt-duckdb, scikit-learn, the Anthropic Python SDK,
   FastAPI with Pydantic, React with Vite and TypeScript, Playwright, GitHub Actions, gitleaks.
-  Optional stretch only: dbt on a Databricks Free Edition SQL warehouse (task T021).
+  Databricks Free Edition: dbt on its SQL warehouse (task T021), and for spec 004's cloud run, its jobs,
+  its volume and the file-arrival trigger. For the same run only: an Azure Function with its storage queue
+  and table, and an Azure Key Vault.
 - The LLM never runs inside a web request. Labelling is a batch job. The API only reads results.
 - LLM backend is chosen by `LLM_BACKEND` (`api` or `mock`). Tests and CI use `mock` only. There is no `cli` backend.
 
@@ -90,4 +92,4 @@ contradict it. If they disagree, this file wins until both are fixed in the same
 Amendments are made in a pull request and logged in `BUILD_LOG.md`. Versions follow semantic
 versioning: MAJOR for removing or redefining a principle, MINOR for adding one, PATCH for wording.
 
-**Version**: 2.1.0 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-11-04 (1.1.0: untrusted text never reaches an agent that can act. 1.2.0: two claims fixed in advance. 1.3.0: analyser exception and leak exception, after review round 4. 1.3.1: `cli` removed from the backend constraint, owner cut decision. 2.0.0: principles I and III redefined, owner decision: the agreement view and the second claim are dropped, one head-to-head claim remains, and sample sizes follow a written method. 2.0.1: the August export for the incremental load only, and the optional Databricks stretch, added to the constraints. 2.1.0: one archive month, June 2026, for spec 004's one untouched test, with its one primary claim, owner decision of 4 November)
+**Version**: 2.1.0 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-11-04 (1.1.0: untrusted text never reaches an agent that can act. 1.2.0: two claims fixed in advance. 1.3.0: analyser exception and leak exception, after review round 4. 1.3.1: `cli` removed from the backend constraint, owner cut decision. 2.0.0: principles I and III redefined, owner decision: the agreement view and the second claim are dropped, one head-to-head claim remains, and sample sizes follow a written method. 2.0.1: the August export for the incremental load only, and the optional Databricks stretch, added to the constraints. 2.1.0: one archive month, June 2026, for spec 004's one untouched test, with its one primary claim, and the Databricks jobs, Azure Function and Key Vault that run it, added to the constraints, owner decisions of 4 November)
