@@ -108,13 +108,14 @@
     }
   ],
   "draws": 2000,
-  "from": "results/validation/v5_codes.csv and v5_judge.csv, IDs and ratings only, in sorted ID order",
-  "interval": [
+  "draws_with_kappa": 2000,
+  "from": "splits/validation/v5.csv, results/validation/v5_codes.csv and v5_judge.csv, IDs and ratings only, in sorted ID order",
+  "judge_stricter": 14,
+  "kappa": 0.20508744038155796,
+  "kappa_interval": [
     -0.009316770186335345,
     0.43342776203966005
   ],
-  "judge_stricter": 14,
-  "kappa": 0.20508744038155796,
   "owner_stricter": 6,
   "pairs": 50,
   "seed": 0,

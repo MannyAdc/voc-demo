@@ -405,14 +405,21 @@ def format_summary(summary):
 
 AGREEMENT_DRAWS = 2000
 AGREEMENT_SEED = 0
+MAX_DRAWS_WITHOUT_KAPPA = 0.01
 
 
 def agreement(pairs, draws=AGREEMENT_DRAWS, seed=AGREEMENT_SEED):
     """The owner's and the judge's ratings of the same quotes, as (owner, judge) pairs: the percent agreement
     with its Wilson interval, Cohen's kappa with a bootstrap interval (V10), the 3 by 3 table, and who was the
-    stricter where they differ. Each draw takes as many pairs as there are, with replacement. A draw whose
-    chance agreement is 1 has no kappa and is left out."""
+    stricter where they differ. Each draw takes as many pairs as there are, with replacement, and the interval
+    is the sorted kappas at positions `int(0.025 * n)` and `int(0.975 * n) - 1` (the method logged on
+    4 November). A kappa is undefined when the chance agreement is 1. No pairs, or such a kappa, is refused. A
+    draw with no kappa is left out and counted, and more than 1% of them is refused (owner decision,
+    4 November)."""
     from voc.consistency import wilson
+
+    if not pairs:
+        raise JudgeError("no pair is left to compare: every judge rating of the rated IDs is unparseable")
 
     def kappa(sample):
         n = len(sample)
@@ -421,14 +428,20 @@ def agreement(pairs, draws=AGREEMENT_DRAWS, seed=AGREEMENT_SEED):
         return observed, chance, (None if chance == 1 else (observed - chance) / (1 - chance))
 
     observed, chance, value = kappa(pairs)
+    if value is None:
+        raise JudgeError("the kappa is undefined: both raters gave one and the same rating to every case")
     rng = random.Random(seed)
-    kappas = sorted(k for k in (kappa([rng.choice(pairs) for _ in pairs])[2] for _ in range(draws)) if k is not None)
+    kappas = [kappa([rng.choice(pairs) for _ in pairs])[2] for _ in range(draws)]
+    if kappas.count(None) > MAX_DRAWS_WITHOUT_KAPPA * draws:
+        raise JudgeError(f"{kappas.count(None)} of {draws} bootstrap draws have no kappa, more than "
+                         f"{MAX_DRAWS_WITHOUT_KAPPA:.0%}, so no interval is given")
+    kappas = sorted(k for k in kappas if k is not None)
     strictness = {code: n for n, code in enumerate(RATINGS)}
     matches = sum(o == r for o, r in pairs)
     return {"pairs": len(pairs), "agreement": observed, "agreement_interval": list(wilson(matches, len(pairs))),
             "chance_agreement": chance, "kappa": value,
-            "interval": [kappas[int(0.025 * len(kappas))], kappas[int(0.975 * len(kappas)) - 1]],
-            "draws": draws, "seed": seed,
+            "kappa_interval": [kappas[int(0.025 * len(kappas))], kappas[int(0.975 * len(kappas)) - 1]],
+            "draws": draws, "draws_with_kappa": len(kappas), "seed": seed,
             "table": {o: {r: sum(pair == (o, r) for pair in pairs) for r in RATINGS} for o in RATINGS},
             "judge_stricter": sum(strictness[r] > strictness[o] for o, r in pairs),
             "owner_stricter": sum(strictness[o] > strictness[r] for o, r in pairs)}
@@ -440,16 +453,30 @@ def _id_column(path, column):
 
 
 def agreement_command(root):
-    """`voc judge agreement`. Writes `results/validation/v5_agreement.json` and returns the lines to print."""
+    """`voc judge agreement`. Writes `results/validation/v5_agreement.json` and returns the lines to print.
+
+    The V5 list is read as every validation command reads it, checked against its hash and the development list
+    (V7). Judge rows outside the V5 list are allowed, because the main run rated every accepted label, but each
+    must be in the development list."""
+    from voc.data import _manifest, _read_list
+    from voc.validation import read_lists
+
     root = Path(root)
-    listed = [cid for cid, _ in _id_column(root / "splits" / "validation" / "v5.csv", "content_hash")]
+    listed = read_lists(root / "splits")["v5"]
+    dev = _read_list(root / "splits", "dev", _manifest(root / "splits"))
     codes = _id_column(root / "results" / "validation" / "v5_codes.csv", "code")
     if len(codes) != len({cid for cid, _ in codes}) or {cid for cid, _ in codes} != set(listed):
         raise JudgeError("results/validation/v5_codes.csv does not hold each ID of splits/validation/v5.csv "
                          "exactly once")
     if any(code not in RATINGS for _, code in codes):
         raise JudgeError("results/validation/v5_codes.csv holds a code outside the three ratings")
-    ratings = dict(_id_column(root / "results" / "validation" / "v5_judge.csv", "rating"))
+    judged = _id_column(root / "results" / "validation" / "v5_judge.csv", "rating")
+    if len(judged) != len({cid for cid, _ in judged}):
+        raise JudgeError("results/validation/v5_judge.csv holds a repeated ID")
+    outside = [cid for cid, _ in judged if cid not in dev]
+    if outside:
+        raise JudgeError(f"results/validation/v5_judge.csv holds {len(outside)} IDs outside the development list")
+    ratings = dict(judged)
     missing = [cid for cid, _ in codes if ratings.get(cid) not in RATINGS + (UNPARSEABLE,)]
     if missing:
         raise JudgeError(f"results/validation/v5_judge.csv has no rating for {len(missing)} of the "
@@ -460,7 +487,8 @@ def agreement_command(root):
     figures = {**agreement([(owner[cid], ratings[cid]) for cid in ids]), "unparseable": unparseable,
                "differences": [{"complaint_id": cid, "owner": owner[cid], "judge": ratings[cid]}
                                for cid in ids if owner[cid] != ratings[cid]],
-               "from": "results/validation/v5_codes.csv and v5_judge.csv, IDs and ratings only, in sorted ID order"}
+               "from": "splits/validation/v5.csv, results/validation/v5_codes.csv and v5_judge.csv, IDs and "
+                       "ratings only, in sorted ID order"}
     path = root / "results" / "validation" / "v5_agreement.json"
     path.write_text(json.dumps(figures, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
     return format_agreement(figures) + [f"written to {path.relative_to(root).as_posix()}"]
@@ -468,12 +496,14 @@ def agreement_command(root):
 
 def format_agreement(figures):
     low, high = figures["agreement_interval"]
-    k_low, k_high = figures["interval"]
+    k_low, k_high = figures["kappa_interval"]
     lines = [f"pairs: {figures['pairs']}, unparseable and left out: {len(figures['unparseable'])}",
              f"agreement: {figures['agreement']:.1%} (95% interval {low:.1%} to {high:.1%})",
              f"Cohen's kappa: {figures['kappa']:.3f}, chance agreement {figures['chance_agreement']:.3f}, 95% "
-             f"bootstrap interval {k_low:.3f} to {k_high:.3f} ({figures['draws']} draws, seed {figures['seed']})",
-             f"the judge was the stricter in {figures['judge_stricter']}, the owner in {figures['owner_stricter']}"]
+             f"bootstrap interval {k_low:.3f} to {k_high:.3f} ({figures['draws_with_kappa']} of {figures['draws']} "
+             f"draws with a kappa, seed {figures['seed']})",
+             f"differing IDs: {len(figures['differences'])}. The judge was the stricter in "
+             f"{figures['judge_stricter']}, the owner in {figures['owner_stricter']}"]
     for owner, row in figures["table"].items():
         lines.append(f"owner {owner}: judge " + ", ".join(f"{r} {n}" for r, n in row.items()))
     return lines
