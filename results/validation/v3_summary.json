@@ -1,0 +1,78 @@
+{
+  "cases": 9,
+  "codes": {
+    "check_right": {
+      "count": 9,
+      "interval": [
+        0.7008472464490407,
+        1.0
+      ],
+      "share": 1.0
+    },
+    "check_wrong": {
+      "count": 0,
+      "interval": [
+        0.0,
+        0.2991527535509594
+      ],
+      "share": 0.0
+    },
+    "unclear": {
+      "count": 0,
+      "interval": [
+        0.0,
+        0.2991527535509594
+      ],
+      "share": 0.0
+    }
+  },
+  "from": "recomputed from the IDs, reasons and codes in results/validation/v3_codes.csv",
+  "list": [
+    {
+      "code": "check_right",
+      "complaint_id": "23815221",
+      "reason": "quote_not_in_text"
+    },
+    {
+      "code": "check_right",
+      "complaint_id": "23826723",
+      "reason": "quote_not_in_text"
+    },
+    {
+      "code": "check_right",
+      "complaint_id": "23881362",
+      "reason": "quote_not_in_text"
+    },
+    {
+      "code": "check_right",
+      "complaint_id": "23921571",
+      "reason": "quote_not_in_text"
+    },
+    {
+      "code": "check_right",
+      "complaint_id": "24013665",
+      "reason": "quote_not_in_text"
+    },
+    {
+      "code": "check_right",
+      "complaint_id": "24024367",
+      "reason": "quote_not_in_text"
+    },
+    {
+      "code": "check_right",
+      "complaint_id": "24138262",
+      "reason": "unparseable"
+    },
+    {
+      "code": "check_right",
+      "complaint_id": "24144032",
+      "reason": "unparseable"
+    },
+    {
+      "code": "check_right",
+      "complaint_id": "24393317",
+      "reason": "quote_not_in_text"
+    }
+  ],
+  "piece": "v3"
+}

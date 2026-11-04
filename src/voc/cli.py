@@ -160,6 +160,13 @@ def _review_import(config, root, args):
     print("\n".join(format_codes(import_codes(root, args.piece, replace=args.replace), root)))
 
 
+def _review_summary(config, root, args):
+    from voc.review import format_codes, summarise_committed, summary_path
+
+    summary = summarise_committed(root, args.piece)
+    print("\n".join(format_codes(summary, root, written=summary_path(root, args.piece))))
+
+
 def _judge(config, root, args):
     from voc.judge import command
 
@@ -320,6 +327,7 @@ def _evaluate(config, root, args):
 COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample,
             "validation-lists": _validation_lists, "consistency": _consistency,
             ("review", "sheet"): _review_sheet, ("review", "import"): _review_import,
+            ("review", "summary"): _review_summary,
             ("judge", "dry-run"): _judge, ("judge", "main"): _judge,
             ("judge", "agreement"): _judge_agreement, "cost-hybrid": _cost_hybrid,
             "label": _label,
@@ -354,6 +362,9 @@ def main(argv=None, env=None, root=None):
     im = rv_actions.add_parser("import", help="read only the ID and code columns back, printing counts only")
     im.add_argument("piece", choices=("v2", "v3", "v5"), help="which review")
     im.add_argument("--replace", action="store_true", help="write over codes imported before")
+    sm = rv_actions.add_parser("summary", help="recompute the figures from the committed codes, with no sheet and "
+                                               "no model call. Claude may run this one")
+    sm.add_argument("piece", choices=("v2", "v3"), help="which review")
     sub.add_parser("cost-hybrid", help="V6: cost per extra correct label, time at scale and the hybrid on the "
                                        "development set, from recorded results only (spec 003)")
     jd = sub.add_parser("judge", help="V5: the judge rates whether each quote supports its label, printing counts "

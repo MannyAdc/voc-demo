@@ -1,0 +1,57 @@
+{
+  "cases": 40,
+  "codes": {
+    "both_plausible": {
+      "count": 0,
+      "interval": [
+        0.0,
+        0.08762453925039232
+      ],
+      "share": 0.0
+    },
+    "consumer_right": {
+      "count": 7,
+      "interval": [
+        0.08745302996883066,
+        0.3195029205439244
+      ],
+      "share": 0.175
+    },
+    "llm_right": {
+      "count": 25,
+      "interval": [
+        0.47032160054531913,
+        0.7577722646420829
+      ],
+      "share": 0.625
+    },
+    "unclear": {
+      "count": 8,
+      "interval": [
+        0.10499864973166874,
+        0.34757607381856676
+      ],
+      "share": 0.2
+    }
+  },
+  "from": "recomputed from the IDs and codes in results/validation/v2_codes.csv",
+  "label_noise": {
+    "lower": {
+      "count": 25,
+      "interval": [
+        0.47032160054531913,
+        0.7577722646420829
+      ],
+      "share": 0.625
+    },
+    "upper": {
+      "count": 25,
+      "interval": [
+        0.47032160054531913,
+        0.7577722646420829
+      ],
+      "share": 0.625
+    }
+  },
+  "piece": "v2"
+}
