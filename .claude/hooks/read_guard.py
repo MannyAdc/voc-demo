@@ -30,8 +30,10 @@ V8). Quotes, backticks and line breaks are taken out before the check, so a
 mention inside a commit message or a quoted text is denied too.
 
 Spec 004, J14: a command that runs the Databricks or Azure CLI, as any word
-of a line, or names the Databricks SDK, its saved sign-in `.databrickscfg` or the volume `voc_raw`,
-is denied, and so is a file tool on that sign-in file. Claude's `gh` signs in
+of a line, or names the Databricks SDK, the Databricks CLI's saved sign-in
+`.databrickscfg` or the volume `voc_raw`, is denied, and so is a file tool on
+that sign-in file. Azure's own saved sign-in is not named (Known limits in
+spec 004). Claude's `gh` signs in
 as the owner, who approves the June run, so a command that reads an Actions
 run log or artifact, starts, re-runs, cancels or deletes a run, approves a
 deployment, uses the environments, secrets or variables APIs, writes through
@@ -111,8 +113,9 @@ DATABRICKS_SDK = re.compile(r"databricks\.sdk\b|\bworkspaceclient\b|\bfrom\s+dat
                             r"|databricks\.sql\b|\.databrickscfg\b")
 SAVED_SIGN_IN = ".databrickscfg"
 RAW_VOLUME = "voc_raw"
-DATABRICKS_DENIED = ("cloud guard: Claude never runs the Databricks or Azure CLI or the Databricks SDK, reads its saved "
-                     "sign-in, or names the volume `voc_raw` (spec 004, J14). Text that names them goes in a file.")
+DATABRICKS_DENIED = ("cloud guard: Claude never runs the Databricks or Azure CLI or the Databricks SDK, reads the "
+                     "Databricks CLI's saved sign-in, or names the volume `voc_raw` (spec 004, J14). Text that names "
+                     "them goes in a file.")
 # Spec 004, J14: Claude's `gh` signs in as the owner, who approves the June run. Checked on command text after quotes
 # are taken out, lower-casing and turning backslashes into slashes, so `gh.exe` by its full path is covered too.
 GH = r"(?:^|[\s/&;|(])gh(?:\.exe)?\s+"

@@ -1,9 +1,10 @@
 """Spec 004, J6: the June sample, drawn on the laptop from the pinned June file.
 
 June is read straight from its file into a database in memory, with the same checks as `voc load`, and never
-goes into the staged table (J1). Copies within June are removed with July's measure (B9). So is any June
-complaint whose narrative copies one in July's training or development sets. Those July rows are selected by
-their IDs, so no July test row is ever read (J2). The size comes from Cochran's formula on the June pool (B25),
+goes into the staged table (J1). First any June complaint whose narrative copies one in July's training or
+development sets is removed, then the copies within June, both with July's measure (B9). July's rows come first
+because they are the earlier ones: the other order could drop a June row whose only near-copy was itself a copy
+of July (review of #88). Those July rows are selected by their IDs, so no July test row is ever read (J2). The size comes from Cochran's formula on the June pool (B25),
 split across Products in proportion, and the list is frozen in `splits/june/` with its hashes (B16).
 
 B21: only counts leave this module.
@@ -95,23 +96,36 @@ def build_june_sample(csv_path, labels, db_path, splits_dir, source_sha256, seed
         raise SampleMismatch("the June sample lists already exist, and they are never regenerated")
     june = _june_rows(csv_path, labels)
     july, july_lists = _july_rows(db_path, splits_dir)
-    kept, copies = _dedupe(june)
-    pool, july_copies = _drop_july_copies(kept, july)
+    not_july, july_copies = _drop_july_copies(june, july)
+    pool, copies = _dedupe(not_july)
     if not pool:
         raise SampleMismatch("no June rows with text are left to sample")
     target = cochran_size(margin, len(pool))
     sample, products = _draw(pool, target, seed)
     data = _list_bytes(sample)
-    folder.mkdir(parents=True, exist_ok=True)
-    (folder / f"{LIST}.csv").write_bytes(data)
     summary = {"month": month, "seed": seed, "margin": margin, "duplicate_threshold": DUPLICATE_THRESHOLD,
                "duplicate_measure": DUPLICATE_MEASURE, "opening_words": OPENING_WORDS, "source_sha256": source_sha256,
                "june_rows": len(june), "exact_copies": copies["exact"], "near_copies": copies["near"],
                "july_copies": july_copies, "july_lists": july_lists, "pool": len(pool), "target": target,
                "lists": {LIST: {"count": len(sample), "sha256": hashlib.sha256(data).hexdigest()}},
                "products": products}
-    (folder / "manifest.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    _write(folder, data, json.dumps(summary, indent=2, sort_keys=True) + "\n")
     return summary
+
+
+def _write(folder, data, manifest):
+    """Both files or neither, so a failed write never leaves a list that blocks the next run."""
+    folder.mkdir(parents=True, exist_ok=True)
+    written = [folder / f"{LIST}.csv", folder / "manifest.json"]
+    try:
+        written[0].write_bytes(data)
+        written[1].write_text(manifest, encoding="utf-8")
+    except BaseException:
+        for path in written:
+            path.unlink(missing_ok=True)
+        if not any(folder.iterdir()):
+            folder.rmdir()
+        raise
 
 
 def format_june_summary(summary):

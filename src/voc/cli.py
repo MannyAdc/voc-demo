@@ -140,6 +140,8 @@ def _sample(config, root, args):
 
         with open(Path(root) / "config" / "june.toml", "rb") as f:
             chosen = tomllib.load(f)
+        if chosen.get("month") != JUNE:
+            raise DataFileError(f"config/june.toml must name {JUNE}, so nothing was drawn")
         path = _export(config, chosen["month"])
         pin = _pin(root, chosen["month"])
         verify(path, pin)

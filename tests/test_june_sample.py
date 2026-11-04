@@ -256,8 +256,7 @@ def test_J1_the_laptop_never_loads_or_builds_june(project, capsys):
         con.close()
 
 
-@pytest.mark.parametrize("argv", [["label", "june"], ["evaluate", "june", "--note", "x"], ["audit", "june"],
-                                  ["final", "june"]])
+@pytest.mark.parametrize("argv", [["label", "june"], ["evaluate", "june", "--note", "x"], ["audit", "june"]])
 def test_J1_the_laptop_has_no_june_set_to_label_or_score(argv):
     with pytest.raises(SystemExit):
         cli.main(argv, env={}, root=REPO)

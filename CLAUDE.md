@@ -56,7 +56,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Browser: permission deny rules in `.claude/settings.json` remove the browser tools (Claude in Chrome, Chrome DevTools, the built-in browser and computer use) and deny WebFetch to `github.com`, `api.github.com` and Databricks workspaces (spec 004, J14). They hold for this project's sessions only.
 - Every Claude hook runs through `.claude/hooks/run.sh` and fails closed: a crash, bad input or a missing Python blocks the action (`onFailure: "block"`, plus exit code 2 for older Claude Code versions).
 - Hooks only see Claude's own tool calls, and they parse command text, so they are best effort. Shell commands that write files are not covered by the data guard. The real gate is CI, plus branch protection with required checks on `main` once the repo is public.
-- Claude's session acts as the owner on the laptop, so a determined session can still find paths no rule names. Keeping credentials off the laptop is the main defence. After 5 November the guard is not hardened further, unless a finding is serious and cheap to fix (owner decision).
+- Claude's session acts as the owner on the laptop, so a determined session can still find paths no rule names. Keeping credentials off the laptop is the main defence. The owner never signs in to Azure on the laptop, by the Azure CLI or Az PowerShell, because the guard names only `az` (spec 004, Known limits). After 5 November the guard is not hardened further, unless a finding is serious and cheap to fix (owner decision).
 
 ## CI checks
 

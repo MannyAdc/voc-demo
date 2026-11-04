@@ -369,8 +369,11 @@ Written in pull request 3, on 5 November 2026.
 - the list is frozen in `splits/june/` with its hash, the pool and sample per Product and the copy counts, and is never overwritten. July's lists do not change (J6, B16)
 - the settings (`config/june.toml`: month, margin 0.02, seed) are committed before the draw (J6)
 - the summary and the files hold counts, IDs and hashes only (B21)
-- the laptop refuses to load June or build it on Databricks, with a J1 message, and `voc label`, `evaluate`, `audit` and `final` have no June set (J1)
-- read guard: the Azure CLI (`az`, `az.cmd`) is denied like the Databricks CLI. Text that names it, such as a pull request title, stays allowed (J14, owner decision of 5 November)
+- the laptop refuses to load June or build it on Databricks, with a J1 message, and `voc label`, `evaluate` and `audit` have no June set. `voc final` takes no set at all (J1)
+- read guard: the Azure CLI (`az`, `az.cmd`) is denied like the Databricks CLI. Text that names it stays allowed after a command that only takes text, such as `git` or `gh` (a pull request title). Elsewhere it fails closed: `cd az` or `pytest -k az` is denied (J14, owner decision of 5 November, review of #88)
+- July's copies are removed before the copies within June, so a June row whose near-copy was a copy of July stays (J6, review of #88)
+- July's test rows are never asked for: deleting them changes nothing, and only training and development IDs are selected (J2, review of #88)
+- a failed write leaves neither file, so the next run is not blocked. Settings that do not name June are refused. The seed in `config/june.toml` is the seed of the draw (J6, review of #88)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
