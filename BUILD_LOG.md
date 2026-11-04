@@ -1692,3 +1692,7 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - Green commit `825c700`, through the gate.
 - The owner ran `voc data-hash june_2026` and `Get-FileHash` on the June zip in the owner's own terminal, and pasted the names, sizes and hashes. The CSV's size, 219,864,163 bytes, matches the owner's check of 4 November. The paste also showed the zip's full local path, which is not written anywhere.
 - 10:22 The June pin written in `config/data_files.toml`, in a commit of its own.
+- Pin commit `df21a67`, through the gate, and pushed.
+- The owner ran, in the owner's own terminal in `../voc-demo-june3`, `voc load july_2026` (672,036 rows in the file, all new, 672,036 in the staged table) and then `voc sample june`. It printed: 16,820 June rows with text, 938 copies of July's training or development narratives removed, then 646 exact copies and 117 near-copies within June, a pool of 15,119, and a sample of 2,073, Cochran's target at 2 points. The Product lines add up to the pool and the sample.
+- Claude's check of `splits/june/`: `june.csv` holds 2,073 IDs, none repeated, each with a 64-character content hash and nothing else. Its SHA-256 matches the manifest. The manifest names the pinned June file's hash. No June ID is in July's training, development or test lists.
+- 10:56 The June sample committed in `splits/june/`, with its figures in the spec's J6 and `docs/HOW_WE_MEASURE.md`.

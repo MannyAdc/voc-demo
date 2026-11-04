@@ -1,0 +1,71 @@
+{
+  "duplicate_measure": "Jaccard similarity of word 5-grams, punctuation ignored",
+  "duplicate_threshold": 0.9,
+  "exact_copies": 646,
+  "july_copies": 938,
+  "july_lists": {
+    "dev": "628e76005de8e73006b84ae84bb316483ed0225895af0457c6896bd3899301b9",
+    "train": "9e1c70d399e927d88ffaf574f790db836c2581648cd5cff1f973a51341f6a5e7"
+  },
+  "june_rows": 16820,
+  "lists": {
+    "june": {
+      "count": 2073,
+      "sha256": "4ae0c333e53479527a53d67711d53c81272a07c2bbcea28fc36d020b346477d0"
+    }
+  },
+  "margin": 0.02,
+  "month": "june_2026",
+  "near_copies": 117,
+  "opening_words": 6,
+  "pool": 15119,
+  "products": {
+    "Checking or savings account": {
+      "pool": 3262,
+      "sample": 447
+    },
+    "Credit card": {
+      "pool": 2811,
+      "sample": 385
+    },
+    "Credit reporting or other personal consumer reports": {
+      "pool": 414,
+      "sample": 57
+    },
+    "Debt collection": {
+      "pool": 3791,
+      "sample": 520
+    },
+    "Debt or credit management": {
+      "pool": 140,
+      "sample": 19
+    },
+    "Money transfer, virtual currency, or money service": {
+      "pool": 1326,
+      "sample": 182
+    },
+    "Mortgage": {
+      "pool": 1151,
+      "sample": 158
+    },
+    "Payday loan, title loan, personal loan, or advance loan": {
+      "pool": 635,
+      "sample": 87
+    },
+    "Prepaid card": {
+      "pool": 221,
+      "sample": 30
+    },
+    "Student loan": {
+      "pool": 575,
+      "sample": 79
+    },
+    "Vehicle loan or lease": {
+      "pool": 793,
+      "sample": 109
+    }
+  },
+  "seed": 20261105,
+  "source_sha256": "4adca715ede2ac1780bf72d3735b34fb7d88616f2aa9468ea41357f414180850",
+  "target": 2073
+}

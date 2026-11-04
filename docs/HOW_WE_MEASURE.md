@@ -44,7 +44,7 @@ Spec 004 adds one more test, on June 2026, a month no method has been tuned on. 
 
 - **It starts from June's own complaints with a written story.** The June file holds 620,794 complaints, and 16,820 of them have a story (the owner's check of the file on 4 November).
 - **Copies go first.** Two stories count as copies when they are the same after ignoring case and spacing, or when they start with the same words and share at least 90 percent of their runs of five words. This is July's rule. A June story that copies one in July's training or development sets is removed first, so no method is tested on a story it has already seen. Then copies within June are removed, keeping the first. The July test set is never opened for this. It stays sealed for its one use.
-- **The size is Cochran's formula at 2 points, on June's pool.** With the correction for a pool of this size, 16,820 stories would give 2,102. If about 1,270 copies go, 15,550 would give 2,080. The real number is printed when the sample is drawn and kept in `splits/june/manifest.json`.
+- **The size is Cochran's formula at 2 points, on June's pool.** With the correction for a pool of this size, 16,820 stories would give 2,102. If about 1,270 copies go, 15,550 would give 2,080. The real number is printed when the sample is drawn and kept in `splits/june/manifest.json`. When it was drawn on 5 November, 1,701 copies went: 938 copies of July's stories, then 646 exact copies and 117 near-copies within June. That left 15,119 stories, so the sample is 2,073.
 
 The sample keeps June's mix of categories. If a category is a quarter of June's pool, it is about a quarter of the sample. The seed of the draw is fixed in `config/june.toml` before the draw, so the same file always gives the same sample.
 
