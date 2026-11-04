@@ -2886,3 +2886,40 @@ def test_V4_each_plain_term_is_explained_or_linked_where_it_is_first_used():
                  "HOW_WE_MEASURE.md#how-many-complaints-we-score"):
         assert link in text, link
     assert "re-weighted" in text and "95 times out of 100" in text
+
+
+# Spec 003, "Follow-ups, planned": the published texts name the baseline "TF-IDF + LR" (owner decision, 4 November).
+# "TF-IDF" alone stays only where it names the word-scoring step itself, or where a page quotes the word.
+
+PUBLISHED = ("README.md", "docs/HOW_WE_MEASURE.md", "docs/RESULTS.md", "docs/DATA.md", "docs/LIMITS.md",
+             "docs/STACK.md", "docs/USER.md", "src/voc/web/index.html")
+STEP = r"TF-IDF(?! \+ LR| with logistic regression| \(term frequency| word scores| scores for words| turns each)"
+
+
+def _bare_tfidf(text):
+    import re
+    return re.findall(r".{0,30}" + STEP + r".{0,20}", text.replace('"TF-IDF"', "the word"))
+
+
+@pytest.mark.parametrize("name", PUBLISHED)
+def test_V4_each_published_page_names_the_baseline_tfidf_plus_lr(name):
+    text = (REPO / name).read_text(encoding="utf-8")
+    assert not _bare_tfidf(text)
+    assert "TF-IDF + LR" in text
+    assert text.index("TF-IDF with logistic regression") < text.index("TF-IDF + LR")
+
+
+def test_V4_the_dashboards_words_name_the_baseline_tfidf_plus_lr():
+    import re
+    script = (REPO / "src" / "voc" / "web" / "app.js").read_text(encoding="utf-8")
+    # The column names come from EVAL_VERSIONS.md, so they keep their names, as data keys do.
+    words = [s for s in re.findall(r'"([^"]*)"', script) if "TF-IDF" in s and s != "TF-IDF accuracy"]
+    assert words and not [s for s in words if _bare_tfidf(s)]
+    from voc import api
+    assert "TF-IDF + LR" in api.PER_CATEGORY_NOTE and not _bare_tfidf(api.PER_CATEGORY_NOTE)
+
+
+def test_V4_readme_line_on_quotes_points_to_the_validation_review():
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    assert "No human has checked that yet" not in readme
+    assert "The [validation review](docs/VALIDATION.md) checked that later" in readme
