@@ -1071,3 +1071,156 @@ def test_B21_copies_disguises_and_runs_of_the_download_are_blocked_in_commands(r
 def test_B21_harmless_commands_and_the_fixture_stay_allowed(read_guard, places, command):
     command = command.replace("{root}", str(places["root"]))
     assert not _read_decision(read_guard, places, "Bash", {"command": command})
+
+
+# Spec 004, J6 and J14: June's data folder is protected like July's and August's. Claude never runs the Databricks
+# CLI or names the volume `voc_raw`. Claude's `gh` signs in as the owner, who approves the June run, so Claude may
+# not read Actions run logs, start, re-run or cancel a workflow, approve a deployment, use the environments and
+# secrets APIs, or merge, in any form.
+
+
+@pytest.fixture
+def june_places(places, tmp_path):
+    june = tmp_path / "rawjune_2026_06"
+    june.mkdir()
+    env = {"VOC_DATA_DIR": str(places["data"]), "VOC_JUNE_DATA_DIR": str(june)}
+    return {**places, "june": june, "env": env}
+
+
+@pytest.mark.parametrize("tool, field", [("Read", "file_path"), ("Grep", "path"), ("Glob", "path")])
+def test_J6_reading_the_june_data_folder_is_blocked(read_guard, june_places, tool, field):
+    decision = _read_decision(read_guard, june_places, tool, {field: str(june_places["june"] / "x.csv")})
+    assert decision and decision[0] == "deny"
+
+
+def test_J6_the_june_folder_is_also_found_in_a_local_env_file(read_guard, june_places):
+    june_places["root"].mkdir()
+    (june_places["root"] / ".env").write_text(f"VOC_JUNE_DATA_DIR={june_places['june']}\n", encoding="utf-8")
+    decision = _read_decision(read_guard, june_places, "Read", {"file_path": str(june_places["june"] / "x.csv")},
+                              env={})
+    assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("tool, command", [
+    ("Bash", 'ls "$VOC_JUNE_DATA_DIR"'),
+    ("PowerShell", r"Get-ChildItem $env:VOC_JUNE_DATA_DIR"),
+    ("Bash", "cd /c && head -3 rawjune_2026_06/a.csv"),
+])
+def test_J6_a_shell_command_naming_the_june_folder_is_blocked(read_guard, june_places, tool, command):
+    decision = _read_decision(read_guard, june_places, tool, {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+def test_J6_searching_a_folder_that_holds_the_june_folder_is_blocked(read_guard, june_places, tmp_path):
+    june = tmp_path / "elsewhere" / "rawjune_2026_06"
+    june.mkdir(parents=True)
+    env = {"VOC_DATA_DIR": str(june_places["data"]), "VOC_JUNE_DATA_DIR": str(june)}
+    for tool in ("Grep", "Glob"):
+        decision = _read_decision(read_guard, june_places, tool, {"pattern": "x", "path": str(june.parent)}, env=env)
+        assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("tool, command", [
+    ("Bash", "databricks fs ls dbfs:/Volumes/workspace/default/x"),
+    ("Bash", "databricks jobs list"),
+    ("Bash", "cd /tmp && DATABRICKS_HOST=x databricks workspace list /"),
+    ("PowerShell", r"& C:\tools\databricks.exe api get /api/2.0/fs/directories/x"),
+    ("Bash", "dbsqlcli -e 'select 1'"),
+    ("Bash", "uv run python -c 'print(1)' /Volumes/workspace/default/voc_raw/june"),
+    ("PowerShell", r"Get-ChildItem \\x\Volumes\workspace\default\VOC_RAW"),
+])
+def test_J14_the_databricks_cli_and_the_raw_volume_are_denied(read_guard, places, tool, command):
+    decision = _read_decision(read_guard, places, tool, {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+GH = '"/c/Program Files/GitHub CLI/gh.exe"'
+
+
+@pytest.mark.parametrize("command", [
+    "gh run view 123 --log",
+    "gh run view 123 --log-failed",
+    f"{GH} run view 123 --job 456 --log",
+    "gh run download 123",
+    "gh api repos/o/r/actions/runs/123/logs",
+    "gh api repos/o/r/actions/jobs/456/logs > x.zip",
+    "gh api repos/o/r/actions/runs/123/attempts/2/logs",
+    "curl -L https://api.github.com/repos/o/r/actions/runs/1/logs",
+])
+def test_J14_reading_actions_run_logs_is_denied(read_guard, places, command):
+    decision = _read_decision(read_guard, places, "Bash", {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("command", [
+    "gh workflow run june.yml -f run_id=1",
+    f"{GH} workflow run june.yml",
+    "gh workflow disable ci.yml",
+    "gh workflow enable ci.yml",
+    "gh api -X POST repos/o/r/actions/workflows/june.yml/dispatches -f ref=main",
+    "gh api -X POST repos/o/r/dispatches -f event_type=x",
+    "gh run rerun 123",
+    "gh run rerun 123 --failed",
+    "gh run cancel 123",
+    "gh api -X POST repos/o/r/actions/runs/1/rerun",
+    "gh api -X POST repos/o/r/actions/runs/1/rerun-failed-jobs",
+    "gh api -X POST repos/o/r/actions/jobs/2/rerun",
+    "gh api -X POST repos/o/r/actions/runs/1/cancel",
+    "gh api -X POST repos/o/r/actions/runs/1/force-cancel",
+])
+def test_J14_starting_rerunning_or_cancelling_a_workflow_is_denied(read_guard, places, command):
+    decision = _read_decision(read_guard, places, "Bash", {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("tool, command", [
+    ("Bash", "gh api -X POST repos/o/r/actions/runs/1/pending_deployments -f state=approved"),
+    ("Bash", "gh api graphql -f query='mutation { approveDeployments(input: {}) { clientMutationId } }'"),
+    ("Bash", "gh api repos/o/r/environments"),
+    ("Bash", "gh api -X PUT repos/o/r/environments/june-run"),
+    ("Bash", "gh secret list"),
+    ("PowerShell", f"& {GH} secret set X"),
+    ("Bash", "gh api repos/o/r/actions/secrets"),
+])
+def test_J14_approving_a_deployment_and_the_environments_and_secrets_apis_are_denied(read_guard, places, tool,
+                                                                                       command):
+    decision = _read_decision(read_guard, places, tool, {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("tool, command", [
+    ("Bash", "gh pr merge 85 --merge"),
+    ("Bash", "gh pr merge --admin 85"),
+    ("Bash", "gh pr merge 85 --auto"),
+    ("Bash", f"{GH} pr merge 85"),
+    ("PowerShell", r"& 'C:\Program Files\GitHub CLI\gh.exe' pr merge 85"),
+    ("Bash", "gh api -X PUT repos/o/r/pulls/85/merge"),
+    ("Bash", "gh api -X POST repos/o/r/merges -f base=main -f head=x"),
+    ("Bash", "gh api graphql -f query='mutation { mergePullRequest(input: {}) { clientMutationId } }'"),
+    ("Bash", "gh api graphql -f query='mutation { enablePullRequestAutoMerge(input: {}) { clientMutationId } }'"),
+])
+def test_J14_merging_in_any_form_is_denied(read_guard, places, tool, command):
+    decision = _read_decision(read_guard, places, tool, {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("command", [
+    "gh pr checks 85 --watch --interval 30",
+    f"{GH} pr view 85 --json state",
+    "gh run view 123",
+    "gh run list --limit 5",
+    "gh api repos/o/r/pulls/85",
+    "gh api repos/o/r/pulls/85/reviews",
+    "gh api repos/o/r/actions/permissions/workflow",
+    "gh pr create --draft --body-file x.md",
+    "gh pr ready 85",
+    "gh pr comment 85 -F x.md",
+    "git merge origin/main",
+    "git log --merges --oneline -3",
+    "grep -n databricks docs/PIPELINE.md",
+    "uv add databricks-sdk",
+    "uv run --native-tls python scripts/merge_verdict.py 85",
+    "uv run python scripts/copy_june_results.py 123",
+])
+def test_J14_the_commands_claude_still_needs_stay_allowed(read_guard, places, command):
+    assert not _read_decision(read_guard, places, "Bash", {"command": command})
