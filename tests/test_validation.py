@@ -2934,3 +2934,51 @@ def test_V4_readme_line_on_quotes_points_to_the_validation_review():
     readme = (REPO / "README.md").read_text(encoding="utf-8")
     assert "No human has checked that yet" not in readme
     assert "The [validation review](docs/VALIDATION.md) checked that later" in readme
+
+
+# Review of #84.
+
+NAME_NOTE = "On 4 November 2026, the baseline's short name became TF-IDF + LR (owner decision)."
+DATED_NOTE = "(the baseline's short name was updated on 4 November)"
+
+
+@pytest.mark.parametrize("name", ["docs/LIMITS.md", "docs/RESULTS.md", "docs/STACK.md"])
+def test_V4_a_page_moved_word_for_word_says_the_name_changed_since(name):
+    first_lines = (REPO / name).read_text(encoding="utf-8").splitlines()[:3]
+    moved = [line for line in first_lines if "word for word" in line]
+    assert moved and NAME_NOTE in moved[0]
+
+
+@pytest.mark.parametrize("name, dated", [("docs/DATA.md", "## Decisions (owner, 28 October)"),
+                                          ("docs/USER.md", "*Changed on 30 October (owner decision):*")])
+def test_V4_a_dated_record_that_now_says_tfidf_plus_lr_notes_the_new_name(name, dated):
+    text = (REPO / name).read_text(encoding="utf-8")
+    after = text[text.index(dated):]
+    first = after.index("TF-IDF + LR")
+    end = after.find("\n\n", first)
+    assert DATED_NOTE in after[first:end if end != -1 else None]
+
+
+def test_V4_the_method_tab_shows_the_baseline_column_as_tfidf_plus_lr_and_keeps_the_key():
+    script = (REPO / "src" / "voc" / "web" / "app.js").read_text(encoding="utf-8")
+    assert '"TF-IDF accuracy": "TF-IDF + LR accuracy"' in script
+    assert '"LLM accuracy", "TF-IDF accuracy", "Interval"' in script
+
+
+def test_V4_readme_line_on_quotes_does_not_read_as_if_they_passed():
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    assert "The [validation review](docs/VALIDATION.md) checked how often it does, later, on the development set." \
+        in readme
+
+
+def test_V4_the_help_button_comes_after_the_full_name_of_the_baseline():
+    import re
+    page = (REPO / "src" / "voc" / "web" / "index.html").read_text(encoding="utf-8")
+    subtitle = re.search(r'<p class="sub">(.*?)</p>', page, re.S).group(1)
+    assert subtitle.index("logistic regression (TF-IDF + LR)") < subtitle.index('aria-controls="term-tfidf"')
+    assert "Here it names the baseline" not in page
+
+
+def test_V4_the_stack_list_reads_as_one_item_for_the_evaluation():
+    stack = (REPO / "docs" / "STACK.md").read_text(encoding="utf-8")
+    assert "(TF-IDF + LR) with a paired bootstrap" in stack
