@@ -5,7 +5,9 @@ Denies any tool call that names a protected place: the raw data folders
 from the environment or the local `.env`), the repo's `data` folder (the
 DuckDB file, its write-ahead log and dbt's output), the home folder
 `.voc` (ledger, recordings and the home test log), any `.duckdb` file, a
-`recordings` folder, a CFPB export file, or the `.env` file that holds the
+`recordings` folder, a CFPB export file (the archive's and the pins' `CCDB_Export`
+names, and the current bulk export's `complaints.csv` and `complaints.csv.zip`
+outside a `fixtures` folder), or the `.env` file that holds the
 API key (`.env.example` is allowed). Every string in the tool input is
 checked as a path, except text the tool writes (such as `content`), after
 `..` is resolved. A search of a folder that holds the data folder or `.voc`
@@ -53,6 +55,12 @@ SHELL_PATTERNS = (
     re.compile(r"voc_data_dir"),
     re.compile(r"voc_next_data_dir"),
     re.compile(r"ccdb_export"),
+    # 4 November 2026: the CFPB's current bulk export has its own names, `complaints.csv.zip` and `complaints.csv`,
+    # from files.consumerfinance.gov/ccdb/, and `scripts/download.py` fetches it. The synthetic fixtures named
+    # `complaints.csv` under `fixtures/dbt/`, and `synthetic_` or `staged_complaints.csv`, stay allowed.
+    re.compile(r"(?<!fixtures/dbt/)(?<![\w-])complaints\.csv(?:\.zip)?\b"),
+    re.compile(r"files\.consumerfinance\.gov/(?:ccdb|f/documents/ccdb)"),
+    re.compile(r"(?:^|[\s/\"'=])scripts/download\.py\b"),
     re.compile(r"(?:^|[\s/\"'=])\.env(?![\w.])"),  # the key file, not `.env.example`
     # The repo's `data` folder (DuckDB file, write-ahead log, dbt output), named relative to the repo.
     re.compile(r"(?:^|[\s\"'=(])(?:\./)?data/"),
@@ -61,6 +69,7 @@ SHELL_PATTERNS = (
 )
 DATA_FOLDER = "data"
 DUCKDB_NAME = re.compile(r"\.duckdb(?:\.|$)")  # the DuckDB file and its `.wal` log
+BULK_EXPORT_NAMES = ("complaints.csv", "complaints.csv.zip")  # the CFPB's current bulk export, outside `fixtures`
 DATA_VARIABLES = ("VOC_DATA_DIR", "VOC_NEXT_DATA_DIR")  # July's folder and the next month's (add-on 1)
 DENIED = "read guard: this names raw data, the DuckDB file, recordings, the ledger or the `.env` file."
 
@@ -128,7 +137,7 @@ def _protected_path(value, home, root, places, search, inner=frozenset()):
             return True  # the search would cover a protected place
         parts = normal.split("/")
         if (DUCKDB_NAME.search(parts[-1]) or "recordings" in parts or "ccdb_export" in normal
-                or parts[-1] == ".env"):
+                or (parts[-1] in BULK_EXPORT_NAMES and "fixtures" not in parts) or parts[-1] == ".env"):
             return True
     return False
 
