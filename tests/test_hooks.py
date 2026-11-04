@@ -1071,3 +1071,277 @@ def test_B21_copies_disguises_and_runs_of_the_download_are_blocked_in_commands(r
 def test_B21_harmless_commands_and_the_fixture_stay_allowed(read_guard, places, command):
     command = command.replace("{root}", str(places["root"]))
     assert not _read_decision(read_guard, places, "Bash", {"command": command})
+
+
+# Spec 004, J6 and J14: June's data folder is protected like July's and August's. Claude never runs the Databricks
+# CLI or names the volume `voc_raw`. Claude's `gh` signs in as the owner, who approves the June run, so Claude may
+# not read Actions run logs, start, re-run or cancel a workflow, approve a deployment, use the environments and
+# secrets APIs, or merge, in any form.
+
+
+@pytest.fixture
+def june_places(places, tmp_path):
+    june = tmp_path / "rawjune_2026_06"
+    june.mkdir()
+    env = {"VOC_DATA_DIR": str(places["data"]), "VOC_JUNE_DATA_DIR": str(june)}
+    return {**places, "june": june, "env": env}
+
+
+@pytest.mark.parametrize("tool, field", [("Read", "file_path"), ("Grep", "path"), ("Glob", "path")])
+def test_J6_reading_the_june_data_folder_is_blocked(read_guard, june_places, tool, field):
+    decision = _read_decision(read_guard, june_places, tool, {field: str(june_places["june"] / "x.csv")})
+    assert decision and decision[0] == "deny"
+
+
+def test_J6_the_june_folder_is_also_found_in_a_local_env_file(read_guard, june_places):
+    june_places["root"].mkdir()
+    (june_places["root"] / ".env").write_text(f"VOC_JUNE_DATA_DIR={june_places['june']}\n", encoding="utf-8")
+    decision = _read_decision(read_guard, june_places, "Read", {"file_path": str(june_places["june"] / "x.csv")},
+                              env={})
+    assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("tool, command", [
+    ("Bash", 'ls "$VOC_JUNE_DATA_DIR"'),
+    ("PowerShell", r"Get-ChildItem $env:VOC_JUNE_DATA_DIR"),
+    ("Bash", "cd /c && head -3 rawjune_2026_06/a.csv"),
+])
+def test_J6_a_shell_command_naming_the_june_folder_is_blocked(read_guard, june_places, tool, command):
+    decision = _read_decision(read_guard, june_places, tool, {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+def test_J6_searching_a_folder_that_holds_the_june_folder_is_blocked(read_guard, june_places, tmp_path):
+    june = tmp_path / "elsewhere" / "rawjune_2026_06"
+    june.mkdir(parents=True)
+    env = {"VOC_DATA_DIR": str(june_places["data"]), "VOC_JUNE_DATA_DIR": str(june)}
+    for tool in ("Grep", "Glob"):
+        decision = _read_decision(read_guard, june_places, tool, {"pattern": "x", "path": str(june.parent)}, env=env)
+        assert decision and decision[0] == "deny"
+
+
+@pytest.mark.parametrize("tool, command", [
+    ("Bash", "databricks fs ls dbfs:/Volumes/workspace/default/x"),
+    ("Bash", "databricks jobs list"),
+    ("Bash", "cd /tmp && DATABRICKS_HOST=x databricks workspace list /"),
+    ("PowerShell", r"& C:\tools\databricks.exe api get /api/2.0/fs/directories/x"),
+    ("Bash", "dbsqlcli -e 'select 1'"),
+    ("Bash", "uv run python -c 'print(1)' /Volumes/workspace/default/voc_raw/june"),
+    ("PowerShell", r"Get-ChildItem \\x\Volumes\workspace\default\VOC_RAW"),
+])
+def test_J14_the_databricks_cli_and_the_raw_volume_are_denied(read_guard, places, tool, command):
+    assert _j14_denied(_read_decision(read_guard, places, tool, {"command": command}))
+
+
+GH = '"/c/Program Files/GitHub CLI/gh.exe"'
+
+
+def _j14_denied(decision):
+    return bool(decision) and decision[0] == "deny" and "J14" in decision[1]
+
+
+@pytest.mark.parametrize("command", [
+    "gh run view 123 --log",
+    "gh run view 123 --log-failed",
+    f"{GH} run view 123 --job 456 --log",
+    "gh run download 123",
+    "gh api repos/o/r/actions/runs/123/logs",
+    "gh api repos/o/r/actions/jobs/456/logs > x.zip",
+    "gh api repos/o/r/actions/runs/123/attempts/2/logs",
+    "curl -L https://api.github.com/repos/o/r/actions/runs/1/logs",
+])
+def test_J14_reading_actions_run_logs_is_denied(read_guard, places, command):
+    assert _j14_denied(_read_decision(read_guard, places, "Bash", {"command": command}))
+
+
+@pytest.mark.parametrize("command", [
+    "gh workflow run june.yml -f run_id=1",
+    f"{GH} workflow run june.yml",
+    "gh workflow disable ci.yml",
+    "gh workflow enable ci.yml",
+    "gh api -X POST repos/o/r/actions/workflows/june.yml/dispatches -f ref=main",
+    "gh api -X POST repos/o/r/dispatches -f event_type=x",
+    "gh run rerun 123",
+    "gh run rerun 123 --failed",
+    "gh run cancel 123",
+    "gh api -X POST repos/o/r/actions/runs/1/rerun",
+    "gh api -X POST repos/o/r/actions/runs/1/rerun-failed-jobs",
+    "gh api -X POST repos/o/r/actions/jobs/2/rerun",
+    "gh api -X POST repos/o/r/actions/runs/1/cancel",
+    "gh api -X POST repos/o/r/actions/runs/1/force-cancel",
+    "gh run --repo o/r rerun 1",
+    "gh run -R o/r cancel 1",
+    "gh run -R o/r view 1 --log",
+    "gh workflow -R o/r run june.yml",
+    "gh secret -R o/r list",
+    "gh run delete 123",
+])
+def test_J14_starting_rerunning_or_cancelling_a_workflow_is_denied(read_guard, places, command):
+    assert _j14_denied(_read_decision(read_guard, places, "Bash", {"command": command}))
+
+
+@pytest.mark.parametrize("tool, command", [
+    ("Bash", "gh api -X POST repos/o/r/actions/runs/1/pending_deployments -f state=approved"),
+    ("Bash", "gh api graphql -f query='mutation { approveDeployments(input: {}) { clientMutationId } }'"),
+    ("Bash", "gh api repos/o/r/environments"),
+    ("Bash", "gh api -X PUT repos/o/r/environments/june-run"),
+    ("Bash", "gh secret list"),
+    ("PowerShell", f"& {GH} secret set X"),
+    ("Bash", "gh api repos/o/r/actions/secrets"),
+])
+def test_J14_approving_a_deployment_and_the_environments_and_secrets_apis_are_denied(read_guard, places, tool,
+                                                                                       command):
+    assert _j14_denied(_read_decision(read_guard, places, tool, {"command": command}))
+
+
+@pytest.mark.parametrize("tool, command", [
+    ("Bash", "gh pr merge 85 --merge"),
+    ("Bash", "gh pr merge --admin 85"),
+    ("Bash", "gh pr merge 85 --auto"),
+    ("Bash", f"{GH} pr merge 85"),
+    ("PowerShell", r"& 'C:\Program Files\GitHub CLI\gh.exe' pr merge 85"),
+    ("Bash", "gh api -X PUT repos/o/r/pulls/85/merge"),
+    ("Bash", "gh api -X POST repos/o/r/merges -f base=main -f head=x"),
+    ("Bash", "gh api graphql -f query='mutation { mergePullRequest(input: {}) { clientMutationId } }'"),
+    ("Bash", "gh api graphql -f query='mutation { enablePullRequestAutoMerge(input: {}) { clientMutationId } }'"),
+    ("Bash", "gh pr -R o/r merge 85"),
+    ("Bash", "gh pr --repo=o/r merge 85"),
+    ("Bash", f"{GH} pr --repo o/r merge 85"),
+    ("Bash", "gh -R o/r pr merge 85"),
+])
+def test_J14_merging_in_any_form_is_denied(read_guard, places, tool, command):
+    assert _j14_denied(_read_decision(read_guard, places, tool, {"command": command}))
+
+
+@pytest.mark.parametrize("command", [
+    "gh pr checks 85 --watch --interval 30",
+    f"{GH} pr view 85 --json state",
+    "gh run view 123",
+    "gh run list --limit 5",
+    "gh api repos/o/r/pulls/85",
+    "gh api repos/o/r/pulls/85/reviews",
+    "gh api repos/o/r/actions/permissions/workflow",
+    "gh pr create --draft --body-file x.md",
+    "gh pr ready 85",
+    "gh pr comment 85 -F x.md",
+    "git merge origin/main",
+    "git log --merges --oneline -3",
+    "grep -n databricks docs/PIPELINE.md",
+    "uv add databricks-sdk",
+    "uv run --native-tls python scripts/merge_verdict.py 85",
+    "uv run python scripts/copy_june_results.py 123",
+    "cat docs/environments.md",
+    "python scripts/rerun.py",
+    "git log --oneline -- docs/secrets.md",
+    "ls dbt/databricks",
+    "git add dbt/databricks/profiles.yml",
+    "uv run --group databricks pytest tests/test_databricks.py",
+    "gh pr create --draft --title 'Add the Databricks job' --body-file x.md",
+    "gh pr -R o/r view 85",
+    "gh auth status",
+    "gh api -X GET repos/o/r/pulls/85/comments -f per_page=100",
+    "gh api graphql -f query='{ repository(owner: o, name: r) { pullRequest(number: 85) { state } } }'",
+    "gh api repos/o/r/actions/runs/1/artifacts",
+])
+def test_J14_the_commands_claude_still_needs_stay_allowed(read_guard, places, command):
+    assert not _read_decision(read_guard, places, "Bash", {"command": command})
+
+
+# The review of #87: the Databricks CLI by other routes, its SDK and saved sign-in, and the owner's token file.
+
+
+@pytest.mark.parametrize("tool, command", [
+    ("Bash", "env databricks jobs list"),
+    ("Bash", "time databricks jobs list"),
+    ("Bash", "bash -c 'databricks jobs list'"),
+    ("Bash", "uv run databricks jobs list"),
+    ("Bash", "uvx --from databricks-cli databricks jobs list"),
+    ("Bash", '"/c/Program Files/Databricks CLI/databricks.exe" jobs list'),
+    ("PowerShell", r"& 'C:\Program Files\Databricks CLI\databricks.exe' jobs list"),
+    ("Bash", "uv run python -c 'from databricks.sdk import WorkspaceClient; WorkspaceClient().jobs.list()'"),
+    ("Bash", "python -c 'from databricks import sql'"),
+    ("Bash", "cat ~/.databrickscfg"),
+    ("PowerShell", r"Get-Content $HOME\.databrickscfg"),
+])
+def test_J14_the_databricks_cli_by_any_route_its_sdk_and_its_saved_sign_in_are_denied(read_guard, places, tool,
+                                                                                        command):
+    assert _j14_denied(_read_decision(read_guard, places, tool, {"command": command}))
+
+
+@pytest.mark.parametrize("tool", ["Read", "Edit", "Write"])
+def test_J14_a_file_tool_on_the_databricks_saved_sign_in_is_denied(read_guard, places, tool):
+    assert _j14_denied(_read_decision(read_guard, places, tool, {"file_path": "~/.databrickscfg"}))
+
+
+@pytest.mark.parametrize("tool, command", [
+    ("PowerShell", r"Get-ChildItem $HOME -Recurse -Filter *.dpapi"),
+    ("PowerShell", r"gc x | ConvertTo-SecureString"),
+    ("PowerShell", r"[System.Net.NetworkCredential]::new('', $s).Password"),
+    ("PowerShell", r"[Security.Cryptography.ProtectedData]::Unprotect($b, $null, 0)"),
+    ("Bash", "python -c 'import win32crypt; win32crypt.CryptUnprotectData(b)'"),
+])
+def test_J14_the_owners_encrypted_token_file_is_denied_without_naming_its_folder(read_guard, places, tool, command):
+    decision = _read_decision(read_guard, places, tool, {"command": command})
+    assert decision and decision[0] == "deny"
+
+
+# The review of #87, serious 3 and minors 2, 3, 5 and 6: writes through the API and GraphQL, aliases and
+# extensions, the owner's token, and the repo's settings.
+
+
+@pytest.mark.parametrize("command", [
+    "gh api graphql -F query=@merge.graphql",
+    "gh api graphql --input q.json",
+    "gh api graphql -f query='mutation { mergeBranch(input: {}) { clientMutationId } }'",
+    "gh api graphql -f query='mutation { createCommitOnBranch(input: {}) { clientMutationId } }'",
+    "gh api graphql -f query='mutation { updateRef(input: {}) { clientMutationId } }'",
+    "gh api -X PATCH repos/o/r/git/refs/heads/main -f sha=abc",
+    "gh api repos/o/r/git/refs -f ref=refs/heads/x -f sha=abc",
+    "gh api -X PUT repos/o/r/contents/README.md --input body.json",
+    "gh api --method DELETE repos/o/r/actions/runs/1",
+    "gh api -X PUT repos/o/r/actions/workflows/ci.yml/enable",
+    "gh api repos/o/r/actions/artifacts/9/zip > a.zip",
+])
+def test_J14_writes_through_the_api_and_graphql_are_denied(read_guard, places, command):
+    assert _j14_denied(_read_decision(read_guard, places, "Bash", {"command": command}))
+
+
+@pytest.mark.parametrize("command", [
+    "gh alias set m 'pr merge'",
+    "gh alias import a.yml",
+    "gh extension install o/gh-x",
+    "gh auth token",
+    "gh auth status --show-token",
+    "gh auth status -t",
+    "gh auth refresh -s workflow",
+    "gh repo edit --default-branch x",
+    "gh repo sync",
+    "gh variable set X",
+    "gh api -X PATCH repos/o/r -f allow_auto_merge=true",
+    "gh api -X PUT repos/o/r/actions/permissions/workflow -f default_workflow_permissions=write",
+    "gh api -X PUT repos/o/r/branches/main/protection --input p.json",
+    "gh api repos/o/r/rulesets -f name=x",
+])
+def test_J14_aliases_extensions_the_owners_token_and_repo_settings_are_denied(read_guard, places, command):
+    assert _j14_denied(_read_decision(read_guard, places, "Bash", {"command": command}))
+
+
+# Owner decision of 5 November: the browser tools are removed from this project, and WebFetch cannot reach GitHub
+# or a Databricks workspace. These are permission rules, so they hold for this project's sessions only.
+@pytest.mark.parametrize("rule", [
+    "mcp__claude-in-chrome__*",
+    "mcp__chrome-devtools__*",
+    "mcp__Claude_Browser__*",
+    "mcp__remote-devices__*",
+    "mcp__computer-use__*",
+    "enable__mcp__claude-in-chrome",
+    "enable__mcp__remote-devices__Claude_Browser",
+    "enable__mcp__remote-devices__computer",
+    "WebFetch(domain:github.com)",
+    "WebFetch(domain:api.github.com)",
+    "WebFetch(domain:*.cloud.databricks.com)",
+    "WebFetch(domain:*.azuredatabricks.net)",
+])
+def test_J14_the_browser_tools_and_webfetch_to_github_and_databricks_are_denied(rule):
+    settings = json.loads((HOOKS.parent / "settings.json").read_text(encoding="utf-8"))
+    assert rule in settings["permissions"]["deny"]

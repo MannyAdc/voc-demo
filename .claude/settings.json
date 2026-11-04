@@ -22,7 +22,19 @@
       "PowerShell(git push * main)",
       "PowerShell(git push * main *)",
       "PowerShell(git push * HEAD:main*)",
-      "PowerShell(gh pr merge*)"
+      "PowerShell(gh pr merge*)",
+      "mcp__claude-in-chrome__*",
+      "mcp__chrome-devtools__*",
+      "mcp__Claude_Browser__*",
+      "mcp__remote-devices__*",
+      "mcp__computer-use__*",
+      "enable__mcp__claude-in-chrome",
+      "enable__mcp__remote-devices__Claude_Browser",
+      "enable__mcp__remote-devices__computer",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:*.cloud.databricks.com)",
+      "WebFetch(domain:*.azuredatabricks.net)"
     ],
     "ask": [
       "Bash(*voc ledger init*)",

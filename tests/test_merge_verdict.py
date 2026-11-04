@@ -584,6 +584,10 @@ def test_T006b_trial_merge_env_drops_secrets_and_data_folders(mv):
     assert env == {"PATH": "syn-path", "SYSTEMROOT": "syn-root", "LLM_BACKEND": "mock"}
 
 
+def test_J6_trial_merge_env_drops_the_june_data_folder(mv):
+    assert "VOC_JUNE_DATA_DIR" not in mv.trial_env({**_syn_env(), "VOC_JUNE_DATA_DIR": "syn-folder"})
+
+
 def test_T006b_trial_merge_tests_run_with_mock_and_no_secrets(mv, repo, monkeypatch):
     for name, value in _syn_env().items():
         if name not in ("PATH", "SYSTEMROOT", "GIT_DIR"):  # the test's own git calls need GIT_DIR unset
