@@ -1,0 +1,66 @@
+{
+  "name": "voc-june-spike",
+  "max_concurrent_runs": 1,
+  "git_source": {
+    "git_url": "https://github.com/MannyAdc/voc-demo",
+    "git_provider": "gitHub",
+    "git_branch": "main"
+  },
+  "trigger": {
+    "pause_status": "PAUSED",
+    "file_arrival": {
+      "url": "/Volumes/workspace/default/voc_raw/spike_incoming/"
+    }
+  },
+  "tasks": [
+    {
+      "task_key": "unpack",
+      "notebook_task": {
+        "notebook_path": "cloud/spike/unpack",
+        "source": "GIT"
+      }
+    },
+    {
+      "task_key": "dbt",
+      "depends_on": [
+        {
+          "task_key": "unpack"
+        }
+      ],
+      "dbt_task": {
+        "project_directory": "dbt",
+        "commands": [
+          "dbt build --vars '{\"month\": \"spike\", \"month_file\": \"{{tasks.unpack.values.month_file}}\", \"month_sha256\": \"{{tasks.unpack.values.month_sha256}}\", \"month_rows\": {{tasks.unpack.values.month_rows}}, \"labels\": {{tasks.unpack.values.labels}}, \"final\": false}'"
+        ],
+        "catalog": "workspace",
+        "schema": "voc_spike",
+        "warehouse_id": "the SQL warehouse's ID, set by the owner",
+        "source": "GIT"
+      },
+      "environment_key": "dbt"
+    },
+    {
+      "task_key": "job_a",
+      "depends_on": [
+        {
+          "task_key": "dbt"
+        }
+      ],
+      "notebook_task": {
+        "notebook_path": "cloud/spike/job_a",
+        "source": "GIT"
+      }
+    }
+  ],
+  "environments": [
+    {
+      "environment_key": "dbt",
+      "spec": {
+        "client": "2",
+        "dependencies": [
+          "dbt-databricks==1.13.0"
+        ]
+      }
+    }
+  ]
+}

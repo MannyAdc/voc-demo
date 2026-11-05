@@ -21,7 +21,10 @@ __pycache__/
 ledger.json
 
 # Small synthetic fixtures are committed (synthetic IDs start with SYN-).
-# dbt seeds are never committed: the Databricks seeds are written into a work folder only (T021).
+# dbt seeds are never committed (T021), with one exception by owner decision of 5 November (spec 004): the
+# test list seed, a byte copy of splits/test.csv (IDs and hashes only), which a test keeps identical, so a job
+# that runs dbt from a Git checkout needs no write into it.
+!dbt/seeds/test_list.csv
 !tests/fixtures/**/*.csv
 !results/*.jsonl
 # Labelling results hold IDs, labels, quote positions and token counts, never complaint text

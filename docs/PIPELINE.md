@@ -67,6 +67,8 @@ Owner decision, 31 October 2026: the same dbt models run on Databricks on the re
    Remove-Item -Recurse -Force $julyWork, $augustWork
    ```
 
+The work folder must be outside any git checkout: `voc dbt build --target databricks` refuses in the project itself or inside a checkout (spec 004, owner decision of 5 November). The commands above make it in the system's temp folder, which is not inside one.
+
 Each build prints a line of counts, `dbt build: ... passed ..., failed 0, errors 0, skipped 0`, then the rows by month and the curated rows. Keep `--group databricks`: without it, `uv run` removes the Databricks packages. In a second git worktree, `uv run` can stop on a Windows file lock while it reinstalls the project. Then call that folder's own Python directly: `.venv\Scripts\python.exe scripts/databricks_month_build.py <month> <work folder>`.
 
 **First live runs, by the owner on 31 October 2026,** on the Databricks Free Edition SQL warehouse, from the branch of pull request #58. The `uv run` form stopped on a file lock, so both runs used `.venv\Scripts\python.exe scripts/databricks_month_build.py <month> <work folder>`. They printed:

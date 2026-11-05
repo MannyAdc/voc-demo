@@ -16,6 +16,12 @@ owner uploaded to the volume /Volumes/<catalog>/default/voc_raw. The only seed i
 gets the file's path, its pinned SHA-256 and, where recorded, its row count, and Databricks checks them before
 any staged model is built. After a passing build, one query per model reads the row counts back.
 
+Owner decision of 5 November (spec 004): the repo holds the test list seed copy, `dbt/seeds/test_list.csv`, so a
+job that runs dbt from a Git checkout needs no write into it. So the Databricks target refuses inside any git
+checkout, found by a `.git` folder or file in the build root or any folder above it, or in any folder that holds
+`pyproject.toml`, a copy of the project with no `.git` (review of #92), in place of the old rule that the repo has
+no seed folder. The build scripts' work folders are never inside a checkout and never hold `pyproject.toml`.
+
 T017: `voc dbt lineage` runs `dbt parse` the same way and writes docs/LINEAGE.md,
 a Mermaid graph of node names and edges only, so it holds no local path.
 """
@@ -81,6 +87,13 @@ def dbt_env(base):
            and not (name.lower().endswith("_proxy") and name.lower() != "no_proxy")}
     env.update(QUIET)
     return env
+
+
+def in_git_checkout(root):
+    """True if `root` or a folder above it holds `.git`, a folder in a checkout or a file in a worktree. No git
+    command is run, so it holds where git is missing."""
+    path = Path(root).resolve()
+    return any((folder / ".git").exists() for folder in (path, *path.parents))
 
 
 def check_seeds(root):
@@ -215,6 +228,11 @@ def _run(root, action, labels, target_name="local", month=None):
     profiles = project
     extra = {}
     if target_name == "databricks":
+        # Review of #92: a copy of the project with no `.git` holds pyproject.toml, which a work folder never does.
+        if in_git_checkout(root) or (Path(root) / "pyproject.toml").exists():
+            raise DbtError("the Databricks target runs only in a work folder made by a scripts/databricks_*_build.py "
+                           "script, never in the project itself or inside a git checkout, so nothing was sent to "
+                           "Databricks")
         if month:
             check_month_seeds(root)
             extra = month_vars(root, month, catalog_name(os.environ))

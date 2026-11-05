@@ -239,8 +239,11 @@ def test_B14_the_databricks_adapter_is_pinned_in_its_own_group():
     assert not any(d.startswith("dbt-databricks") for d in project["project"]["dependencies"])
 
 
-def test_B14_the_repo_has_no_seed_folder_so_the_databricks_target_always_refuses_here():
-    assert not (REPO / SEEDS).exists()
+def test_B14_the_repos_seed_folder_holds_only_the_committed_test_list_copy():
+    # Changed on 5 November (spec 004, owner decision): this test was "the repo has no seed folder, so the Databricks
+    # target always refuses here". The repo now holds the test list seed copy, and the Databricks target refuses here
+    # because the repo is a git checkout (the checkout tests in test_databricks_month.py).
+    assert sorted(path.name for path in (REPO / SEEDS).iterdir()) == ["test_list.csv"]
 
 
 # Added in the review of #43
@@ -293,12 +296,14 @@ def test_B14_the_fixture_script_main_prepares_and_runs_the_databricks_build(tmp_
     assert args[args.index("--target") + 1] == "databricks"
 
 
-def test_B14_git_ignores_any_seed_file_so_a_seed_cannot_be_committed_by_accident(tmp_path):
+def test_B14_git_ignores_every_seed_file_but_the_committed_test_list_copy(tmp_path):
     # Changed in the green commit of the review of #43: the gate runs the tests on a copy of the staged
     # files, which is not a git checkout. So the repo's .gitignore is checked in a new temp repo.
     # Changed with tests/git_helper.py: a passing Windows file lock is tried again.
     git_helper.run(["git", "init", "-q", str(tmp_path)], check=True)
     shutil.copy(REPO / ".gitignore", tmp_path / ".gitignore")
-    for name in ("staged_complaints.csv", "test_list.csv"):
+    # Changed on 5 November (spec 004, owner decision): the test list seed copy is committed, so it is not ignored.
+    # Any other seed file still is.
+    for name, ignored in (("staged_complaints.csv", True), ("test_list.csv", False), ("other.csv", True)):
         result = subprocess.run(["git", "check-ignore", "-q", f"dbt/seeds/{name}"], cwd=tmp_path)
-        assert result.returncode == 0, name
+        assert (result.returncode == 0) is ignored, name
