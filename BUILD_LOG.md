@@ -1814,3 +1814,28 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - The spike's seed git test (nit of the review of #92) stays beside `test_databricks.py`'s: it pins the one exception, that `dbt/seeds/test_list.csv` is not ignored, where the other pins that every other seed file is.
 - Fix commit `6e9264a`, through the gate. CI green on `6e9264a`.
 - 00:18 Merge verdict on #92: PENDING with every mechanical check passing. Every finding the owner chose is fixed. The notebooks' working folder is one of the spike's open points. Claude's verdict: MERGE, after this log commit's CI.
+- The spike of pull request 5a, run by the owner on 6 November on the synthetic zip. Its answers:
+  - a: the job reads this public repo from its Git source with no Git credential. The job page takes the definition in YAML, not JSON. `client` in an environment's spec is shown as deprecated, and `environment_version` is taken. Notebook paths work without `.py`.
+  - b: the dbt task's generated profile works with the project's `profile: voc`, as target `databricks_cluster` with 8 threads. dbt 1.12.6 ran with the adapter `databricks=1.13.0` from the environment's pin. The models went into `workspace.voc_spike`. The seed loaded 1,909 rows.
+  - c and d: dbt wrote in its checkout, and `unpack`'s 4 task values reached `--vars` in full, with the labels as a bare JSON list. `PASS=16 WARN=0 ERROR=0 SKIP=0`.
+  - e: the exit value is `notebook_output.result`, with `truncated` false. A success is `state.result_state` `SUCCESS` and `status.termination_details.code` `SUCCESS`. A run never repaired has an empty `repair_history`. The API lists the tasks as `dbt`, `job_a`, `unpack`, not in the job's order.
+  - f: the robot's OAuth secret, made in the workspace's settings with the `jobs` scope only, got a token for `jobs`, and with Can View it read the exit value (HTTP 200). Databricks' SDK, asking for `all-apis` by default, was refused.
+  - g: the file-arrival trigger started the run at 01:34, about a minute after the 01:33 upload.
+  - h: the run took 3 minutes 7 seconds: `unpack` 30 seconds, `dbt` 2 minutes 2 seconds, `job_a` 32 seconds. The warehouse ran one cluster for 23 queries. No quota warning was seen.
+- About 01:59 the owner revoked the `voc-demo dbt` token in Databricks and deleted its encrypted copy on the laptop, so the laptop holds no Databricks admin token (J13).
+- The owner's correction: Claude asked the owner to make a scratch notebook without naming it or saying what it was for, so the owner got lost. Claude apologised, explained it, and saved a standing rule to name everything the owner creates and say what it is for.
+- The owner cleaned up the robot's test secret and the scratch notebook, and paused the spike's trigger.
+- 02:35 Work start: spec 004's pull request 5b, the real Job A, branch `feat/june-job-a-real`, worktree `../voc-demo-jobA2`.
+- Red commit `f48d4fc`: only `tests/test_job_a.py`, through the gate.
+- AI mistakes in the red tests, caught by running them on the code before the green commit, and fixed in the green commit:
+  - The control dbt run built a view, which does not evaluate its cast, so nothing failed. It now builds a table.
+  - The leak test put the marker in the model's SQL, so dbt's compiled copies of the SQL held it. In Job A the text comes from the data, so the marker now sits in a seed, the input, and every other file is checked.
+  - The figures test imported `cut_text` from `voc.prompt`. It is in `voc.baselines`.
+  - The banned words of the no-data test held `voc_raw/june/`, copied from the spike, but J8 puts the unpacked CSV there. The word was dropped.
+- AI mistake: Claude's first `job_a` notebook allowed only digits in the June list's IDs, which would refuse the dry run's `SYN-` IDs. Caught by Claude reading it back. It allows an optional `SYN-`.
+- AI mistake: an inline command of Claude's named the CFPB export's file-name prefix, and the guard refused it. Caught by the guard. The script went in a file.
+- Claude's choices, for the owner to see:
+  - The hard requirement is met in two layers: `unpack` checks the CSV's shape before dbt reads it, and the dbt command runs with `--log-level none --log-level-file none --no-write-json`. The local test proves the flags on dbt with DuckDB. That Databricks' dbt task keeps to them, and that its run page offers no dbt files, is checked in the dry run of pull request 9.
+  - `job_a` checks that its checkout's code hash is the target row's before anything else. That check is in the notebook, which no unit test runs, so the dry run is its first check.
+  - The figures use the test run's worst case and the July test run's $0.2373 per 1,000 complaints, and the June ledger's cap from `config/budget.toml`, with nothing used yet.
+- 03:31 Green changes written: `src/voc/job_a.py`, `cloud/job_a.yml`, `cloud/job_a/`, J8's 5b, J16, the test list and this log.

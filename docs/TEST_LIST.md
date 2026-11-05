@@ -415,7 +415,16 @@ Written on 5 November 2026, on synthetic data only.
 - the spike's job has the three tasks `unpack`, `dbt` and `job_a` in order, from the public repo's `main`, with one run at a time. The dbt command takes `unpack`'s task values, and the trigger watches only its scratch folder. No June or July data and no secret is named (J8, J16)
 - `unpack` writes the one synthetic CSV and gives dbt its values. It refuses anything but one zip with one flat CSV, any row that is not synthetic, a short row, and a CSV over its size cap. The exit value holds counts only. The spike zip is made from the synthetic dbt fixture only (J5, J8)
 - the spike's trigger is paused until the owner unpauses it and watches exactly its folder. Its dbt command passes `final` off. Its dbt task runs with the repo's `dbt-databricks` pin. No label holds a quote. A copy of the project with no `.git` refuses the Databricks target too (B14, B17, J8, review of #92)
-- planned for 5b, a hard requirement before any real data runs: a row made to fail Job A's dbt task leaves no complaint text in any task output, log or error that the robot or the reader can read (J5, J13, owner decision of 5 November)
+- the hard requirement of 5b, written in pull request 5b: a row that would fail Spark's parser is refused by `unpack` before dbt with fixed text, and a local dbt run with a failing row in a data file leaks its text without the committed flags and leaves it in no output and no file with them (J5, J13, owner decision of 5 November)
+
+## Job A ([spec 004](../specs/004-june-test-and-baselines/spec.md), pull request 5b, J8, J16)
+
+Written on 6 November 2026, on synthetic data only.
+
+- `cloud/job_a.yml`: three tasks by key and dependency, not by order, the public repo's `main`, one run at a time, the trigger paused on exactly `incoming/`, the dbt command's quiet flags, June's variables with `final` off, the pinned dbt environment, the success webhook, and no data file or secret named (J8, J9, J16)
+- the run's target is the last row of `runs/JUNE_RUNS.md` with its list's kind. No row, or a log that breaks its rules, is refused. The real kind uses the June pin, and the dry run's pin waits for pull request 9 (J1, J16)
+- `unpack` refuses a zip that is not the pinned zip, a second file, a member that is not the pinned CSV, a CSV that is not the pinned CSV (and removes it), a header that is not the CFPB header, a malformed row, and a row count that is not the pin's, and prints nothing (J5, J8)
+- `job_a` refuses rows that are not exactly the frozen June list with their hashes. Its figures follow the test run's worst case and July's cost per 1,000, and its exit value has exactly the contract's keys, with a two-place cost (J8, J16)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 

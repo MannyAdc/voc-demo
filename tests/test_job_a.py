@@ -107,7 +107,7 @@ def test_J8_job_a_names_no_data_file_and_holds_no_secret():
     texts = [(REPO / "cloud" / "job_a.yml").read_text(encoding="utf-8")]
     texts += [(REPO / "cloud" / "job_a" / name).read_text(encoding="utf-8") for name in ("unpack.py", "job_a.py")]
     for text in texts:
-        for word in ("CCDB_Export", "token", "secret", "password", "voc_raw/june/"):
+        for word in ("CCDB_Export", "token", "secret", "password"):
             assert word.lower() not in text.lower(), word
 
 
@@ -263,14 +263,18 @@ def _dbt_project(tmp_path):
     project = tmp_path / "project"
     (project / "models").mkdir(parents=True)
     (project / "dbt_project.yml").write_text("name: synthetic\nversion: '1.0.0'\nconfig-version: 2\nprofile: synthetic\n"
-                                             "model-paths: ['models']\n", encoding="utf-8")
+                                             "model-paths: ['models']\nseed-paths: ['seeds']\n", encoding="utf-8")
     (project / "profiles.yml").write_text(
         "synthetic:\n  target: local\n  outputs:\n    local:\n      type: duckdb\n"
         f"      path: '{(tmp_path / 'synthetic.duckdb').as_posix()}'\n      threads: 1\n", encoding="utf-8")
     # A row that fails on its cast, as a malformed real row would, with the marker in the failing value.
-    # A table, not dbt's default view, so the cast runs at build time.
+    # As in Job A, the complaint text comes from a data file, not from the SQL: a seed holds a row whose value fails
+    # its cast in a table model (a table, not dbt's default view, so the cast runs at build time).
+    (project / "seeds").mkdir()
+    (project / "seeds" / "rows.csv").write_text(f'x\n"{MARKER}"\n', encoding="utf-8")
     (project / "models" / "failing.sql").write_text("{{ config(materialized='table') }}\n"
-                                                    f"select cast('{MARKER}' as integer) as x\n", encoding="utf-8")
+                                                    "select cast(x as integer) as x from {{ ref('rows') }}\n",
+                                                    encoding="utf-8")
     return project
 
 
@@ -284,7 +288,9 @@ def _run_dbt(project, flags):
 
 
 def _files_with_marker(folder):
-    return [p for p in Path(folder).rglob("*") if p.is_file() and p.suffix != ".duckdb"
+    """Every file dbt wrote or kept that holds the marker, other than the input data itself (the seed)."""
+    seeds = Path(folder) / "seeds"
+    return [p for p in Path(folder).rglob("*") if p.is_file() and p.suffix != ".duckdb" and seeds not in p.parents
             and "SYNMARKER" in p.read_text(encoding="utf-8", errors="replace")]
 
 
@@ -342,7 +348,8 @@ def test_J8_the_figures_follow_the_test_run_s_worst_case_and_july_s_cost(tmp_pat
     from voc import pipeline
     from voc.budget import load_config, worst_case
     from voc.labels import load_labels
-    from voc.prompt import build_prompt, cut_text
+    from voc.baselines import cut_text
+    from voc.prompt import build_prompt
     from voc.replay import MAX_RETRIES
 
     figures = _job_a().figures(REPO, ROWS, used_tokens=1000)
