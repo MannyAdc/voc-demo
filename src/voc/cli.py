@@ -34,8 +34,12 @@ from voc.pipeline import RunStopped
 from voc.replay import RecordingCorrupt, RecordingMissing
 
 PIN = "july_2026"
-# Each month's data folder comes from its own environment variable, never from a file (add-on 1).
-MONTHS = {"july_2026": "VOC_DATA_DIR", "august_2026": "VOC_NEXT_DATA_DIR"}
+# Each month's data folder comes from its own environment variable, never from a file (add-on 1, spec 004 J6).
+MONTHS = {"july_2026": "VOC_DATA_DIR", "august_2026": "VOC_NEXT_DATA_DIR", "june_2026": "VOC_JUNE_DATA_DIR"}
+# Spec 004, J1: June is only sampled here, from its file. It is labelled and scored once, in the cloud.
+JUNE = "june_2026"
+JUNE_REFUSED = ("June is only sampled on the laptop, from its file. It is never loaded, built, labelled or scored "
+                "here (spec 004, J1)")
 
 
 def _export(config, month=PIN):
@@ -59,6 +63,8 @@ def _data_hash(config, root, args):
 
 
 def _load(config, root, args):
+    if args.month == JUNE:
+        raise DataFileError(JUNE_REFUSED)
     path = _export(config, args.month)
     verify(path, _pin(root, args.month))
     labels = [label.name for label in load_labels(Path(root) / "config" / "labels.toml")]
@@ -68,6 +74,8 @@ def _load(config, root, args):
 
 
 def _dbt(config, root, args):
+    if getattr(args, "month", None) == JUNE:
+        raise DbtError(JUNE_REFUSED)
     if getattr(args, "month", None) and args.target != "databricks":
         raise DbtError("--month needs --target databricks, so nothing was run")
     labels = [label.name for label in load_labels(Path(root) / "config" / "labels.toml")]
@@ -127,6 +135,21 @@ def _ledger_clear_overrun(config, root, args):
 def _sample(config, root, args):
     import tomllib
 
+    if args.set == "june":
+        from voc.june import build_june_sample, format_june_summary
+
+        with open(Path(root) / "config" / "june.toml", "rb") as f:
+            chosen = tomllib.load(f)
+        if chosen.get("month") != JUNE:
+            raise DataFileError(f"config/june.toml must name {JUNE}, so nothing was drawn")
+        path = _export(config, chosen["month"])
+        pin = _pin(root, chosen["month"])
+        verify(path, pin)
+        labels = [label.name for label in load_labels(Path(root) / "config" / "labels.toml")]
+        summary = build_june_sample(path, labels, Path(root) / DB_PATH, Path(root) / "splits", pin["sha256"],
+                                    seed=chosen["seed"], margin=chosen["margin"], month=chosen["month"])
+        print(format_june_summary(summary))
+        return
     with open(Path(root) / "config" / "samples.toml", "rb") as f:
         chosen = tomllib.load(f)
     month = chosen["month"]
@@ -345,7 +368,9 @@ def main(argv=None, env=None, root=None):
     dh.add_argument("month", nargs="?", default=PIN, choices=sorted(MONTHS), help="which month's folder to read")
     p = sub.add_parser("profile", help="print data facts as counts (B22)")
     p.add_argument("--write", help="also write the facts as JSON to this file")
-    sub.add_parser("sample", help="build and freeze the samples from the staged July rows (B9, B16, B25)")
+    sm = sub.add_parser("sample", help="build and freeze the samples from the staged July rows (B9, B16, B25), or "
+                                       "June's sample from its pinned file (spec 004, J6)")
+    sm.add_argument("set", nargs="?", choices=("july", "june"), default="july", help="which month's sample")
     sub.add_parser("validation-lists", help="draw and freeze the validation review's lists from the development "
                                            "set, printing counts only (spec 003, B16)")
     co = sub.add_parser("consistency", help="V1: label V1's list again under a repeat number and compare, printing "

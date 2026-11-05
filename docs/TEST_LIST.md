@@ -357,13 +357,31 @@ Added on 2 November 2026. Each piece adds its tests in its own pull request, fai
 - the hybrid uses the baseline at a top probability of at least 0.9 and the LLM otherwise, a quarantined answer counts as wrong, and it is scored as B10 scores (V6)
 - V6 reads the test run's summary file only, never a per-complaint test file (V7)
 
+## June sample ([spec 004](../specs/004-june-test-and-baselines/spec.md), J6, J1, J2)
+
+Written in pull request 3, on 5 November 2026.
+
+- `voc sample june` reads the one CSV in `VOC_JUNE_DATA_DIR`, refuses it with no pin or when it does not match its pin, and never loads it into the staged table (J6, J1)
+- June's rows go through `voc load`'s checks, in a database in memory, so a Product outside `config/labels.toml` is refused and nothing is written (J6, B24)
+- rows with no narrative are not in the pool, copies within June are removed by July's measure, and so are copies, exact or near, of July's training and development narratives (J6)
+- July's training and development rows are selected by ID and checked against their lists. A missing one is refused. A copy of a July test narrative stays in June's pool, because no July test row is read (J2)
+- the size is Cochran's at 2 points on June's pool, split across Products in proportion, and the same seed gives the same sample (J6, B25)
+- the list is frozen in `splits/june/` with its hash, the pool and sample per Product and the copy counts, and is never overwritten. July's lists do not change (J6, B16)
+- the settings (`config/june.toml`: month, margin 0.02, seed) are committed before the draw (J6)
+- the summary and the files hold counts, IDs and hashes only (B21)
+- the laptop refuses to load June or build it on Databricks, with a J1 message, and `voc label`, `evaluate` and `audit` have no June set. `voc final` takes no set at all (J1)
+- read guard: the Azure CLI (`az`, `az.cmd`) is denied like the Databricks CLI. Text that names it stays allowed after a command that only takes text, such as `git` or `gh` (a pull request title). Elsewhere it fails closed: `cd az` or `pytest -k az` is denied (J14, owner decision of 5 November, review of #88)
+- July's copies are removed before the copies within June, so a June row whose near-copy was a copy of July stays (J6, review of #88)
+- July's test rows are never asked for: deleting them changes nothing, and only training and development IDs are selected (J2, review of #88)
+- a failed write leaves neither file, so the next run is not blocked. Settings that do not name June are refused. The seed in `config/june.toml` is the seed of the draw (J6, review of #88)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
 
-- the June sample is drawn from June only, drops copies within June and copies of July's training and development sets, refuses a Product not in `config/labels.toml`, follows Cochran's formula at e = 2 points on June's pool, and is frozen with its hashes (J6)
-- the laptop refuses to score June, Job B refuses unless `runs/JUNE_RUNS.md` names the June list's hash and the frozen code's hash, and that file only grows (J1)
-- no June step reads a July test row (J2)
+- the June sample is drawn from June only, drops copies within June and copies of July's training and development sets, refuses a Product not in `config/labels.toml`, follows Cochran's formula at e = 2 points on June's pool, and is frozen with its hashes (J6): written in pull request 3, listed above
+- the laptop refuses to score June (written in pull request 3, listed above), Job B refuses unless `runs/JUNE_RUNS.md` names the June list's hash and the frozen code's hash, and that file only grows (J1)
+- no June step reads a July test row (J2): the June sample's part written in pull request 3
 - the refit TF-IDF + LR reproduces the committed July development labels before it labels June (J7)
 - the primary claim is the hybrid against the LLM alone at full coverage, with the verdict words fixed, and the secondary comparison carries no verdict (J7)
 - every job and workflow entry point, on hostile synthetic text, prints only IDs, labels, reasons, positions, decisions and counts, with no traceback (J5)

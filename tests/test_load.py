@@ -266,8 +266,9 @@ def test_B16_data_hash_takes_the_month_and_reads_its_folder(repo, capsys):
 
 
 def test_B16_an_unknown_month_is_refused(repo, capsys):
+    # June is a known month since spec 004, which the laptop refuses to load (test_J1 in test_june_sample.py).
     with pytest.raises(SystemExit):
-        cli.main(["load", "june_2026"], env=_env(repo), root=repo)
+        cli.main(["load", "may_2026"], env=_env(repo), root=repo)
 
 
 def test_B14_the_load_script_runs_the_same_load(repo, capsys):
