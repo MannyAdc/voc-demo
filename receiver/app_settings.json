@@ -1,0 +1,12 @@
+{
+  "VOC_BASIC_USER": "@Microsoft.KeyVault(VaultName=voc-june-kv;SecretName=voc-basic-user)",
+  "VOC_BASIC_PASSWORD": "@Microsoft.KeyVault(VaultName=voc-june-kv;SecretName=voc-basic-password)",
+  "VOC_HMAC_SECRET": "@Microsoft.KeyVault(VaultName=voc-june-kv;SecretName=voc-hmac-secret)",
+  "VOC_DATABRICKS_CLIENT_ID": "@Microsoft.KeyVault(VaultName=voc-june-kv;SecretName=voc-databricks-client-id)",
+  "VOC_DATABRICKS_CLIENT_SECRET": "@Microsoft.KeyVault(VaultName=voc-june-kv;SecretName=voc-databricks-client-secret)",
+  "VOC_GITHUB_TOKEN": "@Microsoft.KeyVault(VaultName=voc-june-kv;SecretName=voc-github-token)",
+  "VOC_DATABRICKS_HOST": "the workspace host, without https://",
+  "VOC_JOB_A_JOB_ID": "Job A's job ID, from config/june_cloud.toml",
+  "VOC_STORAGE__queueServiceUri": "https://<storage account>.queue.core.windows.net",
+  "VOC_STORAGE__tableServiceUri": "https://<storage account>.table.core.windows.net"
+}

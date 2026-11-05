@@ -1,0 +1,16 @@
+{
+  "version": "2.0",
+  "extensions": {
+    "queues": {
+      "maxDequeueCount": 5,
+      "visibilityTimeout": "00:01:00",
+      "messageEncoding": "none"
+    }
+  },
+  "logging": {
+    "logLevel": {
+      "default": "Warning",
+      "Function": "Information"
+    }
+  }
+}

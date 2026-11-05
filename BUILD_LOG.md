@@ -1755,3 +1755,17 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - The owner's decisions: Job B refuses any run attempt other than 1, and a resume needs a fresh workflow run and a new approval. The target of a run is the last row of `runs/JUNE_RUNS.md` at the frozen commit, matched on kind, list hash and code hash, checked by both the workflow and Job B. The Function is open at the HTTP level, with its own sign-in and signature checks, and no function key in the URL. Every other finding is fixed as listed, the nits included.
 - Note for the record (nit 18): that get-output is called on the task run, not the job run, rests on Databricks' "Get a single job run", which says each task's own `run_id` is the one to pass to get-output. The field that holds the exit value is still to be checked in pull request 5.
 - 15:02 The fixes written in J16 and J11, the fixtures (`entry_kind`) and the test list.
+- 15:20 Claude marked #90 ready, after the MERGE verdict.
+- 15:27 The owner merged #90 (time from GitHub, `992df25`).
+- 15:29 Work start, in parallel by owner decision: spec 004's pull request 5 (Job A, branch `feat/june-job-a`, worktree `../voc-demo-jobA`) and pull request 7 (the receiver, branch `feat/june-receiver`, worktree `../voc-demo-receiver`). This entry is in pull request 7's branch. Pull request 5's design decision is logged in its own branch.
+- Red commit `b328d70` of pull request 7: only `tests/test_receiver.py`, through the gate. Each test imports the receiver inside, so each failed on its own.
+- AI mistake: after `pyproject.toml` gained the receiver's folder on pytest's path, `uv run` stopped on a Windows file lock while it reinstalled the project, the lock seen before in a second worktree. Caught by its error. The tests were run with the worktree's own `.venv` Python instead.
+- AI mistake, a result of the one above: the failed reinstall left the worktree's `.venv` without the `voc` package, so three existing hook tests (`test_the_git_hook_blocks_a_failing_commit_and_allows_a_passing_one`, `test_a_merge_commit_runs_the_same_gate` and `test_the_gate_output_folder_comes_from_the_environment`) failed in both of the gate's runs for `b328d70`, and the gate printed them as carried over. The red commit itself changes only the new test file. Caught by the gate's carried-over notices. No Python process held the venv. Claude removed the half-installed `voc-0.1.0.dist-info` folder from the worktree's `.venv`, reinstalled with `uv sync`, and the hook and receiver tests then passed.
+- Claude's choices, for the owner to see:
+  - The receiver's logic is in `receiver/receiver_core.py`, with no Azure, Databricks or GitHub library, so the tests run it with fakes, and pytest's path gains `receiver`.
+  - The receiver takes a queue put by its own client, not by a Functions output binding, so a failed put frees the event's key and the caller's retry is not dropped as a duplicate.
+  - It also requires the result message's bytes to be exactly the compact sorted form, not only signed (J16 item 9).
+  - The queue function deletes event keys older than 30 days before its work (J9).
+  - The packages are pinned by `uv pip compile` for Python 3.12. The adapters run against the real services first in the dry run.
+  - The deploy workflow, with OpenID Connect, comes in its own pull request once the Function and its deploy identity exist.
+- 15:58 Green changes written: `receiver/`, pytest's path, the spec's J9 and the test list.
