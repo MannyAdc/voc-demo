@@ -146,3 +146,146 @@ def test_J7_repeated_complaints_are_refused():
 def test_B21_the_june_scores_hold_figures_and_labels_only():
     text = json.dumps(_score(_mixed()))
     assert "SYN-" not in text
+
+
+# The review of #89: the sample is scored only when complete, from the manifest's pool, and a win needs both tests.
+
+
+def _project(tmp_path, items, pool=None):
+    """A root with the frozen claims and a June list and manifest made from these items."""
+    import hashlib
+
+    root = tmp_path / "root"
+    (root / "config").mkdir(parents=True)
+    (root / "config" / "june_claims.toml").write_bytes((REPO / "config" / "june_claims.toml").read_bytes())
+    folder = root / "splits" / "june"
+    folder.mkdir(parents=True)
+    data = ("complaint_id,content_hash\n" + "".join(f"{i.complaint_id},{'0' * 64}\n" for i in items)).encode("utf-8")
+    (folder / "june.csv").write_bytes(data)
+    counts = {}
+    for i in items:
+        counts[i.product] = counts.get(i.product, 0) + 1
+    products = {p: {"pool": (pool or {}).get(p, 100 * n), "sample": n} for p, n in counts.items()}
+    manifest = {"month": "june_2026", "pool": sum(c["pool"] for c in products.values()), "products": products,
+                "lists": {"june": {"count": len(items), "sha256": hashlib.sha256(data).hexdigest()}}}
+    (folder / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    return root
+
+
+def test_J1_the_sample_is_scored_only_when_every_complaint_has_a_result(tmp_path):
+    from voc.june_score import score_june_sample
+
+    root = _project(tmp_path, _mixed())
+    assert score_june_sample(root, _mixed(), COST)["complaints"] == 6
+    with pytest.raises(JuneScoreError, match="not scored"):
+        score_june_sample(root, _mixed()[:-1], COST)
+
+
+def test_J1_items_outside_the_june_list_are_refused(tmp_path):
+    from voc.june_score import score_june_sample
+
+    root = _project(tmp_path, _mixed())
+    items = _mixed()[:-1] + [_item(99, "Credit card", llm="Credit card")]
+    with pytest.raises(JuneScoreError, match="June list"):
+        score_june_sample(root, items, COST)
+
+
+def test_J1_a_product_count_that_differs_from_the_manifest_is_refused(tmp_path):
+    from voc.june_score import score_june_sample
+
+    root = _project(tmp_path, _mixed())
+    items = _mixed()[:-1] + [_item(6, "Mortgage", llm="Mortgage")]
+    with pytest.raises(JuneScoreError, match="manifest"):
+        score_june_sample(root, items, COST)
+
+
+def test_J1_a_june_list_that_does_not_match_its_manifest_is_refused(tmp_path):
+    from voc.june_score import score_june_sample
+
+    root = _project(tmp_path, _mixed())
+    path = root / "splits" / "june" / "june.csv"
+    path.write_bytes(path.read_bytes() + b"SYN-77," + b"0" * 64 + b"\n")
+    with pytest.raises(JuneScoreError, match="does not match"):
+        score_june_sample(root, _mixed(), COST)
+
+
+def test_J7_the_sample_is_weighted_by_the_manifests_pool(tmp_path):
+    from voc.june_score import score_june_sample
+
+    root = _project(tmp_path, _mixed(), pool={"Mortgage": 300, "Credit card": 100})
+    result = score_june_sample(root, _mixed(), COST)
+    assert result["shares"] == {"Credit card": 0.25, "Mortgage": 0.75}
+    assert result == _score(_mixed())
+
+
+def test_J7_a_pool_that_does_not_add_up_is_refused(tmp_path):
+    from voc.june_score import score_june_sample
+
+    root = _project(tmp_path, _mixed())
+    path = root / "splits" / "june" / "manifest.json"
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    manifest["pool"] += 1
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(JuneScoreError, match="pool"):
+        score_june_sample(root, _mixed(), COST)
+
+
+def test_J7_synthetic_items_are_refused():
+    items = _mixed()[:-1] + [Item("SYN-6", "Credit card", "Credit card", None, "Credit card", 0.1, synthetic=True)]
+    with pytest.raises(JuneScoreError, match="synthetic"):
+        _score(items)
+
+
+def test_J7_a_product_outside_the_pool_is_refused_not_a_crash():
+    with pytest.raises(JuneScoreError, match="pool"):
+        _score(_mixed() + [_item(7, "Student loan", llm="Student loan")])
+
+
+def test_J7_the_scores_do_not_depend_on_the_order_of_the_items():
+    def item(n):
+        product = "Mortgage" if n % 3 else "Credit card"
+        other = "Credit card" if product == "Mortgage" else "Mortgage"
+        return _item(n, product, llm=product if n % 5 else other, tfidf=product if n % 2 == 0 else other,
+                     conf=0.95 if n % 4 == 0 else 0.5)
+
+    items = [item(n) for n in range(60)]
+    assert _score(list(reversed(items))) == _score(items)
+
+
+@pytest.mark.parametrize("difference, interval", [(0.0, [0.001, 0.02]), (-0.001, [0.0005, 0.01])])
+def test_J7_a_win_needs_a_point_difference_above_zero_whatever_the_interval(difference, interval):
+    assert primary_verdict(difference, interval) == "does_not_beat"
+
+
+def test_J7_the_claims_say_does_not_beat_wins_when_both_tests_apply():
+    rule = load_claims(REPO)["primary"]["rule"]
+    assert rule == ("a win needs both a point difference above zero and a 95% interval wholly above zero. When the "
+                    "point difference is zero or below, the verdict is does not beat, whatever the interval")
+
+
+def test_J7_the_bootstrap_draws_2000_times_within_each_product(monkeypatch):
+    import numpy
+
+    real = numpy.random.default_rng
+    calls = []
+
+    class Spy:
+        def __init__(self, seed):
+            self.seed, self.rng = seed, real(seed)
+
+        def choice(self, members, size, replace):
+            calls.append((self.seed, len(members), size, replace))
+            return self.rng.choice(members, size=size, replace=replace)
+
+    monkeypatch.setattr(numpy.random, "default_rng", Spy)
+    _score(_mixed())
+    # Two bootstraps, the primary and the secondary, of 2,000 draws each, one draw per Product of its own size.
+    assert len(calls) == 2 * 2000 * 2
+    assert set(calls) == {(0, 4, 4, True), (0, 2, 2, True)}
+
+
+def test_J7_claims_that_resample_other_than_within_products_are_refused():
+    claims = load_claims(REPO)
+    claims["bootstrap"] = {**claims["bootstrap"], "within": "Issue"}
+    with pytest.raises(JuneScoreError, match="within"):
+        score_june(_mixed(), POOL, claims, COST)

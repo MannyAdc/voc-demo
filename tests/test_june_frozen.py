@@ -1,6 +1,7 @@
 """Spec 004, J1: the frozen code's hash, the June list's hash, and the June run log, which only grows."""
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -32,8 +33,8 @@ def _tree(root):
 
 
 def test_J1_the_frozen_places_are_the_ones_the_spec_names():
-    assert FROZEN_PATHS == ("src", "config", "dbt", "splits", "pyproject.toml", "uv.lock", "cloud",
-                            ".github/workflows/june_approval.yml", "scripts/june_hash.py")
+    assert FROZEN_PATHS[:9] == ("src", "config", "dbt", "splits", "pyproject.toml", "uv.lock", "cloud",
+                                ".github/workflows/june_approval.yml", "scripts/june_hash.py")
 
 
 def test_J1_the_code_hash_changes_with_any_frozen_file_and_nothing_else(tmp_path):
@@ -72,6 +73,7 @@ def test_J1_the_frozen_files_are_exactly_the_tracked_ones():
     copy of the staged files that is not a git checkout, so there it is skipped, and CI runs it."""
     inside = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--show-toplevel"], capture_output=True, text=True)
     if inside.returncode != 0 or Path(inside.stdout.strip()).resolve() != REPO:
+        assert not os.environ.get("GITHUB_ACTIONS"), "CI must run this test on its checkout"
         pytest.skip("not a git checkout of this repo, so there are no tracked files to compare (CI runs this)")
     tracked = subprocess.run(["git", "-C", str(REPO), "ls-files", "--", *FROZEN_PATHS], capture_output=True,
                              text=True, check=True).stdout.split()
@@ -164,3 +166,73 @@ def test_J1_ci_checks_that_the_june_run_log_only_grows():
     workflow = (REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert "scripts/check_test_runs.py" in workflow and "runs/JUNE_RUNS.md" in workflow
     assert workflow.count("origin/main:runs/JUNE_RUNS.md") == 2
+
+
+# The review of #89: the July development labels, the script's check against git, the run log's rules on main,
+# strict rows, and the CI step.
+
+
+def test_J7_the_july_development_labels_are_frozen_too():
+    """Job B checks the refit TF-IDF + LR against them (J7), so a change to them must change the hash."""
+    assert "results/eval/v1_dev.csv" in FROZEN_PATHS and "results/eval/v1_dev.csv" in frozen_files(REPO)
+
+
+def _git_tree(tmp_path):
+    root = _tree(tmp_path / "g")
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
+    return root
+
+
+def test_J1_the_hash_script_refuses_files_that_git_does_not_track(tmp_path):
+    from voc.frozen import differs_from_git
+
+    root = _git_tree(tmp_path)
+    assert differs_from_git(root) == []
+    (root / "src" / "voc" / "stray.py").write_text("x = 2\n", encoding="utf-8")
+    (root / "config" / "b.toml").unlink()
+    assert differs_from_git(root) == ["config/b.toml", "src/voc/stray.py"]
+    result = subprocess.run([sys.executable, str(REPO / "scripts" / "june_hash.py"), str(root)],
+                            capture_output=True, text=True)
+    assert result.returncode == 1
+    assert "2 frozen files differ from the files git tracks" in result.stdout and "stray" not in result.stdout
+
+
+def test_J1_without_git_the_check_is_skipped_and_said_so(tmp_path):
+    from voc.frozen import differs_from_git
+
+    assert differs_from_git(_tree(tmp_path / "nogit")) is None
+
+
+def test_J1_the_committed_june_run_log_follows_its_rules():
+    check_runs(read_runs(REPO / "runs" / "JUNE_RUNS.md"), real_list_hash=list_hash(REPO))
+
+
+@pytest.mark.parametrize("line", [
+    f"  | 2026-11-07 10:00 | real | {C} | {B} | the June run |",
+    f"| Date 2026-11-07 | real | {C} | {B} | the June run |",
+    f"|--- | real | {C} | {B} | the June run |",
+])
+def test_J1_a_row_the_reader_would_skip_is_refused(tmp_path, line):
+    path = tmp_path / "JUNE_RUNS.md"
+    path.write_text(HEADER + line + "\n", encoding="utf-8")
+    with pytest.raises(JuneRunsError):
+        read_runs(path)
+
+
+def test_J1_the_ci_step_runs_the_log_check_on_the_june_log_in_repo_checks():
+    import yaml
+
+    workflow = yaml.safe_load((REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
+    runs = [step.get("run", "") for step in workflow["jobs"]["repo-checks"]["steps"]]
+    assert any("scripts/check_test_runs.py" in run and '"$base" runs/JUNE_RUNS.md' in run for run in runs)
+
+
+def test_J1_the_log_check_names_the_log_it_checks(tmp_path):
+    base, head = tmp_path / "base" / "JUNE_RUNS.md", tmp_path / "head" / "JUNE_RUNS.md"
+    for path, text in ((base, "| a |\n"), (head, "| a |\n| b |\n")):
+        path.parent.mkdir()
+        path.write_text(text, encoding="utf-8")
+    result = subprocess.run([sys.executable, str(REPO / "scripts" / "check_test_runs.py"), str(base), str(head)],
+                            capture_output=True, text=True)
+    assert result.returncode == 0 and result.stdout.startswith("JUNE_RUNS.md: ")
