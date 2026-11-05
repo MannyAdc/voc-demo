@@ -1769,3 +1769,12 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
   - The packages are pinned by `uv pip compile` for Python 3.12. The adapters run against the real services first in the dry run.
   - The deploy workflow, with OpenID Connect, comes in its own pull request once the Function and its deploy identity exist.
 - 15:58 Green changes written: `receiver/`, pytest's path, the spec's J9 and the test list.
+- Green commit `73112f8` of pull request 7, through the gate. Draft pull request #91 opened.
+- 16:12 The fresh reviewer's findings on #91 were posted as a comment. Two serious: an unresolved Key Vault reference would be left as its literal text, which is public in this repo, so anyone could sign in with it, and `host.json` had no extension bundle, so the queue trigger might never load. Eleven minor and six nits.
+- AI mistake: the first receiver trusted every app setting as resolved, had no extension bundle, and used `$` in its regexes, which also matches before a final newline. Caught by the fresh reviewer.
+- The owner's decisions: fix every finding as listed, and option (a) for minor 7: the newest 100 runs only, logged as a known limit.
+- The owner asked Claude to restate the plan for pull request 5 before agreeing to it: the committed seed copy and why, how the kind is taken from the run log, and what spike 5a tests and leaves to 5b, on synthetic data only. Claude restated it in the chat. The owner's answer is logged in pull request 5's branch.
+- Red commit `a281a45` of pull request 7: only `tests/test_receiver.py`, through the gate. Five of its new tests passed before the fix, because the code already did that: the compare's result, a core with no service library, the poison queue's name, a stopped run with no folder, and a missing key in Job B's exit value. They stay as checks.
+- Claude's check: `uv pip compile` for Linux gave the same pins as the first run, which had no platform set, so only the file's first line changed.
+- Claude's choices, for the owner to see: the new behaviour is in new tests, so the gate's rule on red commits holds. The fixes add `load_settings`, `secret` and `purge_safely` to the core, where the tests reach them. The adapters' secrets go through the same check.
+- 16:39 Fixes written: the settings, the bundle, whole-string checks, the type-safe checks, Job B's folder, the 64-bit limit, the body cap, the case-insensitive scheme, lazy clients, the purge, the stuck key, the identity's roles, Linux requirements, the spec, the test list and the log.

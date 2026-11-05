@@ -385,14 +385,9 @@ def test_J9_an_unknown_queue_message_is_refused():
 
 
 def test_J9_logs_hold_ids_event_types_statuses_and_counts_only():
-    logs = []
-    for _ in range(1):
-        logs.append(_webhook()[3])
-        logs.append(_webhook(headers=_basic(password="wrong"))[3])
-        logs.append(_result()[3])
-        logs.append(_result(signature="sha256=00")[3])
-        logs.append(_work({"kind": "databricks", "job_a_run_id": 900001})[3])
-        logs.append(_work({"kind": "result", **_fixture("result_message.json")["body"]})[3])
+    logs = [_webhook()[3], _webhook(headers=_basic(password="wrong"))[3], _result()[3],
+            _result(signature="sha256=00")[3], _work({"kind": "databricks", "job_a_run_id": 900001})[3],
+            _work({"kind": "result", **_fixture("result_message.json")["body"]})[3]]
     for log in logs:
         for event, fields in log.entries:
             assert re.fullmatch(r"[a-z_]+", event)

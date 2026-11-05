@@ -1,6 +1,7 @@
 """Spec 004, J9: the receiver's links to the storage table and queue, Databricks and GitHub.
 
-The table and the queue use the Function's managed identity. Databricks is reached with the robot account's OAuth
+The table and the queue use the Function's system-assigned managed identity, which needs the roles Storage Queue
+Data Contributor, Storage Queue Data Message Processor and Storage Table Data Contributor on its storage account. Databricks is reached with the robot account's OAuth
 credential (J13), GitHub with the fine-grained token that has "Actions" write on this repo only. Every secret comes
 from an app setting that is a Key Vault reference (`app_settings.json`). The tests use fakes in their place, and the
 dry run of pull request 9 is the first to run these against the real services.
@@ -12,6 +13,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
+
+from receiver_core import secret
 
 EVENTS, RESULTS = "event", "result"
 TABLE = "juneevents"
@@ -27,17 +30,27 @@ def _credential():
 
 
 class TableStore:
-    """The keys of events already taken, and the result messages, in one table."""
+    """The keys of events already taken, and the result messages, in one table. The table client is made on first
+    use, so a request refused by the checks costs no storage call."""
 
-    def __init__(self, client):
-        self.client = client
+    def __init__(self, make_client):
+        self.make_client, self._client = make_client, None
+
+    @property
+    def client(self):
+        if self._client is None:
+            self._client = self.make_client()
+        return self._client
 
     @classmethod
     def from_env(cls):
-        from azure.data.tables import TableServiceClient
+        def make():
+            from azure.data.tables import TableServiceClient
 
-        service = TableServiceClient(endpoint=os.environ["VOC_STORAGE__tableServiceUri"], credential=_credential())
-        return cls(service.create_table_if_not_exists(TABLE))
+            service = TableServiceClient(endpoint=os.environ["VOC_STORAGE__tableServiceUri"], credential=_credential())
+            return service.create_table_if_not_exists(TABLE)
+
+        return cls(make)
 
     def add_key(self, key):
         from azure.core.exceptions import ResourceExistsError
@@ -64,18 +77,25 @@ class TableStore:
 
 
 class StorageQueue:
-    def __init__(self, client):
-        self.client = client
+    """The work queue. Its client is made on first use, as the table's is."""
+
+    def __init__(self, make_client):
+        self.make_client, self._client = make_client, None
 
     @classmethod
     def from_env(cls, name):
-        from azure.storage.queue import QueueClient
+        def make():
+            from azure.storage.queue import QueueClient
 
-        return cls(QueueClient(account_url=os.environ["VOC_STORAGE__queueServiceUri"], queue_name=name,
-                               credential=_credential()))
+            return QueueClient(account_url=os.environ["VOC_STORAGE__queueServiceUri"], queue_name=name,
+                               credential=_credential())
+
+        return cls(make)
 
     def put(self, message):
-        self.client.send_message(json.dumps(message, sort_keys=True))
+        if self._client is None:
+            self._client = self.make_client()
+        self._client.send_message(json.dumps(message, sort_keys=True))
 
 
 def _request(url, data=None, headers=None, method="GET"):
@@ -90,8 +110,8 @@ class DatabricksClient:
 
     @classmethod
     def from_env(cls):
-        return cls(os.environ["VOC_DATABRICKS_HOST"], os.environ["VOC_DATABRICKS_CLIENT_ID"],
-                   os.environ["VOC_DATABRICKS_CLIENT_SECRET"])
+        return cls(os.environ["VOC_DATABRICKS_HOST"], secret(os.environ, "VOC_DATABRICKS_CLIENT_ID"),
+                   secret(os.environ, "VOC_DATABRICKS_CLIENT_SECRET"))
 
     def _token(self):
         basic = base64.b64encode(f"{self.client_id}:{self.client_secret}".encode("utf-8")).decode("ascii")
@@ -114,13 +134,15 @@ class GitHubClient:
 
     @classmethod
     def from_env(cls):
-        return cls(os.environ["VOC_GITHUB_TOKEN"])
+        return cls(secret(os.environ, "VOC_GITHUB_TOKEN"))
 
     def _headers(self):
         return {"Authorization": f"Bearer {self.token}", "Accept": "application/vnd.github+json",
                 "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "voc-demo-receiver"}
 
     def list_dispatch_runs(self):
+        """The newest 100 runs only. A known limit (review of #91, owner decision (a)): Job B's checks of used runs
+        mean a second dispatch can never score twice."""
         query = urllib.parse.urlencode({"event": "workflow_dispatch", "branch": "main", "per_page": 100})
         _, body = _request(f"https://api.github.com/repos/{REPO}/actions/workflows/{WORKFLOW}/runs?{query}",
                            headers=self._headers())

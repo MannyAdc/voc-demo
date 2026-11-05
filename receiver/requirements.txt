@@ -1,4 +1,4 @@
-# The receiver Function's packages (spec 004, J9), resolved by uv pip compile for Python 3.12 on 5 November 2026.
+# The receiver Function's packages (spec 004, J9), resolved by uv pip compile for Linux and Python 3.12 on 5 November 2026.
 azure-core==1.41.0
 azure-data-tables==12.7.0
 azure-functions==1.26.0
