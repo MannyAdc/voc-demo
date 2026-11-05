@@ -1814,3 +1814,10 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - The spike's seed git test (nit of the review of #92) stays beside `test_databricks.py`'s: it pins the one exception, that `dbt/seeds/test_list.csv` is not ignored, where the other pins that every other seed file is.
 - Fix commit `6e9264a`, through the gate. CI green on `6e9264a`.
 - 00:18 Merge verdict on #92: PENDING with every mechanical check passing. Every finding the owner chose is fixed. The notebooks' working folder is one of the spike's open points. Claude's verdict: MERGE, after this log commit's CI.
+- 00:34 Claude marked #92 ready, after the MERGE verdict.
+- 00:43 The owner merged #92 (time from GitHub, `de39f20`).
+- The owner ran the spike of pull request 5a in the workspace on 6 November, on the synthetic zip. Its answers are logged in pull request 5b's branch. The one this pull request needs: the robot's OAuth secret, made in the workspace's settings with the `jobs` scope only, got a token for `jobs`, and Databricks' SDK, which asks for `all-apis` by default, was refused with "Scopes 'all-apis' are not assigned to the client". With Can View, the robot read `job_a`'s exit value (HTTP 200).
+- AI mistake: the receiver of #91 asked Databricks for an `all-apis` token, which the robot's `jobs`-scoped secret would be refused. Caught by the spike. Fixed in this pull request.
+- 02:35 Work start: the receiver's token scope, branch `fix/receiver-scope`, worktree `../voc-demo-scope`.
+- Red commit `faebe0d`: only `tests/test_receiver.py`, through the gate.
+- 02:56 Green change written: the `jobs` scope in `receiver/receiver_adapters.py`, J13, the test list and this log.

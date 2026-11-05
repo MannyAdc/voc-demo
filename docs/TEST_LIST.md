@@ -403,6 +403,7 @@ Written in pull request 7, on 5 November 2026, with fakes for the table, the que
 - the HTTP function gets no Databricks or GitHub client, so it replies before any work (J9)
 - the queue function asks Databricks for the run, dispatches with the contract's body, skips a run of another job or one that did not succeed, skips a dispatch already made by its whole run name only, takes 200 or 204 as success and raises on any other reply or failure, so the queue retries it (J9, J16)
 - a result message is stored and starts nothing. Logs hold event names, IDs, statuses and counts only (J9)
+- the receiver asks Databricks for a token with the `jobs` scope only, the scope of the robot's secret (J13, spike of 6 November)
 - the settings refuse an empty or unresolved Key Vault secret and a bad job ID. Strings are checked whole. A list or object in a field gets 400. A finished run names `june-<Job B run ID>`, a stopped one no folder and its reason. IDs above the 64-bit limit get 400. A body over 16 KB gets 413. The Basic scheme and header names are read in any case. The compare's result decides the sign-in. The core imports no service library. A key that cannot be freed, and a failed purge, are logged (J9, J16, review of #91)
 - the Function's files: the extension bundle, the queue encoding, the poison queue's name in the spec, requirements resolved for Linux, 5 tries, one instance of 512 MB per function with none always ready, every secret a Key Vault reference, no Application Insights, two open HTTP functions and one queue function, and pinned requirements (J9)
 
