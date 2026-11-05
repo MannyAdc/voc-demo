@@ -1,0 +1,9 @@
+{
+  "display_title": "June approval for Job A run 900001",
+  "event": "workflow_dispatch",
+  "head_branch": "main",
+  "head_sha": "cccccccccccccccccccccccccccccccccccccccc",
+  "id": 600001,
+  "path": ".github/workflows/june_approval.yml",
+  "run_attempt": 1
+}
