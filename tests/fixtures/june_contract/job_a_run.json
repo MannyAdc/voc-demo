@@ -1,0 +1,15 @@
+{
+  "job_id": 800001,
+  "run_id": 900001,
+  "start_time": 1792999000000,
+  "state": {
+    "life_cycle_state": "TERMINATED",
+    "result_state": "SUCCESS"
+  },
+  "tasks": [
+    {
+      "run_id": 900011,
+      "task_key": "job_a"
+    }
+  ]
+}
