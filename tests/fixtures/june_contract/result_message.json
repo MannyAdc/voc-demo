@@ -7,6 +7,7 @@
     "job_b_exit": {
       "complaints": 2073,
       "contract": "voc-june-1",
+      "entry_kind": "synthetic",
       "kind": "synthetic",
       "labelled": 2073,
       "results_folder": "june-900002",

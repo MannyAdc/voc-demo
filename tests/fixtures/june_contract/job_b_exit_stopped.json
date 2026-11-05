@@ -1,6 +1,7 @@
 {
   "complaints": 2073,
   "contract": "voc-june-1",
+  "entry_kind": "synthetic",
   "kind": "synthetic",
   "labelled": 1500,
   "results_folder": null,
