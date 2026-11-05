@@ -375,6 +375,24 @@ Written in pull request 3, on 5 November 2026.
 - July's test rows are never asked for: deleting them changes nothing, and only training and development IDs are selected (J2, review of #88)
 - a failed write leaves neither file, so the next run is not blocked. Settings that do not name June are refused. The seed in `config/june.toml` is the seed of the draw (J6, review of #88)
 
+## June claims, hashes and scoring ([spec 004](../specs/004-june-test-and-baselines/spec.md), J1, J7)
+
+Written in pull request 4, on 5 November 2026, on synthetic items only.
+
+- the claims are frozen in `config/june_claims.toml`: the model and prompt (the same as `config/prompts/v1.toml`), the 0.9 threshold, 2,000 draws within each Product with seed 0, and the verdict words (J7)
+- the primary verdict: beats if the 95% interval is wholly above zero, does not beat if the point difference is zero or below, otherwise inconclusive. Given both ways on synthetic items (J7)
+- scores are re-weighted by June's own pool. The hybrid takes TF-IDF + LR at 0.9 or more, else the LLM, and a held-back LLM label counts as wrong (J7)
+- the secondary comparison, the LLM against TF-IDF + LR at the same coverage, has its interval and no verdict. Both intervals repeat with the same seed (J7)
+- the cost per extra correct label, at the same coverage and at full coverage, with no figure when the LLM gains nothing (J7)
+- the counts, the reasons of held-back labels, and the confusion tables of the LLM, TF-IDF + LR and the hybrid. The result holds no complaint ID (J7, B21)
+- a run stopped by the spend limit is not scored. A pool Product missing from the items, and a repeated complaint, are refused (J1, J7)
+- the frozen code's hash covers exactly the places J1 names (`cloud/` for the job definitions), changes with any frozen file or file name and with nothing else, is the same in any folder, and hashes exactly the tracked files, none with Windows line endings (J1)
+- the June list's hash is the SHA-256 of `splits/june/june.csv`, refused unless it matches the manifest. `scripts/june_hash.py` prints the two hashes and a count only (J1)
+- the sample is scored only when every complaint of the June list has exactly one result, Product by Product, with the pool and the list from `splits/june/`. A list that does not match its manifest, a pool or sample counts that do not add up, a complaint outside the list, synthetic items, and a Product outside the pool are refused (J1, J7, review of #89)
+- a win needs a point difference above zero, whatever the interval (J7, owner decision of 5 November). The scores do not depend on the order of the items. The bootstrap draws 2,000 times within each Product, one draw per Product of its own size, and claims that resample otherwise are refused (J7, review of #89)
+- the July development labels are frozen too. The hash script refuses when the frozen files differ from the tracked ones, naming only their number, and says so on stderr where git is missing. The tracked-files test fails in CI instead of skipping. The committed run log is put through its rules. A row the reader would skip is refused. The CI step runs the check on the June log in `repo-checks`, and the check names the log it checks (J1, review of #89)
+- `runs/JUNE_RUNS.md` starts with its header and no row. A row is found by its two hashes. A malformed row, a second first row for a list, a later row with no first row or no reason, a synthetic row naming the real June list, and a real row naming another list are refused. CI checks that the file only grows (J1)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
@@ -383,7 +401,7 @@ Added on 4 November 2026, revised twice the same day. Each piece adds its tests 
 - the laptop refuses to score June (written in pull request 3, listed above), Job B refuses unless `runs/JUNE_RUNS.md` names the June list's hash and the frozen code's hash, and that file only grows (J1)
 - no June step reads a July test row (J2): the June sample's part written in pull request 3
 - the refit TF-IDF + LR reproduces the committed July development labels before it labels June (J7)
-- the primary claim is the hybrid against the LLM alone at full coverage, with the verdict words fixed, and the secondary comparison carries no verdict (J7)
+- the primary claim is the hybrid against the LLM alone at full coverage, with the verdict words fixed, and the secondary comparison carries no verdict (J7): written in pull request 4, listed above
 - every job and workflow entry point, on hostile synthetic text, prints only IDs, labels, reasons, positions, decisions and counts, with no traceback (J5)
 - Job A checks the pin and the sample's hashes, computes the approval figures and makes no model call (J8)
 - the receiver refuses a bad sign-in or signature and an old or future timestamp with 401, replies 202 before the work, drops a duplicate, confirms a Databricks run by asking Databricks, skips a dispatch already made, and moves a message to the failure queue after 5 tries (J9)
@@ -395,6 +413,8 @@ Added on 4 November 2026, revised twice the same day. Each piece adds its tests 
 - recordings, the ledger and the fitted model never leave the volume, and complaint text never reaches GitHub (J4)
 - the read guard protects `VOC_JUNE_DATA_DIR`, the raw volume, all Actions run logs, and the approval workflow's start (J6, J14): written in pull request 2, listed under Hooks. The June tables are named in pull request 5, and Claude never runs the Databricks CLI at all
 - the laptop path and the cloud path give the same July results on mock or replay (J8)
+- a Databricks Git folder or a job's Git source gives the same bytes for every frozen file, `.py` files it may treat as notebooks included, so Job B's code hash matches the laptop's (J1, pull request 6, review of #89)
+- a stopped run writes no per-complaint file and no figure, and a resumed run calls the model only for complaints with no recorded answer (J1, pull request 6, owner decision of 5 November)
 
 ## Later features (listed now, specified later)
 
