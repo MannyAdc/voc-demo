@@ -1832,3 +1832,5 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
   - The test checks the Basic header and the form content type too (nit 3). Its line in the test list is under its own date (nit 2). The adapter's comment is wrapped (nit 4).
 - Test commit `ae56930`, through the gate: only `tests/test_receiver.py`. Its new checks pass on the code already, since they pin what the code does.
 - 08:43 Fix changes written: J10, J13, Known limits, the test list, the adapter's comment and this log.
+- Fix commit `eefb87d`, through the gate. CI green on `eefb87d`.
+- 09:31 Merge verdict on #93: PENDING with every mechanical check passing. All 6 minors and 4 nits, which the owner chose to fix, are fixed in `ae56930` and `eefb87d`. Claude's verdict: MERGE, after this log commit's CI.
