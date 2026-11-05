@@ -375,6 +375,21 @@ Written in pull request 3, on 5 November 2026.
 - July's test rows are never asked for: deleting them changes nothing, and only training and development IDs are selected (J2, review of #88)
 - a failed write leaves neither file, so the next run is not blocked. Settings that do not name June are refused. The seed in `config/june.toml` is the seed of the draw (J6, review of #88)
 
+## June claims, hashes and scoring ([spec 004](../specs/004-june-test-and-baselines/spec.md), J1, J7)
+
+Written in pull request 4, on 5 November 2026, on synthetic items only.
+
+- the claims are frozen in `config/june_claims.toml`: the model and prompt (the same as `config/prompts/v1.toml`), the 0.9 threshold, 2,000 draws within each Product with seed 0, and the verdict words (J7)
+- the primary verdict: beats if the 95% interval is wholly above zero, does not beat if the point difference is zero or below, otherwise inconclusive. Given both ways on synthetic items (J7)
+- scores are re-weighted by June's own pool. The hybrid takes TF-IDF + LR at 0.9 or more, else the LLM, and a held-back LLM label counts as wrong (J7)
+- the secondary comparison, the LLM against TF-IDF + LR at the same coverage, has its interval and no verdict. Both intervals repeat with the same seed (J7)
+- the cost per extra correct label, at the same coverage and at full coverage, with no figure when the LLM gains nothing (J7)
+- the counts, the reasons of held-back labels, and the confusion tables of the LLM, TF-IDF + LR and the hybrid. The result holds no complaint ID (J7, B21)
+- a run stopped by the spend limit is not scored. A pool Product missing from the items, and a repeated complaint, are refused (J1, J7)
+- the frozen code's hash covers exactly the places J1 names (`cloud/` for the job definitions), changes with any frozen file or file name and with nothing else, is the same in any folder, and hashes exactly the tracked files, none with Windows line endings (J1)
+- the June list's hash is the SHA-256 of `splits/june/june.csv`, refused unless it matches the manifest. `scripts/june_hash.py` prints the two hashes and a count only (J1)
+- `runs/JUNE_RUNS.md` starts with its header and no row. A row is found by its two hashes. A malformed row, a second first row for a list, a later row with no first row or no reason, a synthetic row naming the real June list, and a real row naming another list are refused. CI checks that the file only grows (J1)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
@@ -383,7 +398,7 @@ Added on 4 November 2026, revised twice the same day. Each piece adds its tests 
 - the laptop refuses to score June (written in pull request 3, listed above), Job B refuses unless `runs/JUNE_RUNS.md` names the June list's hash and the frozen code's hash, and that file only grows (J1)
 - no June step reads a July test row (J2): the June sample's part written in pull request 3
 - the refit TF-IDF + LR reproduces the committed July development labels before it labels June (J7)
-- the primary claim is the hybrid against the LLM alone at full coverage, with the verdict words fixed, and the secondary comparison carries no verdict (J7)
+- the primary claim is the hybrid against the LLM alone at full coverage, with the verdict words fixed, and the secondary comparison carries no verdict (J7): written in pull request 4, listed above
 - every job and workflow entry point, on hostile synthetic text, prints only IDs, labels, reasons, positions, decisions and counts, with no traceback (J5)
 - Job A checks the pin and the sample's hashes, computes the approval figures and makes no model call (J8)
 - the receiver refuses a bad sign-in or signature and an old or future timestamp with 401, replies 202 before the work, drops a duplicate, confirms a Databricks run by asking Databricks, skips a dispatch already made, and moves a message to the failure queue after 5 tries (J9)

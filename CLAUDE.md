@@ -63,7 +63,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Tests, with no network.
 - gitleaks on the full history.
 - A names check against a deny list kept outside the repo (a CI secret, and a git-ignored `.names-denylist` locally). It fails if the list is missing or empty.
-- `runs/TEST_RUNS.md` only grows compared with `main`.
+- `runs/TEST_RUNS.md` only grows compared with `main`, and so does spec 004's `runs/JUNE_RUNS.md`.
 - No tracked file over the size limit. No tracked file with the CFPB header row and a real ID.
 - `dbt build` with data tests and usage stats off.
 

@@ -1,0 +1,25 @@
+# Spec 004, J7: the June claims, fixed before any June label is scored (J1). The June scoring code reads its
+# numbers from here, and a test checks them against the spec. They are not changed after the June entry in
+# runs/JUNE_RUNS.md.
+model = "claude-haiku-5-5"
+prompt = "v1"
+weights = "June's own pool after copies are removed, from splits/june/manifest.json"
+
+[bootstrap]
+resamples = 2000
+seed = 0
+within = "Product"
+
+[primary]
+claim = "the hybrid against the LLM alone, both at full coverage, as V6 scores it"
+hybrid = "TF-IDF + LR answers at a top confidence of 0.9 or more, else the LLM. A held-back LLM label counts as wrong"
+threshold = 0.9
+beats = "the 95% interval of the point difference is wholly above zero"
+does_not_beat = "the point difference is zero or below"
+inconclusive = "otherwise"
+
+[secondary]
+comparison = "the LLM against TF-IDF + LR at the same coverage, as B10 defines it, with its interval and no verdict"
+
+[cost]
+per_extra_correct = "against TF-IDF + LR at the same coverage, as V6's headline, with the full-coverage view next to it"
