@@ -1,0 +1,11 @@
+{
+  "event_type": "jobs.on_success",
+  "job": {
+    "job_id": 800001,
+    "name": "voc-june-job-a"
+  },
+  "run": {
+    "run_id": 900001
+  },
+  "workspace_id": "700000000000001"
+}

@@ -1,0 +1,20 @@
+{
+  "body": {
+    "contract": "voc-june-1",
+    "github_run_attempt": 1,
+    "github_run_id": 600001,
+    "job_a_run_id": 900001,
+    "job_b_exit": {
+      "complaints": 2073,
+      "contract": "voc-june-1",
+      "kind": "synthetic",
+      "labelled": 2073,
+      "results_folder": "june-900002",
+      "stop_reason": null,
+      "stopped": false
+    },
+    "job_b_run_id": 900002,
+    "result_state": "SUCCESS"
+  },
+  "timestamp": 1793000000
+}

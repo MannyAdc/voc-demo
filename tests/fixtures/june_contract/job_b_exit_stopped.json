@@ -1,0 +1,9 @@
+{
+  "complaints": 2073,
+  "contract": "voc-june-1",
+  "kind": "synthetic",
+  "labelled": 1500,
+  "results_folder": null,
+  "stop_reason": "spend_limit",
+  "stopped": true
+}

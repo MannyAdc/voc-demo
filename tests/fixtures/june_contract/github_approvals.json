@@ -1,0 +1,15 @@
+[
+  {
+    "comment": "",
+    "environments": [
+      {
+        "id": 1,
+        "name": "june-run"
+      }
+    ],
+    "state": "approved",
+    "user": {
+      "login": "MannyAdc"
+    }
+  }
+]
