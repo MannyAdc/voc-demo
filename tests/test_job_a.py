@@ -412,7 +412,7 @@ def test_J8_the_trigger_and_the_notebooks_use_the_same_folders():
     assert _job()["trigger"]["file_arrival"]["url"] == job_a.INCOMING + "/"
 
 
-def _root(tmp_path, kinds, list_hash=None, code=None):
+def _root(tmp_path, kinds, list_hash=None, code=None, gates=("june-check", "failcheck")):
     """A checkout with the synthetic June list and a run log whose rows have these kinds."""
     from voc.frozen import code_hash
 
@@ -421,7 +421,23 @@ def _root(tmp_path, kinds, list_hash=None, code=None):
     code = code or code_hash(root)
     (root / "runs").mkdir()
     _log(root / "runs", [(f"2026-11-0{n + 6} 10:00", kind, listed, code, "a reason") for n, kind in enumerate(kinds)])
+    if gates:
+        _gates(root, [("2026-11-05 09:00", gate, _real_pin_sha(), code, "a pass") for gate in gates])
     return root
+
+
+def _real_pin_sha():
+    import tomllib
+
+    with open(REPO / "config" / "data_files.toml", "rb") as f:
+        return tomllib.load(f)["june_2026"]["sha256"]
+
+
+def _gates(root, rows):
+    path = Path(root) / "runs" / "JUNE_GATES.md"
+    path.write_text("# June gates\n\n| Date | Gate | Pin SHA-256 | Code hash | Evidence |\n|---|---|---|---|---|\n"
+                    + "".join(f"| {' | '.join(row)} |\n" for row in rows), encoding="utf-8")
+    return path
 
 
 def test_J16_the_checked_target_is_the_last_row_when_its_list_and_code_are_this_checkout_s(tmp_path):
@@ -566,7 +582,8 @@ def test_J8_the_cli_refuses_a_zip_that_is_not_the_june_pin_s_with_fixed_text(tmp
     from voc.cli import main
 
     folder, _ = _zip_and_pin(tmp_path, text=_june_csv([MARKER]))
-    assert main(["june-check", "--zip", str(next(folder.iterdir()))], env={}, root=REPO) == 1
+    env = {"VOC_JUNE_DATA_DIR": str(tmp_path)}
+    assert main(["june-check", "--zip", str(next(folder.iterdir()))], env=env, root=REPO) == 1
     out = capsys.readouterr().out
     assert out.startswith("error: refused, as Job A's unpack would refuse it: the zip is not the pinned zip")
     assert "SYNMARKER" not in out and str(tmp_path) not in out
@@ -801,3 +818,364 @@ def test_J13_the_robot_check_reports_states_and_places_only(monkeypatch):
     assert "dbt_control: FAILED, marker in the output: $.error" in lines
     assert "dbt_control: artifacts: 1 files, marker in: logs/dbt.log" in lines
     assert "query history: HTTP 403, PERMISSION_DENIED" in lines
+
+
+# The second review of #94, on its fix round, and the owner's decisions on it (6 November)
+
+
+def test_J1_a_real_row_needs_both_gates_passed_for_its_code_and_the_june_pin(tmp_path):
+    """Owner decision on minor 2: the robot's leak check and june-check must pass, for the code and pin of the real
+    row, before the row is written. Job A refuses a real row without both passes."""
+    root = _root(tmp_path, ["real"], gates=("june-check",))
+    with pytest.raises(_job_a().JobAError, match="failcheck"):
+        _job_a().checked_target(root)
+    root = _root(tmp_path / "b", ["real"], gates=())
+    with pytest.raises(_job_a().JobAError, match="gate"):
+        _job_a().checked_target(root)
+
+
+def test_J1_a_gate_pass_for_other_code_or_another_pin_or_after_the_row_does_not_count(tmp_path):
+    from voc.frozen import JuneRunsError, check_gates, read_gates, read_runs
+
+    root = _root(tmp_path, ["real"], gates=())
+    entry = read_runs(root / "runs" / "JUNE_RUNS.md")[0]
+    pin = _real_pin_sha()
+    good = [("2026-11-05 09:00", gate, pin, entry.code_hash, "a pass") for gate in ("june-check", "failcheck")]
+    check_gates(read_runs(root / "runs" / "JUNE_RUNS.md"), read_gates(_gates(root, good)), pin)
+    for bad in (("2026-11-05 09:00", "failcheck", pin, A, "other code"),
+                ("2026-11-05 09:00", "failcheck", A, entry.code_hash, "another pin"),
+                ("2026-11-07 09:00", "failcheck", pin, entry.code_hash, "after the row")):
+        rows = [good[0], bad]
+        with pytest.raises(JuneRunsError, match="failcheck"):
+            check_gates(read_runs(root / "runs" / "JUNE_RUNS.md"), read_gates(_gates(root, rows)), pin)
+
+
+def test_J1_a_synthetic_row_needs_no_gate(tmp_path):
+    root = _root(tmp_path, ["synthetic"], list_hash=None, gates=())
+    from voc.frozen import check_gates, read_gates, read_runs
+
+    check_gates(read_runs(root / "runs" / "JUNE_RUNS.md"), read_gates(root / "runs" / "JUNE_GATES.md"), A)
+
+
+@pytest.mark.parametrize("line", ["| 2026-11-05 09:00 | other | {p} | {c} | x |", "| 2026-11-05 | june-check | {p} | {c} | x |",
+                                  "| 2026-11-05 09:00 | june-check | {p} | short | x |",
+                                  "| 2026-11-05 09:00 | june-check | {p} | {c} |  |"])
+def test_J1_a_gate_row_that_breaks_the_format_is_refused(tmp_path, line):
+    from voc.frozen import JuneRunsError, read_gates
+
+    path = _gates(tmp_path, [])
+    path.write_text(path.read_text(encoding="utf-8") + line.format(p=A, c=B) + "\n", encoding="utf-8")
+    with pytest.raises(JuneRunsError):
+        read_gates(path)
+
+
+def test_J1_the_committed_logs_keep_the_rule():
+    """CI runs this on the committed files: every real row of runs/JUNE_RUNS.md has both gates' passes."""
+    from voc.frozen import GATES, RUNS, check_gates, read_gates, read_runs
+
+    check_gates(read_runs(REPO / RUNS), read_gates(REPO / GATES), _real_pin_sha())
+    assert (REPO / GATES).is_file()
+
+
+def test_J1_the_hash_script_refuses_without_both_gates_unless_the_row_is_synthetic(tmp_path, capsys):
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("june_hash", REPO / "scripts" / "june_hash.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    root = _root(tmp_path, ["synthetic"], gates=())
+    shutil.copytree(REPO / "config", root / "config")
+    assert module.main([str(root)]) == 1
+    out = capsys.readouterr().out
+    assert out.startswith("refused:") and "gate" in out and "june list sha256" not in out
+    assert module.main([str(root), "--synthetic"]) == 0
+    assert "june list sha256" in capsys.readouterr().out
+
+
+def test_J1_ci_checks_that_the_gates_log_only_grows():
+    workflow = yaml.safe_load((REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
+    runs = [step.get("run", "") for job in workflow["jobs"].values() for step in job["steps"]]
+    assert any("scripts/check_test_runs.py" in run and "runs/JUNE_GATES.md" in run
+               and "origin/main:runs/JUNE_GATES.md" in run for run in runs)
+
+
+def test_J5_job_a_s_spark_reads_are_refused_with_fixed_text_only():
+    """Review of the fix round, serious 3: Spark's error on the June file could quote a row."""
+    def failing(sql):
+        raise RuntimeError(f"Malformed CSV record: {MARKER}")
+
+    for call in (lambda: _job_a().spark_counts(failing, "/Volumes/x/june/june.csv"),
+                 lambda: _job_a().spark_rows(failing, ["1", "2"])):
+        with pytest.raises(_job_a().JobAError) as refused:
+            call()
+        assert "SYNMARKER" not in str(refused.value) and refused.value.__cause__ is None
+        assert refused.value.__suppress_context__
+
+
+def test_J8_job_a_s_spark_reads_return_counts_and_rows():
+    class Row(dict):
+        def __getitem__(self, key):
+            return dict.__getitem__(self, key)
+
+    seen = []
+
+    def run(sql):
+        seen.append(sql)
+        return [Row(rows=3, narratives=2)] if "count(*)" in sql else [("1", "Mortgage", "x"), ("2", "Credit card", "y")]
+
+    assert _job_a().spark_counts(run, "/Volumes/x/june/june.csv") == (3, 2)
+    assert _job_a().spark_rows(run, ["1", "2"]) == [("1", "Mortgage", "x"), ("2", "Credit card", "y")]
+    assert "complaint_id in ('1','2')" in seen[1] and "workspace.voc_june.stg_complaints" in seen[1]
+    for bad in (["1; drop"], ["SYN-1'"], [""]):
+        with pytest.raises(_job_a().JobAError):
+            _job_a().spark_rows(run, bad)
+
+
+def test_J5_the_job_a_notebook_reads_spark_only_through_the_fixed_text_wrappers():
+    text = (REPO / "cloud" / "job_a" / "job_a.py").read_text(encoding="utf-8")
+    assert "spark.sql(" not in text
+    assert "spark_counts(" in text and "spark_rows(" in text
+    assert text.index("spark_counts(") < text.index("checked_counts(") < text.index("spark_rows(")
+
+
+def test_J5_the_failcheck_marker_starts_each_text_field_of_the_short_row():
+    """Review of the fix round, minor 4: if Databricks shortens an error, the marker is what is left."""
+    from voc import failcheck
+
+    records = list(csv.reader(io.StringIO(failcheck.rows_text())))
+    short = records[-1]
+    for n in (2, 3, 4, 5, 6, 7):
+        assert short[n].startswith(failcheck.MARKER), n
+
+
+def test_J5_the_failcheck_control_differs_from_the_quiet_run_by_the_flags_only():
+    tasks = _tasks(_failcheck())
+    quiet, control = tasks["dbt"], tasks["dbt_control"]
+    assert {k: v for k, v in control.items() if k not in ("task_key", "depends_on", "run_if", "dbt_task")} == \
+        {k: v for k, v in quiet.items() if k not in ("task_key", "depends_on", "dbt_task")}
+    assert {**control["dbt_task"], "commands": quiet["dbt_task"]["commands"]} == quiet["dbt_task"]
+
+
+def test_J5_the_failcheck_s_first_task_returns_its_code_hash_only():
+    """The robot's check prints it, so the gate's pass is recorded for the code that ran."""
+    text = (REPO / "cloud" / "failcheck" / "make_rows.py").read_text(encoding="utf-8")
+    assert "dbutils.notebook.exit(json.dumps({\"code_sha256\": code_hash(root)}))" in text
+
+
+def _archive(kind, files):
+    import tarfile
+    import zipfile as zf
+
+    buffer = io.BytesIO()
+    if kind == "tar.gz":
+        with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
+            for name, payload in files.items():
+                info = tarfile.TarInfo(name)
+                info.size = len(payload)
+                archive.addfile(info, io.BytesIO(payload))
+    else:
+        with zf.ZipFile(buffer, "w", zf.ZIP_DEFLATED) as archive:
+            for name, payload in files.items():
+                archive.writestr(name, payload)
+    return buffer.getvalue()
+
+
+def test_J13_the_robot_check_reads_tar_and_zip_and_says_when_it_cannot_read():
+    """Review of the fix round, serious 1: a download that is not a readable archive is never "nowhere"."""
+    check = _robot_check()
+    marker = check.MARKER.encode()
+    for kind in ("tar.gz", "zip"):
+        assert check.archive_places(_archive(kind, {"a.sql": b"select 1", "logs/dbt.log": marker})) == \
+            (2, ["logs/dbt.log"])
+        assert check.archive_places(_archive(kind, {"a.sql": b"select 1"})) == (1, [])
+    for unreadable in (b"\x1f\x8b not really", b"<html>sign in</html>", b"", b"PK\x03\x04 cut off"):
+        assert check.archive_places(unreadable) is None
+
+
+def _replies(check, quiet_error="dbt failed", quiet_state="", control_error=None, control_artifacts=None,
+             quiet_artifacts=None, history=403, wide=400):
+    host = "https://synthetic.example.invalid"
+    marker = check.MARKER
+    control_artifacts = _archive("zip", {"logs/dbt.log": marker.encode()}) if control_artifacts is None \
+        else control_artifacts
+    quiet_artifacts = _archive("tar.gz", {"target/run.sql": b"select 1"}) if quiet_artifacts is None else quiet_artifacts
+    tasks = [{"task_key": "make_rows", "run_id": 11, "state": {"result_state": "SUCCESS"}},
+             {"task_key": "dbt", "run_id": 12, "state": {"result_state": "FAILED", "state_message": quiet_state}},
+             {"task_key": "dbt_control", "run_id": 13, "state": {"result_state": "FAILED"}}]
+    return {
+        ("jobs", f"{host}/oidc/v1/token"): (200, json.dumps({"access_token": "synthetic-token"}).encode()),
+        ("all-apis", f"{host}/oidc/v1/token"): (wide, json.dumps({"error": "invalid_scope"}).encode()),
+        f"{host}/api/2.2/jobs/runs/get?run_id=99": (200, json.dumps({"tasks": tasks}).encode()),
+        f"{host}/api/2.2/jobs/runs/get-output?run_id=11": (200, json.dumps({"notebook_output": {
+            "result": json.dumps({"code_sha256": B}), "truncated": False}}).encode()),
+        f"{host}/api/2.2/jobs/runs/get-output?run_id=12": (200, json.dumps({"error": quiet_error, "dbt_output": {
+            "artifacts_link": f"{host}/a12", "artifacts_headers": {}}}).encode()),
+        f"{host}/api/2.2/jobs/runs/get-output?run_id=13": (200, json.dumps({
+            "error": control_error if control_error is not None else f"dbt failed {marker}",
+            "dbt_output": {"artifacts_link": f"{host}/a13", "artifacts_headers": {}}}).encode()),
+        f"{host}/a12": (200, quiet_artifacts),
+        f"{host}/a13": (200, control_artifacts),
+        f"{host}/api/2.0/sql/history/queries": (history, json.dumps({"error_code": "PERMISSION_DENIED"}).encode()),
+    }
+
+
+def _report(check, monkeypatch, replies):
+    import urllib.parse
+
+    def fake(url, token=None, data=None, headers=None):
+        if url.endswith("/oidc/v1/token"):
+            scope = urllib.parse.parse_qs(data.decode("ascii"))["scope"][0]
+            return replies[(scope, url)]
+        return replies[url]
+
+    monkeypatch.setattr(check, "_call", fake)
+    return check.report("synthetic.example.invalid", "synthetic-id", "syn-" + "secret", 99)
+
+
+def test_J13_the_robot_check_passes_only_when_every_rule_holds(monkeypatch):
+    check = _robot_check()
+    lines = _report(check, monkeypatch, _replies(check))
+    assert lines[-1] == "verdict: PASS"
+    assert f"code sha256: {B}" in lines
+    assert "all-apis token: refused, HTTP 400" in lines
+    assert "dbt: runs/get: marker nowhere" in lines and "dbt_control: artifacts: files: 1, marker in: logs/dbt.log" in lines
+    text = "\n".join(lines)
+    assert check.MARKER not in text and "synthetic-token" not in text and "syn-secret" not in text
+
+
+@pytest.mark.parametrize("change, reason", [
+    ({"quiet_error": "dbt failed SYNFAILCHECKMARKER"}, "dbt's output"),
+    ({"quiet_state": "SYNFAILCHECKMARKER"}, "dbt's runs/get"),
+    ({"quiet_artifacts": b"PK\x03\x04 cut off"}, "could not read"),
+    ({"quiet_artifacts": b"<html>sign in</html>"}, "could not read"),
+    ({"control_error": "dbt failed"}, "control"),
+    ({"control_artifacts": b"x"}, "could not read"),
+    ({"history": 200}, "query history"),
+    ({"wide": 200}, "all-apis"),
+])
+def test_J13_the_robot_check_fails_on_any_leak_unread_place_or_blind_control(monkeypatch, change, reason):
+    check = _robot_check()
+    replies = _replies(check, **change)
+    if change.get("wide") == 200:
+        replies[("all-apis", "https://synthetic.example.invalid/oidc/v1/token")] = (
+            200, json.dumps({"access_token": "wide-token"}).encode())
+    lines = _report(check, monkeypatch, replies)
+    assert lines[-1].startswith("verdict: FAIL") and reason in lines[-1]
+    assert check.MARKER not in "\n".join(lines) and "wide-token" not in "\n".join(lines)
+
+
+def test_J13_the_control_s_artifacts_must_show_the_marker_when_the_quiet_run_s_are_judged(monkeypatch):
+    """Review of the fix round, serious 1: the control must show the check can see a leak in each kind of place."""
+    check = _robot_check()
+    replies = _replies(check, control_artifacts=_archive("zip", {"target/run.sql": b"select 1"}))
+    lines = _report(check, monkeypatch, replies)
+    assert lines[-1].startswith("verdict: FAIL") and "control" in lines[-1]
+
+
+def test_J13_the_robot_check_says_how_to_set_the_host_when_it_cannot_find_it():
+    text = (REPO / "cloud" / "failcheck" / "robot_check.py").read_text(encoding="utf-8")
+    assert "Fill in HOST" in text
+
+
+def _june_root(tmp_path, rows):
+    """A checkout copy with a June list made of these (complaint_id, product, narrative) rows."""
+    root = _sample(tmp_path / "root", rows)
+    return root
+
+
+def test_J8_the_laptop_check_checks_the_sample_s_hashes_and_its_line_breaks(tmp_path):
+    """Owner decision on minor 6 of the fix round's review: the sampled rows, as Python reads them, must match the
+    frozen hashes, and a sampled narrative holding a carriage return is counted, since Spark may read it otherwise."""
+    narratives = ["one line", "a\r\nWindows break", "two\nlines"]
+    text = _june_csv(narratives)
+    folder, pin = _zip_and_pin(tmp_path, text=text)
+    sampled = [("SYN-1", "Mortgage", "one line"), ("SYN-2", "Mortgage", "a\r\nWindows break")]
+    root = _june_root(tmp_path, sampled)
+    counts = _job_a().june_check(next(folder.iterdir()), pin, REPO / "config" / "labels.toml", root=root,
+                                 scratch=tmp_path)
+    assert counts["sampled_rows"] == 2 and counts["sampled_matching"] == 2
+    assert counts["sampled_with_returns"] == 1
+    changed = _june_root(tmp_path / "c", [("SYN-1", "Mortgage", "one line, changed"), sampled[1]])
+    counts = _job_a().june_check(next(folder.iterdir()), pin, REPO / "config" / "labels.toml", root=changed,
+                                 scratch=tmp_path)
+    assert counts["sampled_matching"] == 1
+
+
+def test_J8_the_laptop_check_unpacks_inside_the_folder_it_is_given_and_leaves_nothing(tmp_path):
+    """Review of the fix round, nit 1: the copy stays inside the June data folder, which the read guard covers."""
+    scratch = tmp_path / "june_folder"
+    scratch.mkdir()
+    folder, pin = _zip_and_pin(tmp_path, text=_june_csv(["one"]))
+    root = _june_root(tmp_path, [("SYN-1", "Mortgage", "one")])
+    seen = []
+    real = _job_a().file_counts
+
+    def spy(path, *args, **kwargs):
+        seen.append(Path(path))
+        return real(path, *args, **kwargs)
+
+    import voc.job_a
+
+    original, voc.job_a.file_counts = voc.job_a.file_counts, spy
+    try:
+        _job_a().june_check(next(folder.iterdir()), pin, REPO / "config" / "labels.toml", root=root, scratch=scratch)
+    finally:
+        voc.job_a.file_counts = original
+    assert seen and scratch in seen[0].parents
+    assert list(scratch.iterdir()) == []
+
+
+def test_J8_the_laptop_check_s_lines_say_what_must_hold_and_fail_on_any_mismatch():
+    """Owner decision on minor 3: a mismatch exits non-zero, and the step can be met as written."""
+    counts = {"rows": 10, "narratives": 4, "fields_with_line_breaks": 2, "fields_with_lone_returns": 0,
+              "sampled_rows": 3, "sampled_matching": 3, "sampled_with_returns": 0}
+    pin = {"rows": 10, "narratives": 4}
+    lines, ok = _job_a().june_check_verdict(counts, pin)
+    assert ok and lines[-1] == "verdict: PASS"
+    for change in ({"rows": 11}, {"narratives": 5}, {"sampled_matching": 2}, {"sampled_with_returns": 1}):
+        lines, ok = _job_a().june_check_verdict({**counts, **change}, pin)
+        assert not ok and lines[-1].startswith("verdict: FAIL")
+
+
+def test_J8_the_cli_exits_non_zero_when_the_laptop_check_fails(tmp_path, capsys, monkeypatch):
+    import voc.job_a
+    from voc.cli import main
+
+    folder, _ = _zip_and_pin(tmp_path, text=_june_csv(["one"]))
+    monkeypatch.setattr(voc.job_a, "june_check", lambda *a, **k: {
+        "rows": 1, "narratives": 1, "fields_with_line_breaks": 0, "fields_with_lone_returns": 0,
+        "sampled_rows": 1, "sampled_matching": 0, "sampled_with_returns": 0})
+    env = {"VOC_JUNE_DATA_DIR": str(tmp_path)}
+    assert main(["june-check", "--zip", str(next(folder.iterdir()))], env=env, root=REPO) == 1
+    assert "verdict: FAIL" in capsys.readouterr().out
+
+
+def test_J8_the_cli_s_laptop_check_needs_the_june_data_folder(tmp_path, capsys):
+    from voc.cli import main
+
+    folder, _ = _zip_and_pin(tmp_path, text=_june_csv(["one"]))
+    assert main(["june-check", "--zip", str(next(folder.iterdir()))], env={}, root=REPO) == 1
+    assert "VOC_JUNE_DATA_DIR" in capsys.readouterr().out
+
+
+
+def test_J1_the_cli_prints_the_gate_record_only_on_a_pass_from_unchanged_code(tmp_path, capsys, monkeypatch):
+    import voc.frozen
+    import voc.job_a
+    from voc.cli import main
+    from voc.frozen import code_hash
+
+    good = {"rows": 620794, "narratives": 16820, "fields_with_line_breaks": 0, "fields_with_lone_returns": 0,
+            "sampled_rows": 3, "sampled_matching": 3, "sampled_with_returns": 0}
+    folder, _ = _zip_and_pin(tmp_path, text=_june_csv(["one"]))
+    monkeypatch.setattr(voc.job_a, "june_check", lambda *a, **k: good)
+    monkeypatch.setattr(voc.frozen, "differs_from_git", lambda root: [])
+    env = {"VOC_JUNE_DATA_DIR": str(tmp_path)}
+    assert main(["june-check", "--zip", str(next(folder.iterdir()))], env=env, root=REPO) == 0
+    out = capsys.readouterr().out
+    assert "verdict: PASS" in out
+    assert f"gate record: june-check passed for pin {_real_pin_sha()} and code {code_hash(REPO)}" in out
+    monkeypatch.setattr(voc.frozen, "differs_from_git", lambda root: ["src/voc/x.py"])
+    assert main(["june-check", "--zip", str(next(folder.iterdir()))], env=env, root=REPO) == 1
+    out = capsys.readouterr().out
+    assert "gate record" not in out and "1 frozen files differ" in out
