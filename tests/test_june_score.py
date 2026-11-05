@@ -289,3 +289,19 @@ def test_J7_claims_that_resample_other_than_within_products_are_refused():
     claims["bootstrap"] = {**claims["bootstrap"], "within": "Issue"}
     with pytest.raises(JuneScoreError, match="within"):
         score_june(_mixed(), POOL, claims, COST)
+
+
+@pytest.mark.parametrize("change", ["sample", "count"])
+def test_J1_sample_counts_that_do_not_add_up_to_the_june_list_are_refused(tmp_path, change):
+    from voc.june_score import score_june_sample
+
+    root = _project(tmp_path, _mixed())
+    path = root / "splits" / "june" / "manifest.json"
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    if change == "sample":
+        manifest["products"]["Mortgage"]["sample"] += 1
+    else:
+        manifest["lists"]["june"]["count"] += 1
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(JuneScoreError, match="add up to the June list"):
+        score_june_sample(root, _mixed(), COST)

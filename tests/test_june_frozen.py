@@ -13,6 +13,9 @@ from voc.frozen import (FROZEN_PATHS, JuneRunsError, check_runs, code_hash, froz
                         read_runs)
 
 REPO = Path(__file__).resolve().parents[1]
+# The script runs in its own process. It must import this tree's `voc`, not the installed one, which can point at
+# another checkout (the commit gate tests a copy of the staged files).
+SCRIPT_ENV = {**os.environ, "PYTHONPATH": str(REPO / "src")}
 A, B, C = "a" * 64, "b" * 64, "c" * 64
 HEADER = ("# June runs\n\nIntro.\n\n| Date | Kind | June list hash | Code hash | Reason |\n"
           "|---|---|---|---|---|\n")
@@ -98,7 +101,7 @@ def test_J1_the_list_hash_is_the_june_list_and_matches_its_manifest(tmp_path):
 
 def test_J1_the_hash_script_prints_the_two_hashes_only():
     result = subprocess.run([sys.executable, str(REPO / "scripts" / "june_hash.py")], capture_output=True,
-                            text=True, check=True, cwd=REPO)
+                            text=True, check=True, cwd=REPO, env=SCRIPT_ENV)
     lines = result.stdout.splitlines()
     assert lines[0] == f"june list sha256 {list_hash(REPO)}"
     assert lines[1] == f"frozen code sha256 {code_hash(REPO)} over {len(frozen_files(REPO))} files"
@@ -193,7 +196,7 @@ def test_J1_the_hash_script_refuses_files_that_git_does_not_track(tmp_path):
     (root / "config" / "b.toml").unlink()
     assert differs_from_git(root) == ["config/b.toml", "src/voc/stray.py"]
     result = subprocess.run([sys.executable, str(REPO / "scripts" / "june_hash.py"), str(root)],
-                            capture_output=True, text=True)
+                            capture_output=True, text=True, env=SCRIPT_ENV)
     assert result.returncode == 1
     assert "2 frozen files differ from the files git tracks" in result.stdout and "stray" not in result.stdout
 
