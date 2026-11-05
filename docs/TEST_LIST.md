@@ -406,6 +406,10 @@ Written in pull request 7, on 5 November 2026, with fakes for the table, the que
 - the settings refuse an empty or unresolved Key Vault secret and a bad job ID. Strings are checked whole. A list or object in a field gets 400. A finished run names `june-<Job B run ID>`, a stopped one no folder and its reason. IDs above the 64-bit limit get 400. A body over 16 KB gets 413. The Basic scheme and header names are read in any case. The compare's result decides the sign-in. The core imports no service library. A key that cannot be freed, and a failed purge, are logged (J9, J16, review of #91)
 - the Function's files: the extension bundle, the queue encoding, the poison queue's name in the spec, requirements resolved for Linux, 5 tries, one instance of 512 MB per function with none always ready, every secret a Key Vault reference, no Application Insights, two open HTTP functions and one queue function, and pinned requirements (J9)
 
+Written on 6 November 2026, in the fix of the receiver's scope:
+
+- the receiver asks Databricks for one token with the `jobs` scope only, the scope of the robot's secret, with the client's ID and secret in the Basic header and a form body (J13, spike of 6 November, review of #93)
+
 ## The spike for Job A ([spec 004](../specs/004-june-test-and-baselines/spec.md), pull request 5a)
 
 Written on 5 November 2026, on synthetic data only.
