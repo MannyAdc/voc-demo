@@ -134,7 +134,9 @@ def test_J16_the_target_is_the_last_row_with_its_list_s_kind(tmp_path):
 
 
 def test_J16_a_run_log_that_breaks_its_rules_is_refused(tmp_path):
-    with pytest.raises(Exception, match="synthetic"):
+    from voc.frozen import JuneRunsError
+
+    with pytest.raises(JuneRunsError, match="synthetic"):
         _job_a().target(_log(tmp_path, [("2026-11-06 10:00", "synthetic", C, B, "dry run")]), real_list_hash=C)
 
 
@@ -161,7 +163,11 @@ def _zip_and_pin(tmp_path, text=None, name="june.csv", zip_name="june.zip", extr
         archive.writestr(name, data)
         for member, payload in (extra or {}).items():
             archive.writestr(member, payload)
-    rows = len(list(csv.reader(io.StringIO(data.decode("utf-8"))))) - 1
+    previous = csv.field_size_limit(2**31 - 1)  # so a long synthetic field can be counted here
+    try:
+        rows = len(list(csv.reader(io.StringIO(data.decode("utf-8"))))) - 1
+    finally:
+        csv.field_size_limit(previous)
     pin = {"file_name": "june.csv", "size_bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(),
            "rows": rows, "zip_file_name": "june.zip", "zip_size_bytes": path.stat().st_size,
            "zip_sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
@@ -294,10 +300,16 @@ def _files_with_marker(folder):
             and "SYNMARKER" in p.read_text(encoding="utf-8", errors="replace")]
 
 
+def _ran_the_model(project):
+    """dbt compiled and ran the failing model, so a refusal is the model's failure, not an early stop (review of
+    #94, minor 2: with an unknown flag dbt exits 2 having compiled nothing)."""
+    return list((project / "target" / "run").rglob("failing.sql")) != []
+
+
 def test_J5_without_the_flags_a_failing_row_does_leak_so_the_test_can_see_a_leak(tmp_path):
     project = _dbt_project(tmp_path)
     result = _run_dbt(project, [])
-    assert result.returncode != 0
+    assert result.returncode == 1 and _ran_the_model(project)
     assert "SYNMARKER" in result.stdout + result.stderr or _files_with_marker(project)
 
 
@@ -306,7 +318,7 @@ def test_J5_with_the_committed_flags_a_failing_row_leaves_no_text_in_any_output_
     flags = _dbt_command()[0].split("--vars")[0].split()[2:]  # the flags the committed command passes before --vars
     assert flags == ["--log-level", "none", "--log-level-file", "none", "--no-write-json"]
     result = _run_dbt(project, flags)
-    assert result.returncode != 0
+    assert result.returncode == 1 and _ran_the_model(project)
     assert "SYNMARKER" not in result.stdout + result.stderr
     assert _files_with_marker(project) == []
 
@@ -382,3 +394,410 @@ def test_J16_an_expected_cost_that_is_not_two_decimals_is_refused(cost):
     figures = {"complaints": 1, "calls": 1, "worst_case_tokens": 1, "tokens_left_under_cap": 1, "expected_cost_usd": cost}
     with pytest.raises(_job_a().JobAError):
         _job_a().exit_value(target, {"sha256": C, "zip_sha256": C}, figures)
+
+
+# The review of #94 and the owner's decisions of 6 November
+
+
+def test_J8_job_a_has_a_timeout_and_a_failure_notice_set_by_the_owner():
+    job = _job()
+    assert job["timeout_seconds"] == 3600
+    assert set(job["email_notifications"]) == {"on_failure"} and len(job["email_notifications"]["on_failure"]) == 1
+    assert "@" not in (REPO / "cloud" / "job_a.yml").read_text(encoding="utf-8")
+
+
+def test_J8_the_trigger_and_the_notebooks_use_the_same_folders():
+    job_a = _job_a()
+    assert job_a.INCOMING == job_a.VOLUME + "/incoming" and job_a.JUNE_FOLDER == job_a.VOLUME + "/june"
+    assert _job()["trigger"]["file_arrival"]["url"] == job_a.INCOMING + "/"
+
+
+def _root(tmp_path, kinds, list_hash=None, code=None):
+    """A checkout with the synthetic June list and a run log whose rows have these kinds."""
+    from voc.frozen import code_hash
+
+    root = _sample(tmp_path, ROWS)
+    listed = list_hash or hashlib.sha256((root / "splits" / "june" / "june.csv").read_bytes()).hexdigest()
+    code = code or code_hash(root)
+    (root / "runs").mkdir()
+    _log(root / "runs", [(f"2026-11-0{n + 6} 10:00", kind, listed, code, "a reason") for n, kind in enumerate(kinds)])
+    return root
+
+
+def test_J16_the_checked_target_is_the_last_row_when_its_list_and_code_are_this_checkout_s(tmp_path):
+    root = _root(tmp_path, ["real"])
+    target = _job_a().checked_target(root)
+    assert (target.kind, target.entry_kind, target.row) == ("real", "real", 1)
+
+
+@pytest.mark.parametrize("later", ["resume", "reproduction", "second"])
+def test_J1_job_a_refuses_a_later_row_until_it_can_read_the_june_ledger(tmp_path, later):
+    """Owner decision, 6 November (review of #94, minor 4): a later row's figures need the June ledger's use, which
+    Job A cannot read until pull request 6. So it refuses rather than print full-run figures."""
+    root = _root(tmp_path, ["real", later])
+    with pytest.raises(_job_a().JobAError, match="pull request 6"):
+        _job_a().checked_target(root)
+
+
+def test_J16_job_a_refuses_a_row_whose_list_is_not_the_june_list(tmp_path):
+    """Review of #94, minor 6: the list Job A checks must be the list the target row names."""
+    root = _root(tmp_path, ["synthetic"], list_hash=A)
+    with pytest.raises(_job_a().JobAError, match="June list"):
+        _job_a().checked_target(root)
+
+
+def test_J16_job_a_refuses_code_that_is_not_the_row_s_frozen_code(tmp_path):
+    root = _root(tmp_path, ["real"], code=B)
+    with pytest.raises(_job_a().JobAError, match="frozen code"):
+        _job_a().checked_target(root)
+
+
+@pytest.mark.parametrize("notebook, first_use", [("unpack.py", "unpack("), ("job_a.py", "spark.sql(")])
+def test_J16_both_notebooks_check_the_target_before_they_touch_the_june_file(notebook, first_use):
+    """Review of #94, minor 5: `unpack` and `dbt` handle the June file, so the code check runs in `unpack` too."""
+    text = (REPO / "cloud" / "job_a" / notebook).read_text(encoding="utf-8")
+    assert "checked_target(root)" in text and "target_for(" not in text
+    assert text.index("checked_target(root)") < text.index(first_use)
+
+
+def test_J8_the_june_pin_holds_the_narrative_count():
+    pin = _job_a().pin_for(REPO, "real")
+    assert pin["rows"] == 620794 and pin["narratives"] == 16820
+
+
+def test_J8_a_pin_without_a_narrative_count_is_refused(tmp_path, monkeypatch):
+    import voc.datafile
+
+    real = voc.datafile.load_pins(REPO / "config" / "data_files.toml")
+    pins = {**real, "june_2026": {k: v for k, v in real["june_2026"].items() if k != "narratives"}}
+    monkeypatch.setattr(voc.datafile, "load_pins", lambda path: pins)
+    with pytest.raises(_job_a().JobAError, match="narratives"):
+        _job_a().pin_for(REPO, "real")
+
+
+def test_J8_job_a_counts_the_file_as_dbt_reads_it():
+    """Owner decision, 6 November: Job A counts the rows and narratives Spark reads from the file, with dbt's own
+    options, so a multi-line parsing difference cannot pass quietly."""
+    import re
+
+    macro = (REPO / "dbt" / "macros" / "targets.sql").read_text(encoding="utf-8")
+    options = re.search(r"read_files\('\{\{ var\(\"month_file\"\) \| replace\(\"'\", \"''\"\) \}\}', (.*?)\)\n",
+                        macro, re.S).group(1)
+    sql = _job_a().count_sql("/Volumes/x/june/june.csv")
+    assert " ".join(f"read_files('/Volumes/x/june/june.csv', {options})".split()) in " ".join(sql.split())
+    assert "count(*) as rows" in sql and r"`Consumer complaint narrative` rlike '\\S'" in sql
+    with pytest.raises(_job_a().JobAError):
+        _job_a().count_sql("/Volumes/x/june/it's.csv")
+
+
+def test_J8_job_a_refuses_a_row_or_narrative_count_that_is_not_the_pin_s():
+    pin = {"rows": 10, "narratives": 4}
+    _job_a().checked_counts(pin, 10, 4)
+    with pytest.raises(_job_a().JobAError, match="rows") as refused:
+        _job_a().checked_counts(pin, 11, 4)
+    assert "11" in str(refused.value) and "10" in str(refused.value)
+    with pytest.raises(_job_a().JobAError, match="narratives"):
+        _job_a().checked_counts(pin, 10, 3)
+
+
+def test_J8_the_job_a_notebook_checks_the_counts_before_the_sample():
+    text = (REPO / "cloud" / "job_a" / "job_a.py").read_text(encoding="utf-8")
+    assert "checked_counts(" in text and "count_sql(" in text
+    assert text.index("checked_counts(") < text.index("checked_sample(")
+
+
+def _june_csv(narratives):
+    """The CFPB header and one synthetic row per narrative, written by csv as the CFPB writes it."""
+    from voc.repo_checks import CFPB_COLUMNS
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator="\r\n")
+    writer.writerow(CFPB_COLUMNS)
+    for n, narrative in enumerate(narratives):
+        row = ["2026-06-01", "Mortgage", "", "Issue", "", narrative, "", "Company", "NY", "10001", "", "Web",
+               "2026-06-02", "Closed with explanation", "Yes", f"SYN-{n + 1}"]
+        writer.writerow(row)
+    return buffer.getvalue()
+
+
+def test_J8_the_laptop_check_counts_rows_narratives_and_line_breaks(tmp_path):
+    """Owner decision, 6 November: the owner checks the June zip on the laptop as `unpack` will, before the upload.
+    A narrative counts as text where it holds a character other than Java's white space, as Spark's `rlike '\\S'`
+    reads it, so a no-break space counts."""
+    text = _june_csv(["one line", "two\nlines", "a\r\nWindows break", "a lone\rreturn", "", " \t ", " "])
+    folder, pin = _zip_and_pin(tmp_path, text=text)
+    counts = _job_a().june_check(next(folder.iterdir()), pin, REPO / "config" / "labels.toml")
+    assert counts == {"rows": 7, "narratives": 5, "fields_with_line_breaks": 3, "fields_with_lone_returns": 1}
+
+
+def test_J8_the_laptop_check_refuses_as_unpack_does_and_leaves_no_copy(tmp_path, monkeypatch):
+    import tempfile
+
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(scratch))
+    folder, pin = _zip_and_pin(tmp_path, text=_june_csv(["one"]))
+    pin["rows"] += 1
+    with pytest.raises(_job_a().JobAError, match="rows"):
+        _job_a().june_check(next(folder.iterdir()), pin, REPO / "config" / "labels.toml")
+    assert list(scratch.iterdir()) == []
+    _job_a().june_check(next(folder.iterdir()), {**pin, "rows": 1}, REPO / "config" / "labels.toml")
+    assert list(scratch.iterdir()) == []
+
+
+def test_J8_the_laptop_check_prints_counts_and_says_whether_they_match_the_pin():
+    counts = {"rows": 10, "narratives": 4, "fields_with_line_breaks": 2, "fields_with_lone_returns": 0}
+    lines = _job_a().format_june_check(counts, {"rows": 10, "narratives": 4})
+    assert lines == ["rows: 10 (pin: 10, matches)", "narratives: 4 (pin: 4, matches)",
+                     "fields with line breaks: 2", "fields with a lone carriage return: 0"]
+    lines = _job_a().format_june_check({**counts, "narratives": 5}, {"rows": 10, "narratives": 4})
+    assert lines[1] == "narratives: 5 (pin: 4, DIFFERS)"
+
+
+def test_J8_the_cli_has_the_laptop_check(capsys):
+    from voc.cli import main
+
+    with pytest.raises(SystemExit):
+        main(["june-check", "--help"])
+    assert "counts only" in capsys.readouterr().out
+
+
+def test_J8_the_cli_refuses_a_zip_that_is_not_the_june_pin_s_with_fixed_text(tmp_path, capsys):
+    from voc.cli import main
+
+    folder, _ = _zip_and_pin(tmp_path, text=_june_csv([MARKER]))
+    assert main(["june-check", "--zip", str(next(folder.iterdir()))], env={}, root=REPO) == 1
+    out = capsys.readouterr().out
+    assert out.startswith("error: refused, as Job A's unpack would refuse it: the zip is not the pinned zip")
+    assert "SYNMARKER" not in out and str(tmp_path) not in out
+
+
+def test_J12_the_figures_use_the_june_cap_not_the_laptop_s(monkeypatch):
+    """Review of #94, minor 7: the June ledger's cap has its own name in config/budget.toml."""
+    import voc.budget
+
+    from voc.budget import load_config
+
+    assert load_config(REPO)["june_cap_tokens"] == 40_000_000
+    real = voc.budget.load_config
+    monkeypatch.setattr(voc.budget, "load_config", lambda root: {**real(root), "cap_tokens": 7, "june_cap_tokens": 500})
+    assert _job_a().figures(REPO, ROWS, 100)["tokens_left_under_cap"] == 400
+
+
+def test_J12_the_expected_cost_is_rounded_up_to_the_cent():
+    """Review of #94, nit: rounding up never shows less than the expected cost."""
+    from decimal import Decimal
+
+    assert _job_a().expected_cost(Decimal("0.2373"), 2) == "0.01"
+    assert _job_a().expected_cost(Decimal("0.2373"), 2073) == "0.50"
+    assert _job_a().expected_cost(Decimal("0.2373"), 0) == "0.00"
+    assert _job_a().expected_cost(Decimal("1.00"), 1000) == "1.00"
+
+
+HOSTILE = [("SYN-1", f"Mortgage {MARKER}", f"{MARKER} narrative"), ("SYN-2", "Credit card", f"{MARKER} again")]
+
+
+@pytest.mark.parametrize("rows", [HOSTILE, HOSTILE[:1], [HOSTILE[0], ("SYN-3", MARKER, MARKER)],
+                                  [HOSTILE[0], ("SYN-2", "Credit card", MARKER + " changed")]])
+def test_J5_the_sample_check_holds_no_complaint_text(tmp_path, capsys, rows):
+    """Review of #94, minor 8: J5's hostile-text test of `checked_sample`."""
+    root = _sample(tmp_path, HOSTILE)
+    try:
+        result = _job_a().checked_sample(root, rows)
+        text = str(result)
+    except _job_a().JobAError as refused:
+        text = str(refused)
+    out = capsys.readouterr()
+    for each in (text, out.out, out.err):
+        assert "SYNMARKER" not in each
+
+
+def test_J5_the_figures_hold_no_complaint_text(capsys):
+    """Review of #94, minor 8: J5's hostile-text test of `figures`."""
+    figures = _job_a().figures(REPO, HOSTILE, 0)
+    out = capsys.readouterr()
+    assert "SYNMARKER" not in json.dumps(figures) + out.out + out.err
+
+
+@pytest.mark.parametrize("error", ["zlib", "eof", "not_implemented", "runtime"])
+def test_J8_unpack_removes_the_csv_on_any_failure_with_fixed_text(tmp_path, monkeypatch, error):
+    """Review of #94, nit: every failure after the CSV is written removes it, with fixed text."""
+    import zlib
+
+    raised = {"zlib": zlib.error(MARKER), "eof": EOFError(MARKER), "not_implemented": NotImplementedError(MARKER),
+              "runtime": RuntimeError(MARKER)}[error]
+
+    def fail(path, pin):
+        raise raised
+
+    monkeypatch.setattr(_job_a(), "_check_shape", fail)
+    folder, pin = _zip_and_pin(tmp_path)
+    with pytest.raises(_job_a().JobAError) as refused:
+        _unpack(folder, tmp_path / "june", pin)
+    assert "SYNMARKER" not in str(refused.value) and refused.value.__cause__ is None
+    assert refused.value.__suppress_context__
+    assert not (tmp_path / "june" / "june.csv").exists()
+
+
+def test_J8_an_empty_csv_is_refused_with_fixed_text_and_removed(tmp_path):
+    folder, pin = _zip_and_pin(tmp_path, text="")
+    with pytest.raises(_job_a().JobAError, match="empty"):
+        _unpack(folder, tmp_path / "june", pin)
+    assert not (tmp_path / "june" / "june.csv").exists()
+
+
+def test_J8_a_narrative_longer_than_python_s_default_field_limit_is_read(tmp_path):
+    """Review of #94, minor 3: Python's csv refuses a field over 131,072 characters by default. Spark has no such
+    limit, so unpack must not refuse a long narrative that Spark reads."""
+    import csv as csv_module
+
+    before = csv_module.field_size_limit()
+    folder, pin = _zip_and_pin(tmp_path, text=_june_csv(["x" * 200_000]))
+    _unpack(folder, tmp_path / "june", pin)
+    assert csv_module.field_size_limit() == before
+
+
+def test_J8_a_label_with_an_apostrophe_is_refused_since_the_dbt_command_quotes_with_one(tmp_path):
+    """Review of #94, nit: the labels go inside the dbt command's single-quoted `--vars`."""
+    from voc.labels import load_labels
+
+    assert not any("'" in label.name for label in load_labels(REPO / "config" / "labels.toml"))
+    text = (REPO / "config" / "labels.toml").read_text(encoding="utf-8")
+    labels = tmp_path / "labels.toml"
+    labels.write_text(text.replace('name = "Mortgage"', 'name = "Mortgage\'s"'), encoding="utf-8")
+    assert labels.read_text(encoding="utf-8") != text
+    folder, pin = _zip_and_pin(tmp_path)
+    with pytest.raises(_job_a().JobAError, match="apostrophe"):
+        _job_a().unpack(folder, tmp_path / "june", pin, labels)
+
+
+# The failing-row check in Databricks (owner decision, 6 November: a gate before the June upload)
+
+
+def _failcheck():
+    jobs = yaml.safe_load((REPO / "cloud" / "failcheck.yml").read_text(encoding="utf-8"))["resources"]["jobs"]
+    assert list(jobs) == ["voc_june_failcheck"]
+    return jobs["voc_june_failcheck"]
+
+
+def test_J5_the_failcheck_job_runs_job_a_s_dbt_command_on_its_own_rows_then_a_control_without_the_flags():
+    job = _failcheck()
+    tasks = _tasks(job)
+    assert set(tasks) == {"make_rows", "dbt", "dbt_control"} and len(job["tasks"]) == 3
+    assert job["name"] == "voc-june-failcheck" and job["max_concurrent_runs"] == 1 and "trigger" not in job
+    assert job["git_source"] == _job()["git_source"] and job["environments"] == _job()["environments"]
+    assert tasks["make_rows"]["notebook_task"] == {"notebook_path": "cloud/failcheck/make_rows", "source": "GIT"}
+    job_a_dbt = _tasks(_job())["dbt"]["dbt_task"]
+    command = job_a_dbt["commands"][0].replace("tasks.unpack.values.", "tasks.make_rows.values.").replace(
+        '"month": "june_2026"', '"month": "failcheck"')
+    assert tasks["dbt"]["depends_on"] == [{"task_key": "make_rows"}]
+    assert tasks["dbt"]["dbt_task"] == {**job_a_dbt, "commands": [command], "schema": "voc_failcheck"}
+    assert tasks["dbt"]["environment_key"] == _tasks(_job())["dbt"]["environment_key"]
+    control = tasks["dbt_control"]
+    assert control["depends_on"] == [{"task_key": "dbt"}] and control["run_if"] == "ALL_DONE"
+    assert control["dbt_task"]["commands"] == [command.replace(" --log-level none --log-level-file none --no-write-json", "")]
+    assert "--log-level" not in control["dbt_task"]["commands"][0]
+
+
+def test_J5_the_failcheck_rows_hold_a_row_that_unpack_would_refuse(tmp_path):
+    """Its short row makes Spark's FAILFAST parser fail, whose error can quote the row. Job A's unpack refuses it
+    first, so the failcheck writes its rows itself, to reach dbt."""
+    from voc import failcheck
+    from voc.repo_checks import CFPB_COLUMNS
+
+    values = failcheck.write_rows(tmp_path, REPO / "config" / "labels.toml")
+    path = Path(values["month_file"])
+    assert path == tmp_path / "failcheck.csv"
+    records = list(csv.reader(io.StringIO(path.read_text(encoding="utf-8"))))
+    assert records[0] == list(CFPB_COLUMNS)
+    assert [len(r) for r in records[1:]] == [16, 16, 15] and failcheck.MARKER in records[-1][5]
+    assert all(r[-1].startswith("SYN-") for r in records[1:3])
+    assert values["month_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest() and values["month_rows"] == "3"
+    with pytest.raises(_job_a().JobAError, match="fields"):
+        _job_a()._check_shape(path, {"rows": 3})
+
+
+def test_J5_the_failcheck_notebook_writes_its_rows_and_sets_the_values():
+    text = (REPO / "cloud" / "failcheck" / "make_rows.py").read_text(encoding="utf-8")
+    assert "write_rows(FOLDER" in text and "taskValues.set" in text and "print(" not in text
+
+
+def _robot_check():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("robot_check", REPO / "cloud" / "failcheck" / "robot_check.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_J13_the_robot_check_holds_no_secret_and_the_failcheck_s_marker():
+    from voc import failcheck
+
+    check = _robot_check()
+    assert check.CLIENT_ID == "" and check.CLIENT_SECRET == "" and check.RUN_ID == 0
+    assert check.MARKER == failcheck.MARKER
+
+
+def test_J13_the_robot_check_finds_the_marker_in_fields_and_archives():
+    import tarfile
+
+    check = _robot_check()
+    marker = check.MARKER
+    assert check.places({"a": [{"b": "x"}, {"c": f"x {marker} y"}], "d": marker}) == ["$.a[1].c", "$.d"]
+    assert check.places({"a": "nothing"}) == []
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
+        for name, payload in (("target/run.sql", b"select 1"), ("logs/dbt.log", f"error {marker}".encode())):
+            info = tarfile.TarInfo(name)
+            info.size = len(payload)
+            archive.addfile(info, io.BytesIO(payload))
+    assert check.archive_places(buffer.getvalue()) == (2, ["logs/dbt.log"])
+    assert check.archive_places(f"not an archive {marker}".encode()) == (1, ["(the whole download)"])
+
+
+def test_J13_the_robot_check_reports_states_and_places_only(monkeypatch):
+    import tarfile
+
+    check = _robot_check()
+    marker = check.MARKER
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
+        info = tarfile.TarInfo("logs/dbt.log")
+        info.size = len(marker)
+        archive.addfile(info, io.BytesIO(marker.encode()))
+    host = "https://synthetic.example.invalid"
+    replies = {
+        f"{host}/oidc/v1/token": (200, json.dumps({"access_token": "synthetic-token"}).encode()),
+        f"{host}/api/2.2/jobs/runs/get?run_id=99": (200, json.dumps({"tasks": [
+            {"task_key": "dbt_control", "run_id": 13, "state": {"result_state": "FAILED"}},
+            {"task_key": "make_rows", "run_id": 11, "state": {"result_state": "SUCCESS"}},
+            {"task_key": "dbt", "run_id": 12, "state": {"result_state": "FAILED"}}]}).encode()),
+        f"{host}/api/2.2/jobs/runs/get-output?run_id=11": (200, b'{"notebook_output": {}}'),
+        f"{host}/api/2.2/jobs/runs/get-output?run_id=12": (200, json.dumps({"error": "dbt failed", "dbt_output": {
+            "artifacts_link": f"{host}/a12", "artifacts_headers": {}}}).encode()),
+        f"{host}/api/2.2/jobs/runs/get-output?run_id=13": (200, json.dumps({"error": f"dbt failed {marker}", "dbt_output": {
+            "artifacts_link": f"{host}/a13", "artifacts_headers": {}}}).encode()),
+        f"{host}/a12": (200, b"\x1f\x8b not really"),
+        f"{host}/a13": (200, buffer.getvalue()),
+        f"{host}/api/2.0/sql/history/queries": (403, json.dumps({"error_code": "PERMISSION_DENIED",
+                                                                 "message": marker}).encode()),
+    }
+    calls = []
+
+    def fake(url, token=None, data=None, headers=None):
+        calls.append(url)
+        return replies[url]
+
+    monkeypatch.setattr(check, "_call", fake)
+    lines = check.report("synthetic.example.invalid", "synthetic-id", "syn-" + "secret", 99)
+    text = "\n".join(lines)
+    assert marker not in text and "syn-secret" not in text and "synthetic-token" not in text
+    assert lines.index("make_rows: SUCCESS, marker in the output: nowhere") == 0
+    assert set(calls) == set(replies)
+    assert "make_rows: SUCCESS, marker in the output: nowhere" in lines
+    assert "dbt: FAILED, marker in the output: nowhere" in lines
+    assert "dbt: artifacts: 1 files, marker in: nowhere" in lines
+    assert "dbt_control: FAILED, marker in the output: $.error" in lines
+    assert "dbt_control: artifacts: 1 files, marker in: logs/dbt.log" in lines
+    assert "query history: HTTP 403, PERMISSION_DENIED" in lines
