@@ -5,6 +5,7 @@ import csv
 import hashlib
 import io
 import json
+import shutil
 import subprocess
 import sys
 import zipfile
@@ -35,8 +36,12 @@ def test_J16_the_seed_copy_is_a_byte_copy_of_the_july_test_list_and_alone_in_its
     assert sorted(p.name for p in (REPO / "dbt" / "seeds").iterdir()) == ["test_list.csv"]
 
 
-def test_J16_the_seed_copy_is_tracked_by_git():
-    ignored = subprocess.run(["git", "-C", str(REPO), "check-ignore", "-q", "dbt/seeds/test_list.csv"])
+def test_J16_the_seed_copy_is_tracked_by_git(tmp_path):
+    # The commit gate tests a copy of the staged files that is not a git checkout, so the repo's .gitignore is
+    # checked in a new temp repo, as test_databricks.py does.
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    shutil.copy(REPO / ".gitignore", tmp_path / ".gitignore")
+    ignored = subprocess.run(["git", "check-ignore", "-q", "dbt/seeds/test_list.csv"], cwd=tmp_path)
     assert ignored.returncode == 1
 
 

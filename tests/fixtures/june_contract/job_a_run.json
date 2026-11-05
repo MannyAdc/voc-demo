@@ -8,6 +8,14 @@
   },
   "tasks": [
     {
+      "run_id": 900009,
+      "task_key": "unpack"
+    },
+    {
+      "run_id": 900010,
+      "task_key": "dbt"
+    },
+    {
       "run_id": 900011,
       "task_key": "job_a"
     }

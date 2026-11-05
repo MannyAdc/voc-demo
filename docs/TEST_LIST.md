@@ -393,6 +393,15 @@ Written in pull request 4, on 5 November 2026, on synthetic items only.
 - the July development labels are frozen too. The hash script refuses when the frozen files differ from the tracked ones, naming only their number, and says so on stderr where git is missing. The tracked-files test fails in CI instead of skipping. The committed run log is put through its rules. A row the reader would skip is refused. The CI step runs the check on the June log in `repo-checks`, and the check names the log it checks (J1, review of #89)
 - `runs/JUNE_RUNS.md` starts with its header and no row. A row is found by its two hashes. A malformed row, a second first row for a list, a later row with no first row or no reason, a synthetic row naming the real June list, and a real row naming another list are refused. CI checks that the file only grows (J1)
 
+## The spike for Job A ([spec 004](../specs/004-june-test-and-baselines/spec.md), pull request 5a)
+
+Written on 5 November 2026, on synthetic data only.
+
+- `dbt/seeds/test_list.csv` is a byte copy of `splits/test.csv`, alone in its folder and tracked by git, and git ignores every other seed file (owner decision of 5 November)
+- the Databricks target refuses inside a git checkout, a `.git` folder or a worktree's `.git` file in the build root or above it, and a work folder made by the build scripts is not a checkout and still builds. A DuckDB build reads the July test list from `splits/test.csv` and no seed. These replace the old rule that the repo has no seed folder (B14, B17, owner decision of 5 November)
+- the spike's job has the three tasks `unpack`, `dbt` and `job_a` in order, from the public repo's `main`, with one run at a time. The dbt command takes `unpack`'s task values, and the trigger watches only its scratch folder. No June or July data and no secret is named (J8, J16)
+- `unpack` writes the one synthetic CSV and gives dbt its values. It refuses anything but one zip with one flat CSV, and any row that is not synthetic. The exit value holds counts only. The spike zip is made from the synthetic dbt fixture only (J5, J8)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
