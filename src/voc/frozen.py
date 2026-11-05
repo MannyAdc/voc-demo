@@ -3,19 +3,23 @@
 The frozen code's hash is one SHA-256 over every file in the places the spec names, each as its path and its
 own SHA-256, in path order. It is computed from the files themselves, not from git, because Databricks'
 serverless compute may have no git command. `.gitattributes` keeps every frozen file in LF, so a Windows and a
-Linux checkout give the same bytes, and a test checks that the files hashed are exactly the tracked ones.
+Linux checkout give the same bytes, and a test checks that the files hashed are exactly the tracked ones. The
+July development labels are frozen too, because Job B checks the refit TF-IDF + LR against them (J7). Where git
+is present, `scripts/june_hash.py` refuses when the files on disk differ from the tracked ones.
 
 `runs/JUNE_RUNS.md` only grows. Each row names the June list's hash and the frozen code's hash, and its kind:
 `real` or `synthetic` for a list's first entry, then `reproduction`, `resume` or `second`, each with its reason.
+A row the reader cannot read is refused, never skipped.
 """
 import hashlib
 import json
 import re
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
 FROZEN_PATHS = ("src", "config", "dbt", "splits", "pyproject.toml", "uv.lock", "cloud",
-                ".github/workflows/june_approval.yml", "scripts/june_hash.py")
+                ".github/workflows/june_approval.yml", "scripts/june_hash.py", "results/eval/v1_dev.csv")
 # Made by Python, pytest and dbt while they run, and never tracked.
 SKIP_DIRS = {"__pycache__", ".pytest_cache", "target", "logs", "dbt_packages"}
 SKIP_SUFFIXES = (".pyc", ".duckdb", ".wal")
@@ -24,6 +28,9 @@ JUNE_LIST = Path("splits") / "june"
 FIRST_KINDS = ("real", "synthetic")
 LATER_KINDS = ("reproduction", "resume", "second")
 HASH = re.compile(r"^[0-9a-f]{64}$")
+DATE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$")
+HEADER_ROW = "| Date | Kind | June list hash | Code hash | Reason |"
+SEPARATOR = "|---|---|---|---|---|"
 
 
 class JuneRunsError(ValueError):
@@ -65,6 +72,21 @@ def code_hash(root):
     return digest.hexdigest()
 
 
+def differs_from_git(root):
+    """The frozen files on disk that git does not track, and the tracked ones missing from disk. None where `root`
+    is not the top of a git checkout, or git is missing, so there is nothing to compare."""
+    root = Path(root).resolve()
+    try:
+        top = subprocess.run(["git", "-C", str(root), "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+        if top.returncode != 0 or Path(top.stdout.strip()).resolve() != root:
+            return None
+        tracked = subprocess.run(["git", "-C", str(root), "ls-files", "--", *FROZEN_PATHS], capture_output=True,
+                                 text=True, check=True).stdout.split()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return sorted(set(frozen_files(root)) ^ set(tracked))
+
+
 def list_hash(root):
     """The SHA-256 of `splits/june/june.csv`, refused unless it matches the June manifest."""
     folder = Path(root) / JUNE_LIST
@@ -79,12 +101,16 @@ def read_runs(path):
     """The entries of the June run log, refused if a row is malformed."""
     entries = []
     for number, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), start=1):
-        if not line.startswith("|") or line.startswith("| Date ") or line.startswith("|---"):
+        if line in (HEADER_ROW, SEPARATOR) or not line.lstrip().startswith("|"):
             continue
+        if line != line.lstrip():
+            raise JuneRunsError(f"line {number} of the June run log starts with a space")
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
         if len(cells) != 5:
             raise JuneRunsError(f"line {number} of the June run log has {len(cells)} columns, not 5")
         entry = Entry(*cells)
+        if not DATE.match(entry.date):
+            raise JuneRunsError(f"line {number} of the June run log has no date of the form 2026-11-07 10:00")
         if entry.kind not in FIRST_KINDS + LATER_KINDS:
             raise JuneRunsError(f"line {number} of the June run log has an unknown kind")
         if not (HASH.match(entry.list_hash) and HASH.match(entry.code_hash)):

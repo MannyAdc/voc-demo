@@ -1,6 +1,7 @@
-# Spec 004, J7: the June claims, fixed before any June label is scored (J1). The June scoring code reads its
-# numbers from here, and a test checks them against the spec. They are not changed after the June entry in
-# runs/JUNE_RUNS.md.
+# Spec 004, J7: the June claims, fixed before any June label is scored (J1). The June scoring code reads the
+# threshold, the draws, the seed and `within` from here, and refuses any `within` but "Product". A test checks
+# the model and the prompt against config/prompts/v1.toml, and Job B checks them again (pull request 6). They are
+# not changed after the June entry in runs/JUNE_RUNS.md.
 model = "claude-haiku-5-5"
 prompt = "v1"
 weights = "June's own pool after copies are removed, from splits/june/manifest.json"
@@ -17,6 +18,8 @@ threshold = 0.9
 beats = "the 95% interval of the point difference is wholly above zero"
 does_not_beat = "the point difference is zero or below"
 inconclusive = "otherwise"
+# Owner decision, 5 November: when both tests above apply, "does not beat" wins.
+rule = "a win needs both a point difference above zero and a 95% interval wholly above zero. When the point difference is zero or below, the verdict is does not beat, whatever the interval"
 
 [secondary]
 comparison = "the LLM against TF-IDF + LR at the same coverage, as B10 defines it, with its interval and no verdict"

@@ -388,6 +388,9 @@ Written in pull request 4, on 5 November 2026, on synthetic items only.
 - a run stopped by the spend limit is not scored. A pool Product missing from the items, and a repeated complaint, are refused (J1, J7)
 - the frozen code's hash covers exactly the places J1 names (`cloud/` for the job definitions), changes with any frozen file or file name and with nothing else, is the same in any folder, and hashes exactly the tracked files, none with Windows line endings (J1)
 - the June list's hash is the SHA-256 of `splits/june/june.csv`, refused unless it matches the manifest. `scripts/june_hash.py` prints the two hashes and a count only (J1)
+- the sample is scored only when every complaint of the June list has exactly one result, Product by Product, with the pool and the list from `splits/june/`. A list that does not match its manifest, a pool or sample counts that do not add up, a complaint outside the list, synthetic items, and a Product outside the pool are refused (J1, J7, review of #89)
+- a win needs a point difference above zero, whatever the interval (J7, owner decision of 5 November). The scores do not depend on the order of the items. The bootstrap draws 2,000 times within each Product, one draw per Product of its own size, and claims that resample otherwise are refused (J7, review of #89)
+- the July development labels are frozen too. The hash script refuses when the frozen files differ from the tracked ones, naming only their number, and says so on stderr where git is missing. The tracked-files test fails in CI instead of skipping. The committed run log is put through its rules. A row the reader would skip is refused. The CI step runs the check on the June log in `repo-checks`, and the check names the log it checks (J1, review of #89)
 - `runs/JUNE_RUNS.md` starts with its header and no row. A row is found by its two hashes. A malformed row, a second first row for a list, a later row with no first row or no reason, a synthetic row naming the real June list, and a real row naming another list are refused. CI checks that the file only grows (J1)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
@@ -410,6 +413,8 @@ Added on 4 November 2026, revised twice the same day. Each piece adds its tests 
 - recordings, the ledger and the fitted model never leave the volume, and complaint text never reaches GitHub (J4)
 - the read guard protects `VOC_JUNE_DATA_DIR`, the raw volume, all Actions run logs, and the approval workflow's start (J6, J14): written in pull request 2, listed under Hooks. The June tables are named in pull request 5, and Claude never runs the Databricks CLI at all
 - the laptop path and the cloud path give the same July results on mock or replay (J8)
+- a Databricks Git folder or a job's Git source gives the same bytes for every frozen file, `.py` files it may treat as notebooks included, so Job B's code hash matches the laptop's (J1, pull request 6, review of #89)
+- a stopped run writes no per-complaint file and no figure, and a resumed run calls the model only for complaints with no recorded answer (J1, pull request 6, owner decision of 5 November)
 
 ## Later features (listed now, specified later)
 
