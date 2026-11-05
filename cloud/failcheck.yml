@@ -1,0 +1,55 @@
+# Spec 004, J5 and J13: the failing-row check, a gate before the June upload (owner decision, 6 November). The owner
+# makes this job in the job page's YAML editor, puts the SQL warehouse's ID in place of its text, runs it once with
+# "Run now", reads its output as the robot (cloud/failcheck/robot_check.py), and deletes it after
+# (cloud/failcheck/STEPS.md). It has no trigger and reads no upload: `make_rows` writes synthetic rows, one of them
+# made to fail Spark's parser. `dbt` runs Job A's own dbt command on them, so it must leave the marker in no output.
+# `dbt_control` runs the same command without the quiet flags, so its output should hold the marker, which shows the
+# check can see a leak. Both dbt tasks are expected to fail.
+resources:
+  jobs:
+    voc_june_failcheck:
+      name: voc-june-failcheck
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      git_source:
+        git_url: https://github.com/MannyAdc/voc-demo
+        git_provider: gitHub
+        git_branch: main
+      tasks:
+        - task_key: make_rows
+          notebook_task:
+            notebook_path: cloud/failcheck/make_rows
+            source: GIT
+        - task_key: dbt
+          depends_on:
+            - task_key: make_rows
+          environment_key: dbt
+          dbt_task:
+            project_directory: dbt
+            # Job A's command, with this job's task values and month. Its quiet flags are the ones under test.
+            commands:
+              - 'dbt build --log-level none --log-level-file none --no-write-json --vars ''{"month": "failcheck", "month_file": "{{tasks.make_rows.values.month_file}}", "month_sha256": "{{tasks.make_rows.values.month_sha256}}", "month_rows": {{tasks.make_rows.values.month_rows}}, "labels": {{tasks.make_rows.values.labels}}, "final": false}'''
+            catalog: workspace
+            schema: voc_failcheck
+            warehouse_id: the SQL warehouse's ID, set by the owner
+            source: GIT
+        - task_key: dbt_control
+          depends_on:
+            - task_key: dbt
+          run_if: ALL_DONE
+          environment_key: dbt
+          dbt_task:
+            project_directory: dbt
+            # The control: the same command without the quiet flags.
+            commands:
+              - 'dbt build --vars ''{"month": "failcheck", "month_file": "{{tasks.make_rows.values.month_file}}", "month_sha256": "{{tasks.make_rows.values.month_sha256}}", "month_rows": {{tasks.make_rows.values.month_rows}}, "labels": {{tasks.make_rows.values.labels}}, "final": false}'''
+            catalog: workspace
+            schema: voc_failcheck
+            warehouse_id: the SQL warehouse's ID, set by the owner
+            source: GIT
+      environments:
+        - environment_key: dbt
+          spec:
+            environment_version: "2"
+            dependencies:
+              - dbt-databricks==1.13.0

@@ -375,7 +375,7 @@ def test_J8_the_figures_follow_the_test_run_s_worst_case_and_july_s_cost(tmp_pat
     assert figures["complaints"] == figures["calls"] == 2
     assert figures["worst_case_tokens"] == per_try * (MAX_RETRIES + 1)
     assert figures["tokens_left_under_cap"] == load_config(REPO)["cap_tokens"] - 1000
-    assert figures["expected_cost_usd"] == "0.00"  # 2 calls at $0.2373 per 1,000
+    assert figures["expected_cost_usd"] == "0.01"  # 2 calls at $0.2373 per 1,000, rounded up
 
 
 def test_J16_the_exit_value_has_exactly_the_contract_s_keys_and_types():

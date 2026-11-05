@@ -36,6 +36,9 @@ size_bytes = 219864163
 sha256 = "4adca715ede2ac1780bf72d3735b34fb7d88616f2aa9468ea41357f414180850"
 # The row count, from the owner's check of the file on 4 November 2026 (spec 004, "What we know").
 rows = 620794
+# The complaints with a narrative, from the same check. Job A refuses unless Spark reads these two counts from the
+# file (owner decision, 6 November). The owner's `voc june-check` confirms both before the upload.
+narratives = 16820
 # The zip as the archive serves it, which goes to the Databricks volume (pull request 5). Its size is from the
 # owner's check on 4 November, its SHA-256 from the owner's `Get-FileHash` on 5 November 2026.
 zip_file_name = "CCDB_Export_19_June_2026.zip"

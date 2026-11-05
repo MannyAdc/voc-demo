@@ -1839,3 +1839,22 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
   - `job_a` checks that its checkout's code hash is the target row's before anything else. That check is in the notebook, which no unit test runs, so the dry run is its first check.
   - The figures use the test run's worst case and the July test run's $0.2373 per 1,000 complaints, and the June ledger's cap from `config/budget.toml`, with nothing used yet.
 - 03:31 Green changes written: `src/voc/job_a.py`, `cloud/job_a.yml`, `cloud/job_a/`, J8's 5b, J16, the test list and this log.
+- 03:49 Review findings on #94 posted as a comment (time from GitHub): 1 serious, 8 minor, 8 nits. Claude stopped the overnight build there, as the owner asked, and did not start pull request 8.
+- Owner decisions, on the morning of 6 November:
+  - 1. The failing-row run in Databricks, as a gate before the real June upload, with the steps, including how the owner checks as the robot.
+  - 2. The owner's check of the June zip on the laptop before the upload, including line breaks inside narratives. Also Job A checks that its row count and narrative count on Databricks equal the laptop's counts for the pinned file, and refuses on any mismatch, so a multi-line parsing difference can never pass quietly.
+  - 3. Job A refuses a resume run until pull request 6 can read the June ledger.
+  - Fix all the other minors and nits in #93 and #94, then start pull request 8.
+- Fix round on #94:
+  - Decision 1: `cloud/failcheck.yml`, `cloud/failcheck/make_rows.py`, `cloud/failcheck/robot_check.py`, `cloud/failcheck/STEPS.md` and `src/voc/failcheck.py`. Claude's choice: the job writes its own rows rather than take an upload, since Job A's `unpack` would refuse the failing row first. So no zip is made. The failing row is one field short, the kind of row Spark's FAILFAST error can quote. The control run without the flags shows whether the robot's check can see a leak at all.
+  - Decision 2: `voc june-check`, and `job_a`'s count check. The narrative count, 16,820 from the owner's check of 4 November, is now in the pin. A narrative counts where it holds a character other than Java's white space, as Spark's regular expression `\S` reads it.
+  - Decision 3: a later row is refused in both notebooks. Claude's choice: all three later kinds, not only "resume", since a reproduction's and a second run's figures need the ledger's use too.
+  - Minors 2, 5, 6, 7 and 8, and the nits, as the test list says. Minor 3 is the owner's laptop check, plus the field limit raised. Minor 9 is decision 2.
+  - The nit on the YAML wrapper: the spike's job was saved in the editor with its `resources.jobs` wrapper, so that is confirmed.
+  - The nit on the spike's numbers: they came from the job's run pages in the owner's browser and the owner's screenshots, so no command produced them.
+- Red commit `609d74e`: only `tests/test_job_a.py`, through the gate.
+- AI mistake in the red tests, caught by running them on the code before the red commit: the test helper that counts a zip's rows used Python's csv at its default field limit, so the long-field test failed in the helper. Fixed before the commit.
+- AI mistake: Claude's new test file at first held a raw control byte where an escaped one was meant, so pytest could not read it. Caught by the test run. Fixed before the commit.
+- AI mistake: Claude's new docstring in `src/voc/job_a.py` named dbt's variables flag, which B17's test allows only in the `voc dbt` wrapper. Caught by the full test run before the green commit. Reworded.
+- In the green commit, one test changes: the figures test's cost for 2 complaints is now "0.01", not "0.00", since the cost is rounded up.
+- 09:12 Fix changes written: Job A's logic and notebooks, the failcheck, `voc june-check`, the pin's narrative count, the June cap, J8, J12, the owner's steps, Known limits, the test list and this log.

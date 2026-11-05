@@ -426,6 +426,19 @@ Written on 6 November 2026, on synthetic data only.
 - `unpack` refuses a zip that is not the pinned zip, a second file, a member that is not the pinned CSV, a CSV that is not the pinned CSV (and removes it), a header that is not the CFPB header, a malformed row, and a row count that is not the pin's, and prints nothing (J5, J8)
 - `job_a` refuses rows that are not exactly the frozen June list with their hashes. Its figures follow the test run's worst case and July's cost per 1,000, and its exit value has exactly the contract's keys, with a two-place cost (J8, J16)
 
+Written on 6 November 2026, in the fix round of #94, from its review and the owner's decisions:
+
+- both notebooks first refuse a later row of the run log, a row whose list is not `splits/june/june.csv`, and code that is not the row's frozen code, before they touch the June file (J1, J16, owner decision 3, minors 5 and 6)
+- the June pin holds the narrative count. `job_a` counts the rows and narratives Spark reads, with dbt's own read options, and refuses any count that is not the pin's (J8, owner decision 2)
+- `voc june-check` runs `unpack` on a copy in a temporary folder, leaves nothing behind, counts the rows, the narratives with text as Spark's `rlike` reads it, and the fields with a line break or a lone carriage return, says whether each count matches the pin, and refuses with unpack's fixed text (J8, owner decision 2)
+- the figures use the June ledger's own cap, `june_cap_tokens`, and round the cost up to the cent (J12, minor 7)
+- `checked_sample` and `figures` hold no complaint text in any refusal, value or print (J5, minor 8)
+- `unpack` removes the CSV on any failure with fixed text, refuses an empty CSV, reads a field longer than Python's default limit, and refuses a label holding an apostrophe (J8, minor 3 and nits)
+- the dbt flags tests check that dbt ran the failing model, so an early stop cannot pass for a quiet failure (J5, minor 2)
+- Job A stops a run after an hour and has one failure notice, with no address in the repo (J8)
+- the failcheck job runs Job A's own dbt command on its own rows, and the same command without the flags as a control after it, with no trigger. Its rows hold a short row that `unpack` would refuse (J5, owner decision 1)
+- the robot's check holds no secret, finds the marker in nested fields and in downloaded archives, and reports task keys, states, places and status codes only (J5, J13, owner decision 1)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

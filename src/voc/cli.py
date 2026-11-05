@@ -62,6 +62,30 @@ def _data_hash(config, root, args):
     print(f"{path.name}  {path.stat().st_size} bytes  sha256 {sha256_of(path)}")
 
 
+def _june_check(config, root, args):
+    """Spec 004, J8 (owner decision, 6 November): the owner's check of the June zip before the upload. It runs
+    Job A's `unpack` on a copy in a temporary folder and prints the file's counts only."""
+    from voc.job_a import JobAError, format_june_check, june_check, pin_for
+
+    pin = pin_for(root, "real")
+    if args.zip:
+        path = Path(args.zip)
+    else:
+        folder = config.get(MONTHS[JUNE])
+        if not folder:
+            raise DataFileError(f"{MONTHS[JUNE]} is not set, in the environment or in .env")
+        path = Path(folder) / pin["zip_file_name"]
+    if not path.is_file():
+        raise DataFileError("the June zip is not there: give its path with --zip")
+    try:
+        counts = june_check(path, pin, Path(root) / "config" / "labels.toml")
+    except JobAError as err:
+        raise DataFileError(f"refused, as Job A's unpack would refuse it: {err}") from None
+    print("the June zip passes unpack's checks")
+    for line in format_june_check(counts, pin):
+        print(line)
+
+
 def _load(config, root, args):
     if args.month == JUNE:
         raise DataFileError(JUNE_REFUSED)
@@ -347,7 +371,7 @@ def _evaluate(config, root, args):
     print(format_evaluation(evaluate(root, args.set, args.prompt, args.note), root))
 
 
-COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample,
+COMMANDS = {"data-hash": _data_hash, "june-check": _june_check, "profile": _profile, "load": _load, "sample": _sample,
             "validation-lists": _validation_lists, "consistency": _consistency,
             ("review", "sheet"): _review_sheet, ("review", "import"): _review_import,
             ("review", "summary"): _review_summary,
@@ -366,6 +390,9 @@ def main(argv=None, env=None, root=None):
     sub = parser.add_subparsers(dest="command", required=True)
     dh = sub.add_parser("data-hash", help="print the export file's name, size and SHA-256")
     dh.add_argument("month", nargs="?", default=PIN, choices=sorted(MONTHS), help="which month's folder to read")
+    jc_text = "spec 004: check the June zip as Job A's unpack will, in a temporary folder, printing counts only"
+    jc = sub.add_parser("june-check", help=jc_text, description=jc_text)
+    jc.add_argument("--zip", help="the June zip's path, if it is not in the June data folder")
     p = sub.add_parser("profile", help="print data facts as counts (B22)")
     p.add_argument("--write", help="also write the facts as JSON to this file")
     sm = sub.add_parser("sample", help="build and freeze the samples from the staged July rows (B9, B16, B25), or "
