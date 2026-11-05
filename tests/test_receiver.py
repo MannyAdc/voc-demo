@@ -439,3 +439,140 @@ def test_J9_the_functions_requirements_are_pinned():
     lines = [line for line in (RECEIVER / "requirements.txt").read_text(encoding="utf-8").splitlines()
              if line and not line.startswith("#")]
     assert lines and all(re.fullmatch(r"[A-Za-z0-9_.-]+==[0-9][0-9A-Za-z.]*", line) for line in lines)
+
+
+# The review of #91
+
+
+def _env(**changes):
+    env = {"VOC_BASIC_USER": "voc-databricks", "VOC_BASIC_PASSWORD": _password(),
+           "VOC_HMAC_SECRET": _secret().decode("utf-8"), "VOC_JOB_A_JOB_ID": str(JOB_A)}
+    env.update(changes)
+    return env
+
+
+def test_J9_settings_load_from_the_environment():
+    settings = _core().load_settings(_env())
+    assert settings.job_a_job_id == JOB_A and settings.hmac_secret == _secret()
+
+
+@pytest.mark.parametrize("name", ["VOC_BASIC_USER", "VOC_BASIC_PASSWORD", "VOC_HMAC_SECRET"])
+@pytest.mark.parametrize("value", ["", "@Microsoft.KeyVault(VaultName=voc-june-kv;SecretName=voc-basic-user)"])
+def test_J9_an_empty_or_unresolved_key_vault_secret_stops_the_receiver(name, value):
+    with pytest.raises(_core().ReceiverError):
+        _core().load_settings(_env(**{name: value}))
+
+
+@pytest.mark.parametrize("value", ["", "x", "0", "9223372036854775808"])
+def test_J9_a_job_a_job_id_that_is_not_an_id_stops_the_receiver(value):
+    with pytest.raises(_core().ReceiverError):
+        _core().load_settings(_env(VOC_JOB_A_JOB_ID=value))
+
+
+def test_J9_the_extension_bundle_and_the_queue_encoding_are_set():
+    host = json.loads((RECEIVER / "host.json").read_text(encoding="utf-8"))
+    assert host["extensionBundle"]["id"] == "Microsoft.Azure.Functions.ExtensionBundle"
+    assert host["extensionBundle"]["version"].startswith("[4.")
+    assert host["extensions"]["queues"]["messageEncoding"] == "none"
+
+
+def test_J9_the_failure_queue_is_the_work_queue_s_poison_queue_named_in_the_spec():
+    text = (RECEIVER / "function_app.py").read_text(encoding="utf-8")
+    assert 'QUEUE = "june-events"' in text
+    spec = (REPO / "specs" / "004-june-test-and-baselines" / "spec.md").read_text(encoding="utf-8")
+    assert "`june-events-poison`" in spec
+
+
+def test_J16_a_timestamp_with_a_trailing_newline_gets_401():
+    raw = _canonical(_fixture("result_message.json")["body"])
+    timestamp = "1793000000\n"
+    headers = {"X-Voc-Timestamp": timestamp, "X-Voc-Signature": _signature(timestamp, raw)}
+    assert _core().handle_http("result", headers, raw, _settings(), Store(), Queue(), NOW, Log()).status == 401
+
+
+@pytest.mark.parametrize("change", [
+    lambda b: b.update(result_state=["SUCCESS"]), lambda b: b["job_b_exit"].update(kind={"a": 1}),
+    lambda b: b["job_b_exit"].update(entry_kind=["real"]), lambda b: b["job_b_exit"].update(stop_reason=[None]),
+    lambda b: b["job_b_exit"].update(results_folder="june-900002\n"),
+    lambda b: b["job_b_exit"].update(results_folder="june-900003"),
+    lambda b: b["job_b_exit"].update(stopped=True, stop_reason="spend_limit"),
+    lambda b: b["job_b_exit"].update(results_folder=None),
+    lambda b: b["job_b_exit"].pop("labelled"), lambda b: b.update(job_b_run_id=2 ** 63),
+])
+def test_J16_a_signed_result_with_a_bad_field_gets_400_not_500(change):
+    body = _fixture("result_message.json")["body"]
+    change(body)
+    assert _result(body=body)[0].status == 400
+
+
+def test_J16_a_stopped_run_has_no_results_folder():
+    body = _fixture("result_message.json")["body"]
+    body["job_b_exit"] = {**body["job_b_exit"], "stopped": True, "stop_reason": "quota", "labelled": 1500,
+                          "results_folder": None}
+    assert _result(body=body)[0].status == 202
+
+
+def test_J16_ids_above_the_64_bit_limit_get_400():
+    body = _fixture("databricks_webhook.json")
+    body["run"]["run_id"] = 2 ** 63
+    assert _webhook(body=body)[0].status == 400
+
+
+@pytest.mark.parametrize("route", ["databricks", "result"])
+def test_J9_a_body_over_16_kb_gets_413_before_any_check(route):
+    reply = _core().handle_http(route, {}, b"x" * (16 * 1024 + 1), _settings(), Untouchable(), Untouchable(), NOW,
+                                Log())
+    assert reply.status == 413
+
+
+def test_J9_the_basic_scheme_and_the_header_name_are_read_in_any_case():
+    raw = f"voc-databricks:{_password()}".encode("utf-8")
+    headers = {"authorization": "basic " + base64.b64encode(raw).decode("ascii")}
+    assert _webhook(headers=headers)[0].status == 202
+
+
+def test_J9_the_compare_result_decides_the_sign_in(monkeypatch):
+    """If the compare's result were ignored, a wrong password would pass when the compare says no."""
+    core = _core()
+    assert _webhook(headers=_basic(password="wrong"))[0].status == 401
+    monkeypatch.setattr(core.hmac, "compare_digest", lambda a, b: True)
+    assert _webhook(headers=_basic(password="wrong"))[0].status == 202
+    assert _result(signature="sha256=" + "0" * 64)[0].status == 202
+
+
+def test_J9_the_core_imports_no_service_library_so_the_reply_needs_no_service():
+    import importlib
+    import sys
+
+    for name in ("receiver_core", "receiver_adapters", "azure", "azure.functions"):
+        sys.modules.pop(name, None)
+    importlib.import_module("receiver_core")
+    assert "receiver_adapters" not in sys.modules and "azure" not in sys.modules
+    reply, store, queue, _ = _webhook()
+    assert reply.status == 202 and queue.messages == [{"kind": "databricks", "job_a_run_id": 900001}]
+
+
+class StuckStore(Store):
+    def remove_key(self, key):
+        raise OSError("synthetic table error")
+
+
+def test_J9_a_key_that_cannot_be_freed_is_logged():
+    reply, _, _, log = _webhook(store=StuckStore(), queue=Queue(fail=True))
+    assert reply.status == 500 and ("webhook_key_not_freed", {}) in log.entries
+
+
+class FailingPurge(Store):
+    def purge_older_than_days(self, days):
+        raise OSError("synthetic table error")
+
+
+def test_J9_a_failed_purge_is_logged_and_never_blocks_the_work():
+    log = Log()
+    _core().purge_safely(FailingPurge(), 30, log)
+    assert ("purge_failed", {}) in log.entries
+
+
+def test_J9_the_functions_requirements_are_resolved_for_linux():
+    text = (RECEIVER / "requirements.txt").read_text(encoding="utf-8")
+    assert "for Linux" in text.splitlines()[0]
