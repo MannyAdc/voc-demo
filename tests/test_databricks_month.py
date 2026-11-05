@@ -345,3 +345,41 @@ def test_B21_the_owner_steps_delete_the_work_folders():
     section = pipeline[pipeline.index("## The real exports on Databricks"):]
     section = section[:section.index("\n## ", 1)]
     assert "Remove-Item -Recurse -Force $julyWork, $augustWork" in section
+
+
+# Owner decision of 5 November (spec 004, pull request 5a): with the test list seed copy committed in the repo,
+# the Databricks target refuses inside any git checkout, in place of the old rule that the repo has no seed
+# folder. A checkout is found by a `.git` folder or file in the build root or any folder above it, with no git
+# command. The build scripts' work folders are never inside one, so the normal build still runs.
+
+
+def test_B14_the_databricks_target_refuses_inside_a_git_checkout(tmp_path, connected, fake_dbt, capsys):
+    checkout = tmp_path / "checkout"
+    (checkout / ".git").mkdir(parents=True)
+    _script().prepare(checkout / "work")
+    assert _build(checkout / "work") == 1
+    assert "git checkout" in capsys.readouterr().out and fake_dbt.calls == []
+
+
+def test_B14_a_worktrees_git_file_counts_as_a_checkout(tmp_path, connected, fake_dbt, capsys):
+    checkout = tmp_path / "worktree"
+    checkout.mkdir()
+    (checkout / ".git").write_text("gitdir: elsewhere\n", encoding="utf-8")
+    _script().prepare(checkout / "work")
+    assert _build(checkout / "work") == 1
+    assert "git checkout" in capsys.readouterr().out and fake_dbt.calls == []
+
+
+def test_B14_a_work_folder_made_by_the_build_scripts_is_not_a_checkout_and_still_builds(work, connected, fake_dbt,
+                                                                                      fake_query):
+    assert not dbt_run.in_git_checkout(work)
+    assert _build(work) == 0 and len(fake_dbt.calls) == 1
+
+
+def test_B17_a_duckdb_build_reads_the_july_test_list_from_splits_and_no_seed():
+    import yaml
+
+    project = yaml.safe_load((REPO / "dbt" / "dbt_project.yml").read_text(encoding="utf-8"))
+    assert project["seeds"]["voc"]["+enabled"] == "{{ target.type == 'databricks' }}"
+    macro = (REPO / "dbt" / "macros" / "test_set.sql").read_text(encoding="utf-8")
+    assert "~ '/../splits/test.csv'" in macro and "{%- if target.type == 'databricks' -%}" in macro
