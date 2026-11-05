@@ -1821,3 +1821,14 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - 02:35 Work start: the receiver's token scope, branch `fix/receiver-scope`, worktree `../voc-demo-scope`.
 - Red commit `faebe0d`: only `tests/test_receiver.py`, through the gate.
 - 02:56 Green change written: the `jobs` scope in `receiver/receiver_adapters.py`, J13, the test list and this log.
+- 03:08 Review findings on #93 posted as a comment (time from GitHub): no serious finding, 6 minor, 4 nits.
+- Owner decision, on the morning of 6 November: fix all the minors and nits of #93.
+- Correction to the line above that begins "AI mistake: the receiver of #91". It should read: the receiver of #91 asked Databricks for an `all-apis` token, a request the robot's `jobs`-scoped secret cannot get (nit 1 of the review). The line is kept as written.
+- Correction to the line above on the spike's scope finding. It says Databricks' SDK "asks for `all-apis` by default". The spike showed only that the SDK's request named `all-apis` and was refused. That this is the SDK's default was not checked (minor 6 of the review).
+- Fix round on #93:
+  - Known limits: the reader's credential is not yet tried, the robot's was, and its scope for `runs/get` and `run-now` is checked in the dry run (minor 1, minor 5).
+  - J13: "If the secret stops working" in place of "If it cannot get one", and a lifetime of 30 days, as every credential (minor 2, minor 3).
+  - J10: both jobs of the approval workflow ask for the `jobs` scope only (minor 4).
+  - The test checks the Basic header and the form content type too (nit 3). Its line in the test list is under its own date (nit 2). The adapter's comment is wrapped (nit 4).
+- Test commit `ae56930`, through the gate: only `tests/test_receiver.py`. Its new checks pass on the code already, since they pin what the code does.
+- 08:43 Fix changes written: J10, J13, Known limits, the test list, the adapter's comment and this log.

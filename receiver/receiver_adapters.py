@@ -115,7 +115,8 @@ class DatabricksClient:
 
     def _token(self):
         basic = base64.b64encode(f"{self.client_id}:{self.client_secret}".encode("utf-8")).decode("ascii")
-        # The robot's secret carries the `jobs` scope only, and a request for `all-apis` is refused (spike, 6 November).
+        # The robot's secret carries the `jobs` scope only.
+        # A request for `all-apis` is refused (spike, 6 November).
         data = urllib.parse.urlencode({"grant_type": "client_credentials", "scope": "jobs"}).encode("ascii")
         _, body = _request(f"https://{self.host}/oidc/v1/token", data=data, method="POST",
                            headers={"Authorization": f"Basic {basic}",
