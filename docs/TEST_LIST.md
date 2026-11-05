@@ -405,6 +405,7 @@ Written in pull request 7, on 5 November 2026, with fakes for the table, the que
 - a result message is stored and starts nothing. Logs hold event names, IDs, statuses and counts only (J9)
 - the settings refuse an empty or unresolved Key Vault secret and a bad job ID. Strings are checked whole. A list or object in a field gets 400. A finished run names `june-<Job B run ID>`, a stopped one no folder and its reason. IDs above the 64-bit limit get 400. A body over 16 KB gets 413. The Basic scheme and header names are read in any case. The compare's result decides the sign-in. The core imports no service library. A key that cannot be freed, and a failed purge, are logged (J9, J16, review of #91)
 - the Function's files: the extension bundle, the queue encoding, the poison queue's name in the spec, requirements resolved for Linux, 5 tries, one instance of 512 MB per function with none always ready, every secret a Key Vault reference, no Application Insights, two open HTTP functions and one queue function, and pinned requirements (J9)
+
 ## The spike for Job A ([spec 004](../specs/004-june-test-and-baselines/spec.md), pull request 5a)
 
 Written on 5 November 2026, on synthetic data only.
@@ -412,7 +413,9 @@ Written on 5 November 2026, on synthetic data only.
 - `dbt/seeds/test_list.csv` is a byte copy of `splits/test.csv`, alone in its folder and tracked by git, and git ignores every other seed file (owner decision of 5 November)
 - the Databricks target refuses inside a git checkout, a `.git` folder or a worktree's `.git` file in the build root or above it, and a work folder made by the build scripts is not a checkout and still builds. A DuckDB build reads the July test list from `splits/test.csv` and no seed. These replace the old rule that the repo has no seed folder (B14, B17, owner decision of 5 November)
 - the spike's job has the three tasks `unpack`, `dbt` and `job_a` in order, from the public repo's `main`, with one run at a time. The dbt command takes `unpack`'s task values, and the trigger watches only its scratch folder. No June or July data and no secret is named (J8, J16)
-- `unpack` writes the one synthetic CSV and gives dbt its values. It refuses anything but one zip with one flat CSV, and any row that is not synthetic. The exit value holds counts only. The spike zip is made from the synthetic dbt fixture only (J5, J8)
+- `unpack` writes the one synthetic CSV and gives dbt its values. It refuses anything but one zip with one flat CSV, any row that is not synthetic, a short row, and a CSV over its size cap. The exit value holds counts only. The spike zip is made from the synthetic dbt fixture only (J5, J8)
+- the spike's trigger is paused until the owner unpauses it and watches exactly its folder. Its dbt command passes `final` off. Its dbt task runs with the repo's `dbt-databricks` pin. No label holds a quote. A copy of the project with no `.git` refuses the Databricks target too (B14, B17, J8, review of #92)
+- planned for 5b, a hard requirement before any real data runs: a row made to fail Job A's dbt task leaves no complaint text in any task output, log or error that the robot or the reader can read (J5, J13, owner decision of 5 November)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 

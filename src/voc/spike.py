@@ -1,4 +1,5 @@
-"""Spec 004, pull request 5a: the spike's logic, on synthetic data only.
+"""Spec 004, pull request 5a: the spike's logic, on synthetic rows. The dbt task also builds the committed test list
+seed, the July test list's complaint IDs and content hashes, as Job A will, and no complaint text.
 
 The spike's job (`cloud/spike/job_spike.json`) runs three tasks, `unpack`, `dbt` and `job_a`, as Job A will, to
 answer the open points before the real Job A is built (5b). `unpack` takes the one zip from the scratch folder,
@@ -15,6 +16,7 @@ from pathlib import Path
 from voc.labels import load_labels
 
 CONTRACT = "voc-june-spike"
+MAX_BYTES = 5 * 1024 * 1024  # the synthetic fixture is far smaller
 SYNTHETIC = "SYN-"
 
 
@@ -41,9 +43,11 @@ def unpack(incoming, out, labels_file):
     path = _one_zip(incoming)
     with zipfile.ZipFile(path) as archive:
         name = _one_csv(archive)
+        if archive.getinfo(name).file_size > MAX_BYTES:
+            raise SpikeError(f"the CSV is over the spike's size cap of {MAX_BYTES} bytes")
         data = archive.read(name)
     rows = list(csv.DictReader(io.StringIO(data.decode("utf-8"))))
-    if not rows or any(not row.get("Complaint ID", "").startswith(SYNTHETIC) for row in rows):
+    if not rows or any(not (row.get("Complaint ID") or "").startswith(SYNTHETIC) for row in rows):
         raise SpikeError("the spike takes synthetic rows only, and every complaint ID must start with SYN-")
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)

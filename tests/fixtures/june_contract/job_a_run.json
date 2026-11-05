@@ -1,5 +1,6 @@
 {
   "job_id": 800001,
+  "repair_history": [],
   "run_id": 900001,
   "start_time": 1792999000000,
   "state": {
@@ -9,14 +10,26 @@
   "tasks": [
     {
       "run_id": 900009,
+      "state": {
+        "life_cycle_state": "TERMINATED",
+        "result_state": "SUCCESS"
+      },
       "task_key": "unpack"
     },
     {
       "run_id": 900010,
+      "state": {
+        "life_cycle_state": "TERMINATED",
+        "result_state": "SUCCESS"
+      },
       "task_key": "dbt"
     },
     {
       "run_id": 900011,
+      "state": {
+        "life_cycle_state": "TERMINATED",
+        "result_state": "SUCCESS"
+      },
       "task_key": "job_a"
     }
   ]

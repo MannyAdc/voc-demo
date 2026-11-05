@@ -25,8 +25,10 @@ vars:
   month_rows: 0
 
 # T021: on the Databricks target, two synthetic seeds stand in for the staged DuckDB table and for
-# splits/test.csv. `scripts/databricks_fixture_build.py` writes them into a work folder, never into
-# this repo, and `voc dbt build --target databricks` refuses unless every complaint ID is SYN-.
+# splits/test.csv. `scripts/databricks_fixture_build.py` writes them into a work folder, and `voc dbt build
+# --target databricks` refuses unless every complaint ID is SYN-. One seed is in this repo, by owner decision of
+# 5 November (spec 004): seeds/test_list.csv, a byte copy of splits/test.csv, for Job A's dbt task. `voc dbt
+# build --target databricks` refuses in the project itself or inside a git checkout.
 # They are off on the local DuckDB target.
 seeds:
   voc:

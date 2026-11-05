@@ -7,7 +7,7 @@
     "git_branch": "main"
   },
   "trigger": {
-    "pause_status": "UNPAUSED",
+    "pause_status": "PAUSED",
     "file_arrival": {
       "url": "/Volumes/workspace/default/voc_raw/spike_incoming/"
     }
@@ -30,13 +30,14 @@
       "dbt_task": {
         "project_directory": "dbt",
         "commands": [
-          "dbt build --vars '{\"month\": \"spike\", \"month_file\": \"{{tasks.unpack.values.month_file}}\", \"month_sha256\": \"{{tasks.unpack.values.month_sha256}}\", \"month_rows\": {{tasks.unpack.values.month_rows}}, \"labels\": {{tasks.unpack.values.labels}}}'"
+          "dbt build --vars '{\"month\": \"spike\", \"month_file\": \"{{tasks.unpack.values.month_file}}\", \"month_sha256\": \"{{tasks.unpack.values.month_sha256}}\", \"month_rows\": {{tasks.unpack.values.month_rows}}, \"labels\": {{tasks.unpack.values.labels}}, \"final\": false}'"
         ],
         "catalog": "workspace",
         "schema": "voc_spike",
         "warehouse_id": "the SQL warehouse's ID, set by the owner",
         "source": "GIT"
-      }
+      },
+      "environment_key": "dbt"
     },
     {
       "task_key": "job_a",
@@ -48,6 +49,17 @@
       "notebook_task": {
         "notebook_path": "cloud/spike/job_a",
         "source": "GIT"
+      }
+    }
+  ],
+  "environments": [
+    {
+      "environment_key": "dbt",
+      "spec": {
+        "client": "2",
+        "dependencies": [
+          "dbt-databricks==1.13.0"
+        ]
       }
     }
   ]

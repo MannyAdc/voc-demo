@@ -33,12 +33,12 @@ def _job():
 # The committed seed copy (owner decision, 5 November)
 
 
-def test_J16_the_seed_copy_is_a_byte_copy_of_the_july_test_list_and_alone_in_its_folder():
+def test_T021_J8_the_seed_copy_is_a_byte_copy_of_the_july_test_list_and_alone_in_its_folder():
     assert (REPO / "dbt" / "seeds" / "test_list.csv").read_bytes() == (REPO / "splits" / "test.csv").read_bytes()
     assert sorted(p.name for p in (REPO / "dbt" / "seeds").iterdir()) == ["test_list.csv"]
 
 
-def test_J16_the_seed_copy_is_tracked_by_git(tmp_path):
+def test_T021_J8_the_seed_copy_is_not_ignored_by_git(tmp_path):
     # The commit gate tests a copy of the staged files that is not a git checkout, so the repo's .gitignore is
     # checked in a new temp repo, as test_databricks.py does.
     git_helper.run(["git", "init", "-q", str(tmp_path)], check=True)
@@ -71,11 +71,6 @@ def test_J8_the_dbt_command_takes_unpacks_task_values():
     command = next(t for t in _job()["tasks"] if t["task_key"] == "dbt")["dbt_task"]["commands"][-1]
     for name in ("month_file", "month_sha256", "month_rows", "labels"):
         assert "{{tasks.unpack.values." + name + "}}" in command
-
-
-def test_J8_the_spike_trigger_watches_only_its_scratch_folder():
-    trigger = _job()["trigger"]["file_arrival"]
-    assert trigger["url"].endswith("/spike_incoming/")
 
 
 def test_J8_the_spike_names_no_june_or_july_data_and_holds_no_secret():
