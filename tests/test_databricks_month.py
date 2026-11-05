@@ -383,3 +383,13 @@ def test_B17_a_duckdb_build_reads_the_july_test_list_from_splits_and_no_seed():
     assert project["seeds"]["voc"]["+enabled"] == "{{ target.type == 'databricks' }}"
     macro = (REPO / "dbt" / "macros" / "test_set.sql").read_text(encoding="utf-8")
     assert "~ '/../splits/test.csv'" in macro and "{%- if target.type == 'databricks' -%}" in macro
+
+
+def test_B14_a_copy_of_the_project_with_no_git_still_refuses(tmp_path, connected, fake_dbt, capsys):
+    """Review of #92: a copy of the repo with no `.git`, such as the commit gate's copy or a downloaded zip, holds
+    `pyproject.toml`, which a build script's work folder never does."""
+    copy = tmp_path / "copy"
+    _script().prepare(copy)
+    (copy / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
+    assert _build(copy) == 1
+    assert "project" in capsys.readouterr().out and fake_dbt.calls == []
