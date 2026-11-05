@@ -571,3 +571,32 @@ def test_J9_a_failed_purge_is_logged_and_never_blocks_the_work():
 def test_J9_the_functions_requirements_are_resolved_for_linux():
     text = (RECEIVER / "requirements.txt").read_text(encoding="utf-8")
     assert "for Linux" in text.splitlines()[0]
+
+
+# The spike of pull request 5a (6 November): the robot's OAuth secret is made with the `jobs` scope only, and a
+# token request for `all-apis` is refused ("Scopes 'all-apis' are not assigned to the client").
+
+
+def test_J13_the_receiver_asks_databricks_for_the_jobs_scope_only(monkeypatch):
+    import base64
+    import urllib.parse
+
+    import receiver_adapters
+
+    sent = []
+
+    def fake(url, data=None, headers=None, method="GET"):
+        sent.append((url, data, headers, method))
+        return 200, b'{"access_token": "synthetic"}'
+
+    monkeypatch.setattr(receiver_adapters, "_request", fake)
+    secret = "syn-" + "secret"
+    client = receiver_adapters.DatabricksClient("synthetic.example.invalid", "synthetic-id", secret)
+    assert client._token() == "synthetic"
+    assert len(sent) == 1
+    url, data, headers, method = sent[0]
+    assert url == "https://synthetic.example.invalid/oidc/v1/token" and method == "POST"
+    assert urllib.parse.parse_qs(data.decode("ascii")) == {"grant_type": ["client_credentials"], "scope": ["jobs"]}
+    # Review of #93, nit 3: the client's ID and secret go in the Basic header, and the body is a form.
+    assert headers == {"Authorization": "Basic " + base64.b64encode(f"synthetic-id:{secret}".encode()).decode(),
+                       "Content-Type": "application/x-www-form-urlencoded"}
