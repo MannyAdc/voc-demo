@@ -68,7 +68,11 @@ def test_J1_the_code_hash_is_the_same_in_any_folder(tmp_path):
 
 
 def test_J1_the_frozen_files_are_exactly_the_tracked_ones():
-    """On a clean checkout, so the laptop and Databricks' Git folder hash the same files."""
+    """On a clean checkout, so the laptop and Databricks' Git folder hash the same files. The commit gate tests a
+    copy of the staged files that is not a git checkout, so there it is skipped, and CI runs it."""
+    inside = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+    if inside.returncode != 0 or Path(inside.stdout.strip()).resolve() != REPO:
+        pytest.skip("not a git checkout of this repo, so there are no tracked files to compare (CI runs this)")
     tracked = subprocess.run(["git", "-C", str(REPO), "ls-files", "--", *FROZEN_PATHS], capture_output=True,
                              text=True, check=True).stdout.split()
     assert frozen_files(REPO) == sorted(tracked)

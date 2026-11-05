@@ -40,7 +40,7 @@ def test_J7_the_claims_are_frozen_before_any_june_label_is_scored():
     claims = load_claims(REPO)
     with open(REPO / "config" / "prompts" / "v1.toml", "rb") as f:
         prompt = tomllib.load(f)
-    assert claims["model"] == "claude-haiku-5-5" == prompt["model"] and claims["prompt"] == "v1"
+    assert claims["model"] == "claude-haiku-5-5" == prompt["settings"]["model"] and claims["prompt"] == "v1"
     assert claims["primary"]["threshold"] == 0.9 == hybrid.THRESHOLD
     assert claims["bootstrap"] == {"resamples": 2000, "seed": 0, "within": "Product"}
     assert claims["primary"]["beats"] == "the 95% interval of the point difference is wholly above zero"
