@@ -1778,3 +1778,5 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - Claude's check: `uv pip compile` for Linux gave the same pins as the first run, which had no platform set, so only the file's first line changed.
 - Claude's choices, for the owner to see: the new behaviour is in new tests, so the gate's rule on red commits holds. The fixes add `load_settings`, `secret` and `purge_safely` to the core, where the tests reach them. The adapters' secrets go through the same check.
 - 16:39 Fixes written: the settings, the bundle, whole-string checks, the type-safe checks, Job B's folder, the 64-bit limit, the body cap, the case-insensitive scheme, lazy clients, the purge, the stuck key, the identity's roles, Linux requirements, the spec, the test list and the log.
+- Nit 18 of the review of #91 (bullets with no local time) is not fixed: the times of those steps were not noted when they happened, and CLAUDE.md forbids inventing or tidying an entry. Later entries give a time where one was noted.
+- The first merge verdict run on #91 stopped on one failed `gh api` read of a commit. A second run, a minute later, read it.
