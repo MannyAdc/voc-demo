@@ -393,6 +393,18 @@ Written in pull request 4, on 5 November 2026, on synthetic items only.
 - the July development labels are frozen too. The hash script refuses when the frozen files differ from the tracked ones, naming only their number, and says so on stderr where git is missing. The tracked-files test fails in CI instead of skipping. The committed run log is put through its rules. A row the reader would skip is refused. The CI step runs the check on the June log in `repo-checks`, and the check names the log it checks (J1, review of #89)
 - `runs/JUNE_RUNS.md` starts with its header and no row. A row is found by its two hashes. A malformed row, a second first row for a list, a later row with no first row or no reason, a synthetic row naming the real June list, and a real row naming another list are refused. CI checks that the file only grows (J1)
 
+## The receiver ([spec 004](../specs/004-june-test-and-baselines/spec.md), J9, J16)
+
+Written in pull request 7, on 5 November 2026, with fakes for the table, the queue, Databricks and GitHub.
+
+- the webhook fixture of J16 is accepted and queued. A bad sign-in gets 401 and nothing is queued. A malformed body after a good sign-in gets 400. Another event or job gets 202 and is dropped. A duplicate gets 202 and is dropped. A failed queue put gets 500 and frees its key (J9, J16)
+- the sign-in and the signature are compared in constant time (J9)
+- the result fixture with a good signature is accepted. A bad or uppercase signature, one over other bytes, and a timestamp more than 5 minutes old, more than 1 minute ahead or not in Unix seconds get 401. Bytes that are not the compact sorted form, and a malformed body, get 400. Header names are read in any case (J9, J16)
+- the HTTP function gets no Databricks or GitHub client, so it replies before any work (J9)
+- the queue function asks Databricks for the run, dispatches with the contract's body, skips a run of another job or one that did not succeed, skips a dispatch already made by its whole run name only, takes 200 or 204 as success and raises on any other reply or failure, so the queue retries it (J9, J16)
+- a result message is stored and starts nothing. Logs hold event names, IDs, statuses and counts only (J9)
+- the settings refuse an empty or unresolved Key Vault secret and a bad job ID. Strings are checked whole. A list or object in a field gets 400. A finished run names `june-<Job B run ID>`, a stopped one no folder and its reason. IDs above the 64-bit limit get 400. A body over 16 KB gets 413. The Basic scheme and header names are read in any case. The compare's result decides the sign-in. The core imports no service library. A key that cannot be freed, and a failed purge, are logged (J9, J16, review of #91)
+- the Function's files: the extension bundle, the queue encoding, the poison queue's name in the spec, requirements resolved for Linux, 5 tries, one instance of 512 MB per function with none always ready, every secret a Key Vault reference, no Application Insights, two open HTTP functions and one queue function, and pinned requirements (J9)
 ## The spike for Job A ([spec 004](../specs/004-june-test-and-baselines/spec.md), pull request 5a)
 
 Written on 5 November 2026, on synthetic data only.
@@ -413,7 +425,7 @@ Added on 4 November 2026, revised twice the same day. Each piece adds its tests 
 - the primary claim is the hybrid against the LLM alone at full coverage, with the verdict words fixed, and the secondary comparison carries no verdict (J7): written in pull request 4, listed above
 - every job and workflow entry point, on hostile synthetic text, prints only IDs, labels, reasons, positions, decisions and counts, with no traceback (J5)
 - Job A checks the pin and the sample's hashes, computes the approval figures and makes no model call (J8)
-- the receiver refuses a bad sign-in or signature and an old or future timestamp with 401, replies 202 before the work, drops a duplicate, confirms a Databricks run by asking Databricks, skips a dispatch already made, and moves a message to the failure queue after 5 tries (J9)
+- the receiver refuses a bad sign-in or signature and an old or future timestamp with 401, replies 202 before the work, drops a duplicate, confirms a Databricks run by asking Databricks, skips a dispatch already made, and moves a message to the failure queue after 5 tries (J9): written in pull request 7, listed above
 - the receiver's settings: maximum instance count 1 for each function, and only Key Vault references in its app settings (J9)
 - the approval workflow's YAML: started only by `workflow_dispatch` on `main`, its run ID input checked and passed through `env:`, permissions per job, the secrets only in the `june-run` job, one run at a time, actions pinned by SHA. A test can check only the YAML (J10)
 - Job B checks the run entry's hashes and the June and July hashes, refuses unless the workspace header names the cloud workspace and the cap covers the whole worst case, stops on a 400 "usage limits" answer with no retry, is one task that refuses an approval for another Job A run or one already used, and writes only the two results files to the results volume (J11, J12)
