@@ -5,6 +5,7 @@ import csv
 import hashlib
 import io
 import json
+import re
 import os
 import shutil
 import subprocess
@@ -1494,3 +1495,146 @@ def test_J8_the_owner_s_steps_make_the_sample_before_june_check():
     spec = (REPO / "specs" / "004-june-test-and-baselines" / "spec.md").read_text(encoding="utf-8")
     steps = spec.split("## Owner's setup steps")[1]
     assert steps.index("`voc sample june`") < steps.index("run `voc june-check`")
+
+
+
+# The minors of the last review of #94 (owner decision: fixed with no further review round)
+
+
+def test_J1_the_cli_records_a_fail_too_with_its_time_in_utc(tmp_path, capsys, monkeypatch):
+    """Minors 2 and 3 of the last review: a fail can be recorded, and both gates print their time in UTC."""
+    import voc.frozen
+    import voc.job_a
+    from voc.cli import main
+    from voc.frozen import code_hash
+
+    bad = {"rows": 620794, "narratives": 16821, "fields_with_line_breaks": 0, "fields_with_lone_returns": 0,
+           "sampled_rows": 3, "sampled_matching": 3, "sampled_with_returns": 0}
+    folder, _ = _zip_and_pin(tmp_path, text=_june_csv(["one"]))
+    monkeypatch.setattr(voc.job_a, "june_check", lambda *a, **k: bad)
+    monkeypatch.setattr(voc.frozen, "changed_frozen", lambda root: [])
+    env = {"VOC_JUNE_DATA_DIR": str(tmp_path)}
+    assert main(["june-check", "--zip", str(next(folder.iterdir()))], env=env, root=REPO) == 1
+    out = capsys.readouterr().out
+    assert "verdict: FAIL" in out and re.search(r"ran at: \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC", out)
+    assert f"gate record: june-check failed for pin {_real_pin_sha()} and code {code_hash(REPO)}" in out
+
+
+def test_J13_the_robot_check_prints_its_time_and_code_hash_even_when_it_stops_early(monkeypatch):
+    """Minor 3 of the last review: a task listed twice still gives what a fail's row needs."""
+    check = _robot_check()
+    again = {"task_key": "dbt", "run_id": 15, "state": {"result_state": "FAILED"}}
+    lines = _report(check, monkeypatch, _reached(check, extra_tasks=(again,)))
+    assert f"code sha256: {B}" in lines
+    assert re.fullmatch(r"checked at: \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC", lines[-2])
+    assert lines[-1].startswith("verdict: FAIL")
+
+
+def test_J13_the_run_file_rule_needs_a_folder_boundary(monkeypatch):
+    """Nit 1 of the last review."""
+    check = _robot_check()
+    lines = _report(check, monkeypatch, _reached(check, quiet_artifacts=_archive(
+        "tar.gz", {"x" + RUN_FILE.split("/", 1)[1]: b"create table x as select 1"})))
+    assert lines[-1].startswith("verdict: FAIL") and "reached the failing model" in lines[-1]
+
+
+def _repo(tmp_path, files, attributes="* text=auto eol=lf\n"):
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / ".gitattributes").write_bytes(attributes.encode())
+    for rel, data in files.items():
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_bytes(data)
+    _git(root, "init", "-q")
+    _git(root, "config", "core.autocrlf", "true")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "first")
+    return root
+
+
+def test_J1_a_frozen_file_rewritten_with_other_line_endings_counts_as_changed(tmp_path):
+    """Minor 4 of the last review: git may hide a change that the code hash sees."""
+    from voc.frozen import changed_frozen
+
+    root = _repo(tmp_path, {"src/a.py": b"x = 1\n", "src/b.py": b"y = 1\n"})
+    assert changed_frozen(root) == []
+    (root / "src" / "a.py").write_bytes(b"x = 1\r\n")
+    assert changed_frozen(root) == ["src/a.py"]
+
+
+def test_J1_a_frozen_file_hidden_from_git_s_status_still_counts(tmp_path):
+    from voc.frozen import changed_frozen
+
+    root = _repo(tmp_path, {"src/a.py": b"x = 1\n"})
+    _git(root, "update-index", "--skip-worktree", "src/a.py")
+    (root / "src" / "a.py").write_bytes(b"x = 2\n")
+    assert changed_frozen(root) == ["src/a.py"]
+
+
+def test_J1_a_frozen_file_with_a_space_in_its_name_is_not_a_change(tmp_path):
+    """Minor 5 of the last review."""
+    from voc.frozen import changed_frozen, differs_from_git
+
+    root = _repo(tmp_path, {"src/a b.py": b"x = 1\n"})
+    assert differs_from_git(root) == [] and changed_frozen(root) == []
+
+
+def test_J1_a_run_log_row_with_an_impossible_date_is_refused(tmp_path):
+    """Minor 6 of the last review."""
+    from voc.frozen import JuneRunsError, read_runs
+
+    with pytest.raises(JuneRunsError):
+        read_runs(_log(tmp_path, [("2026-11-07 99:99", "real", A, B, "the June run")]))
+
+
+def test_J1_the_hash_script_prints_the_hashes_on_a_git_checkout_with_both_gates_open(tmp_path, capsys):
+    """Minor 7 of the last review: the path the owner uses, on a real checkout."""
+    from voc.frozen import code_hash, frozen_files, list_hash
+
+    root = _root(tmp_path, ["synthetic"], gates=())
+    _git(root, "init", "-q")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "first")
+    code = code_hash(root)
+    _gate_rows(root, [("2026-11-05 09:00", gate, "pass", _real_pin_sha(), code, "a pass")
+                      for gate in ("june-check", "failcheck")])
+    assert _hash_script().main([str(root)]) == 0
+    assert capsys.readouterr().out.splitlines() == [
+        f"june list sha256 {list_hash(root)}", f"frozen code sha256 {code} over {len(frozen_files(root))} files"]
+    (root / "src").mkdir(exist_ok=True)
+    (root / "src" / "new.py").write_text("x = 1\n", encoding="utf-8")
+    assert _hash_script().main([str(root)]) == 1
+
+
+def test_J5_unpack_s_refusal_carries_no_exception_even_when_the_removal_fails(tmp_path, monkeypatch):
+    """Nit 6 of the last review."""
+    import zlib
+
+    def fail(path, pin):
+        raise zlib.error(MARKER)
+
+    def cannot_remove(self, missing_ok=False):
+        raise OSError("cannot remove")
+
+    monkeypatch.setattr(_job_a(), "_check_shape", fail)
+    folder, pin = _zip_and_pin(tmp_path)
+    monkeypatch.setattr(Path, "unlink", cannot_remove)
+    with pytest.raises(_job_a().JobAError) as refused:
+        _unpack(folder, tmp_path / "june", pin)
+    assert refused.value.__context__ is None and "SYNMARKER" not in str(refused.value)
+
+
+def test_J8_the_steps_give_the_verdict_s_rules_and_the_dates_in_utc():
+    """Minors 1 and 2 of the last review, and nit 3."""
+    steps = (REPO / "cloud" / "failcheck" / "STEPS.md").read_text(encoding="utf-8")
+    for words in ("reached the failing model", "narrowed to `jobs`", "no other task", "UTC",
+                  "config/data_files.toml"):
+        assert words in steps, words
+    gates = (REPO / "runs" / "JUNE_GATES.md").read_text(encoding="utf-8")
+    assert "UTC" in gates
+
+
+def test_J1_the_spec_says_how_the_dry_run_gets_its_hashes():
+    """Minor 8 of the last review: pull request 9 must give the dry run's entry its own way to its hashes."""
+    spec = (REPO / "specs" / "004-june-test-and-baselines" / "spec.md").read_text(encoding="utf-8")
+    assert "the dry run's own way to its entry's hashes" in spec
