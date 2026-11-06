@@ -233,3 +233,217 @@ def test_J9_the_live_check_signs_as_the_receiver_checks():
     expected = hmac.new(SECRET.encode(), b"1793000000." + raw, hashlib.sha256).hexdigest()
     assert headers["X-Voc-Signature"] == f"sha256={expected}" and headers["X-Voc-Timestamp"] == "1793000000"
     assert raw == _core().canonical(json.loads(raw))
+
+
+
+# The review of #96 and the owner's decisions of 7 November
+
+
+def _function_app(monkeypatch):
+    """receiver/function_app.py, imported with a small stand-in for `azure.functions`, which is not installed here."""
+    import importlib
+    import sys
+    import types
+
+    functions = types.ModuleType("azure.functions")
+
+    class FunctionApp:
+        def __init__(self, http_auth_level=None):
+            pass
+
+        def route(self, **kwargs):
+            return lambda f: f
+
+        def queue_trigger(self, **kwargs):
+            return lambda f: f
+
+    class HttpResponse:
+        def __init__(self, status_code=200, headers=None):
+            self.status_code, self.headers = status_code, dict(headers or {})
+
+    functions.FunctionApp, functions.HttpResponse = FunctionApp, HttpResponse
+    functions.AuthLevel = types.SimpleNamespace(ANONYMOUS="anonymous")
+    functions.HttpRequest = functions.QueueMessage = object
+    azure = types.ModuleType("azure")
+    azure.functions = functions
+    monkeypatch.setitem(sys.modules, "azure", azure)
+    monkeypatch.setitem(sys.modules, "azure.functions", functions)
+    monkeypatch.delitem(sys.modules, "function_app", raising=False)
+    return importlib.import_module("function_app")
+
+
+class Message:
+    def __init__(self, body):
+        self.body = body
+
+    def get_body(self):
+        return self.body
+
+
+def test_J9_the_real_queue_function_stores_a_result_message_with_no_client_settings(monkeypatch):
+    """Nit 3 of the review: the wiring of function_app.py itself, not only Lazy."""
+    app = _function_app(monkeypatch)
+    store = Store()
+    monkeypatch.setattr(app, "_store", lambda: store)
+    monkeypatch.setattr(app, "_settings", lambda: _core().Settings(basic_user="u", basic_password="syn-" + "p",
+                                                                    hmac_secret=SECRET.encode(), job_a_job_id=1))
+    monkeypatch.setattr(app, "purge_safely", lambda *a, **k: None)
+    monkeypatch.setattr(app.DatabricksClient, "from_env", classmethod(lambda cls: _never()))
+    monkeypatch.setattr(app.GitHubClient, "from_env", classmethod(lambda cls: _never()))
+    body = json.loads((REPO / "tests" / "fixtures" / "june_contract" / "result_message.json").read_text(
+        encoding="utf-8"))["body"]
+    app.work(Message(json.dumps({"kind": "result", **body}).encode()))
+    assert list(store.results) == ["600001:1"]
+
+
+def test_J9_every_reply_names_the_deployed_commit(monkeypatch, tmp_path):
+    """Minor 1 of the review: the deploy's check tells the new code from the old by the commit it reports."""
+    core = _core()
+    commit = "a" * 40
+    (tmp_path / "BUILD_COMMIT").write_text(commit, encoding="utf-8")
+    assert core.build_commit(tmp_path) == commit
+    (tmp_path / "BUILD_COMMIT").write_text("not a commit", encoding="utf-8")
+    assert core.build_commit(tmp_path) == "unknown"
+    assert core.build_commit(tmp_path / "missing") == "unknown"
+    app = _function_app(monkeypatch)
+    monkeypatch.setattr(app, "BUILD", commit)
+    monkeypatch.setattr(app, "handle_http", lambda *a, **k: core.Reply(401))
+    monkeypatch.setattr(app, "_settings", lambda: None)
+    monkeypatch.setattr(app, "_store", lambda: None)
+    monkeypatch.setattr(app, "_queue", lambda: None)
+
+    class Request:
+        headers = {}
+
+        def get_body(self):
+            return b""
+
+    reply = app.result(Request())
+    assert reply.status_code == 401 and reply.headers == {"X-Voc-Build": commit}
+
+
+def test_J9_lazy_survives_copy_and_a_maker_that_returns_none():
+    """Nit 2 of the review."""
+    import copy
+
+    core = _core()
+    calls = []
+
+    def make():
+        calls.append(1)
+        return None
+
+    lazy = core.Lazy(make)
+    copy.copy(lazy)
+    with pytest.raises(AttributeError):
+        lazy.anything
+    with pytest.raises(AttributeError):
+        lazy.anything
+    assert calls == [1]
+
+
+def test_J9_the_deploy_runs_in_its_own_environment_with_its_own_identity():
+    """Minor 5 of the review: a second identity, trusted only for this environment's token."""
+    job = _workflow()["jobs"]["deploy"]
+    assert job["environment"] == "receiver-deploy"
+    login = next(s for s in _steps() if s.get("uses", "").startswith("azure/login@"))
+    assert login["with"]["client-id"] == "${{ secrets.RECEIVER_AZURE_CLIENT_ID }}"
+    assert "secrets.AZURE_CLIENT_ID" not in WORKFLOW.read_text(encoding="utf-8")
+
+
+def test_J9_every_step_after_the_first_runs_only_when_the_deploy_goes_ahead():
+    for step in _steps()[1:]:
+        assert step["if"] == "steps.ready.outputs.go == 'true'", step.get("name")
+
+
+def test_J9_a_deploy_with_its_secrets_unset_or_main_moved_on_fails_or_stops_plainly():
+    """Minors 2 and 9 of the review: a run with no secrets fails, and an old run never rolls the receiver back."""
+    first = _steps()[0]["run"]
+    assert re.search(r"not all set[^\n]*\n\s*exit 1", first)
+    assert "commits/main" in first and '"$GITHUB_SHA"' in first
+    assert _steps()[0]["env"]["GH_TOKEN"] == "${{ github.token }}"
+
+
+def test_J9_the_cli_s_error_text_never_reaches_the_public_log():
+    """Minor 4 of the review: the exit code only. The details are in the Azure portal."""
+    deploy = next(s for s in _steps() if "config-zip" in s.get("run", ""))
+    assert "2> /dev/null" in deploy["run"] and "exit code" in deploy["run"]
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert "set -x" not in text
+
+
+def test_J9_only_the_receiver_s_own_files_are_packed_with_the_commit():
+    """Nit 8 of the review: the two settings files are notes for the owner, not part of the app."""
+    runs = "\n".join(step.get("run", "") for step in _steps())
+    pack = next(line for line in runs.splitlines() if "git archive" in line)
+    for name in ("function_app.py", "host.json", "requirements.txt", "receiver_core.py", "receiver_adapters.py"):
+        assert name in pack, name
+    assert "app_settings.json" not in pack and "plan.json" not in pack
+    assert '--add-virtual-file="BUILD_COMMIT:$GITHUB_SHA"' in pack
+
+
+def test_J9_the_live_receiver_check_sends_an_empty_body_and_wants_the_new_commit():
+    """Minors 1 and 3 of the review, and nit 4."""
+    check = next(s for s in _steps() if "/api/result" in s.get("run", ""))["run"]
+    assert "--data ''" in check and "--silent" in check and "--output /dev/null" in check
+    assert '[ "$status" = "401" ]' in check and "x-voc-build" in check.lower() and '"$GITHUB_SHA"' in check
+    assert "10 minutes" in check
+
+
+def test_J9_each_live_check_uses_a_fresh_synthetic_key():
+    """Serious 1 of the review: a re-run is never a duplicate that passes with nothing queued."""
+    check = _check()
+    first, second = json.loads(check.message_bytes(1793000000)), json.loads(check.message_bytes(1793000060))
+    assert first["github_run_attempt"] == 1793000000 and second["github_run_attempt"] == 1793000060
+    assert first["github_run_id"] == 1 and first["job_a_run_id"] == 1
+
+
+def test_J9_the_live_check_says_queued_names_its_key_and_takes_only_401_for_the_bad_one(monkeypatch, capsys):
+    """Serious 1 and minor 11 of the review."""
+    check = _check()
+    monkeypatch.setattr(check.getpass, "getpass", lambda prompt="": SECRET)
+    monkeypatch.setattr(check.time, "time", lambda: 1793000000)
+    monkeypatch.setattr(check, "_post", Receiver())
+    assert check.main(["https://receiver.example.invalid"]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0] == "badly signed: HTTP 401 (must be 401)"
+    assert lines[1] == "signed: HTTP 202 (must be 202: queued)"
+    assert lines[2] == "verdict: PASS, queued under the key 1:1793000000"
+    assert "result" in lines[3] and "1:1793000000" in lines[3]
+
+    class Gives400(Receiver):
+        def __call__(self, url, raw, headers):
+            status = super().__call__(url, raw, headers)
+            return 400 if len(self.calls) == 1 else status
+
+    monkeypatch.setattr(check, "_post", Gives400())
+    assert check.main(["https://receiver.example.invalid"]) == 1
+
+
+def test_J9_the_live_check_hints_at_the_clock_when_the_signed_message_is_refused(monkeypatch, capsys):
+    """Nit 5 of the review."""
+    check = _check()
+    monkeypatch.setattr(check.getpass, "getpass", lambda prompt="": SECRET)
+    monkeypatch.setattr(check, "_post", Receiver(secret="syn-" + "other"))
+    assert check.main(["https://receiver.example.invalid"]) == 1
+    out = capsys.readouterr().out
+    assert "clock" in out and SECRET not in out
+
+
+@pytest.mark.parametrize("failure, status", [("redirect", 302), ("network", 0), ("broken", 0), ("refused", 401)])
+def test_J9_the_live_check_s_post_reports_a_status_and_follows_no_redirect(monkeypatch, failure, status):
+    """Minor 10 and nit 5 of the review."""
+    import http.client
+    import urllib.error
+
+    check = _check()
+
+    def opened(request, timeout=None):
+        if failure in ("redirect", "refused"):
+            raise urllib.error.HTTPError(request.full_url, status, "x", {}, None)
+        raise {"network": OSError("x"), "broken": http.client.BadStatusLine("x")}[failure]
+
+    monkeypatch.setattr(check._OPENER, "open", opened)
+    assert check._post("https://receiver.example.invalid/api/result", b"{}", {}) == status
+    redirects = [h for h in check._OPENER.handlers if isinstance(h, check.urllib.request.HTTPRedirectHandler)]
+    assert len(redirects) == 1 and isinstance(redirects[0], check._NoRedirect)
