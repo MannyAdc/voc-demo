@@ -962,7 +962,8 @@ def test_J13_the_robot_check_reads_tar_and_zip_and_says_when_it_cannot_read():
 
 
 def _replies(check, quiet_error="dbt failed", quiet_state="", control_error=None, control_artifacts=None,
-             quiet_artifacts=None, history=403, wide=400):
+             quiet_artifacts=None, history=403, wide=400, quiet_link=True, quiet_output_raw=None, control_state="",
+             history_message="", extra_tasks=()):
     host = "https://synthetic.example.invalid"
     marker = check.MARKER
     control_artifacts = _archive("zip", {"logs/dbt.log": marker.encode()}) if control_artifacts is None \
@@ -970,21 +971,25 @@ def _replies(check, quiet_error="dbt failed", quiet_state="", control_error=None
     quiet_artifacts = _archive("tar.gz", {"target/run.sql": b"select 1"}) if quiet_artifacts is None else quiet_artifacts
     tasks = [{"task_key": "make_rows", "run_id": 11, "state": {"result_state": "SUCCESS"}},
              {"task_key": "dbt", "run_id": 12, "state": {"result_state": "FAILED", "state_message": quiet_state}},
-             {"task_key": "dbt_control", "run_id": 13, "state": {"result_state": "FAILED"}}]
+             {"task_key": "dbt_control", "run_id": 13, "state": {"result_state": "FAILED",
+                                                                  "state_message": control_state}},
+             *extra_tasks]
     return {
         ("jobs", f"{host}/oidc/v1/token"): (200, json.dumps({"access_token": "synthetic-token"}).encode()),
         ("all-apis", f"{host}/oidc/v1/token"): (wide, json.dumps({"error": "invalid_scope"}).encode()),
         f"{host}/api/2.2/jobs/runs/get?run_id=99": (200, json.dumps({"tasks": tasks}).encode()),
         f"{host}/api/2.2/jobs/runs/get-output?run_id=11": (200, json.dumps({"notebook_output": {
             "result": json.dumps({"code_sha256": B}), "truncated": False}}).encode()),
-        f"{host}/api/2.2/jobs/runs/get-output?run_id=12": (200, json.dumps({"error": quiet_error, "dbt_output": {
-            "artifacts_link": f"{host}/a12", "artifacts_headers": {}}}).encode()),
+        f"{host}/api/2.2/jobs/runs/get-output?run_id=12": (200, quiet_output_raw if quiet_output_raw is not None
+                                                          else json.dumps({"error": quiet_error, **({"dbt_output": {
+            "artifacts_link": f"{host}/a12", "artifacts_headers": {}}} if quiet_link else {})}).encode()),
         f"{host}/api/2.2/jobs/runs/get-output?run_id=13": (200, json.dumps({
             "error": control_error if control_error is not None else f"dbt failed {marker}",
             "dbt_output": {"artifacts_link": f"{host}/a13", "artifacts_headers": {}}}).encode()),
         f"{host}/a12": (200, quiet_artifacts),
         f"{host}/a13": (200, control_artifacts),
-        f"{host}/api/2.0/sql/history/queries": (history, json.dumps({"error_code": "PERMISSION_DENIED"}).encode()),
+        f"{host}/api/2.0/sql/history/queries": (history, json.dumps({"error_code": "PERMISSION_DENIED",
+                                                                     "message": history_message}).encode()),
     }
 
 
@@ -1148,3 +1153,344 @@ def test_J1_the_cli_prints_the_gate_record_only_on_a_pass_from_unchanged_code(tm
     assert main(["june-check", "--zip", str(next(folder.iterdir()))], env=env, root=REPO) == 1
     out = capsys.readouterr().out
     assert "gate record" not in out and "1 frozen files differ" in out
+
+
+
+# The third review of #94, on its second fix round, and the owner's decisions on it (6 November)
+
+RUN_FILE = "target/run/voc/models/landed_complaints.sql"
+
+
+def _reached(check, **change):
+    """Replies in which both dbt runs reached the failing model: their dbt files hold its run file."""
+    marker = check.MARKER.encode()
+    return _replies(check, **{"quiet_artifacts": _archive("tar.gz", {RUN_FILE: b"create table x as select 1"}),
+                              "control_artifacts": _archive("zip", {RUN_FILE: b"create table x as select 1",
+                                                                    "logs/dbt.log": marker}), **change})
+
+
+def test_J13_the_robot_check_passes_when_both_runs_reached_the_failing_model(monkeypatch):
+    check = _robot_check()
+    lines = _report(check, monkeypatch, _reached(check))
+    assert lines[-1] == "verdict: PASS"
+
+
+@pytest.mark.parametrize("change", [
+    {"quiet_artifacts": _archive("tar.gz", {"target/run.sql": b"select 1"})},
+    {"quiet_link": False},
+])
+def test_J13_the_quiet_run_must_show_it_reached_the_failing_model(monkeypatch, change):
+    """Serious 1 of the third review: a quiet run that failed early proves nothing about the flags."""
+    check = _robot_check()
+    lines = _report(check, monkeypatch, _reached(check, **change))
+    assert lines[-1].startswith("verdict: FAIL") and "reached the failing model" in lines[-1]
+
+
+def test_J13_the_control_must_show_it_reached_the_failing_model(monkeypatch):
+    check = _robot_check()
+    control = _archive("zip", {"logs/dbt.log": check.MARKER.encode()})
+    lines = _report(check, monkeypatch, _reached(check, control_artifacts=control))
+    assert lines[-1].startswith("verdict: FAIL") and "control" in lines[-1]
+
+
+def test_J13_an_output_that_is_not_json_is_unread(monkeypatch):
+    check = _robot_check()
+    lines = _report(check, monkeypatch, _reached(check, quiet_output_raw=b"<html>a proxy page</html>"))
+    assert "dbt: output: could not read, HTTP 200" in lines
+    assert lines[-1].startswith("verdict: FAIL") and "could not read" in lines[-1]
+
+
+@pytest.mark.parametrize("status", [500, 429, 200])
+def test_J13_an_all_apis_request_must_be_refused_or_narrowed(monkeypatch, status):
+    """Minor 2 of the third review: only 400, 401 or 403 is a refusal, and a token given must be narrowed to jobs."""
+    check = _robot_check()
+    replies = _reached(check, wide=status)
+    if status == 200:
+        replies[("all-apis", "https://synthetic.example.invalid/oidc/v1/token")] = (
+            200, json.dumps({"access_token": "wide-token", "scope": "all-apis"}).encode())
+    lines = _report(check, monkeypatch, replies)
+    assert lines[-1].startswith("verdict: FAIL") and "all-apis" in lines[-1]
+    assert "wide-token" not in "\n".join(lines)
+
+
+def test_J13_an_all_apis_token_narrowed_to_jobs_is_not_a_failure(monkeypatch):
+    check = _robot_check()
+    replies = _reached(check)
+    replies[("all-apis", "https://synthetic.example.invalid/oidc/v1/token")] = (
+        200, json.dumps({"access_token": "narrow-token", "scope": "jobs"}).encode())
+    lines = _report(check, monkeypatch, replies)
+    assert "all-apis token: narrowed to jobs" in lines and lines[-1] == "verdict: PASS"
+    assert "narrow-token" not in "\n".join(lines)
+
+
+def test_J13_the_marker_in_any_other_task_fails_and_a_repeated_task_is_refused(monkeypatch):
+    check = _robot_check()
+    other = {"task_key": "other", "run_id": 14, "state": {"result_state": "SUCCESS", "state_message": check.MARKER}}
+    replies = _reached(check, extra_tasks=(other,))
+    replies["https://synthetic.example.invalid/api/2.2/jobs/runs/get-output?run_id=14"] = (200, b"{}")
+    lines = _report(check, monkeypatch, replies)
+    assert lines[-1].startswith("verdict: FAIL") and "other" in lines[-1]
+    again = {"task_key": "dbt", "run_id": 15, "state": {"result_state": "FAILED"}}
+    lines = _report(check, monkeypatch, _reached(check, extra_tasks=(again,)))
+    assert lines[-1].startswith("verdict: FAIL") and "twice" in lines[-1]
+
+
+def test_J13_the_control_must_show_the_marker_in_its_output_not_only_its_run_details(monkeypatch):
+    """Nit 5 of the third review: the spec says the control shows the marker in its output."""
+    check = _robot_check()
+    lines = _report(check, monkeypatch, _reached(check, control_error="dbt failed", control_state=check.MARKER))
+    assert lines[-1].startswith("verdict: FAIL") and "control" in lines[-1]
+
+
+def test_J13_an_encrypted_zip_is_unread_not_a_crash(monkeypatch):
+    import zipfile as zf
+
+    check = _robot_check()
+    data = _archive("zip", {"logs/dbt.log": b"x"})
+
+    def encrypted(self, name, pwd=None):
+        raise RuntimeError("File is encrypted, password required for extraction")
+
+    monkeypatch.setattr(zf.ZipFile, "read", encrypted)
+    assert check.archive_places(data) is None
+
+
+def test_J13_the_robot_check_calls_every_place_and_never_prints_the_history_message(monkeypatch):
+    """Minor 7 of the third review: the assertions the second round's green commit dropped."""
+    import urllib.parse
+
+    check = _robot_check()
+    replies = _reached(check, history_message=f"denied for {check.MARKER}")
+    called = []
+
+    def fake(url, token=None, data=None, headers=None):
+        if url.endswith("/oidc/v1/token"):
+            key = (urllib.parse.parse_qs(data.decode("ascii"))["scope"][0], url)
+        else:
+            key = url
+        called.append(key)
+        return replies[key]
+
+    monkeypatch.setattr(check, "_call", fake)
+    lines = check.report("synthetic.example.invalid", "synthetic-id", "syn-" + "secret", 99)
+    assert set(called) == set(replies)
+    assert check.MARKER not in "\n".join(lines)
+
+
+def _gate_rows(root, rows):
+    """The gates log in its form with a Result column (minor 8 of the third review)."""
+    path = Path(root) / "runs" / "JUNE_GATES.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("# June gates\n\n| Date | Gate | Result | Pin SHA-256 | Code hash | Evidence |\n"
+                    "|---|---|---|---|---|---|\n" + "".join(f"| {' | '.join(row)} |\n" for row in rows),
+                    encoding="utf-8")
+    return path
+
+
+def _real_entries(tmp_path):
+    from voc.frozen import read_runs
+
+    root = _root(tmp_path, ["real"], gates=())
+    return root, read_runs(root / "runs" / "JUNE_RUNS.md")
+
+
+def test_J1_a_gate_pass_in_the_same_minute_as_the_row_does_not_count(tmp_path):
+    """Minor 3 of the third review: "dated before" means strictly before."""
+    from voc.frozen import JuneRunsError, check_gates, read_gates
+
+    root, entries = _real_entries(tmp_path)
+    pin, code, row_date = _real_pin_sha(), entries[0].code_hash, entries[0].date
+    rows = [(row_date, gate, "pass", pin, code, "a pass") for gate in ("june-check", "failcheck")]
+    with pytest.raises(JuneRunsError):
+        check_gates(entries, read_gates(_gate_rows(root, rows)), pin)
+    rows = [("2026-11-05 09:00", gate, "pass", pin, code, "a pass") for gate in ("june-check", "failcheck")]
+    check_gates(entries, read_gates(_gate_rows(root, rows)), pin)
+
+
+def test_J1_a_later_fail_of_a_gate_closes_it_and_a_later_pass_opens_it_again(tmp_path):
+    """Minor 8 of the third review: a recorded FAIL after a PASS blocks the row."""
+    from voc.frozen import JuneRunsError, check_gates, read_gates
+
+    root, entries = _real_entries(tmp_path)
+    pin, code = _real_pin_sha(), entries[0].code_hash
+    june = ("2026-11-05 08:00", "june-check", "pass", pin, code, "a pass")
+    rows = [june, ("2026-11-05 09:00", "failcheck", "pass", pin, code, "a pass"),
+            ("2026-11-05 10:00", "failcheck", "fail", pin, code, "verdict: FAIL")]
+    with pytest.raises(JuneRunsError, match="failcheck"):
+        check_gates(entries, read_gates(_gate_rows(root, rows)), pin)
+    rows.append(("2026-11-05 11:00", "failcheck", "pass", pin, code, "a pass after a fix"))
+    check_gates(entries, read_gates(_gate_rows(root, rows)), pin)
+
+
+@pytest.mark.parametrize("row", [("2026-11-05 09:00", "failcheck", "maybe", A, B, "x"),
+                                 ("2026-13-45 99:99", "failcheck", "pass", A, B, "x"),
+                                 ("2026-11-05 09:00", "failcheck", "pass", A, B, "")])
+def test_J1_a_gate_row_with_a_bad_result_or_date_is_refused(tmp_path, row):
+    from voc.frozen import JuneRunsError, read_gates
+
+    with pytest.raises(JuneRunsError):
+        read_gates(_gate_rows(tmp_path, [row]))
+
+
+def test_J1_the_committed_gates_log_has_the_result_column():
+    from voc.frozen import GATES
+
+    assert "| Date | Gate | Result | Pin SHA-256 | Code hash | Evidence |" in (REPO / GATES).read_text(encoding="utf-8")
+
+
+def _gates_script():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("check_june_gates", REPO / "scripts" / "check_june_gates.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_J1_ci_refuses_a_new_real_row_whose_gate_passes_are_not_on_main_already(tmp_path, capsys):
+    """Minor 3 of the third review: gate rows cannot be added with the real row and an earlier date."""
+    root, entries = _real_entries(tmp_path)
+    pin, code = _real_pin_sha(), entries[0].code_hash
+    passes = [("2026-11-05 09:00", gate, "pass", pin, code, "a pass") for gate in ("june-check", "failcheck")]
+    main = tmp_path / "main"
+    main.mkdir()
+    main_runs = main / "JUNE_RUNS.md"
+    main_runs.write_text("# June runs\n", encoding="utf-8")
+    main_gates = _gate_rows(main / "g", passes)
+    data_files = REPO / "config" / "data_files.toml"
+    script = _gates_script()
+    head_runs = root / "runs" / "JUNE_RUNS.md"
+    assert script.main([str(main_gates), str(main_runs), str(head_runs), str(data_files)]) == 0
+    empty = _gate_rows(main / "e", [])
+    assert script.main([str(empty), str(main_runs), str(head_runs), str(data_files)]) == 1
+    assert "on main" in capsys.readouterr().out
+    assert script.main([str(main / "missing.md"), str(main / "missing_runs.md"), str(head_runs), str(data_files)]) == 1
+
+
+def test_J1_ci_runs_the_gates_check_against_main():
+    workflow = yaml.safe_load((REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
+    runs = [step.get("run", "") for job in workflow["jobs"].values() for step in job["steps"]]
+    assert any("scripts/check_june_gates.py" in run and "origin/main:runs/JUNE_GATES.md" in run
+               and "origin/main:runs/JUNE_RUNS.md" in run for run in runs)
+
+
+def _hash_script():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("june_hash", REPO / "scripts" / "june_hash.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_J1_the_hash_script_has_no_synthetic_way_round_the_gates(tmp_path, capsys):
+    """Minor 4 of the third review: the flag is removed until pull request 9 names the dry run's own list."""
+    root = _root(tmp_path, ["synthetic"], gates=())
+    assert _hash_script().main([str(root), "--synthetic"]) == 1
+    assert "june list sha256" not in capsys.readouterr().out
+
+
+def test_J1_the_hash_script_prints_the_hashes_when_both_gates_passed(tmp_path, capsys):
+    from voc.frozen import code_hash, frozen_files, list_hash
+
+    root = _root(tmp_path, ["synthetic"], gates=())
+    pin, code = _real_pin_sha(), code_hash(root)
+    _gate_rows(root, [("2026-11-05 09:00", gate, "pass", pin, code, "a pass") for gate in ("june-check", "failcheck")])
+    assert _hash_script().main([str(root)]) == 0
+    assert capsys.readouterr().out.splitlines() == [
+        f"june list sha256 {list_hash(root)}", f"frozen code sha256 {code} over {len(frozen_files(root))} files"]
+
+
+def _git(root, *args):
+    return subprocess.run(["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+                           "-c", "commit.gpgsign=false", *args], capture_output=True, text=True, check=True)
+
+
+def test_J1_a_frozen_file_changed_in_content_counts_as_changed(tmp_path):
+    """Minor 5 of the third review: a tracked file edited in place, such as uv.lock, is not unchanged."""
+    from voc.frozen import changed_frozen
+
+    root = tmp_path / "repo"
+    (root / "src").mkdir(parents=True)
+    (root / "src" / "a.py").write_text("x = 1\n", encoding="utf-8")
+    (root / "uv.lock").write_text("lock\n", encoding="utf-8")
+    _git(root, "init", "-q")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "first")
+    assert changed_frozen(root) == []
+    (root / "uv.lock").write_text("rewritten\n", encoding="utf-8")
+    (root / "src" / "b.py").write_text("y = 2\n", encoding="utf-8")
+    assert sorted(changed_frozen(root)) == ["src/b.py", "uv.lock"]
+    assert changed_frozen(tmp_path / "not_a_repo") is None
+
+
+def test_J1_the_cli_s_gate_record_needs_content_unchanged_and_the_top_of_a_checkout(tmp_path, capsys, monkeypatch):
+    import voc.frozen
+    import voc.job_a
+    from voc.cli import main
+
+    good = {"rows": 620794, "narratives": 16820, "fields_with_line_breaks": 0, "fields_with_lone_returns": 0,
+            "sampled_rows": 3, "sampled_matching": 3, "sampled_with_returns": 0}
+    folder, _ = _zip_and_pin(tmp_path, text=_june_csv(["one"]))
+    monkeypatch.setattr(voc.job_a, "june_check", lambda *a, **k: good)
+    env = {"VOC_JUNE_DATA_DIR": str(tmp_path)}
+    zip_arg = ["june-check", "--zip", str(next(folder.iterdir()))]
+    monkeypatch.setattr(voc.frozen, "changed_frozen", lambda root: [])
+    assert main(zip_arg, env=env, root=REPO) == 0
+    assert "gate record: june-check passed" in capsys.readouterr().out
+    monkeypatch.setattr(voc.frozen, "changed_frozen", lambda root: ["uv.lock"])
+    assert main(zip_arg, env=env, root=REPO) == 1
+    assert "gate record" not in capsys.readouterr().out
+    monkeypatch.setattr(voc.frozen, "changed_frozen", lambda root: None)
+    assert main(zip_arg, env=env, root=REPO) == 1
+    assert "top of" in capsys.readouterr().out
+
+
+def test_J5_job_a_s_refusals_carry_no_exception_at_all():
+    """Minor 6 of the third review: `from None` only hides the cause. The refusal must hold no earlier exception."""
+    def failing(sql):
+        raise RuntimeError(f"Malformed CSV record: {MARKER}")
+
+    for call in (lambda: _job_a().spark_counts(failing, "/Volumes/x/june/june.csv"),
+                 lambda: _job_a().spark_rows(failing, ["1", "2"])):
+        with pytest.raises(_job_a().JobAError) as refused:
+            call()
+        assert refused.value.__context__ is None and refused.value.__cause__ is None
+
+
+@pytest.mark.parametrize("text", [f'2026-06-01,Mortgage,"{MARKER}"', ""])
+def test_J5_unpack_s_refusals_carry_no_exception_at_all(tmp_path, monkeypatch, text):
+    import zlib
+
+    if text:
+        folder, pin = _zip_and_pin(tmp_path, text=_with_row(_rows(), text))
+    else:
+        def fail(path, pin):
+            raise zlib.error(MARKER)
+
+        monkeypatch.setattr(_job_a(), "_check_shape", fail)
+        folder, pin = _zip_and_pin(tmp_path)
+    with pytest.raises(_job_a().JobAError) as refused:
+        _unpack(folder, tmp_path / "june", pin)
+    assert refused.value.__context__ is None
+
+
+def test_J8_no_text_still_says_the_gates_come_before_the_upload():
+    """Nit 1 of the third review: the gates come before the run log's real row."""
+    for name in ("cloud/failcheck.yml", "src/voc/failcheck.py", "src/voc/job_a.py", "config/data_files.toml",
+                 "cloud/failcheck/STEPS.md", "src/voc/cli.py"):
+        assert "before the June upload" not in (REPO / name).read_text(encoding="utf-8"), name
+    assert "counts and hashes only" in (REPO / "src" / "voc" / "cli.py").read_text(encoding="utf-8")
+
+
+def test_J8_the_steps_run_june_check_with_the_lock_file_kept():
+    steps = (REPO / "cloud" / "failcheck" / "STEPS.md").read_text(encoding="utf-8")
+    assert "uv run --locked --native-tls voc june-check" in steps
+    assert "frozen" in steps.split("## Gate 1")[0]
+
+
+def test_J8_the_owner_s_steps_make_the_sample_before_june_check():
+    """Minor 10 of the third review: june-check needs the pin and the sample."""
+    spec = (REPO / "specs" / "004-june-test-and-baselines" / "spec.md").read_text(encoding="utf-8")
+    steps = spec.split("## Owner's setup steps")[1]
+    assert steps.index("`voc sample june`") < steps.index("run `voc june-check`")
