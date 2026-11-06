@@ -776,8 +776,10 @@ def test_J16_the_real_target_code_refuses_a_synthetic_kind_until_pull_request_9(
     value = {**_fixture("job_a_exit.json"), "kind": "real", "june_list_sha256": listed, "code_sha256": code}
     with pytest.raises(approval.ApprovalError, match="gates"):
         approval.figures_job(root, _env(), FakeDatabricks(output=_output(value)), FakeGitHub())
+    # A synthetic row naming the checkout's list is refused by the run log's rule, before any pin. The pull
+    # request 9 rule is reached only once pull request 9 gives the dry run its own list (second review of #95).
     root, listed, code = _checkout(tmp_path / "s", "synthetic")
-    with pytest.raises(approval.ApprovalError):
+    with pytest.raises(approval.ApprovalError, match="marked synthetic but names the real June list"):
         approval.figures_job(root, _env(), FakeDatabricks(output=_output({**value, "kind": "synthetic"})),
                              FakeGitHub())
 
@@ -848,3 +850,172 @@ def test_J5_a_cancelled_run_prints_no_traceback(monkeypatch, capsys):
         code = "escaped"
     assert code == 130
     assert capsys.readouterr().out == "error: KeyboardInterrupt\n"
+
+
+
+# The second review of #95, on its fix round (owner decision: the last round, fixed with no further review)
+
+
+@pytest.mark.parametrize("error", ["IncompleteRead", "BadStatusLine", "LineTooLong", "RemoteDisconnected"])
+def test_J16_a_broken_http_reply_is_no_answer_not_a_crash(monkeypatch, error):
+    """Minor 1: http.client's own errors are not OSError, so the request treats them as no answer."""
+    import http.client
+
+    approval = _approval()
+    raised = {"IncompleteRead": http.client.IncompleteRead(b""), "BadStatusLine": http.client.BadStatusLine("x"),
+              "LineTooLong": http.client.LineTooLong("header line"),
+              "RemoteDisconnected": http.client.RemoteDisconnected("x")}[error]
+
+    def broken(request, timeout=None):
+        raise raised
+
+    monkeypatch.setattr(approval._OPENER, "open", broken)
+    assert approval._request("https://synthetic.example.invalid/x") == (0, b"")
+
+
+def test_J16_the_follow_and_the_post_outlast_http_client_errors(monkeypatch):
+    import http.client
+
+    approval = _patched(monkeypatch)
+    follow = [http.client.IncompleteRead(b""), _ended("SUCCESS")]
+
+    class Flaky(FakeReceiver):
+        def post(self, raw, headers):
+            self.posts.append((raw, headers))
+            if len(self.posts) == 1:
+                raise http.client.BadStatusLine("x")
+            return 202
+
+    receiver = Flaky()
+    approval.run_job(REPO, _env(), FakeDatabricks(follow=follow), FakeGitHub(), receiver, sleep=lambda s: None)
+    assert len(receiver.posts) == 2 and json.loads(receiver.posts[1][0])["result_state"] == "SUCCESS"
+
+
+def test_J16_a_failed_post_names_the_first_error_too(monkeypatch):
+    """Minor 2: the reason Job B was not started is not lost when the result post fails as well."""
+    approval = _patched(monkeypatch)
+    with pytest.raises(approval.ApprovalError) as refused:
+        approval.run_job(REPO, _env(GITHUB_RUN_ATTEMPT="2"), FakeDatabricks(), FakeGitHub(attempt=2),
+                         FakeReceiver(statuses=[500, 500, 500]), sleep=lambda s: None)
+    assert "first attempt" in str(refused.value) and "result message" in str(refused.value)
+
+
+def test_J16_a_cancel_after_the_start_posts_unknown_once(monkeypatch):
+    """Minor 3: a cancel, or GitHub's own time limit, during the follow still tells the receiver."""
+    approval = _patched(monkeypatch)
+    receiver = FakeReceiver(statuses=[500])
+    with pytest.raises(KeyboardInterrupt):
+        approval.run_job(REPO, _env(), FakeDatabricks(follow=[KeyboardInterrupt()]), FakeGitHub(), receiver,
+                         sleep=lambda s: pytest.fail("no wait while cancelled"))
+    assert len(receiver.posts) == 1
+    body = json.loads(receiver.posts[0][0])
+    assert body["result_state"] == "UNKNOWN" and body["job_b_run_id"] == 900002
+
+
+def test_J16_a_cancel_before_the_start_posts_not_started(monkeypatch):
+    approval = _patched(monkeypatch)
+
+    class Cancelled(FakeGitHub):
+        def own_run(self):
+            raise KeyboardInterrupt
+
+    receiver = FakeReceiver()
+    with pytest.raises(KeyboardInterrupt):
+        approval.run_job(REPO, _env(), FakeDatabricks(), Cancelled(), receiver, sleep=lambda s: None)
+    assert json.loads(receiver.posts[0][0])["result_state"] == "NOT_STARTED"
+
+
+def test_J16_the_follow_s_limit_counts_from_the_job_s_start_and_leaves_a_reserve(monkeypatch):
+    """Minor 4: the checks before the start take time too, and the end needs time for the post."""
+    approval = _patched(monkeypatch)
+    now = [0.0]
+
+    class Slow(FakeGitHub):
+        def own_run(self):
+            now[0] += 20 * 60  # twenty minutes of slow replies before the start
+            return super().own_run()
+
+    def sleep(seconds):
+        now[0] += seconds + 30
+
+    running = {"state": {"life_cycle_state": "RUNNING"}, "tasks": []}
+    receiver = FakeReceiver()
+    approval.run_job(REPO, _env(), FakeDatabricks(follow=[running]), Slow(), receiver, sleep=sleep,
+                     clock=lambda: now[0])
+    assert json.loads(receiver.posts[0][0])["result_state"] == "UNKNOWN"
+    assert now[0] <= approval.FOLLOW_SECONDS + 90 and approval.FOLLOW_SECONDS <= 330 * 60
+
+
+def test_J13_a_short_token_is_renewed_at_half_its_life_and_a_403_renews_once(monkeypatch):
+    """Nit 1: a short life is not stretched, and an expired token answered with 403 is renewed too."""
+    approval = _approval()
+    now = [0.0]
+    tokens, gets = [], []
+
+    def fake(url, data=None, headers=None, method="GET"):
+        if url.endswith("/oidc/v1/token"):
+            tokens.append(now[0])
+            return 200, json.dumps({"access_token": f"t{len(tokens)}", "expires_in": 120}).encode()
+        gets.append(headers["Authorization"])
+        return (403, b"") if len(gets) == 2 else (200, b"{}")
+
+    monkeypatch.setattr(approval, "_request", fake)
+    client = approval.Databricks("synthetic.example.invalid", "synthetic-id", "syn-" + "secret", clock=lambda: now[0])
+    client.get("/api/2.2/jobs/runs/get", {"run_id": 1})
+    now[0] = 61.0
+    client.get("/api/2.2/jobs/runs/get", {"run_id": 1})
+    assert len(tokens) == 3 and gets[-1] == "Bearer t3"
+
+
+def test_J13_the_opener_has_no_redirect_handler_but_the_refusing_one():
+    """Nit 6: urllib's own redirect handler is replaced, so a 3xx comes back as a status."""
+    import urllib.request
+
+    handlers = _approval()._OPENER.handlers
+    redirects = [h for h in handlers if isinstance(h, urllib.request.HTTPRedirectHandler)]
+    assert len(redirects) == 1 and isinstance(redirects[0], _approval().NoRedirect)
+
+
+def test_J13_a_redirect_comes_back_as_its_status(monkeypatch):
+    import urllib.error
+
+    approval = _approval()
+
+    def redirected(request, timeout=None):
+        raise urllib.error.HTTPError(request.full_url, 302, "Found", {}, None)
+
+    monkeypatch.setattr(approval._OPENER, "open", redirected)
+    assert approval._request("https://synthetic.example.invalid/x") == (302, b"")
+
+
+def test_J16_the_post_is_tried_again_after_a_429_or_no_answer(monkeypatch):
+    approval = _patched(monkeypatch)
+    receiver = FakeReceiver(statuses=[429, 202])
+    approval.run_job(REPO, _env(), FakeDatabricks(), FakeGitHub(), receiver, sleep=lambda s: None)
+    assert len(receiver.posts) == 2
+
+    class NoAnswer(FakeReceiver):
+        def post(self, raw, headers):
+            self.posts.append((raw, headers))
+            if len(self.posts) == 1:
+                raise OSError("network")
+            return 202
+
+    receiver = NoAnswer()
+    approval.run_job(REPO, _env(), FakeDatabricks(), FakeGitHub(), receiver, sleep=lambda s: None)
+    assert len(receiver.posts) == 2
+
+
+def test_J5_main_s_refusal_of_the_run_job_holds_no_field_it_does_not_read(monkeypatch, capsys):
+    """Nit 7: J5's hostile-text test through `main`, the path the workflow runs."""
+    approval = _patched(monkeypatch)
+    marker = "SYNMARKER complaint text"
+    run = _broken(BROKEN["failed"])
+    run["state"]["state_message"] = marker
+    run["status"]["termination_details"]["message"] = marker
+    monkeypatch.setattr(approval, "_clients", lambda env: (FakeDatabricks(run=run), FakeGitHub()))
+    monkeypatch.setattr(approval, "Receiver", lambda url: FakeReceiver())
+    env = {**_env(), "VOC_RECEIVER_URL": "https://receiver.example.invalid"}
+    assert approval.main(["run"], env=env) == 1
+    out = capsys.readouterr()
+    assert out.out.startswith("refused:") and marker not in out.out + out.err
