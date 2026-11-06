@@ -320,6 +320,7 @@ class FakeDatabricks:
         self.job_b_output = job_b_output or {"notebook_output": {"result": json.dumps(_fixture("job_b_exit.json")),
                                                                  "truncated": False}}
         self.calls = []
+        self.started = {"run_id": 900002}
 
     def get(self, path, params):
         self.calls.append(("GET", path, params))
@@ -332,7 +333,10 @@ class FakeDatabricks:
         if path == "/api/2.2/jobs/runs/get-output" and params["run_id"] == 900011:
             return copy.deepcopy(self.output)
         if path == "/api/2.2/jobs/runs/get" and params["run_id"] == 900002:
-            return self.follow.pop(0) if len(self.follow) > 1 else self.follow[0]
+            reply = self.follow.pop(0) if len(self.follow) > 1 else self.follow[0]
+            if isinstance(reply, BaseException):
+                raise reply
+            return reply
         if path == "/api/2.2/jobs/runs/get-output" and params["run_id"] == 900003:
             return copy.deepcopy(self.job_b_output)
         raise AssertionError((path, params))
@@ -340,7 +344,9 @@ class FakeDatabricks:
     def post(self, path, body):
         self.calls.append(("POST", path, body))
         assert path == "/api/2.2/jobs/run-now"
-        return {"run_id": 900002}
+        if isinstance(self.started, BaseException):
+            raise self.started
+        return self.started
 
 
 class FakeGitHub:
@@ -353,12 +359,12 @@ class FakeGitHub:
 
 
 class FakeReceiver:
-    def __init__(self):
-        self.posts = []
+    def __init__(self, statuses=None):
+        self.posts, self.statuses = [], list(statuses or [])
 
     def post(self, raw, headers):
         self.posts.append((raw, headers))
-        return 202
+        return self.statuses.pop(0) if self.statuses else 202
 
 
 def _env(**extra):
@@ -538,3 +544,307 @@ def test_J16_no_active_run_is_read_as_none(active):
 def test_J16_any_active_run_or_a_malformed_list_is_refused(active):
     with pytest.raises(_approval().ApprovalError):
         _approval().checked_no_active(active)
+
+
+
+# The review of #95 and the owner's decisions of 6 November
+
+
+class RealReceiver:
+    """Posts into the receiver's own code, receiver/receiver_core.py, with the same secret."""
+
+    def __init__(self):
+        import receiver_core
+
+        self.core, self.replies, self.queued = receiver_core, [], []
+
+    def post(self, raw, headers):
+        import time
+
+        core = self.core
+        settings = core.Settings(basic_user="u", basic_password="syn-" + "p", hmac_secret=("syn-" + "result-secret").encode(),
+                                 job_a_job_id=JOB_A)
+
+        class Store:
+            def add_key(self, key):
+                return True
+
+            def remove_key(self, key):
+                pass
+
+        receiver = self
+
+        class Queue:
+            def put(self, message):
+                receiver.queued.append(message)
+
+        reply = core.handle_http("result", headers, raw, settings, Store(), Queue(), int(time.time()), lambda *a, **k: None)
+        self.replies.append(reply.status)
+        return reply.status
+
+
+ENDED_RUN = {"state": {"life_cycle_state": "TERMINATED", "result_state": "SUCCESS"},
+             "tasks": [{"task_key": "job_b", "run_id": 900003}]}
+
+
+def _ended(result_state=None, life="TERMINATED"):
+    state = {"life_cycle_state": life}
+    if result_state is not None:
+        state["result_state"] = result_state
+    return {"state": state, "tasks": [{"task_key": "job_b", "run_id": 900003}]}
+
+
+def test_J16_the_run_job_s_message_is_accepted_by_the_receiver_s_own_code(monkeypatch):
+    approval = _patched(monkeypatch)
+    receiver = RealReceiver()
+    approval.run_job(REPO, _env(), FakeDatabricks(), FakeGitHub(), receiver, sleep=lambda s: None)
+    assert receiver.replies == [202]
+
+
+@pytest.mark.parametrize("raw, mapped", [
+    ("SUCCESS", "SUCCESS"), ("FAILED", "FAILED"), ("TIMEDOUT", "TIMEDOUT"), ("CANCELED", "CANCELED"),
+    ("SUCCESS_WITH_FAILURES", "FAILED"), ("MAXIMUM_CONCURRENT_RUNS_REACHED", "FAILED"), ("EXCLUDED", "FAILED"),
+    ("UPSTREAM_FAILED", "FAILED"), ("DISABLED", "FAILED"), (None, "FAILED"), ("SYNMARKER complaint text", "FAILED"),
+])
+def test_J16_databricks_end_states_map_onto_the_receiver_s_six(monkeypatch, capsys, raw, mapped):
+    """Review of #95, serious 3 and minor 4: the receiver accepts six states. Any other end is a failure, and
+    Databricks' own text is never printed."""
+    approval = _patched(monkeypatch)
+    receiver = RealReceiver()
+    lines = approval.run_job(REPO, _env(), FakeDatabricks(follow=[_ended(raw)]), FakeGitHub(), receiver,
+                             sleep=lambda s: None)
+    assert receiver.replies == [202] and receiver.queued[0]["result_state"] == mapped
+    assert f"result: {mapped}" in lines and "SYNMARKER" not in "\n".join(lines) + capsys.readouterr().out
+
+
+@pytest.mark.parametrize("change", [lambda v: v.update(results_folder="june-1"),
+                                    lambda v: v.update(stopped=True),
+                                    lambda v: v.update(stop_reason="quota")])
+def test_J16_an_exit_value_the_receiver_would_refuse_is_sent_as_none(monkeypatch, change):
+    """Review of #95, serious 3: the exit value is checked as the receiver checks it, so the message is never lost."""
+    approval = _patched(monkeypatch)
+    value = _fixture("job_b_exit.json")
+    change(value)
+    output = {"notebook_output": {"result": json.dumps(value), "truncated": False}}
+    receiver = RealReceiver()
+    approval.run_job(REPO, _env(), FakeDatabricks(job_b_output=output), FakeGitHub(), receiver, sleep=lambda s: None)
+    assert receiver.replies == [202] and receiver.queued[0]["job_b_exit"] is None
+
+
+def test_J16_the_result_post_is_retried_on_a_server_error_and_a_refusal_fails_the_job(monkeypatch):
+    """Review of #95, serious 3: a lost result message is never silent."""
+    approval = _patched(monkeypatch)
+    receiver = FakeReceiver(statuses=[500, 503, 202])
+    lines = approval.run_job(REPO, _env(), FakeDatabricks(), FakeGitHub(), receiver, sleep=lambda s: None)
+    assert len(receiver.posts) == 3 and lines[-1] == "result message: HTTP 202"
+    for statuses in ([400], [500, 500, 500]):
+        with pytest.raises(approval.ApprovalError, match="result message"):
+            approval.run_job(REPO, _env(), FakeDatabricks(), FakeGitHub(), FakeReceiver(statuses=statuses),
+                             sleep=lambda s: None)
+
+
+def test_J16_the_follow_keeps_going_through_failed_polls(monkeypatch):
+    """Review of #95, serious 1: a failed poll is not the end of the follow."""
+    approval = _patched(monkeypatch)
+    follow = [approval.ApprovalError("answered HTTP 401"), OSError("network"), _ended("SUCCESS")]
+    receiver = FakeReceiver()
+    approval.run_job(REPO, _env(), FakeDatabricks(follow=follow), FakeGitHub(), receiver, sleep=lambda s: None)
+    assert json.loads(receiver.posts[0][0])["result_state"] == "SUCCESS"
+
+
+def test_J16_the_follow_ends_at_a_time_limit_and_posts_unknown(monkeypatch):
+    """Review of #95, minor 3: the limit is 340 minutes of time, not a count of polls."""
+    approval = _patched(monkeypatch)
+    now = [0.0]
+
+    def sleep(seconds):
+        now[0] += seconds + 30  # each poll also takes time
+
+    running = {"state": {"life_cycle_state": "RUNNING"}, "tasks": []}
+    receiver = FakeReceiver()
+    approval.run_job(REPO, _env(), FakeDatabricks(follow=[running]), FakeGitHub(), receiver, sleep=sleep,
+                     clock=lambda: now[0])
+    assert json.loads(receiver.posts[0][0])["result_state"] == "UNKNOWN"
+    assert now[0] <= 340 * 60 + 90
+
+
+@pytest.mark.parametrize("started", [OSError("lost"), {"run_id": "900002"}, {}])
+def test_J16_a_lost_or_odd_start_reply_posts_unknown_not_not_started(monkeypatch, started):
+    """Review of #95, minor 1: once run-now is sent, Job B may have started."""
+    approval = _patched(monkeypatch)
+    databricks, receiver = FakeDatabricks(), FakeReceiver()
+    databricks.started = started
+    with pytest.raises((approval.ApprovalError, OSError)):
+        approval.run_job(REPO, _env(), databricks, FakeGitHub(), receiver, sleep=lambda s: None)
+    body = json.loads(receiver.posts[0][0])
+    assert body["result_state"] == "UNKNOWN" and body["job_b_run_id"] is None
+
+
+def test_J16_any_failure_before_the_start_posts_not_started(monkeypatch):
+    """Review of #95, minor 2: a network error or a bad secret before the start posts NOT_STARTED too."""
+    approval = _patched(monkeypatch)
+
+    class Broken(FakeDatabricks):
+        def get(self, path, params):
+            raise OSError("network")
+
+    receiver = FakeReceiver()
+    with pytest.raises(OSError):
+        approval.run_job(REPO, _env(), Broken(), FakeGitHub(), receiver, sleep=lambda s: None)
+    assert json.loads(receiver.posts[0][0])["result_state"] == "NOT_STARTED"
+    receiver = FakeReceiver()
+    monkeypatch.setattr(approval, "Receiver", lambda url: receiver)
+    env = {**_env(), "VOC_DATABRICKS_HOST": "https://not-bare", "VOC_DATABRICKS_CLIENT_ID": "x",
+           "VOC_DATABRICKS_CLIENT_SECRET": "y", "GITHUB_REPOSITORY": "MannyAdc/voc-demo", "GITHUB_TOKEN": "t",
+           "VOC_RECEIVER_URL": "https://receiver.example"}
+    with pytest.raises(approval.ApprovalError):
+        approval._run_from_env(env)
+    assert json.loads(receiver.posts[0][0])["result_state"] == "NOT_STARTED"
+
+
+def test_J16_job_a_s_run_is_read_with_its_repair_history(monkeypatch):
+    """Review of #95, serious 2: Databricks fills `repair_history` only when asked (unconfirmed)."""
+    approval = _patched(monkeypatch)
+    databricks = FakeDatabricks()
+    approval.figures_job(REPO, _env(), databricks, FakeGitHub())
+    assert ("GET", "/api/2.2/jobs/runs/get", {"run_id": 900001, "include_history": "true"}) in databricks.calls
+
+
+def test_J13_the_token_is_renewed_before_it_expires_and_after_a_401(monkeypatch):
+    """Review of #95, serious 1: the robot's token lasts about an hour, and Job B can run longer."""
+    approval = _approval()
+    now = [0.0]
+    tokens, gets = [], []
+
+    def fake(url, data=None, headers=None, method="GET"):
+        if url.endswith("/oidc/v1/token"):
+            tokens.append(now[0])
+            return 200, json.dumps({"access_token": f"t{len(tokens)}", "expires_in": 3600}).encode()
+        gets.append(headers["Authorization"])
+        if len(gets) == 3:
+            return 401, b""
+        return 200, b"{}"
+
+    monkeypatch.setattr(approval, "_request", fake)
+    client = approval.Databricks("synthetic.example.invalid", "synthetic-id", "syn-" + "secret", clock=lambda: now[0])
+    client.get("/api/2.2/jobs/runs/get", {"run_id": 1})
+    now[0] = 3400.0
+    client.get("/api/2.2/jobs/runs/get", {"run_id": 1})
+    assert len(tokens) == 2
+    client.get("/api/2.2/jobs/runs/get", {"run_id": 1})
+    assert len(tokens) == 3 and gets[-1] == "Bearer t3"
+
+
+def test_J13_no_request_follows_a_redirect():
+    """Review of #95, minor 5: a redirect would carry the bearer token to another host."""
+    import urllib.request
+
+    approval = _approval()
+    request = urllib.request.Request("https://synthetic.example.invalid/x", headers={"Authorization": "Bearer t"})
+    assert approval.NoRedirect().redirect_request(request, None, 302, "Found", {}, "https://other.example/") is None
+    assert any(isinstance(h, approval.NoRedirect) for h in approval._OPENER.handlers)
+
+
+def _checkout(tmp_path, kind):
+    """A checkout copy whose run log's last row has this kind, for the real target and pin code."""
+    import shutil
+
+    from voc.data import content_hash
+    from voc.frozen import code_hash
+
+    root = tmp_path / "root"
+    (root / "splits" / "june").mkdir(parents=True)
+    data = ("complaint_id,content_hash\n" + f"SYN-1,{content_hash('x', 'Mortgage')}\n").encode()
+    (root / "splits" / "june" / "june.csv").write_bytes(data)
+    (root / "splits" / "june" / "manifest.json").write_text(json.dumps(
+        {"lists": {"june": {"count": 1, "sha256": hashlib.sha256(data).hexdigest()}}}), encoding="utf-8")
+    shutil.copytree(REPO / "config", root / "config")
+    (root / "config" / "june_cloud.toml").write_text("job_a_job_id = 800001\njob_b_job_id = 800002\n",
+                                                     encoding="utf-8")
+    listed = hashlib.sha256(data).hexdigest()
+    (root / "runs").mkdir()
+    (root / "runs" / "JUNE_RUNS.md").write_text(
+        "| Date | Kind | June list hash | Code hash | Reason |\n|---|---|---|---|---|\n"
+        f"| 2026-11-07 10:00 | {kind} | {listed} | {code_hash(root)} | a reason |\n", encoding="utf-8")
+    return root, listed, code_hash(root)
+
+
+def test_J16_the_real_target_code_refuses_a_synthetic_kind_until_pull_request_9(tmp_path, monkeypatch):
+    """Review of #95, minor 6: the target and the pin through Job A's own code, not a patch."""
+    approval = _approval()
+    root, listed, code = _checkout(tmp_path, "real")
+    value = {**_fixture("job_a_exit.json"), "kind": "real", "june_list_sha256": listed, "code_sha256": code}
+    with pytest.raises(approval.ApprovalError, match="gates"):
+        approval.figures_job(root, _env(), FakeDatabricks(output=_output(value)), FakeGitHub())
+    root, listed, code = _checkout(tmp_path / "s", "synthetic")
+    with pytest.raises(approval.ApprovalError):
+        approval.figures_job(root, _env(), FakeDatabricks(output=_output({**value, "kind": "synthetic"})),
+                             FakeGitHub())
+
+
+def test_J5_the_run_job_prints_no_field_it_does_not_read(monkeypatch, capsys):
+    """Review of #95, minor 7: J5's hostile-text test of the run job too."""
+    approval = _patched(monkeypatch)
+    marker = "SYNMARKER complaint text"
+    ended = {"state": {"life_cycle_state": "TERMINATED", "result_state": marker, "state_message": marker},
+             "status": {"termination_details": {"message": marker}}, "run_name": marker,
+             "tasks": [{"task_key": "job_b", "run_id": 900003}]}
+    output = {"error": marker, "error_trace": marker, "logs": marker, "notebook_output": {"result": marker,
+                                                                                          "truncated": False}}
+    lines = approval.run_job(REPO, _env(), FakeDatabricks(follow=[ended], job_b_output=output), FakeGitHub(),
+                             FakeReceiver(), sleep=lambda s: None)
+    out = capsys.readouterr()
+    assert marker not in "\n".join(lines) + out.out + out.err
+
+
+def test_J5_the_figures_job_prints_no_termination_message(monkeypatch, capsys):
+    approval = _patched(monkeypatch)
+    marker = "SYNMARKER complaint text"
+    run = _run()
+    run["status"]["termination_details"]["message"] = marker
+    lines = approval.figures_job(REPO, _env(), FakeDatabricks(run=run), FakeGitHub())
+    assert marker not in "\n".join(lines) + capsys.readouterr().out
+
+
+def test_J16_a_job_b_run_with_no_task_list_still_posts(monkeypatch):
+    """Review of #95, nit 2."""
+    approval = _patched(monkeypatch)
+    receiver = FakeReceiver()
+    approval.run_job(REPO, _env(), FakeDatabricks(follow=[{"state": {"life_cycle_state": "TERMINATED",
+                                                                      "result_state": "SUCCESS"}, "tasks": None}]),
+                     FakeGitHub(), receiver, sleep=lambda s: None)
+    assert json.loads(receiver.posts[0][0])["job_b_exit"] is None
+
+
+def test_J16_an_exit_value_that_is_not_json_is_refused():
+    """Review of #95, nit 3: the non-JSON branch, reached with `truncated` false."""
+    with pytest.raises(_approval().ApprovalError, match="not JSON"):
+        _approval().exit_value({"notebook_output": {"result": "not json", "truncated": False}})
+
+
+@pytest.mark.parametrize("env_attempt, api_attempt", [("1", 2), ("2", 1)])
+def test_J16_either_attempt_source_alone_stops_a_re_run(monkeypatch, env_attempt, api_attempt):
+    """Review of #95, nit 4."""
+    approval = _patched(monkeypatch)
+    databricks, receiver = FakeDatabricks(), FakeReceiver()
+    with pytest.raises(approval.ApprovalError, match="attempt"):
+        approval.run_job(REPO, _env(GITHUB_RUN_ATTEMPT=env_attempt), databricks, FakeGitHub(attempt=api_attempt),
+                         receiver, sleep=lambda s: None)
+    assert not [c for c in databricks.calls if c[0] == "POST"]
+    assert json.loads(receiver.posts[0][0])["result_state"] == "NOT_STARTED"
+
+
+def test_J5_a_cancelled_run_prints_no_traceback(monkeypatch, capsys):
+    """Review of #95, nit 5."""
+    approval = _approval()
+
+    def cancelled(env):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(approval, "_run_from_env", cancelled)
+    try:
+        code = approval.main(["run"], env={})
+    except KeyboardInterrupt:  # caught here, so a main that lets it out fails this test, not the whole session
+        code = "escaped"
+    assert code == 130
+    assert capsys.readouterr().out == "error: KeyboardInterrupt\n"
