@@ -419,7 +419,57 @@ Written on 5 November 2026, on synthetic data only.
 - the spike's job has the three tasks `unpack`, `dbt` and `job_a` in order, from the public repo's `main`, with one run at a time. The dbt command takes `unpack`'s task values, and the trigger watches only its scratch folder. No June or July data and no secret is named (J8, J16)
 - `unpack` writes the one synthetic CSV and gives dbt its values. It refuses anything but one zip with one flat CSV, any row that is not synthetic, a short row, and a CSV over its size cap. The exit value holds counts only. The spike zip is made from the synthetic dbt fixture only (J5, J8)
 - the spike's trigger is paused until the owner unpauses it and watches exactly its folder. Its dbt command passes `final` off. Its dbt task runs with the repo's `dbt-databricks` pin. No label holds a quote. A copy of the project with no `.git` refuses the Databricks target too (B14, B17, J8, review of #92)
-- planned for 5b, a hard requirement before any real data runs: a row made to fail Job A's dbt task leaves no complaint text in any task output, log or error that the robot or the reader can read (J5, J13, owner decision of 5 November)
+- the hard requirement of 5b, written in pull request 5b: a row that would fail Spark's parser is refused by `unpack` before dbt with fixed text, and a local dbt run with a failing row in a data file leaks its text without the committed flags and leaves it in no output and no file with them (J5, J13, owner decision of 5 November)
+
+## Job A ([spec 004](../specs/004-june-test-and-baselines/spec.md), pull request 5b, J8, J16)
+
+Written on 6 November 2026, on synthetic data only.
+
+- `cloud/job_a.yml`: three tasks by key and dependency, not by order, the public repo's `main`, one run at a time, the trigger paused on exactly `incoming/`, the dbt command's quiet flags, June's variables with `final` off, the pinned dbt environment, the success webhook, and no data file or secret named (J8, J9, J16)
+- the run's target is the last row of `runs/JUNE_RUNS.md` with its list's kind. No row, or a log that breaks its rules, is refused. The real kind uses the June pin, and the dry run's pin waits for pull request 9 (J1, J16)
+- `unpack` refuses a zip that is not the pinned zip, a second file, a member that is not the pinned CSV, a CSV that is not the pinned CSV (and removes it), a header that is not the CFPB header, a malformed row, and a row count that is not the pin's, and prints nothing (J5, J8)
+- `job_a` refuses rows that are not exactly the frozen June list with their hashes. Its figures follow the test run's worst case and July's cost per 1,000, and its exit value has exactly the contract's keys, with a two-place cost (J8, J16)
+
+Written on 6 November 2026, in the fix round of #94, from its review and the owner's decisions:
+
+- both notebooks first refuse a later row of the run log, a row whose list is not `splits/june/june.csv`, and code that is not the row's frozen code, before they touch the June file (J1, J16, owner decision 3, minors 5 and 6)
+- the June pin holds the narrative count. `job_a` counts the rows and narratives Spark reads, with dbt's own read options, and refuses any count that is not the pin's (J8, owner decision 2)
+- `voc june-check` runs `unpack` on a copy in a temporary folder, leaves nothing behind, counts the rows, the narratives with text as Spark's `rlike` reads it, and the fields with a line break or a lone carriage return, says whether each count matches the pin, and refuses with unpack's fixed text (J8, owner decision 2)
+- the figures use the June ledger's own cap, `june_cap_tokens`, and round the cost up to the cent (J12, minor 7)
+- `checked_sample` and `figures` hold no complaint text in any refusal, value or print (J5, minor 8)
+- `unpack` removes the CSV on any failure with fixed text, refuses an empty CSV, reads a field longer than Python's default limit, and refuses a label holding an apostrophe (J8, minor 3 and nits)
+- the dbt flags tests check that dbt ran the failing model, so an early stop cannot pass for a quiet failure (J5, minor 2)
+- Job A stops a run after an hour and has one failure notice, with no address in the repo (J8)
+- the failcheck job runs Job A's own dbt command on its own rows, and the same command without the flags as a control after it, with no trigger. Its rows hold a short row that `unpack` would refuse (J5, owner decision 1)
+- the robot's check holds no secret, finds the marker in nested fields and in downloaded archives, and reports task keys, states, places and status codes only (J5, J13, owner decision 1)
+
+Written on 6 November 2026, in the second fix round of #94, from the review of its fix round and the owner's decisions:
+
+- a real row of the run log needs a recorded pass of both gates, `june-check` and `failcheck`, for its code and the June pin, dated before it. A pass for other code, another pin or a later date does not count, a synthetic row needs none, a malformed gate row is refused, and the committed logs keep the rule. Job A and `scripts/june_hash.py` refuse without both, and CI checks that the gates log only grows (J1, owner decision on minor 2)
+- `job_a` reads Spark only through wrappers that refuse with fixed text and no cause, and its sample's SQL takes only complaint IDs (J5, serious 3)
+- the robot's check reads tar and zip archives and reports any other download as unread, searches `runs/get` too, gets no `all-apis` token, and gives a verdict that fails on any leak, any unread place, a control that shows no leak in each kind of place judged, or a query history that is not refused (J5, J13, serious 1 and 2, minor 1)
+- the failcheck's short row holds the marker at the start of each free-text field, its control differs from the quiet run by the flags only, and its first task returns its code hash for the gate's record (J5, minor 4, nit 8)
+- `voc june-check` checks the frozen sample's rows against their hashes and counts sampled narratives with a carriage return, unpacks inside the June data folder, fails with a non-zero exit on any mismatch, and prints the gate's record only on a pass from unchanged frozen files (J1, J8, minors 3 and 6, nit 1)
+- Job A sends no failure email (J8, owner decision on minor 5)
+
+Written on 6 November 2026, in the third fix round of #94, from the review of its second fix round and the owner's decisions:
+
+- the robot's verdict passes only when both dbt runs' dbt files show they reached the failing model. A reply with HTTP 200 that is not JSON is unread. Only HTTP 400, 401 or 403, or a token narrowed to `jobs`, is a refusal of `all-apis`. The marker in any other task fails, a task listed twice stops the check, the control must show the marker in its output, and an encrypted zip is unread (J5, J13, serious 1, minors 1 and 2, nits 4 to 6)
+- the robot's check calls every place and never prints the query history's message (J5, minor 7)
+- the gates log has a Result column. A later fail closes a gate and a later pass opens it again, only results strictly before the row count, a row with a bad result or an impossible date is refused, and CI refuses a new real row whose passes are not on `main` already (J1, minors 3 and 8, nit 7)
+- the hash script has no way round the gates, prints the two hashes when both are open, and compares the frozen files with git by content, as `voc june-check` does before its gate record, which also needs the top of a checkout (J1, minors 4 and 5, nit 9)
+- Job A's refusals, Spark's and unpack's, carry no earlier exception at all (J5, minor 6)
+- no text still says the gates come before the upload, the steps run `voc june-check` with the lock file kept, and the owner's steps make the sample before it (J8, minor 10, nits 1 and 8)
+
+Written on 6 November 2026, from the minors of the last review of #94, fixed with no further review round:
+
+- `voc june-check` records a fail too, and both gates print their time in UTC. The robot's check prints its time and the code hash even when it stops early (J1, minors 2 and 3)
+- the robot's run file rule needs a folder boundary (J13, nit 1)
+- a frozen file rewritten with other line endings, or hidden from git's status, counts as changed, and a file with a space in its name does not (J1, minors 4 and 5)
+- a run log row with an impossible date is refused (J1, minor 6)
+- the hash script prints the two hashes on a real git checkout with both gates open, and refuses once a frozen file is added (J1, minor 7)
+- `unpack`'s refusal keeps no exception even when the CSV cannot be removed (J5, nit 6)
+- the steps give every rule of the verdict and the dates in UTC, and the spec says how the dry run gets its hashes (J1, J8, minors 1 and 8, nit 3)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 

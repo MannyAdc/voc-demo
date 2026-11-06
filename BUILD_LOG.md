@@ -1834,3 +1834,138 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - 08:43 Fix changes written: J10, J13, Known limits, the test list, the adapter's comment and this log.
 - Fix commit `eefb87d`, through the gate. CI green on `eefb87d`.
 - 09:31 Merge verdict on #93: PENDING with every mechanical check passing. All 6 minors and 4 nits, which the owner chose to fix, are fixed in `ae56930` and `eefb87d`. Claude's verdict: MERGE, after this log commit's CI.
+- The spike of pull request 5a, run by the owner on 6 November on the synthetic zip. Its answers:
+  - a: the job reads this public repo from its Git source with no Git credential. The job page takes the definition in YAML, not JSON. `client` in an environment's spec is shown as deprecated, and `environment_version` is taken. Notebook paths work without `.py`.
+  - b: the dbt task's generated profile works with the project's `profile: voc`, as target `databricks_cluster` with 8 threads. dbt 1.12.6 ran with the adapter `databricks=1.13.0` from the environment's pin. The models went into `workspace.voc_spike`. The seed loaded 1,909 rows.
+  - c and d: dbt wrote in its checkout, and `unpack`'s 4 task values reached `--vars` in full, with the labels as a bare JSON list. `PASS=16 WARN=0 ERROR=0 SKIP=0`.
+  - e: the exit value is `notebook_output.result`, with `truncated` false. A success is `state.result_state` `SUCCESS` and `status.termination_details.code` `SUCCESS`. A run never repaired has an empty `repair_history`. The API lists the tasks as `dbt`, `job_a`, `unpack`, not in the job's order.
+  - f: the robot's OAuth secret, made in the workspace's settings with the `jobs` scope only, got a token for `jobs`, and with Can View it read the exit value (HTTP 200). Databricks' SDK, asking for `all-apis` by default, was refused.
+  - g: the file-arrival trigger started the run at 01:34, about a minute after the 01:33 upload.
+  - h: the run took 3 minutes 7 seconds: `unpack` 30 seconds, `dbt` 2 minutes 2 seconds, `job_a` 32 seconds. The warehouse ran one cluster for 23 queries. No quota warning was seen.
+- About 01:59 the owner revoked the `voc-demo dbt` token in Databricks and deleted its encrypted copy on the laptop, so the laptop holds no Databricks admin token (J13).
+- The owner's correction: Claude asked the owner to make a scratch notebook without naming it or saying what it was for, so the owner got lost. Claude apologised, explained it, and saved a standing rule to name everything the owner creates and say what it is for.
+- The owner cleaned up the robot's test secret and the scratch notebook, and paused the spike's trigger.
+- 02:35 Work start: spec 004's pull request 5b, the real Job A, branch `feat/june-job-a-real`, worktree `../voc-demo-jobA2`.
+- Red commit `f48d4fc`: only `tests/test_job_a.py`, through the gate.
+- AI mistakes in the red tests, caught by running them on the code before the green commit, and fixed in the green commit:
+  - The control dbt run built a view, which does not evaluate its cast, so nothing failed. It now builds a table.
+  - The leak test put the marker in the model's SQL, so dbt's compiled copies of the SQL held it. In Job A the text comes from the data, so the marker now sits in a seed, the input, and every other file is checked.
+  - The figures test imported `cut_text` from `voc.prompt`. It is in `voc.baselines`.
+  - The banned words of the no-data test held `voc_raw/june/`, copied from the spike, but J8 puts the unpacked CSV there. The word was dropped.
+- AI mistake: Claude's first `job_a` notebook allowed only digits in the June list's IDs, which would refuse the dry run's `SYN-` IDs. Caught by Claude reading it back. It allows an optional `SYN-`.
+- AI mistake: an inline command of Claude's named the CFPB export's file-name prefix, and the guard refused it. Caught by the guard. The script went in a file.
+- Claude's choices, for the owner to see:
+  - The hard requirement is met in two layers: `unpack` checks the CSV's shape before dbt reads it, and the dbt command runs with `--log-level none --log-level-file none --no-write-json`. The local test proves the flags on dbt with DuckDB. That Databricks' dbt task keeps to them, and that its run page offers no dbt files, is checked in the dry run of pull request 9.
+  - `job_a` checks that its checkout's code hash is the target row's before anything else. That check is in the notebook, which no unit test runs, so the dry run is its first check.
+  - The figures use the test run's worst case and the July test run's $0.2373 per 1,000 complaints, and the June ledger's cap from `config/budget.toml`, with nothing used yet.
+- 03:31 Green changes written: `src/voc/job_a.py`, `cloud/job_a.yml`, `cloud/job_a/`, J8's 5b, J16, the test list and this log.
+- 03:49 Review findings on #94 posted as a comment (time from GitHub): 1 serious, 8 minor, 8 nits. Claude stopped the overnight build there, as the owner asked, and did not start pull request 8.
+- Owner decisions, on the morning of 6 November:
+  - 1. The failing-row run in Databricks, as a gate before the real June upload, with the steps, including how the owner checks as the robot.
+  - 2. The owner's check of the June zip on the laptop before the upload, including line breaks inside narratives. Also Job A checks that its row count and narrative count on Databricks equal the laptop's counts for the pinned file, and refuses on any mismatch, so a multi-line parsing difference can never pass quietly.
+  - 3. Job A refuses a resume run until pull request 6 can read the June ledger.
+  - Fix all the other minors and nits in #93 and #94, then start pull request 8.
+- Fix round on #94:
+  - Decision 1: `cloud/failcheck.yml`, `cloud/failcheck/make_rows.py`, `cloud/failcheck/robot_check.py`, `cloud/failcheck/STEPS.md` and `src/voc/failcheck.py`. Claude's choice: the job writes its own rows rather than take an upload, since Job A's `unpack` would refuse the failing row first. So no zip is made. The failing row is one field short, the kind of row Spark's FAILFAST error can quote. The control run without the flags shows whether the robot's check can see a leak at all.
+  - Decision 2: `voc june-check`, and `job_a`'s count check. The narrative count, 16,820 from the owner's check of 4 November, is now in the pin. A narrative counts where it holds a character other than Java's white space, as Spark's regular expression `\S` reads it.
+  - Decision 3: a later row is refused in both notebooks. Claude's choice: all three later kinds, not only "resume", since a reproduction's and a second run's figures need the ledger's use too.
+  - Minors 2, 5, 6, 7 and 8, and the nits, as the test list says. Minor 3 is the owner's laptop check, plus the field limit raised. Minor 9 is decision 2.
+  - The nit on the YAML wrapper: the spike's job was saved in the editor with its `resources.jobs` wrapper, so that is confirmed.
+  - The nit on the spike's numbers: they came from the job's run pages in the owner's browser and the owner's screenshots, so no command produced them.
+- Red commit `609d74e`: only `tests/test_job_a.py`, through the gate.
+- AI mistake in the red tests, caught by running them on the code before the red commit: the test helper that counts a zip's rows used Python's csv at its default field limit, so the long-field test failed in the helper. Fixed before the commit.
+- AI mistake: Claude's new test file at first held a raw control byte where an escaped one was meant, so pytest could not read it. Caught by the test run. Fixed before the commit.
+- AI mistake: Claude's new docstring in `src/voc/job_a.py` named dbt's variables flag, which B17's test allows only in the `voc dbt` wrapper. Caught by the full test run before the green commit. Reworded.
+- In the green commit, one test changes: the figures test's cost for 2 complaints is now "0.01", not "0.00", since the cost is rounded up.
+- 09:12 Fix changes written: Job A's logic and notebooks, the failcheck, `voc june-check`, the pin's narrative count, the June cap, J8, J12, the owner's steps, Known limits, the test list and this log.
+- Fix commit `4976572`, through the gate.
+- A fresh reviewer agent read the fix round's diff, since it added much new code: the failcheck, `voc june-check` and Job A's count check. Its findings: 3 serious, 6 minor, 8 nits.
+- 09:53 Claude marked #93 ready, after the MERGE verdict and CI green on its log commit.
+- 09:56 The fix round's review findings on #94 posted as a comment. Claude stopped #94 and asked the owner.
+- AI mistakes in the fix round, caught by that review:
+  - The robot's check called an artifacts download it could not read "nowhere", and its test expected that. A zip or an error page would have passed the gate unread (serious 1).
+  - The robot's check never searched the `runs/get` reply, with its state messages (serious 2).
+  - Job A's new count read the June file with Spark outside dbt's quiet flags, with no fixed-text refusal, a new place where a row could leak (serious 3).
+  - `voc june-check` exited 0 on a mismatch, and the step's rule "every line must say matches" could not be met (minor 3).
+  - The steps put both gates before the upload, not before the frozen run log row, after which a failure could not be fixed (minor 2).
+- 10:08 The owner merged #93 (time from GitHub, `1447f3b`).
+- Owner decisions on the fix round's review, given with the news of that merge:
+  - Fix all three serious findings.
+  - Minors 1 to 6 and all nits. Minor 2 as a hard rule: both gates must pass before the run log row is written, in the steps doc, and the run log step refuses when either gate has no recorded pass for the current pin and code. Minor 5: drop the failure email from Job A, the owner watches the job page after the upload. Minor 1: add the refused `all-apis` request to the robot's check as proof. Minor 3: `june-check` exits non-zero on any mismatch, and the step is worded so it can be met.
+  - Carry on with pull request 8, but never ask the owner to merge it before #94 merges. Rebase it on the fixed #94 and run its tests and review again after the rebase.
+- Merge commit `e165fa3`: main, with #93, merged into this branch. The build log's one conflict, two blocks added at its end, was resolved by keeping both whole, main's first.
+- Correction to the line above that begins "Owner decisions, on the morning of 6 November": it has no time. The decisions arrived before 08:20, when Claude's first command after them ran (nit 7 of the fix round's review). The line is kept as written.
+- Claude's choices in this round, for the owner to see:
+  - The gates' passes go in a new log, `runs/JUNE_GATES.md`, which only grows and is not frozen, so recording a pass changes no code hash. A pass names the June pin's SHA-256 and the code hash. Three places refuse a real row without both passes: `scripts/june_hash.py` (with `--synthetic` for a synthetic row), a test on the committed logs, which CI runs, and Job A.
+  - The robot's check gives its own verdict, so the owner reads one line. Its control rule: the control must show the marker in its output, and in its dbt files whenever the quiet run has dbt files.
+  - `voc june-check` also checks the frozen sample's rows, as Python reads them, against their content hashes. That catches a difference between Python's reading and the laptop's DuckDB load before the upload.
+  - Nit 4, the vertical tab in `\S`: it fails closed, so it is in Known limits with no code change. Nit 6: the steps give no time for the failcheck run, since none was measured.
+- Pull request 8's branch `feat/june-approval` holds only local commits for now. It is rebased on the fixed #94 before it is pushed, which rewrites no pushed commit.
+- Red commit `4a159b5`: only `tests/test_job_a.py`, through the gate.
+- AI mistakes in the red tests, caught by running them on the code before the green commit, and fixed in it:
+  - The test checkout of `_root` had no `config/`, so Job A's new gate check could not read the June pin there. It now copies the repo's `config/` before its code hash is taken, as a checkout has it, and the hash script's test no longer copies it a second time.
+  - The gates log helper wrote into a `runs/` folder that some tests had not made. It now makes the folder.
+- AI mistake: Claude's full test run before the green commit left out the two tests of `tests/test_june_frozen.py` that fail while new files are unstaged, and so missed that one of them runs `scripts/june_hash.py`, which now refuses without both gates. Caught by the gate, which refused the green commit. The test now asks with `--synthetic`, as for a synthetic row.
+- In the green commit, six tests that pinned the old behaviour change:
+  - the timeout test now checks that Job A has no email notice
+  - the robot check's archive test expects an unreadable download to be reported as unread
+  - its report test uses the new lines and both scopes
+  - the two notebook tests look for the Spark wrappers in place of the bare Spark call
+  - the hash script's output test in `tests/test_june_frozen.py` asks with `--synthetic`
+- 10:53 Fix changes written: the gates log and its checks, the robot's check, Job A's Spark wrappers, the failcheck's rows, `voc june-check`, J1, J8, the owner's steps, Known limits, the test list, CLAUDE.md's CI line and this log.
+- Green commit `a5ca424`, through the gate at its second try.
+- A fresh reviewer agent read the second fix round's diff only: 1 serious, 10 minor, 10 nits.
+- 11:29 The second fix round's review findings on #94 posted as a comment. Claude stopped #94 and asked the owner.
+- AI mistakes in the second fix round, caught by that review:
+  - The robot's verdict could say PASS when the quiet dbt run failed before the failing row, since nothing showed it reached it (serious 1).
+  - A reply with HTTP 200 that was not JSON counted as read, and any status but 200 counted as a refusal of `all-apis` (minors 1 and 2).
+  - The gate dates allowed the same minute, and a pass could be added with the real row (minor 3).
+  - The hash script's `--synthetic` flag skipped the gates, and was in no spec (minor 4).
+  - The clean checkout was judged by file names only (minor 5).
+  - `from None` kept Spark's exception as a hidden context (minor 6).
+  - The green commit dropped two assertions of the robot check's report test and did not log that (minor 7).
+- Owner decisions on that review, given after 11:29:
+  - Fix the serious finding: the quiet run's dbt files must show it reached the failing model. If Databricks does not offer them, the verdict fails and the design is rethought.
+  - Minors 1 to 10 and all nits, with the Result column of minor 8 and `--synthetic` removed until pull request 9.
+  - The stopping rule for this check: after this fix, one more fresh review, kept to this round's diff only. If it finds no serious problem, Claude fixes any minors and the owner merges with no further review round.
+  - A new priority: a plan for the shortest safe path to one live end-to-end run on synthetic data by Tuesday 10 November. Claude gave the plan and does not build it until the owner replies.
+  - Pull request 8 stays local until #94 settles.
+- The owner went offline for a while and came back. Claude held at a clean point with nothing running.
+- Correction to the lines above with no local time (nit 3 of the review). Times from git's commit times, when each commit began: fix commit `4976572` 09:33, merge commit `e165fa3` 10:09, red commit `4a159b5` 10:28, green commit `a5ca424` 11:10. The owner's decisions on the fix round's review came after 09:56 and with the news of the 10:08 merge. The lines are kept as written.
+- Claude's choices in this round, for the owner to see:
+  - "Reached the failing model" means the dbt files hold `run/voc/models/landed_complaints.sql`, which dbt writes before it runs that model. The local dbt test shows dbt writes it even with the quiet flags.
+  - A run listing a task twice, as a repaired run can, stops the check with a FAIL, since its attempts cannot be told apart.
+  - The clean check compares with the last commit, or with the staged files where nothing is committed yet, plus files git does not track.
+  - The gates log's Date is the local time the gate ran. The robot's check prints UTC, which Claude converts when it writes the row.
+- Red commit `aa1ee52`: only `tests/test_job_a.py`, through the gate.
+- AI mistake in this round's first code: `changed_frozen` compared with a commit, so in a test tree that is staged but not committed every file counted as changed. Caught by the existing test. It now compares with the staged files when there is no commit.
+- AI mistake: Claude's help text split "counts and hashes only" across two string pieces, so the test could not find the phrase. Caught by the test.
+- AI mistake: an inline command of Claude's named the git flag that skips hooks, in a test it was writing, and the guard refused it. The test never needed the flag, since a temporary repo runs no hook. Removed.
+- In the green commit, tests that pinned the old behaviour change, each marked in the test:
+  - the gates helper writes the Result column, and the gate row format test writes six cells
+  - the cleanup and Spark refusal tests check that no earlier exception is kept, in place of a hidden one
+  - the help text test looks for "counts and hashes only"
+  - the hash script tests drop the synthetic flag, and the plain run on the repo now expects one refusal and no hash
+  - the robot check's pass test uses replies in which both runs reached the model
+  - the CLI gate record test patches the content check, and checks no time is printed on a refusal
+  - the timeout test is renamed to say it checks for no failure email
+  - the CI test counts the run log's main copy in both steps
+- 14:54 Fix changes written: the robot's check, the gates log's Result column and rules, `scripts/check_june_gates.py` and its CI step, the hash script, `changed_frozen`, Job A's refusals, `voc june-check`, the stale wording, J1, J8, the owner's steps, Known limits, the test list and this log.
+- AI mistake: Claude's commit message for the third round's green commit held the word for the command only the owner runs, so the guard refused the inline command. Caught by the guard. The message went in a file.
+- Green commit `af360f2`, through the gate. The commit times from git: red `aa1ee52` 14:33, green `af360f2` 15:06.
+- A fresh reviewer agent read the third fix round's diff only, the last review round under the owner's stopping rule: no serious finding, 8 minor, 7 nits.
+- 15:25 Its findings posted on #94. With no serious finding, the owner's rule applies: Claude fixes the minors and nits, and the owner merges with no further review round.
+- Pull request 8's two local commits rebased with no push onto `af360f2`. Its tests pass there.
+- Correction to the lines above with no local time (nit 4 of the last review). From git's commit times: the second round's green commit `a5ca424` 11:10 (logged), the third round's red commit `aa1ee52` 14:33 and green commit `af360f2` 15:06. The lines are kept as written.
+- AI mistake: Claude's first draft of these log lines held two commit times not taken from git, 14:22 and 14:51. Caught by Claude checking git before writing them. The times above are git's.
+- Red commit `3a86806`: only `tests/test_job_a.py`, through the gate.
+- Claude's choices in this round, for the owner to see:
+  - Both gates print UTC and both June logs are dated in UTC, so no time is converted by hand (minor 2).
+  - The content check now hashes each frozen file's raw bytes as git hashes a blob, and compares them with the commit's, or the staged files' where nothing is committed. That sees line endings git normalises and files marked skip-worktree. This repo's `.gitattributes` keeps text files LF in a checkout, so a clean checkout matches.
+  - A failcheck that stops before it can read a code hash is recorded with the code hash of the `main` commit the job ran, which Claude computes.
+- AI mistake in the third round's test: it wrote its files with Python's `write_text`, which writes CRLF on Windows, so the raw bytes check saw them as changed against git's LF. Caught by the test run. It now writes LF bytes, as the checkout has them. A test edit in the green commit.
+- In the green commit, tests change: three are renamed or have their docstring fixed to say what they check (nit 2), the content check test writes LF bytes, and an f-string with no placeholder is a plain string (nit 7).
+- 15:47 Fix changes written: `changed_frozen` and `differs_from_git`, the run log's dates, `unpack`'s refusal, `voc june-check`'s fail record and UTC time, the robot's check, the steps, the gates log's text, J1, the plan's item 9, the test list and this log.
+- Red commit `3a86806` at 15:27 and green commit `2117b07` at 15:58 (git's commit times), both through the gate. CI green on `2117b07`.
+- A network drop cut Claude's watch of that CI run. Claude read the checks again when the network came back.
+- 21:47 Merge verdict on #94: PENDING with every mechanical check passing. Every finding of the four review rounds, all chosen by the owner, is fixed. The last review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.

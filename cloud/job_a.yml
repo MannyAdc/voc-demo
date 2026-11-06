@@ -1,0 +1,52 @@
+# Spec 004, J8: Job A, made by the owner in the job page's YAML editor (the spike of pull request 5a showed the editor
+# takes this form). The owner puts the SQL warehouse's ID and the receiver's notification destination ID in place of
+# their text. The trigger stays paused until just before the June upload, and is paused again after the run. The
+# run is stopped after an hour. The spike's run took about 3 minutes. It sends no failure email, an output nobody
+# checks (owner decision, 6 November): the owner watches the job page after the upload.
+resources:
+  jobs:
+    voc_june_job_a:
+      name: voc-june-job-a
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      git_source:
+        git_url: https://github.com/MannyAdc/voc-demo
+        git_provider: gitHub
+        git_branch: main
+      trigger:
+        pause_status: PAUSED
+        file_arrival:
+          url: /Volumes/workspace/default/voc_raw/incoming/
+      webhook_notifications:
+        on_success:
+          - id: the receiver's notification destination ID, set by the owner
+      tasks:
+        - task_key: unpack
+          notebook_task:
+            notebook_path: cloud/job_a/unpack
+            source: GIT
+        - task_key: dbt
+          depends_on:
+            - task_key: unpack
+          environment_key: dbt
+          dbt_task:
+            project_directory: dbt
+            # J5: dbt prints and writes nothing that could hold a row. unpack has checked the CSV's shape first.
+            commands:
+              - 'dbt build --log-level none --log-level-file none --no-write-json --vars ''{"month": "june_2026", "month_file": "{{tasks.unpack.values.month_file}}", "month_sha256": "{{tasks.unpack.values.month_sha256}}", "month_rows": {{tasks.unpack.values.month_rows}}, "labels": {{tasks.unpack.values.labels}}, "final": false}'''
+            catalog: workspace
+            schema: voc_june
+            warehouse_id: the SQL warehouse's ID, set by the owner
+            source: GIT
+        - task_key: job_a
+          depends_on:
+            - task_key: dbt
+          notebook_task:
+            notebook_path: cloud/job_a/job_a
+            source: GIT
+      environments:
+        - environment_key: dbt
+          spec:
+            environment_version: "2"
+            dependencies:
+              - dbt-databricks==1.13.0

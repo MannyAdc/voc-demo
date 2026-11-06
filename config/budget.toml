@@ -11,6 +11,11 @@
 # from the development run's tokens per complaint. 40,000,000 covers the worst case.
 cap_tokens = 40000000
 
+# Spec 004, J12: the June ledger's own cap, for Job B's run in the cloud, apart from the laptop ledger's cap above
+# (review of #94, minor 7). 40,000,000 tokens (owner decision), above the June run's worst case of about 38.4
+# million. Job A shows what is left under it, and Job B refuses unless it covers the whole run's worst case.
+june_cap_tokens = 40000000
+
 # Added to the UTF-8 byte count of a prompt to make the worst-case input estimate.
 # It covers the tokens the API adds around the prompt. It was checked on
 # 29 October 2026 by the second smoke test, with LLM_BACKEND=api and

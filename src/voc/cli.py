@@ -62,6 +62,45 @@ def _data_hash(config, root, args):
     print(f"{path.name}  {path.stat().st_size} bytes  sha256 {sha256_of(path)}")
 
 
+def _june_check(config, root, args):
+    """Spec 004, J1 and J8 (owner decisions, 6 November): the owner's check of the June zip, a gate before the June
+    run log's real row. It runs Job A's `unpack` on a copy in a temporary folder inside the June data folder, and
+    prints counts only. It fails on any mismatch. On a pass from unchanged frozen files, it prints the gate's record
+    for `runs/JUNE_GATES.md`."""
+    from voc import frozen
+    from voc.job_a import JobAError, june_check, june_check_verdict, pin_for
+
+    folder = config.get(MONTHS[JUNE])
+    if not folder:
+        raise DataFileError(f"{MONTHS[JUNE]} is not set, in the environment or in .env. The check unpacks inside "
+                            "that folder")
+    pin = pin_for(root, "real")
+    path = Path(args.zip) if args.zip else Path(folder) / pin["zip_file_name"]
+    if not path.is_file():
+        raise DataFileError("the June zip is not there: give its path with --zip")
+    try:
+        counts = june_check(path, pin, Path(root) / "config" / "labels.toml", root=root, scratch=folder)
+    except JobAError as err:
+        raise DataFileError(f"refused, as Job A's unpack would refuse it: {err}") from None
+    print("the June zip passes unpack's checks")
+    lines, passed = june_check_verdict(counts, pin)
+    for line in lines:
+        print(line)
+    changed = frozen.changed_frozen(root)
+    if changed is None:
+        raise DataFileError("this pass cannot be recorded: run it from the top of the repo's checkout, which git "
+                            "tracks")
+    if changed:
+        raise DataFileError(f"this pass cannot be recorded: {len(changed)} frozen files differ from the files git "
+                            "tracks, in name or content")
+    # The gates log's dates are in UTC, as the robot's check prints them (last review of #94).
+    print(f"ran at: {time.strftime('%Y-%m-%d %H:%M', time.gmtime())} UTC")
+    print(f"gate record: june-check {'passed' if passed else 'failed'} for pin {pin['sha256']} and code "
+          f"{frozen.code_hash(root)}")
+    if not passed:
+        raise DataFileError("the June zip fails the check, so the June run log's row must wait")
+
+
 def _load(config, root, args):
     if args.month == JUNE:
         raise DataFileError(JUNE_REFUSED)
@@ -347,7 +386,7 @@ def _evaluate(config, root, args):
     print(format_evaluation(evaluate(root, args.set, args.prompt, args.note), root))
 
 
-COMMANDS = {"data-hash": _data_hash, "profile": _profile, "load": _load, "sample": _sample,
+COMMANDS = {"data-hash": _data_hash, "june-check": _june_check, "profile": _profile, "load": _load, "sample": _sample,
             "validation-lists": _validation_lists, "consistency": _consistency,
             ("review", "sheet"): _review_sheet, ("review", "import"): _review_import,
             ("review", "summary"): _review_summary,
@@ -366,6 +405,10 @@ def main(argv=None, env=None, root=None):
     sub = parser.add_subparsers(dest="command", required=True)
     dh = sub.add_parser("data-hash", help="print the export file's name, size and SHA-256")
     dh.add_argument("month", nargs="?", default=PIN, choices=sorted(MONTHS), help="which month's folder to read")
+    jc_text = ("spec 004: check the June zip as Job A's unpack will, in a temporary folder, printing "
+               "counts and hashes only")
+    jc = sub.add_parser("june-check", help=jc_text, description=jc_text)
+    jc.add_argument("--zip", help="the June zip's path, if it is not in the June data folder")
     p = sub.add_parser("profile", help="print data facts as counts (B22)")
     p.add_argument("--write", help="also write the facts as JSON to this file")
     sm = sub.add_parser("sample", help="build and freeze the samples from the staged July rows (B9, B16, B25), or "
