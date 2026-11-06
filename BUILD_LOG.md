@@ -1978,3 +1978,35 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
   - The deploy's check sends an empty POST to the result route and expects 401, which proves the new code answers and gives the receiver nothing to take.
   - The live check's message names run 1 for each ID, so it cannot be confused with a real run's.
 - 00:33 Green changes written: `receiver_core.Lazy`, the queue function, `.github/workflows/deploy_receiver.yml`, `scripts/receiver_live_check.py`, J9, the owner's Azure step, Known limits, the test list and this log.
+- Green commit `f1d7fdf` at 00:46 (git's commit time), through the gate. The branch was pushed and draft pull request #96 opened.
+- A fresh reviewer agent read the diff: 1 serious, 11 minor, 8 nits.
+- 01:05 Review findings on #96 posted as a comment. Claude stopped #96 and asked the owner.
+- AI mistakes in #96, caught by that review:
+  - The live check's key was always `1:1`, so a re-run passed as a duplicate with nothing queued, and a 202 was called "stored" (serious 1).
+  - The deploy's check could not tell old code from new, and a re-run could roll the receiver back (minors 1 and 2).
+  - The dashboard's deploy identity was reused, so its workflow could also reach the receiver's Key Vault through deployed code (minor 5).
+  - The owner's steps missed this pull request's secrets, role and clean-up (minor 7).
+- 01:11 Claude marked #95 ready, after the MERGE verdict and CI green on its log commit `b376471`.
+- 01:15 The owner merged #95 (time from GitHub, `c62deee`).
+- Owner decisions on #96's review, given after 01:05:
+  - Fix the serious finding: a fresh synthetic key each run, "queued" not "stored", and the owner's table check and clean-up step after the run.
+  - Minor 4: hide the Azure CLI's error text and print only the exit code. The owner reads failure details in the Azure portal.
+  - Minor 5: a second deploy identity, trusted only for the receiver's workflow, with the portal step in J13.
+  - All other minors and nits.
+  - The same stopping rule: one fresh review of this fix round's diff only, and if it finds nothing serious, the minors are fixed and the owner merges.
+  - The Monday 9 November, 6 PM time box stands, and reviews are not rushed for it.
+- The owner asked whether to install `azure.functions` on the laptop. Claude's answer: no. Azure builds it from `receiver/requirements.txt`, the tests use a small stand-in, and installing it would change the frozen `uv.lock`.
+- Correction to the lines above (nit 7 of the review): the entries of 6 November, and of 7 November until here, sit under the heading of Thursday 5 November. The work start of this pull request has no time of its own. Its red commit `7511b4f` began at 00:05 by git. The lines are kept as written.
+
+## Saturday 7 November 2026
+
+- The first try of this round's red commit began at 01:15 and was cut off when the owner switched the laptop off for the night, as Claude had said was safe. No lock file was left, and the staged tests were unchanged.
+- Red commit `b7b19f8` at 09:27 (git's commit time), made again: only `tests/test_receiver_deploy.py`, through the gate.
+- AI mistake: Claude tried to merge main, with #95, into this branch between the red commit and the green one. The gate refused the merge commit, since the merged tree held the red tests without the code that makes them pass. Caught by the gate. Claude backed up the five working files, aborted the merge, checked the files were unchanged, and makes the green commit first, then the merge.
+- Claude's choices, for the owner to see:
+  - "Trusted only for the receiver's workflow" needs a GitHub environment, since GitHub's token cannot tell two workflows on `main` apart. The identity trusts only the token of `receiver-deploy`, which only this workflow uses.
+  - Every reply names its commit in a header, `X-Voc-Build`, read from a `BUILD_COMMIT` file the deploy packs. The commit is public anyway, since the repo is.
+  - The deploy packs the receiver's five own files by name, so the two settings notes, `app_settings.json` and `plan.json`, stay out of the package.
+  - The steps live in `docs/RECEIVER_STEPS.md`, outside the frozen `cloud/` folder, so a fix to them changes no code hash.
+- In the green commit, tests that pinned the old behaviour change, each marked in the test: the environment, the client ID's secret, the packed files, the live check's lines and its fresh attempt, and a run with its secrets unset.
+- 09:59 Fix changes written: `receiver_core.Lazy` and `build_commit`, the function's reply header, the workflow, the live check, `docs/RECEIVER_STEPS.md`, J9, J13, the owner's steps, Known limits, the test list and this log.

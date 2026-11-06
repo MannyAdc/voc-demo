@@ -95,8 +95,8 @@ def test_J9_the_receiver_is_deployed_only_by_hand_from_main():
     assert workflow["permissions"] == {"contents": "read", "id-token": "write"}
     assert workflow["concurrency"] == {"group": "deploy-receiver", "cancel-in-progress": False}
     assert job["timeout-minutes"] <= 30
-    # No environment: Azure trusts this repo's main branch, and an environment would change the token's subject.
-    assert "environment" not in job
+    # Changed in the fix round of #96: the deploy runs in its own environment, whose token its own identity trusts.
+    assert job["environment"] == "receiver-deploy"
 
 
 def test_J9_every_action_is_pinned_and_no_value_is_written_into_a_script():
@@ -111,15 +111,17 @@ def test_J9_every_action_is_pinned_and_no_value_is_written_into_a_script():
 def test_J9_the_app_s_names_and_address_are_secrets_not_files():
     """The receiver's address is not written in this public repo."""
     text = WORKFLOW.read_text(encoding="utf-8")
-    for name in ("RECEIVER_APP_NAME", "RECEIVER_RESOURCE_GROUP", "RECEIVER_URL", "AZURE_CLIENT_ID", "AZURE_TENANT_ID",
-                 "AZURE_SUBSCRIPTION_ID"):
+    # Changed in the fix round of #96: the receiver's own identity, RECEIVER_AZURE_CLIENT_ID.
+    for name in ("RECEIVER_APP_NAME", "RECEIVER_RESOURCE_GROUP", "RECEIVER_URL", "RECEIVER_AZURE_CLIENT_ID",
+                 "AZURE_TENANT_ID", "AZURE_SUBSCRIPTION_ID"):
         assert "${{ secrets." + name + " }}" in text, name
     assert "azurewebsites.net" not in text
 
 
 def test_J9_only_the_receiver_folder_is_packed_and_built_remotely():
     runs = "\n".join(step.get("run", "") for step in _steps())
-    assert 'git archive --format=zip -o "$RUNNER_TEMP/receiver.zip" HEAD:receiver' in runs
+    # Changed in the fix round of #96: the receiver's own files are named, with the commit.
+    assert 'git archive --format=zip -o "$RUNNER_TEMP/receiver.zip" --add-virtual-file="BUILD_COMMIT:$GITHUB_SHA" HEAD:receiver' in runs
     assert "functionapp deployment source config-zip" in runs and "--build-remote true" in runs
     assert "-o none" in runs
 
@@ -132,8 +134,9 @@ def test_J9_the_deploy_checks_the_live_receiver_refuses_an_unsigned_call():
 
 
 def test_J9_the_deploy_waits_until_the_owner_has_set_its_secrets():
+    # Changed in the fix round of #96: a run with a secret unset fails, and only a moved main stops it quietly.
     first = _steps()[0]
-    assert "go=false" in first["run"] and "exit 0" in first["run"]
+    assert "go=false" in first["run"] and "exit 0" in first["run"] and "exit 1" in first["run"]
 
 
 # The owner's live check (owner decisions, 6 November)
@@ -185,8 +188,10 @@ def test_J9_the_live_check_sends_a_refused_and_an_accepted_message(monkeypatch, 
     monkeypatch.setattr(check, "_post", receiver)
     assert check.main(["https://receiver.example.invalid"]) == 0
     out = capsys.readouterr().out
-    assert out.splitlines() == ["badly signed: HTTP 401 (must be 401 or 400)", "signed: HTTP 202 (must be 202)",
-                                "verdict: PASS"]
+    # Changed in the fix round of #96: only 401 for the bad message, "queued", and the key to check and delete.
+    lines = out.splitlines()
+    assert lines[:2] == ["badly signed: HTTP 401 (must be 401)", "signed: HTTP 202 (must be 202: queued)"]
+    assert lines[2].startswith("verdict: PASS, queued under the key 1:")
     assert SECRET not in out
     assert [url for url, _, _ in receiver.calls] == ["https://receiver.example.invalid/api/result"] * 2
 
@@ -203,9 +208,9 @@ def test_J9_the_live_check_fails_when_a_bad_signature_is_taken_or_a_good_one_ref
 
 def test_J9_the_live_check_s_message_is_synthetic_and_starts_nothing():
     check = _check()
-    body = json.loads(check.message_bytes())
+    body = json.loads(check.message_bytes(1793000000))  # changed in the fix round of #96: a fresh attempt each run
     assert body["result_state"] == "NOT_STARTED" and body["job_b_run_id"] is None and body["job_b_exit"] is None
-    assert body["github_run_id"] == 1 and body["github_run_attempt"] == 1 and body["job_a_run_id"] == 1
+    assert body["github_run_id"] == 1 and body["github_run_attempt"] == 1793000000 and body["job_a_run_id"] == 1
 
 
 @pytest.mark.parametrize("argv", [[], ["https://receiver.example.invalid", SECRET], ["http://receiver.example"],
@@ -228,7 +233,7 @@ def test_J9_the_live_check_asks_for_the_secret_with_a_hidden_prompt_and_drops_it
 
 def test_J9_the_live_check_signs_as_the_receiver_checks():
     check = _check()
-    raw = check.message_bytes()
+    raw = check.message_bytes(1793000000)  # changed in the fix round of #96
     headers = check.signed_headers(SECRET, 1793000000, raw)
     expected = hmac.new(SECRET.encode(), b"1793000000." + raw, hashlib.sha256).hexdigest()
     assert headers["X-Voc-Signature"] == f"sha256={expected}" and headers["X-Voc-Timestamp"] == "1793000000"

@@ -15,10 +15,14 @@ import time
 import azure.functions as func
 
 from receiver_adapters import DatabricksClient, GitHubClient, StorageQueue, TableStore
-from receiver_core import Lazy, handle_http, handle_queue, load_settings, purge_safely
+from pathlib import Path
+
+from receiver_core import Lazy, build_commit, handle_http, handle_queue, load_settings, purge_safely
 
 QUEUE = "june-events"
 KEPT_DAYS = 30
+# The deployed commit, from the deploy's BUILD_COMMIT file, named in every reply (review of #96).
+BUILD = build_commit(Path(__file__).resolve().parent)
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
@@ -45,7 +49,7 @@ def _log(event, **fields):
 def _http(route, req):
     reply = handle_http(route, dict(req.headers), req.get_body(), _settings(), _store(), _queue(), int(time.time()),
                         _log)
-    return func.HttpResponse(status_code=reply.status)
+    return func.HttpResponse(status_code=reply.status, headers={"X-Voc-Build": BUILD})
 
 
 @app.route(route="databricks", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
