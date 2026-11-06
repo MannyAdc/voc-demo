@@ -2010,3 +2010,14 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
   - The token's life comes from Databricks' `expires_in`, or an hour when it is missing. It is renewed five minutes early.
   - A refused or failed result post ends the job with an error after its tries, so the failure is visible in GitHub.
 - 23:41 Fix changes written: `src/voc/approval.py`, J10, J16 item 9, Known limits, the test list and this log.
+- Green commit `9dbbefe` at 23:52 (git's commit time), through the gate.
+- A fresh reviewer agent read the fix round's diff only, the last review round under the owner's stopping rule: no serious finding, 6 minor, 8 nits.
+- 00:09 on 7 November: its findings posted on #95. With no serious finding, the owner's rule applies: Claude fixes the minors and nits, and the owner merges with no further review round.
+- Correction to the lines above with no local time (nit 8 of that review), from git's commit times: red commit `cd1db29` 23:13 and green commit `9dbbefe` 23:52 on 6 November. The owner's decisions on #95's first review and on the live receiver test came between 22:55 and 23:13. The lines are kept as written.
+- AI mistake, a second time: Claude drafted these commit times, 23:20 and 23:41, before reading them from git. Caught by Claude checking git before writing them. From now on Claude reads a time from its source before drafting a log line.
+- Red commit `e437056`: only `tests/test_approval.py`, through the gate. One existing test's synthetic case gained the reason it is really refused for (minor 6).
+- Claude's choices in this round, for the owner to see:
+  - The follow ends 330 minutes after the job's start, leaving 30 minutes for the end (minor 4).
+  - A failed token request just before run-now still posts `UNKNOWN` (nit 2). Telling it apart would need a second sign-in step before the start, and `UNKNOWN` errs on the safe side.
+  - On a cancel the post gets one try and no wait, since GitHub allows only a few seconds, and the cancel itself is what the job reports.
+- 00:36 Fix changes written: `src/voc/approval.py`, J10, Known limits, the plan's item 9, the test list and this log.

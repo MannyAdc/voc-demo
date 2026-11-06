@@ -494,6 +494,15 @@ Written on 6 November 2026, in the fix round of #95, from its review and the own
 - the real target and pin code refuse a real row without its gates and a synthetic row until pull request 9, and the run job and the termination message pass J5's hostile-text test (J5, J16, minors 6 and 7)
 - a Job B run with no task list still posts, an exit value that is not JSON is refused, either attempt source alone stops a re-run and posts `NOT_STARTED`, and a cancelled run prints no traceback (J5, J16, nits 2 to 5)
 
+Written on 7 November 2026, from the second review of #95, fixed with no further review round:
+
+- `http.client`'s own errors are no answer, in the request, the follow and the post, and a failed post names the first error too (J16, minors 1 and 2)
+- a cancel after the start posts `UNKNOWN` once with no wait, and before it `NOT_STARTED` (J16, minor 3)
+- the follow's limit counts from the job's start and leaves 30 minutes for the end (J10, minor 4)
+- a short token is renewed at half its life, and a 403 renews it once (J13, nit 1)
+- the opener's only redirect handler refuses, a redirect comes back as its status, the post is tried again after a 429 or no answer, and `main`'s refusal of the run job holds no field it does not read (J5, J13, nits 6 and 7)
+- the synthetic case of the real target test is refused by the run log's rule, as it says now (minor 6)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
