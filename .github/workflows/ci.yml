@@ -106,6 +106,23 @@ jobs:
           fi
           uv run --locked python scripts/check_test_runs.py "$base" runs/JUNE_GATES.md
 
+      - name: A new real row of the June run log has its gate passes on main already (spec 004, J1)
+        run: |
+          gates="$RUNNER_TEMP/june_gates_main.md"
+          runs="$RUNNER_TEMP/june_runs_main.md"
+          git rev-parse --verify origin/main > /dev/null
+          if git cat-file -e origin/main:runs/JUNE_GATES.md 2>/dev/null; then
+            git show origin/main:runs/JUNE_GATES.md > "$gates"
+          else
+            rm -f "$gates"
+          fi
+          if git cat-file -e origin/main:runs/JUNE_RUNS.md 2>/dev/null; then
+            git show origin/main:runs/JUNE_RUNS.md > "$runs"
+          else
+            rm -f "$runs"
+          fi
+          uv run --locked python scripts/check_june_gates.py "$gates" "$runs" runs/JUNE_RUNS.md config/data_files.toml
+
   secret-scan:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

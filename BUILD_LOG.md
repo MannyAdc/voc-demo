@@ -1913,3 +1913,41 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
   - the two notebook tests look for the Spark wrappers in place of the bare Spark call
   - the hash script's output test in `tests/test_june_frozen.py` asks with `--synthetic`
 - 10:53 Fix changes written: the gates log and its checks, the robot's check, Job A's Spark wrappers, the failcheck's rows, `voc june-check`, J1, J8, the owner's steps, Known limits, the test list, CLAUDE.md's CI line and this log.
+- Green commit `a5ca424`, through the gate at its second try.
+- A fresh reviewer agent read the second fix round's diff only: 1 serious, 10 minor, 10 nits.
+- 11:29 The second fix round's review findings on #94 posted as a comment. Claude stopped #94 and asked the owner.
+- AI mistakes in the second fix round, caught by that review:
+  - The robot's verdict could say PASS when the quiet dbt run failed before the failing row, since nothing showed it reached it (serious 1).
+  - A reply with HTTP 200 that was not JSON counted as read, and any status but 200 counted as a refusal of `all-apis` (minors 1 and 2).
+  - The gate dates allowed the same minute, and a pass could be added with the real row (minor 3).
+  - The hash script's `--synthetic` flag skipped the gates, and was in no spec (minor 4).
+  - The clean checkout was judged by file names only (minor 5).
+  - `from None` kept Spark's exception as a hidden context (minor 6).
+  - The green commit dropped two assertions of the robot check's report test and did not log that (minor 7).
+- Owner decisions on that review, given after 11:29:
+  - Fix the serious finding: the quiet run's dbt files must show it reached the failing model. If Databricks does not offer them, the verdict fails and the design is rethought.
+  - Minors 1 to 10 and all nits, with the Result column of minor 8 and `--synthetic` removed until pull request 9.
+  - The stopping rule for this check: after this fix, one more fresh review, kept to this round's diff only. If it finds no serious problem, Claude fixes any minors and the owner merges with no further review round.
+  - A new priority: a plan for the shortest safe path to one live end-to-end run on synthetic data by Tuesday 10 November. Claude gave the plan and does not build it until the owner replies.
+  - Pull request 8 stays local until #94 settles.
+- The owner went offline for a while and came back. Claude held at a clean point with nothing running.
+- Correction to the lines above with no local time (nit 3 of the review). Times from git's commit times, when each commit began: fix commit `4976572` 09:33, merge commit `e165fa3` 10:09, red commit `4a159b5` 10:28, green commit `a5ca424` 11:10. The owner's decisions on the fix round's review came after 09:56 and with the news of the 10:08 merge. The lines are kept as written.
+- Claude's choices in this round, for the owner to see:
+  - "Reached the failing model" means the dbt files hold `run/voc/models/landed_complaints.sql`, which dbt writes before it runs that model. The local dbt test shows dbt writes it even with the quiet flags.
+  - A run listing a task twice, as a repaired run can, stops the check with a FAIL, since its attempts cannot be told apart.
+  - The clean check compares with the last commit, or with the staged files where nothing is committed yet, plus files git does not track.
+  - The gates log's Date is the local time the gate ran. The robot's check prints UTC, which Claude converts when it writes the row.
+- Red commit `aa1ee52`: only `tests/test_job_a.py`, through the gate.
+- AI mistake in this round's first code: `changed_frozen` compared with a commit, so in a test tree that is staged but not committed every file counted as changed. Caught by the existing test. It now compares with the staged files when there is no commit.
+- AI mistake: Claude's help text split "counts and hashes only" across two string pieces, so the test could not find the phrase. Caught by the test.
+- AI mistake: an inline command of Claude's named the git flag that skips hooks, in a test it was writing, and the guard refused it. The test never needed the flag, since a temporary repo runs no hook. Removed.
+- In the green commit, tests that pinned the old behaviour change, each marked in the test:
+  - the gates helper writes the Result column, and the gate row format test writes six cells
+  - the cleanup and Spark refusal tests check that no earlier exception is kept, in place of a hidden one
+  - the help text test looks for "counts and hashes only"
+  - the hash script tests drop the synthetic flag, and the plain run on the repo now expects one refusal and no hash
+  - the robot check's pass test uses replies in which both runs reached the model
+  - the CLI gate record test patches the content check, and checks no time is printed on a refusal
+  - the timeout test is renamed to say it checks for no failure email
+  - the CI test counts the run log's main copy in both steps
+- 14:54 Fix changes written: the robot's check, the gates log's Result column and rules, `scripts/check_june_gates.py` and its CI step, the hash script, `changed_frozen`, Job A's refusals, `voc june-check`, the stale wording, J1, J8, the owner's steps, Known limits, the test list and this log.

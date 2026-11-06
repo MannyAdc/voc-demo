@@ -19,8 +19,11 @@
   sample's rows against `splits/june/` and computes the figures for the approval: the call count, the worst case as
   the test run reserves it (each prompt plus its output limit, retries included), the tokens left under the June
   ledger's own cap, `june_cap_tokens`, and the expected cost at the July test run's cost per 1,000, rounded up.
-- `june_check` is the owner's check of the June zip on the laptop before the upload: `unpack` in a temporary folder,
-  then the counts of rows, narratives and fields with line breaks (`voc june-check`).
+- `june_check` is the owner's check of the June zip on the laptop, a gate before the June run log's real row
+  (`voc june-check`): `unpack` in a temporary folder inside the June data folder, then the counts of rows,
+  narratives and fields with line breaks, and the frozen sample's rows against their hashes.
+- A refusal carries no earlier exception, not even a hidden one, since Spark's or a parser's own error could quote
+  a row (review of #94).
 
 B21 and J5: nothing here prints, and every refusal holds fixed text and counts only.
 """
@@ -102,8 +105,11 @@ def checked_target(root):
         # Owner decision, 6 November: both gates passed for this code and the June pin before the row was written.
         try:
             check_gates(read_runs(Path(root) / RUNS), read_gates(Path(root) / GATES), pin_for(root, "real")["sha256"])
+            error = None
         except JuneRunsError as err:
-            raise JobAError(f"the June gates were not passed first: {err}") from None
+            error = str(err)
+        if error:
+            raise JobAError(f"the June gates were not passed first: {error}")
     return run_target
 
 
@@ -173,10 +179,13 @@ def _records(path):
                     if len(record) != len(CFPB_COLUMNS):
                         raise JobAError(f"row {rows} of the CSV has {len(record)} fields, not {len(CFPB_COLUMNS)}")
                     yield record
+                error = None
             except csv.Error:
-                raise JobAError(f"the CSV cannot be read as CSV after row {rows}") from None
+                error = f"the CSV cannot be read as CSV after row {rows}"
             except UnicodeDecodeError:
-                raise JobAError("the CSV is not UTF-8") from None
+                error = "the CSV is not UTF-8"
+            if error:
+                raise JobAError(error)
     finally:
         csv.field_size_limit(previous)
 
@@ -210,12 +219,15 @@ def unpack(incoming, out, pin, labels_file):
         with zipfile.ZipFile(path) as archive:
             _write_member(archive, pin, target_path)
         _check_shape(target_path, pin)
+        failure = None
     except JobAError:
         target_path.unlink(missing_ok=True)
         raise
     except Exception as err:  # noqa: BLE001, any failure removes the CSV and is refused with its type only
         target_path.unlink(missing_ok=True)
-        raise JobAError(f"the zip cannot be read: {type(err).__name__}") from None
+        failure = type(err).__name__
+    if failure:
+        raise JobAError(f"the zip cannot be read: {failure}")
     return {"month_file": str(target_path), "month_sha256": pin["sha256"], "month_rows": str(pin["rows"]),
             "labels": labels}
 
@@ -319,9 +331,12 @@ def spark_counts(run_sql, month_file):
     sql = count_sql(month_file)
     try:
         row = run_sql(sql)[0]
-        return int(row["rows"]), int(row["narratives"])
-    except Exception:  # noqa: BLE001
-        raise JobAError("Spark could not count the June file") from None
+        counts = int(row["rows"]), int(row["narratives"])
+    except Exception:  # noqa: BLE001, refused below, outside the except block, so no exception is kept
+        counts = None
+    if counts is None:
+        raise JobAError("Spark could not count the June file")
+    return counts
 
 
 def listed_ids(root):
@@ -341,9 +356,12 @@ def spark_rows(run_sql, listed):
     """The frozen sample's rows from the June tables, refused with fixed text only on any failure."""
     sql = sample_sql(listed)
     try:
-        return [tuple(r) for r in run_sql(sql)]
-    except Exception:  # noqa: BLE001
-        raise JobAError("Spark could not read the June sample's rows") from None
+        rows = [tuple(r) for r in run_sql(sql)]
+    except Exception:  # noqa: BLE001, refused below, outside the except block, so no exception is kept
+        rows = None
+    if rows is None:
+        raise JobAError("Spark could not read the June sample's rows")
+    return rows
 
 
 def checked_counts(pin, rows, narratives):

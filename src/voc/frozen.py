@@ -28,7 +28,9 @@ RUNS = Path("runs") / "JUNE_RUNS.md"
 # decision, 6 November). The log only grows, and is not frozen, so recording a pass changes no code hash.
 GATES = Path("runs") / "JUNE_GATES.md"
 GATE_NAMES = ("june-check", "failcheck")
-GATES_HEADER = "| Date | Gate | Pin SHA-256 | Code hash | Evidence |"
+GATES_HEADER = "| Date | Gate | Result | Pin SHA-256 | Code hash | Evidence |"
+GATES_SEPARATOR = "|---|---|---|---|---|---|"
+GATE_RESULTS = ("pass", "fail")
 JUNE_LIST = Path("splits") / "june"
 FIRST_KINDS = ("real", "synthetic")
 LATER_KINDS = ("reproduction", "resume", "second")
@@ -75,6 +77,29 @@ def code_hash(root):
     for rel in frozen_files(root):
         digest.update(f"{rel}\0{hashlib.sha256((root / rel).read_bytes()).hexdigest()}\n".encode("utf-8"))
     return digest.hexdigest()
+
+
+def changed_frozen(root):
+    """The frozen files that are new, missing or changed in content against the last commit, or against the
+    staged files where nothing is committed yet, so a file edited in place counts (review of #94). None where
+    `root` is not the top of a git checkout, or git is missing."""
+    root = Path(root).resolve()
+    git = ["git", "-c", "core.quotepath=off", "-C", str(root)]
+    try:
+        top = subprocess.run(git + ["rev-parse", "--show-toplevel"], capture_output=True, text=True)
+        if top.returncode != 0 or Path(top.stdout.strip()).resolve() != root:
+            return None
+        head = subprocess.run(git + ["rev-parse", "--verify", "-q", "HEAD"], capture_output=True, text=True)
+        changed = subprocess.run(git + ["diff", "--name-only", *(["HEAD"] if head.returncode == 0 else []), "--",
+                                        *FROZEN_PATHS], capture_output=True, text=True)
+        new = subprocess.run(git + ["ls-files", "--others", "--exclude-standard", "--", *FROZEN_PATHS],
+                             capture_output=True, text=True)
+    except OSError:
+        return None
+    if changed.returncode != 0 or new.returncode != 0:
+        return None
+    paths = {p for p in changed.stdout.splitlines() + new.stdout.splitlines() if p and not _skipped(root / p, root)}
+    return sorted(paths | set(differs_from_git(root) or []))
 
 
 def differs_from_git(root):
@@ -128,36 +153,53 @@ def read_runs(path):
 class Gate:
     date: str
     gate: str
+    result: str
     pin_sha256: str
     code_hash: str
     evidence: str
 
 
+def _real_date(text):
+    from datetime import datetime
+
+    try:
+        datetime.strptime(text, "%Y-%m-%d %H:%M")
+    except ValueError:
+        return False
+    return bool(DATE.match(text))
+
+
 def read_gates(path):
-    """The recorded passes of the June gates. A missing log has none. A malformed row is refused."""
+    """The recorded results of the June gates. A missing log has none. A malformed row is refused."""
     path = Path(path)
     if not path.is_file():
         return []
     gates = []
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-        if line in (GATES_HEADER, SEPARATOR) or not line.lstrip().startswith("|"):
+        if line in (GATES_HEADER, GATES_SEPARATOR) or not line.lstrip().startswith("|"):
             continue
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if line != line.lstrip() or len(cells) != 5:
-            raise JuneRunsError(f"line {number} of the June gates log does not have 5 columns at its start")
+        if line != line.lstrip() or len(cells) != 6:
+            raise JuneRunsError(f"line {number} of the June gates log does not have 6 columns at its start")
         gate = Gate(*cells)
-        if (not DATE.match(gate.date) or gate.gate not in GATE_NAMES or not HASH.match(gate.pin_sha256)
-                or not HASH.match(gate.code_hash) or not gate.evidence):
+        if (not _real_date(gate.date) or gate.gate not in GATE_NAMES or gate.result not in GATE_RESULTS
+                or not HASH.match(gate.pin_sha256) or not HASH.match(gate.code_hash) or not gate.evidence):
             raise JuneRunsError(f"line {number} of the June gates log breaks its format")
         gates.append(gate)
     return gates
 
 
 def missing_gates(gates, code, pin_sha256, before=None):
-    """The gates with no recorded pass for this code and pin, dated no later than `before` when it is given."""
-    return [name for name in GATE_NAMES if not any(
-        g.gate == name and g.code_hash == code and g.pin_sha256 == pin_sha256 and (before is None or g.date <= before)
-        for g in gates)]
+    """The gates not open for this code and pin: with no recorded result, or whose latest result is a fail. Only
+    results dated strictly before `before` count, when it is given (owner decisions, 6 November)."""
+    missing = []
+    for name in GATE_NAMES:
+        results = [(g.date, n, g.result) for n, g in enumerate(gates)
+                   if g.gate == name and g.code_hash == code and g.pin_sha256 == pin_sha256
+                   and (before is None or g.date < before)]
+        if not results or max(results)[2] != "pass":
+            missing.append(name)
+    return missing
 
 
 def check_gates(entries, gates, pin_sha256):

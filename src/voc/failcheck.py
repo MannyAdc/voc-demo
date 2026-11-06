@@ -1,4 +1,4 @@
-"""Spec 004, J5 and J13: the failing-row check in Databricks, a gate before the June upload (owner decision,
+"""Spec 004, J5 and J13: the failing-row check in Databricks, a gate before the June run log's real row (owner decision,
 6 November). Its job, `cloud/failcheck.yml`, runs Job A's own dbt command on synthetic rows with one row that
 makes Spark's FAILFAST parser fail, whose error can quote the row. Then it runs the same command without the quiet
 flags, as a control. The owner reads every task's output as the robot (`cloud/failcheck/robot_check.py`). The marker

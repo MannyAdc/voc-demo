@@ -88,12 +88,14 @@ def _june_check(config, root, args):
         print(line)
     if not passed:
         raise DataFileError("the June zip fails the check, so the June run log's row must wait")
-    differ = frozen.differs_from_git(root)
-    if differ is None:
-        raise DataFileError("this pass cannot be recorded: there is no git checkout here")
-    if differ:
-        raise DataFileError(f"this pass cannot be recorded: {len(differ)} frozen files differ from the files git "
+    changed = frozen.changed_frozen(root)
+    if changed is None:
+        raise DataFileError("this pass cannot be recorded: run it from the top of the repo's checkout, which git "
                             "tracks")
+    if changed:
+        raise DataFileError(f"this pass cannot be recorded: {len(changed)} frozen files differ from the files git "
+                            "tracks, in name or content")
+    print(f"ran at: {time.strftime('%Y-%m-%d %H:%M')}")
     print(f"gate record: june-check passed for pin {pin['sha256']} and code {frozen.code_hash(root)}")
 
 
@@ -401,7 +403,8 @@ def main(argv=None, env=None, root=None):
     sub = parser.add_subparsers(dest="command", required=True)
     dh = sub.add_parser("data-hash", help="print the export file's name, size and SHA-256")
     dh.add_argument("month", nargs="?", default=PIN, choices=sorted(MONTHS), help="which month's folder to read")
-    jc_text = "spec 004: check the June zip as Job A's unpack will, in a temporary folder, printing counts only"
+    jc_text = ("spec 004: check the June zip as Job A's unpack will, in a temporary folder, printing "
+               "counts and hashes only")
     jc = sub.add_parser("june-check", help=jc_text, description=jc_text)
     jc.add_argument("--zip", help="the June zip's path, if it is not in the June data folder")
     p = sub.add_parser("profile", help="print data facts as counts (B22)")

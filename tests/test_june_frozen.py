@@ -100,14 +100,14 @@ def test_J1_the_list_hash_is_the_june_list_and_matches_its_manifest(tmp_path):
 
 
 def test_J1_the_hash_script_prints_the_two_hashes_only():
-    # Since the second fix round of #94 the real row's hashes need both gates' passes, so this asks as for a
-    # synthetic row. tests/test_job_a.py tests the refusal.
-    result = subprocess.run([sys.executable, str(REPO / "scripts" / "june_hash.py"), "--synthetic"], capture_output=True,
-                            text=True, check=True, cwd=REPO, env=SCRIPT_ENV)
+    # Changed in the third fix round of #94: the script prints the two hashes only after both gates passed, which
+    # tests/test_job_a.py tests on a checkout copy with both passes recorded. Here, with none recorded, it prints
+    # one refusal and no hash.
+    result = subprocess.run([sys.executable, str(REPO / "scripts" / "june_hash.py")], capture_output=True,
+                            text=True, cwd=REPO, env=SCRIPT_ENV)
     lines = result.stdout.splitlines()
-    assert lines[0] == f"june list sha256 {list_hash(REPO)}"
-    assert lines[1] == f"frozen code sha256 {code_hash(REPO)} over {len(frozen_files(REPO))} files"
-    assert len(lines) == 2
+    assert result.returncode == 1 and len(lines) == 1 and lines[0].startswith("refused:")
+    assert list_hash(REPO) not in result.stdout and code_hash(REPO) not in result.stdout
 
 
 def _log(tmp_path, rows):
@@ -170,7 +170,8 @@ def test_J1_the_real_june_list_matches_no_synthetic_entry_and_a_real_entry_names
 def test_J1_ci_checks_that_the_june_run_log_only_grows():
     workflow = (REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert "scripts/check_test_runs.py" in workflow and "runs/JUNE_RUNS.md" in workflow
-    assert workflow.count("origin/main:runs/JUNE_RUNS.md") == 2
+    # 4 since the third fix round of #94: this step's two, and the gates check's two.
+    assert workflow.count("origin/main:runs/JUNE_RUNS.md") == 4
 
 
 # The review of #89: the July development labels, the script's check against git, the run log's rules on main,

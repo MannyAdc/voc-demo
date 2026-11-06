@@ -7,12 +7,13 @@
 # reads the failcheck run (`runs/get`), each task's output (`runs/get-output`) and any dbt files the output links
 # to, and looks for the failcheck's synthetic marker in all of them. It tries the SQL warehouse's query history. Its
 # last line is the verdict, PASS only when every rule of STEPS.md holds. It prints only task keys, states, places,
-# counts, status codes and the failcheck code's hash, never a value it read, the token or the secret.
+# counts, status codes, the time and the failcheck code's hash, never a value it read, the token or the secret.
 import base64
 import io
 import json
 import re
 import tarfile
+from datetime import datetime, timezone
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -24,6 +25,8 @@ RUN_ID = 0          # the failcheck run's ID, the number after /runs/ in its pag
 HOST = ""           # left empty, the notebook's own workspace is used
 MARKER = "SYNFAILCHECKMARKER"  # the same as src/voc/failcheck.py
 ORDER = ("make_rows", "dbt", "dbt_control")
+# dbt writes the failing model's run file before it runs it, so a run whose dbt files hold it reached the row.
+RUN_FILE = "run/voc/models/landed_complaints.sql"
 
 
 def _call(url, token=None, data=None, headers=None):
@@ -54,22 +57,28 @@ def places(value, path="$"):
     return found
 
 
-def archive_places(data):
-    """The number of files in a downloaded tar (of any compression) or zip archive, and the names of those that
-    hold the marker. None when the download is not an archive it can read, which is never "nowhere"."""
+def _archive(data):
+    """The file names of a downloaded tar (of any compression) or zip archive, and those that hold the marker. None
+    when the download is not an archive it can read in full, which is never "nowhere"."""
     marker = MARKER.encode()
     try:
         with tarfile.open(fileobj=io.BytesIO(data), mode="r:*") as archive:
             members = [m for m in archive.getmembers() if m.isfile()]
-            return len(members), [m.name for m in members if marker in archive.extractfile(m).read()]
-    except (tarfile.TarError, EOFError, OSError, ValueError):
+            return [m.name for m in members], [m.name for m in members if marker in archive.extractfile(m).read()]
+    except (tarfile.TarError, EOFError, OSError, ValueError, RuntimeError):
         pass
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             names = [i.filename for i in archive.infolist() if not i.is_dir()]
-            return len(names), [n for n in names if marker in archive.read(n)]
-    except (zipfile.BadZipFile, EOFError, OSError, ValueError, NotImplementedError):
+            return names, [n for n in names if marker in archive.read(n)]
+    except (zipfile.BadZipFile, EOFError, OSError, ValueError, NotImplementedError, RuntimeError):
         return None
+
+
+def archive_places(data):
+    """The number of files in a downloaded archive and the names of those that hold the marker, or None."""
+    read = _archive(data)
+    return None if read is None else (len(read[0]), read[1])
 
 
 def _json(body):
@@ -105,17 +114,30 @@ def report(host, client_id, client_secret, run_id):
     if not token:
         return [f"token: HTTP {status}, {(_json(body) or {}).get('error', 'no token')}",
                 "verdict: FAIL: no token for the jobs scope"]
-    status, wide, _ = _token(base, client_id, client_secret, "all-apis")
+    status, wide, body = _token(base, client_id, client_secret, "all-apis")
     if wide:
-        lines.append("all-apis token: GIVEN")
-        fails.append("an all-apis token was given")
-    else:
+        scope = str((_json(body) or {}).get("scope", ""))
+        if scope.split() == ["jobs"]:
+            lines.append("all-apis token: narrowed to jobs")
+        else:
+            lines.append("all-apis token: GIVEN")
+            fails.append("an all-apis token was given")
+    elif status in (400, 401, 403):
         lines.append(f"all-apis token: refused, HTTP {status}")
+    else:
+        lines.append(f"all-apis token: no clear answer, HTTP {status}")
+        fails.append("the all-apis request got no clear refusal")
     status, body = _call(f"{base}/api/2.2/jobs/runs/get?run_id={int(run_id)}", token=token)
     run = _json(body)
     if status != 200 or run is None:
         return lines + [f"runs/get: HTTP {status}", "verdict: FAIL: runs/get could not be read"]
-    tasks = {t.get("task_key"): t for t in run.get("tasks", []) if isinstance(t, dict)}
+    listed = [t for t in run.get("tasks", []) if isinstance(t, dict)]
+    tasks = {t.get("task_key"): t for t in listed}
+    twice = sorted({str(t.get("task_key")) for t in listed if [u.get("task_key") for u in listed].count(
+        t.get("task_key")) > 1})
+    if twice:
+        # A repaired run can list a task again. Which attempt is which cannot be told, so nothing more is read.
+        return lines + ["verdict: FAIL: " + " | ".join(f"the run lists the task {key} twice" for key in twice)]
     outside = {k: v for k, v in run.items() if k != "tasks"}
     run_places = places(outside)
     lines.append(f"run: runs/get: marker {', '.join(run_places) or 'nowhere'}")
@@ -130,27 +152,32 @@ def report(host, client_id, client_secret, run_id):
         lines.append(f"{key}: runs/get: marker {', '.join(in_get) or 'nowhere'}")
         status, body = _call(f"{base}/api/2.2/jobs/runs/get-output?run_id={int(task.get('run_id', 0))}", token=token)
         output = _json(body)
-        if status != 200:
+        if status != 200 or output is None:
             lines.append(f"{key}: output: could not read, HTTP {status}")
             fails.append(f"could not read {key}'s output")
-            seen[key] = {"state": state, "get": in_get, "output": None, "artifacts": "none"}
+            seen[key] = {"state": state, "get": in_get, "output": None, "artifacts": "none", "names": []}
             continue
         in_output = _found(body, output)
         lines.append(f"{key}: output: marker {', '.join(in_output) or 'nowhere'}")
-        artifacts = "none"
+        artifacts, names = "none", []
         link = ((output or {}).get("dbt_output") or {}).get("artifacts_link")
         if link:
             headers = (output["dbt_output"].get("artifacts_headers") or {})
             status, data = _call(link, headers=headers)
-            read = archive_places(data) if status == 200 else None
+            read = _archive(data) if status == 200 else None
             if read is None:
                 lines.append(f"{key}: artifacts: could not read, HTTP {status}")
                 fails.append(f"could not read {key}'s artifacts")
                 artifacts = "unread"
             else:
-                lines.append(f"{key}: artifacts: files: {read[0]}, marker in: {', '.join(read[1]) or 'nowhere'}")
+                names = read[0]
+                lines.append(f"{key}: artifacts: files: {len(names)}, marker in: {', '.join(read[1]) or 'nowhere'}")
                 artifacts = read[1]
-        seen[key] = {"state": state, "get": in_get, "output": in_output, "artifacts": artifacts, "value": output}
+        seen[key] = {"state": state, "get": in_get, "output": in_output, "artifacts": artifacts, "value": output,
+                     "names": names}
+        if key not in ("make_rows", "dbt", "dbt_control") and (in_get or in_output or (
+                isinstance(artifacts, list) and artifacts)):
+            fails.append(f"the marker is in {key}'s output or details")
     make_rows, quiet, control = seen.get("make_rows"), seen.get("dbt"), seen.get("dbt_control")
     if not (make_rows and quiet and control):
         fails.append("the run does not have the tasks make_rows, dbt and dbt_control")
@@ -177,19 +204,22 @@ def report(host, client_id, client_secret, run_id):
             fails.append("the marker is in dbt's output")
         if isinstance(quiet["artifacts"], list) and quiet["artifacts"]:
             fails.append("the marker is in dbt's artifacts")
+        if not any(name.endswith(RUN_FILE) for name in quiet["names"]):
+            fails.append("dbt's dbt files are missing or do not show it reached the failing model, so its quiet "
+                         "flags were not tested")
         if control["state"] != "FAILED":
             fails.append("the control did not fail")
-        if not (control["get"] or control["output"]):
+        if not control["output"]:
             fails.append("the control shows no leak in its output, so the check cannot see one")
-        if quiet["artifacts"] != "none":
-            if control["artifacts"] == "none":
-                fails.append("the control has no artifacts to show a leak in")
-            elif isinstance(control["artifacts"], list) and not control["artifacts"]:
-                fails.append("the control shows no leak in its artifacts, so the check cannot see one")
+        if not any(name.endswith(RUN_FILE) for name in control["names"]):
+            fails.append("the control's dbt files are missing or do not show it reached the failing model")
+        elif isinstance(control["artifacts"], list) and not control["artifacts"]:
+            fails.append("the control shows no leak in its dbt files, so the check cannot see one")
     status, body = _call(f"{base}/api/2.0/sql/history/queries", token=token)
     lines.append(f"query history: HTTP {status}, {(_json(body) or {}).get('error_code', 'no error code')}")
     if status not in (401, 403):
         fails.append("the query history was not refused")
+    lines.append(f"checked at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC")
     lines.append("verdict: PASS" if not fails else "verdict: FAIL: " + " | ".join(dict.fromkeys(fails)))
     return lines
 

@@ -8,23 +8,32 @@ Spec 004, J1, J5 and J13. Owner decisions, 6 November. Two gates must pass befor
 ## When
 
 Run both after the last code change is merged, that is after pull request 9, and before pull request 10. A pass
-counts only for the code it ran on. So if any code changes after a gate, run both gates again.
+counts only for the code it ran on. So if any code changes after a gate, run both gates again. This file is in the
+frozen `cloud/` folder too, so even a typo fix here means both gates run again.
 
-Each pass is recorded as a row of `runs/JUNE_GATES.md`, in a pull request Claude opens, with the lines the gate
-prints. `scripts/june_hash.py`, Job A and a test all refuse the real row unless both gates have a recorded pass for
-its code and the June pin.
+Each result, a pass or a fail, is recorded as a row of `runs/JUNE_GATES.md`, in a pull request Claude opens, from
+the lines the gate prints:
+- Date: the local time the gate ran, from its `ran at` or `checked at` line
+- Result: `pass` or `fail`, from its verdict line
+- Pin SHA-256 and Code hash: from its gate record line, or the failcheck's `code sha256` line
+- Evidence: its verdict line, and for the failcheck its run ID
+
+That pull request merges before pull request 10 opens, since CI refuses a real row whose passes are not on `main`
+already. A gate's latest result for the code and pin is the one that counts, so a fail after a pass closes it.
+`scripts/june_hash.py`, Job A and a test all refuse the real row unless both gates are open for its code and the
+June pin.
 
 ## Gate 1: june-check, on the laptop
 
 1. In PowerShell, in this repo's folder, on an up-to-date `main` with no changes:
-   `uv run --native-tls voc june-check`
+   `uv run --locked --native-tls voc june-check`
    If the June zip is not in the June data folder, add `--zip` and its path. It unpacks a copy inside the June
    data folder and removes it after.
 2. Paste the lines it prints to Claude. They hold counts and hashes only. The gate passes when:
    - the rows line and the narratives line say `matches`
    - the sampled rows line says `matches`
    - the line on sampled narratives with a carriage return says 0
-   - the last lines are `verdict: PASS` and a `gate record:` line
+   - the last lines are `verdict: PASS`, a `ran at:` line and a `gate record:` line
 
    The two counts of line breaks in the whole file are for the record only.
 

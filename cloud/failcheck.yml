@@ -1,4 +1,4 @@
-# Spec 004, J5 and J13: the failing-row check, a gate before the June upload (owner decision, 6 November). The owner
+# Spec 004, J5 and J13: the failing-row check, a gate before the June run log's real row (owner decisions, 6 November). The owner
 # makes this job in the job page's YAML editor, puts the SQL warehouse's ID in place of its text, runs it once with
 # "Run now", reads its output as the robot (cloud/failcheck/robot_check.py), and deletes it after
 # (cloud/failcheck/STEPS.md). It has no trigger and reads no upload: `make_rows` writes synthetic rows, one of them

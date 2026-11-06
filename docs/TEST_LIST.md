@@ -452,6 +452,15 @@ Written on 6 November 2026, in the second fix round of #94, from the review of i
 - `voc june-check` checks the frozen sample's rows against their hashes and counts sampled narratives with a carriage return, unpacks inside the June data folder, fails with a non-zero exit on any mismatch, and prints the gate's record only on a pass from unchanged frozen files (J1, J8, minors 3 and 6, nit 1)
 - Job A sends no failure email (J8, owner decision on minor 5)
 
+Written on 6 November 2026, in the third fix round of #94, from the review of its second fix round and the owner's decisions:
+
+- the robot's verdict passes only when both dbt runs' dbt files show they reached the failing model. A reply with HTTP 200 that is not JSON is unread. Only HTTP 400, 401 or 403, or a token narrowed to `jobs`, is a refusal of `all-apis`. The marker in any other task fails, a task listed twice stops the check, the control must show the marker in its output, and an encrypted zip is unread (J5, J13, serious 1, minors 1 and 2, nits 4 to 6)
+- the robot's check calls every place and never prints the query history's message (J5, minor 7)
+- the gates log has a Result column. A later fail closes a gate and a later pass opens it again, only results strictly before the row count, a row with a bad result or an impossible date is refused, and CI refuses a new real row whose passes are not on `main` already (J1, minors 3 and 8, nit 7)
+- the hash script has no way round the gates, prints the two hashes when both are open, and compares the frozen files with git by content, as `voc june-check` does before its gate record, which also needs the top of a checkout (J1, minors 4 and 5, nit 9)
+- Job A's refusals, Spark's and unpack's, carry no earlier exception at all (J5, minor 6)
+- no text still says the gates come before the upload, the steps run `voc june-check` with the lock file kept, and the owner's steps make the sample before it (J8, minor 10, nits 1 and 8)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

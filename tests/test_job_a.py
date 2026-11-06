@@ -399,7 +399,7 @@ def test_J16_an_expected_cost_that_is_not_two_decimals_is_refused(cost):
 # The review of #94 and the owner's decisions of 6 November
 
 
-def test_J8_job_a_has_a_timeout_and_a_failure_notice_set_by_the_owner():
+def test_J8_job_a_has_a_timeout_and_no_failure_email():
     """Changed in the second fix round (owner decision on minor 5): Job A sends no failure email, an output nobody
     checks. The owner watches the job page after the upload. The test keeps its name."""
     job = _job()
@@ -437,11 +437,8 @@ def _real_pin_sha():
 
 
 def _gates(root, rows):
-    path = Path(root) / "runs" / "JUNE_GATES.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("# June gates\n\n| Date | Gate | Pin SHA-256 | Code hash | Evidence |\n|---|---|---|---|---|\n"
-                    + "".join(f"| {' | '.join(row)} |\n" for row in rows), encoding="utf-8")
-    return path
+    """Rows of five cells are passes, written with the Result column the log gained in the third fix round."""
+    return _gate_rows(root, [row if len(row) == 6 else (row[0], row[1], "pass", *row[2:]) for row in rows])
 
 
 def test_J16_the_checked_target_is_the_last_row_when_its_list_and_code_are_this_checkout_s(tmp_path):
@@ -579,7 +576,7 @@ def test_J8_the_cli_has_the_laptop_check(capsys):
 
     with pytest.raises(SystemExit):
         main(["june-check", "--help"])
-    assert "counts only" in capsys.readouterr().out
+    assert "counts and hashes only" in capsys.readouterr().out  # changed in the third fix round
 
 
 def test_J8_the_cli_refuses_a_zip_that_is_not_the_june_pin_s_with_fixed_text(tmp_path, capsys):
@@ -656,7 +653,7 @@ def test_J8_unpack_removes_the_csv_on_any_failure_with_fixed_text(tmp_path, monk
     with pytest.raises(_job_a().JobAError) as refused:
         _unpack(folder, tmp_path / "june", pin)
     assert "SYNMARKER" not in str(refused.value) and refused.value.__cause__ is None
-    assert refused.value.__suppress_context__
+    assert refused.value.__context__ is None  # changed in the third fix round: no earlier exception at all
     assert not (tmp_path / "june" / "june.csv").exists()
 
 
@@ -827,9 +824,10 @@ def test_J1_a_synthetic_row_needs_no_gate(tmp_path):
     check_gates(read_runs(root / "runs" / "JUNE_RUNS.md"), read_gates(root / "runs" / "JUNE_GATES.md"), A)
 
 
-@pytest.mark.parametrize("line", ["| 2026-11-05 09:00 | other | {p} | {c} | x |", "| 2026-11-05 | june-check | {p} | {c} | x |",
-                                  "| 2026-11-05 09:00 | june-check | {p} | short | x |",
-                                  "| 2026-11-05 09:00 | june-check | {p} | {c} |  |"])
+@pytest.mark.parametrize("line", ["| 2026-11-05 09:00 | other | pass | {p} | {c} | x |",
+                                  "| 2026-11-05 | june-check | pass | {p} | {c} | x |",
+                                  "| 2026-11-05 09:00 | june-check | pass | {p} | short | x |",
+                                  "| 2026-11-05 09:00 | june-check | pass | {p} | {c} |  |"])
 def test_J1_a_gate_row_that_breaks_the_format_is_refused(tmp_path, line):
     from voc.frozen import JuneRunsError, read_gates
 
@@ -857,8 +855,7 @@ def test_J1_the_hash_script_refuses_without_both_gates_unless_the_row_is_synthet
     assert module.main([str(root)]) == 1
     out = capsys.readouterr().out
     assert out.startswith("refused:") and "gate" in out and "june list sha256" not in out
-    assert module.main([str(root), "--synthetic"]) == 0
-    assert "june list sha256" in capsys.readouterr().out
+    # Changed in the third fix round: the synthetic flag is gone until pull request 9.
 
 
 def test_J1_ci_checks_that_the_gates_log_only_grows():
@@ -878,7 +875,7 @@ def test_J5_job_a_s_spark_reads_are_refused_with_fixed_text_only():
         with pytest.raises(_job_a().JobAError) as refused:
             call()
         assert "SYNMARKER" not in str(refused.value) and refused.value.__cause__ is None
-        assert refused.value.__suppress_context__
+        assert refused.value.__context__ is None  # changed in the third fix round: no earlier exception at all
 
 
 def test_J8_job_a_s_spark_reads_return_counts_and_rows():
@@ -1008,11 +1005,12 @@ def _report(check, monkeypatch, replies):
 
 def test_J13_the_robot_check_passes_only_when_every_rule_holds(monkeypatch):
     check = _robot_check()
-    lines = _report(check, monkeypatch, _replies(check))
+    lines = _report(check, monkeypatch, _reached(check))  # changed in the third fix round: both reached the model
     assert lines[-1] == "verdict: PASS"
     assert f"code sha256: {B}" in lines
     assert "all-apis token: refused, HTTP 400" in lines
-    assert "dbt: runs/get: marker nowhere" in lines and "dbt_control: artifacts: files: 1, marker in: logs/dbt.log" in lines
+    assert "dbt: runs/get: marker nowhere" in lines
+    assert f"dbt_control: artifacts: files: 2, marker in: logs/dbt.log" in lines
     text = "\n".join(lines)
     assert check.MARKER not in text and "synthetic-token" not in text and "syn-secret" not in text
 
@@ -1143,16 +1141,18 @@ def test_J1_the_cli_prints_the_gate_record_only_on_a_pass_from_unchanged_code(tm
             "sampled_rows": 3, "sampled_matching": 3, "sampled_with_returns": 0}
     folder, _ = _zip_and_pin(tmp_path, text=_june_csv(["one"]))
     monkeypatch.setattr(voc.job_a, "june_check", lambda *a, **k: good)
-    monkeypatch.setattr(voc.frozen, "differs_from_git", lambda root: [])
+    # Changed in the third fix round: the check is by content, in changed_frozen.
+    monkeypatch.setattr(voc.frozen, "changed_frozen", lambda root: [])
     env = {"VOC_JUNE_DATA_DIR": str(tmp_path)}
     assert main(["june-check", "--zip", str(next(folder.iterdir()))], env=env, root=REPO) == 0
     out = capsys.readouterr().out
     assert "verdict: PASS" in out
     assert f"gate record: june-check passed for pin {_real_pin_sha()} and code {code_hash(REPO)}" in out
-    monkeypatch.setattr(voc.frozen, "differs_from_git", lambda root: ["src/voc/x.py"])
+    monkeypatch.setattr(voc.frozen, "changed_frozen", lambda root: ["src/voc/x.py"])
     assert main(["june-check", "--zip", str(next(folder.iterdir()))], env=env, root=REPO) == 1
     out = capsys.readouterr().out
     assert "gate record" not in out and "1 frozen files differ" in out
+    assert "ran at: " not in out
 
 
 
