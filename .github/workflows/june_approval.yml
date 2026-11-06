@@ -1,0 +1,69 @@
+# Spec 004, J10 and J16: the approval workflow for the one June run. Started only by workflow_dispatch on main,
+# from the receiver or by the owner. Claude never starts it. Its logic is src/voc/approval.py, frozen with the code
+# (J1), and it runs on Python's standard library only.
+# - figures: in `june-figures`, it checks Job A's run and prints the figures to approve.
+# - run: in `june-run`, which the owner must approve, it starts Job B, follows it and posts the signed result.
+name: June approval
+run-name: June approval for Job A run ${{ inputs.job_a_run_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_a_run_id:
+        description: "Job A's run ID"
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: june-approval
+  cancel-in-progress: false
+
+jobs:
+  figures:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: june-figures
+    permissions:
+      contents: read
+      actions: read
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check Job A's run and print its figures
+        env:
+          JOB_A_RUN_ID: ${{ inputs.job_a_run_id }}
+          GITHUB_TOKEN: ${{ github.token }}
+          VOC_DATABRICKS_HOST: ${{ secrets.VOC_DATABRICKS_HOST }}
+          VOC_DATABRICKS_CLIENT_ID: ${{ secrets.VOC_DATABRICKS_CLIENT_ID }}
+          VOC_DATABRICKS_CLIENT_SECRET: ${{ secrets.VOC_DATABRICKS_CLIENT_SECRET }}
+        run: python3 -I src/voc/approval.py figures
+
+  run:
+    needs: figures
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: june-run
+    permissions:
+      contents: read
+      actions: read
+    timeout-minutes: 360
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Start Job B, follow it and post the signed result
+        env:
+          JOB_A_RUN_ID: ${{ inputs.job_a_run_id }}
+          GITHUB_TOKEN: ${{ github.token }}
+          VOC_DATABRICKS_HOST: ${{ secrets.VOC_DATABRICKS_HOST }}
+          VOC_DATABRICKS_CLIENT_ID: ${{ secrets.VOC_DATABRICKS_CLIENT_ID }}
+          VOC_DATABRICKS_CLIENT_SECRET: ${{ secrets.VOC_DATABRICKS_CLIENT_SECRET }}
+          VOC_RESULT_SECRET: ${{ secrets.VOC_RESULT_SECRET }}
+          VOC_RECEIVER_URL: ${{ secrets.VOC_RECEIVER_URL }}
+        run: python3 -I src/voc/approval.py run
