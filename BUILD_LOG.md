@@ -1982,3 +1982,31 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
   - The contract fixture `job_a_run.json` gains the spike's `status.termination_details.code` for the run and each task, which J16 item 5 names since #94. The receiver's tests still pass with it.
 - Red commit, now `e5c18bd` after the same rebases: only `tests/test_approval.py`, the active-run tests, through the gate.
 - 22:17 Green changes written: `src/voc/approval.py`, `.github/workflows/june_approval.yml`, the fixture, J10, J16 items 3 and 5, the owner's GitHub step, the test list and this log.
+- Green commit `1a1272d`, through the gate at 22:32 (git's commit time). The branch was pushed and draft pull request #95 opened.
+- A fresh reviewer agent read the diff: 3 serious, 7 minor, 8 nits.
+- 22:55 Review findings on #95 posted as a comment. Claude stopped #95 and asked the owner.
+- AI mistakes in pull request 8, caught by that review:
+  - The robot's token was fetched once, so following Job B for over an hour would have failed with no result message (serious 1).
+  - Job A's run was read without `include_history` (serious 2, unconfirmed).
+  - The result message could hold a state or an exit value the receiver refuses, and a refused post still ended the job with success (serious 3).
+  - `NOT_STARTED` could be posted after run-now was sent, and some failures before it posted nothing (minors 1 and 2).
+- Owner decisions on that review: fix the three serious findings, minors 1 to 7 and the nits as Claude proposed, and use #94's stopping rule here too. That is one more fresh review on the fix round only, and if it finds nothing serious, the minors are fixed and the owner merges.
+- Owner decision on the plan for a live end-to-end run by Tuesday 10 November: not by Tuesday. The owner's interview preparation comes first, and the estimate was best case. #95 and the receiver's deploy workflow go on at normal pace and review quality. A proposed live proof after both merge: the receiver deployed on Azure, and a short test from the laptop sending one badly signed and one well signed result message. Job B, the dry run's setup, the job IDs and the Databricks setup move to Friday 13 November or later.
+- Claude's answers to the owner on that live proof, from the receiver's code:
+  - It is possible without Databricks, after one small change: the queue function builds its Databricks and GitHub clients before it reads a message, so a result message would fail there. That change goes in the deploy pull request.
+  - A signed result message is stored as one row of the receiver's table and starts nothing. Only the Databricks route can lead to a dispatch, after the receiver confirms the run with Databricks.
+  - The owner's setup is in the Azure portal only, about 1.5 to 2 hours. No Databricks and no GitHub token are needed for the test.
+  - The GitHub token for the dispatch: a fine-grained token for this repo only, with Actions read and write, made only for the Databricks phase, for 30 days at most. It cannot be limited to one workflow, so it could also start `scheduled.yml` and re-run, cancel or delete runs. It cannot approve `june-run`.
+- Owner decisions on the live receiver test: yes, with conditions.
+  - The queue function's fix goes in the deploy pull request, with its test.
+  - The test script asks for the HMAC secret with a hidden prompt, never as an argument or pasted into a command, since PowerShell saves command lines to its history file. It never prints or logs the secret, and drops it at the end. Claude's note: the script is Python with `getpass`. A Python string cannot be wiped from memory, so the script drops the secret straight after signing and exits.
+  - Time box: if #95 and the deploy pull request are not both merged by Monday 9 November, 6 PM, the live test moves to after the interview. Reviews are not rushed to meet it.
+  - When both are merged, Claude gives the portal checklist in one message, in order, with what to click and what to record. The owner does it.
+  - The GitHub token: not until the Databricks phase, Actions read and write only, 30 days at most. Then Known limits says the token can delete runs and their logs, and how that would be noticed.
+  - After the test, Claude says how to delete the fake row.
+- Red commit `cd1db29`: only `tests/test_approval.py`, through the gate. Its new cancelled-run test catches the interrupt itself, since at first, uncaught, it stopped the whole test session. Caught by running it before the commit.
+- Claude's choices, for the owner to see:
+  - Databricks' states `SUCCESS`, `FAILED`, `TIMEDOUT` and `CANCELED` are kept, and any other end is `FAILED`, since Job B did not finish. J16 item 9 says so now.
+  - The token's life comes from Databricks' `expires_in`, or an hour when it is missing. It is renewed five minutes early.
+  - A refused or failed result post ends the job with an error after its tries, so the failure is visible in GitHub.
+- 23:41 Fix changes written: `src/voc/approval.py`, J10, J16 item 9, Known limits, the test list and this log.

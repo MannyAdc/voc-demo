@@ -6,8 +6,10 @@ frozen with the code (J1).
   (J16 items 4 and 5), and prints the figures for the owner's approval, in the log and the step summary.
 - `run`, the second job, in the protected environment `june-run`, after the owner approves: it refuses any run
   attempt but the first, checks Job A's run again, starts Job B with run-now (item 6), follows it, reads Job B's
-  exit value (item 8), and posts the signed result message to the receiver (item 9). If it refuses before Job B
-  starts, it posts `NOT_STARTED`.
+  exit value (item 8), and posts the signed result message to the receiver (item 9). On any failure before run-now
+  is sent it posts `NOT_STARTED`, and after it, where the start's reply is lost or odd, `UNKNOWN`. The follow
+  renews the robot's token, outlasts failed looks, and ends at 340 minutes with `UNKNOWN`. The message is checked
+  as the receiver checks it, tried again on a server error, and anything but 202 fails the job (review of #95).
 
 Both ask Databricks for a token with the `jobs` scope only (J10, J13). Nothing here prints `error`, `error_trace`,
 `logs`, `state_message` or any other field it does not read (J5, J16). Refusals hold fixed text, IDs and counts.
@@ -48,10 +50,20 @@ ENTRY_KINDS = ("real", "synthetic", "resume", "reproduction", "second")
 STOP_REASONS = (None, "spend_limit", "quota", "ledger_cap", "error")
 # Job B's run ends in one of these life cycle states.
 ENDED = ("TERMINATED", "SKIPPED", "INTERNAL_ERROR")
-# The run job's own limit is 360 minutes. It follows Job B for up to 340 of them, one look a minute.
+# The follow looks at Job B once a minute.
 POLL_SECONDS = 60
-POLLS = 340
 RUNS_LIST_LIMIT = 25
+# The follow's limit in time, inside the job's 360 minutes, and the result post's tries (review of #95).
+FOLLOW_SECONDS = 340 * 60
+POST_TRIES = 3
+POST_WAIT_SECONDS = 10
+# The robot's token is renewed this many seconds before it expires. Databricks gives `expires_in`, and an hour is
+# taken when it does not.
+TOKEN_MARGIN = 300
+DEFAULT_TOKEN_LIFE = 3600
+# The receiver accepts six result states (receiver/receiver_core.py). These four are Databricks' own, kept as
+# they are. Any other end is a failure, and NOT_STARTED and UNKNOWN are the workflow's.
+KEPT_STATES = ("SUCCESS", "FAILED", "TIMEDOUT", "CANCELED")
 
 
 class ApprovalError(ValueError):
@@ -188,6 +200,22 @@ def job_b_exit(output):
     return value
 
 
+def result_state(raw):
+    """Databricks' result state as the receiver takes it. Any end other than the four kept, such as
+    SUCCESS_WITH_FAILURES or a run skipped at its start, is FAILED, and Databricks' own text is never passed on."""
+    return raw if raw in KEPT_STATES else "FAILED"
+
+
+def exit_for_receiver(value, job_b_run_id):
+    """Job B's exit value, or None where the receiver would refuse it: a finished run names `june-<Job B run ID>`
+    and no stop reason, and a stopped one names no folder and gives its reason (review of #95)."""
+    if value["stopped"]:
+        kept = value["results_folder"] is None and value["stop_reason"] is not None
+    else:
+        kept = value["results_folder"] == f"june-{job_b_run_id}" and value["stop_reason"] is None
+    return value if kept else None
+
+
 def checked_exit(value, run_target, pin):
     """J16 item 5: the exit value matches the run's target row and names the pin of its kind."""
     if value["june_list_sha256"] != run_target.list_hash or value["code_sha256"] != run_target.code_hash:
@@ -226,10 +254,20 @@ def result_body(github_run_id, github_run_attempt, job_a_run_id, job_b_run_id, r
 # The services. Each call's reply is read only for the fields above, and an error reply is reported by its status.
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """A redirect is refused, so a bearer token or a signature is never sent on to another host (review of #95)."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+_OPENER = urllib.request.build_opener(NoRedirect)
+
+
 def _request(url, data=None, headers=None, method="GET"):
     request = urllib.request.Request(url, data=data, headers=dict(headers or {}), method=method)
     try:
-        with urllib.request.urlopen(request, timeout=60) as reply:
+        with _OPENER.open(request, timeout=60) as reply:
             return reply.status, reply.read()
     except urllib.error.HTTPError as err:
         return err.code, b""
@@ -248,37 +286,49 @@ def _json_reply(status, body, what):
 
 
 class Databricks:
-    """The robot's sign-in, with the `jobs` scope only (J13), and the Jobs API."""
+    """The robot's sign-in, with the `jobs` scope only (J13), and the Jobs API. The token is renewed five minutes
+    before it expires, and once more after a 401, since Job B can run longer than a token lasts (review of #95)."""
 
-    def __init__(self, host, client_id, client_secret):
+    def __init__(self, host, client_id, client_secret, clock=time.monotonic):
         if not isinstance(host, str) or not HOST.fullmatch(host):
             raise ApprovalError("VOC_DATABRICKS_HOST must be the workspace's bare host name")
         if not client_id or not client_secret:
             raise ApprovalError("the robot's client ID and secret are not set")
-        self.host, self.client_id, self.client_secret, self._token = host, client_id, client_secret, None
+        self.host, self.client_id, self.client_secret = host, client_id, client_secret
+        self.clock, self._token, self._renew_at = clock, None, 0.0
 
-    def token(self):
-        if self._token is None:
+    def token(self, renew=False):
+        if renew or self._token is None or self.clock() >= self._renew_at:
             basic = base64.b64encode(f"{self.client_id}:{self.client_secret}".encode("utf-8")).decode("ascii")
             data = urllib.parse.urlencode({"grant_type": "client_credentials", "scope": "jobs"}).encode("ascii")
+            asked = self.clock()
             status, body = _request(f"https://{self.host}/oidc/v1/token", data=data, method="POST",
                                     headers={"Authorization": f"Basic {basic}",
                                              "Content-Type": "application/x-www-form-urlencoded"})
-            token = _json_reply(status, body, "Databricks' token request").get("access_token")
+            reply = _json_reply(status, body, "Databricks' token request")
+            token, life = reply.get("access_token"), reply.get("expires_in")
             if not isinstance(token, str) or not token:
                 raise ApprovalError("Databricks gave no token")
-            self._token = token
+            if isinstance(life, bool) or not isinstance(life, int) or life <= TOKEN_MARGIN:
+                life = DEFAULT_TOKEN_LIFE
+            self._token, self._renew_at = token, asked + life - TOKEN_MARGIN
         return self._token
 
+    def _send(self, url, data=None, method="GET", extra=None):
+        for renew in (False, True):
+            headers = {"Authorization": f"Bearer {self.token(renew)}", **(extra or {})}
+            status, body = _request(url, data=data, headers=headers, method=method)
+            if status != 401:
+                break
+        return status, body
+
     def get(self, path, params):
-        status, body = _request(f"https://{self.host}{path}?{urllib.parse.urlencode(params)}",
-                                headers={"Authorization": f"Bearer {self.token()}"})
+        status, body = self._send(f"https://{self.host}{path}?{urllib.parse.urlencode(params)}")
         return _json_reply(status, body, path)
 
     def post(self, path, body):
-        status, reply = _request(f"https://{self.host}{path}", data=json.dumps(body).encode("utf-8"), method="POST",
-                                 headers={"Authorization": f"Bearer {self.token()}",
-                                          "Content-Type": "application/json"})
+        status, reply = self._send(f"https://{self.host}{path}", data=json.dumps(body).encode("utf-8"),
+                                   method="POST", extra={"Content-Type": "application/json"})
         return _json_reply(status, reply, path)
 
 
@@ -312,7 +362,7 @@ class Receiver:
 
 
 def _target_and_entry(root):
-    """The run's target, checked as Job A checks it (a first row, its list and its code), and its row."""
+    """The run's target, checked as Job A checks it (a first row, its list, its code and its gates), and its row."""
     from voc.frozen import RUNS, read_runs
     from voc.job_a import JobAError, checked_target
 
@@ -342,9 +392,10 @@ def _own_run_checked(github, job_a_run_id):
 
 
 def _checked_job_a(root, job_a_run_id, databricks):
-    """J16 item 5, on every path: the run, its being the newest, its exit value against the target and the pin."""
+    """J16 item 5, on every path: the run, its being the newest, its exit value against the target and the pin.
+    The run is read with its repair history, which Databricks may fill only when asked (review of #95)."""
     settings = cloud_settings(root)
-    run = databricks.get("/api/2.2/jobs/runs/get", {"run_id": job_a_run_id})
+    run = databricks.get("/api/2.2/jobs/runs/get", {"run_id": job_a_run_id, "include_history": "true"})
     task_run_id = checked_run(run, job_a_run_id, settings["job_a_job_id"])
     checked_latest(databricks.get("/api/2.2/jobs/runs/list", {"job_id": settings["job_a_job_id"],
                                                                 "limit": RUNS_LIST_LIMIT}),
@@ -368,30 +419,54 @@ def figures_job(root, env, databricks, github):
     return lines
 
 
-def _post_result(receiver, env, body):
+def _post_result(receiver, env, body, sleep):
+    """Posts the signed message, a fresh timestamp each try. A server error or no answer is tried again, up to
+    3 times. Anything but 202 at the end fails the job, so a lost message is never silent (review of #95)."""
     raw = message_bytes(body)
-    status = receiver.post(raw, signed_headers(env["VOC_RESULT_SECRET"], int(time.time()), raw))
+    status = 0
+    for n in range(POST_TRIES):
+        try:
+            status = receiver.post(raw, signed_headers(env["VOC_RESULT_SECRET"], int(time.time()), raw))
+        except OSError:
+            status = 0
+        if status == 202 or (0 < status < 500 and status != 429):
+            break
+        if n + 1 < POST_TRIES:
+            sleep(POST_WAIT_SECONDS * (n + 1))
+    if status != 202:
+        raise ApprovalError(f"the receiver did not take the result message: HTTP {status}")
     return f"result message: HTTP {status}"
 
 
-def _follow(databricks, job_b_run_id, sleep, polls):
-    for n in range(polls):
-        run = databricks.get("/api/2.2/jobs/runs/get", {"run_id": job_b_run_id})
-        state = run.get("state") if isinstance(run.get("state"), dict) else {}
+def _follow(databricks, job_b_run_id, sleep, polls, clock):
+    """Job B's end, followed for up to 340 minutes of time. A failed look is tried again at the next one."""
+    deadline = clock() + FOLLOW_SECONDS
+    looks = 0
+    while clock() < deadline and (polls is None or looks < polls):
+        looks += 1
+        try:
+            run = databricks.get("/api/2.2/jobs/runs/get", {"run_id": job_b_run_id})
+        except (ApprovalError, OSError):
+            run = None
+        state = run.get("state") if isinstance(run, dict) and isinstance(run.get("state"), dict) else {}
         if state.get("life_cycle_state") in ENDED:
-            return run, state.get("result_state") if isinstance(state.get("result_state"), str) else "UNKNOWN"
-        if n + 1 < polls:
-            sleep(POLL_SECONDS)
+            return run, result_state(state.get("result_state"))
+        if polls is not None and looks >= polls:
+            break
+        sleep(POLL_SECONDS)
     return None, "UNKNOWN"
 
 
-def run_job(root, env, databricks, github, receiver, sleep=time.sleep, polls=POLLS):
-    job_a_run_id = parse_id(env.get("JOB_A_RUN_ID"), "job_a_run_id")
-    github_run_id = parse_id(env.get("GITHUB_RUN_ID"), "GITHUB_RUN_ID")
-    attempt = parse_id(env.get("GITHUB_RUN_ATTEMPT"), "GITHUB_RUN_ATTEMPT")
+def _ids(env):
+    return (parse_id(env.get("JOB_A_RUN_ID"), "job_a_run_id"), parse_id(env.get("GITHUB_RUN_ID"), "GITHUB_RUN_ID"),
+            parse_id(env.get("GITHUB_RUN_ATTEMPT"), "GITHUB_RUN_ATTEMPT"))
+
+
+def run_job(root, env, databricks, github, receiver, sleep=time.sleep, polls=None, clock=time.monotonic):
+    job_a_run_id, github_run_id, attempt = _ids(env)
     if not env.get("VOC_RESULT_SECRET"):
         raise ApprovalError("VOC_RESULT_SECRET is not set")
-    lines = []
+    lines, sent = [], False
     try:
         if attempt != 1:
             raise ApprovalError("only a workflow run's first attempt can start Job B (J16 item 7)")
@@ -399,28 +474,32 @@ def run_job(root, env, databricks, github, receiver, sleep=time.sleep, polls=POL
         if own.get("run_attempt") != 1:
             raise ApprovalError("only a workflow run's first attempt can start Job B (J16 item 7)")
         settings, _, _, _ = _checked_job_a(root, job_a_run_id, databricks)
+        sent = True
         started = databricks.post("/api/2.2/jobs/run-now", {
             "job_id": settings["job_b_job_id"],
             "job_parameters": {"job_a_run_id": str(job_a_run_id), "github_run_id": str(github_run_id)}})
         job_b_run_id = _whole(started.get("run_id"), "Job B's run ID")
-    except ApprovalError:
-        lines.append(_post_result(receiver, env, result_body(github_run_id, attempt, job_a_run_id, None,
-                                                             "NOT_STARTED", None)))
+    except Exception:
+        # Before run-now is sent, Job B cannot have started. After it, a lost or odd reply may hide a start.
+        _post_result(receiver, env, result_body(github_run_id, attempt, job_a_run_id, None,
+                                                "UNKNOWN" if sent else "NOT_STARTED", None), sleep)
         raise
     lines.append(f"Job B run: {job_b_run_id}")
-    run, result_state = _follow(databricks, job_b_run_id, sleep, polls)
+    run, state = _follow(databricks, job_b_run_id, sleep, polls, clock)
     value = None
     if run is not None:
-        tasks = [t for t in run.get("tasks", []) if isinstance(t, dict) and t.get("task_key") == "job_b"]
-        if len(tasks) == 1 and result_state in ("SUCCESS", "FAILED"):
+        tasks = run.get("tasks") if isinstance(run.get("tasks"), list) else []
+        tasks = [t for t in tasks if isinstance(t, dict) and t.get("task_key") == "job_b"]
+        if len(tasks) == 1 and state in ("SUCCESS", "FAILED"):
             try:
-                value = job_b_exit(databricks.get("/api/2.2/jobs/runs/get-output",
-                                                  {"run_id": _whole(tasks[0].get("run_id"), "job_b's run ID")}))
-            except ApprovalError:
+                value = exit_for_receiver(job_b_exit(databricks.get(
+                    "/api/2.2/jobs/runs/get-output", {"run_id": _whole(tasks[0].get("run_id"), "job_b's run ID")})),
+                    job_b_run_id)
+            except (ApprovalError, OSError):
                 value = None
-    lines.append(f"result: {result_state}")
-    lines.append(_post_result(receiver, env, result_body(github_run_id, attempt, job_a_run_id, job_b_run_id,
-                                                         result_state, value)))
+    lines.append(f"result: {state}")
+    lines.append(_post_result(receiver, env, result_body(github_run_id, attempt, job_a_run_id, job_b_run_id, state,
+                                                         value), sleep))
     return lines
 
 
@@ -440,7 +519,20 @@ def _figures_from_env(env):
 
 
 def _run_from_env(env):
-    return run_job(_root(), env, *_clients(env), Receiver(env.get("VOC_RECEIVER_URL")))
+    receiver = Receiver(env.get("VOC_RECEIVER_URL"))
+    try:
+        databricks, github = _clients(env)
+    except Exception:
+        # A bad setting, such as the host, still posts NOT_STARTED where the message can be built (review of #95).
+        try:
+            job_a_run_id, github_run_id, attempt = _ids(env)
+        except ApprovalError:
+            raise
+        if env.get("VOC_RESULT_SECRET"):
+            _post_result(receiver, env, result_body(github_run_id, attempt, job_a_run_id, None, "NOT_STARTED",
+                                                    None), time.sleep)
+        raise
+    return run_job(_root(), env, databricks, github, receiver)
 
 
 def main(argv=None, env=None):
@@ -454,6 +546,9 @@ def main(argv=None, env=None):
     except ApprovalError as err:
         print(f"refused: {err}")
         return 1
+    except KeyboardInterrupt:  # a cancelled run, which GitHub stops with SIGINT: no traceback (J5)
+        print("error: KeyboardInterrupt")
+        return 130
     except Exception as err:  # noqa: BLE001, J5: the type only, never the message
         print(f"error: {type(err).__name__}")
         return 1

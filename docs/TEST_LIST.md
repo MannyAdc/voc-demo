@@ -485,6 +485,15 @@ Written on 6 November 2026, with fakes for Databricks, GitHub and the receiver.
 - no field the jobs do not read reaches their output, and other errors print their type only (J5)
 - the jobs' IDs come from `config/june_cloud.toml`, refused while it is missing or holds a value that is not a whole number above zero (J16 item 10)
 
+Written on 6 November 2026, in the fix round of #95, from its review and the owner's decisions:
+
+- the robot's token is renewed before it expires and after a 401, and the follow outlasts failed looks and ends at 340 minutes of time with `UNKNOWN` (J10, serious 1, minor 3)
+- Job A's run is read with `include_history` (J16 item 5, serious 2)
+- Databricks' end states map onto the receiver's six, Databricks' own text is never printed, an exit value the receiver would refuse is sent as null, the message is tried again on a server error, anything but 202 fails the job, and the message passes the receiver's own code (J16 item 9, serious 3, minor 4)
+- a lost or odd reply to run-now posts `UNKNOWN`, any failure before it posts `NOT_STARTED`, a setting that cannot be read included, and no request follows a redirect (J16, minors 1, 2 and 5)
+- the real target and pin code refuse a real row without its gates and a synthetic row until pull request 9, and the run job and the termination message pass J5's hostile-text test (J5, J16, minors 6 and 7)
+- a Job B run with no task list still posts, an exit value that is not JSON is refused, either attempt source alone stops a re-run and posts `NOT_STARTED`, and a cancelled run prints no traceback (J5, J16, nits 2 to 5)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
@@ -498,7 +507,7 @@ Added on 4 November 2026, revised twice the same day. Each piece adds its tests 
 - Job A checks the pin and the sample's hashes, computes the approval figures and makes no model call (J8)
 - the receiver refuses a bad sign-in or signature and an old or future timestamp with 401, replies 202 before the work, drops a duplicate, confirms a Databricks run by asking Databricks, skips a dispatch already made, and moves a message to the failure queue after 5 tries (J9): written in pull request 7, listed above
 - the receiver's settings: maximum instance count 1 for each function, and only Key Vault references in its app settings (J9)
-- written in pull request 8, listed above: the approval workflow's YAML: started only by `workflow_dispatch` on `main`, its run ID input checked and passed through `env:`, permissions per job, the secrets only in the `june-run` job, one run at a time, actions pinned by SHA. A test can check only the YAML (J10)
+- written in pull request 8, listed above: the approval workflow's YAML: started only by `workflow_dispatch` on `main`, its run ID input checked and passed through `env:`, permissions per job, the Databricks credential in both jobs and the HMAC secret only in the `june-run` job, one run at a time, actions pinned by SHA. A test can check only the YAML (J10)
 - Job B checks the run entry's hashes and the June and July hashes, refuses unless the workspace header names the cloud workspace and the cap covers the whole worst case, stops on a 400 "usage limits" answer with no retry, is one task that refuses an approval for another Job A run or one already used, and writes only the two results files to the results volume (J11, J12)
 - The copy script reads only the two results file names, refuses any other file, and checks the columns, the label and reason lists, the IDs, the size limit and the CFPB header (J11)
 - The copy script signs in only with the reader's credential, named in its call, and never with a default profile or the environment's `DATABRICKS_TOKEN` (J13, review of #87)
