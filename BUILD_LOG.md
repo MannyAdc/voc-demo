@@ -1969,3 +1969,16 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - Red commit `3a86806` at 15:27 and green commit `2117b07` at 15:58 (git's commit times), both through the gate. CI green on `2117b07`.
 - A network drop cut Claude's watch of that CI run. Claude read the checks again when the network came back.
 - 21:47 Merge verdict on #94: PENDING with every mechanical check passing. Every finding of the four review rounds, all chosen by the owner, is fixed. The last review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
+- 22:03 Claude marked #94 ready, after the MERGE verdict and CI green on its log commit `f4a81d0`.
+- 22:03 The owner merged #94 (time from GitHub, `fec0a7e`).
+- Work start, before 09:52: spec 004's pull request 8, the approval workflow, branch `feat/june-approval`, worktree `../voc-demo-approval`, made from #94's head `4976572`.
+- AI mistake: the new worktree had no names deny list, which git ignores, so the gate refused the first red commit. Caught by the gate. Claude copied the list from another worktree without reading it.
+- 09:53 Red commit, through the gate. With no push, it was rebased as the owner asked: onto #94's fixed heads `a5ca424` and `af360f2`, then onto main after #94 merged, as `9b979d5`. A rebase runs no hook, so the rebased commits were not gated again. Their tests were run again on each new base, and the green commit goes through the gate.
+- Docs checked for this pull request on 6 November: GitHub's workflow syntax says `run-name` "can include expressions and can reference the `github` and `inputs` contexts". Its REST reference lists `display_title` in a workflow run without saying what it holds. Its environments page says a job "cannot access environment secrets until one of the required reviewers approves it". Databricks' runs list page was too long to read in full, so its order and whether it holds active runs were not confirmed.
+- Claude's choices, for the owner to see:
+  - The logic runs on the runner's own Python with its standard library only, so the workflow installs nothing and its code is frozen in `src/`.
+  - Each job reads its own run and checks its exact name, event, branch and path. That is how pull request 8 checks the run name, and the dry run is its first real test.
+  - Since the runs list's order and its active runs were not confirmed, the workflow checks the order itself and asks for active runs separately.
+  - The contract fixture `job_a_run.json` gains the spike's `status.termination_details.code` for the run and each task, which J16 item 5 names since #94. The receiver's tests still pass with it.
+- Red commit, now `e5c18bd` after the same rebases: only `tests/test_approval.py`, the active-run tests, through the gate.
+- 22:17 Green changes written: `src/voc/approval.py`, `.github/workflows/june_approval.yml`, the fixture, J10, J16 items 3 and 5, the owner's GitHub step, the test list and this log.
