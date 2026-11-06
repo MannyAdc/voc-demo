@@ -311,8 +311,9 @@ def test_J16_job_b_s_exit_value_is_read_with_exactly_its_keys(name):
 
 
 class FakeDatabricks:
-    def __init__(self, run=None, runs=None, output=None, follow=None, job_b_output=None):
+    def __init__(self, run=None, runs=None, output=None, follow=None, job_b_output=None, active=None):
         self.run, self.runs = run or _run(), runs or _fixture("job_a_runs_list.json")
+        self.active = {} if active is None else active
         self.output = output or _output()
         self.follow = list(follow or [{"state": {"life_cycle_state": "TERMINATED", "result_state": "SUCCESS"},
                                        "tasks": [{"task_key": "job_b", "run_id": 900003}]}])
@@ -324,9 +325,10 @@ class FakeDatabricks:
         self.calls.append(("GET", path, params))
         if path == "/api/2.2/jobs/runs/get" and params["run_id"] == 900001:
             return copy.deepcopy(self.run)
-        if path == "/api/2.2/jobs/runs/list":
-            assert params == {"job_id": JOB_A, "limit": 25}
+        if path == "/api/2.2/jobs/runs/list" and params == {"job_id": JOB_A, "limit": 25}:
             return copy.deepcopy(self.runs)
+        if path == "/api/2.2/jobs/runs/list" and params == {"job_id": JOB_A, "active_only": "true", "limit": 25}:
+            return copy.deepcopy(self.active)
         if path == "/api/2.2/jobs/runs/get-output" and params["run_id"] == 900011:
             return copy.deepcopy(self.output)
         if path == "/api/2.2/jobs/runs/get" and params["run_id"] == 900002:
@@ -513,3 +515,26 @@ def test_J5_a_refusal_s_text_is_fixed_and_the_main_prints_the_type_only_for_othe
     monkeypatch.setattr(approval, "_figures_from_env", broken)
     assert approval.main(["figures"], env={}) == 1
     assert capsys.readouterr().out == "error: RuntimeError\n"
+
+
+def test_J16_an_active_run_of_job_a_refuses_the_approval(monkeypatch):
+    """Whether the runs list holds active runs by default is not confirmed from Databricks' docs, so the workflow
+    also asks for active runs only, and refuses if Job A has any (J16 item 5)."""
+    approval = _patched(monkeypatch)
+    active = {"runs": [{"job_id": JOB_A, "run_id": 900007, "start_time": 1793100000000}]}
+    with pytest.raises(approval.ApprovalError, match="active"):
+        approval.figures_job(REPO, _env(), FakeDatabricks(active=active), FakeGitHub())
+    databricks = FakeDatabricks()
+    approval.figures_job(REPO, _env(), databricks, FakeGitHub())
+    assert ("GET", "/api/2.2/jobs/runs/list", {"job_id": JOB_A, "active_only": "true", "limit": 25}) in databricks.calls
+
+
+@pytest.mark.parametrize("active", [{}, {"runs": []}, {"has_more": False}])
+def test_J16_no_active_run_is_read_as_none(active):
+    _approval().checked_no_active(active)
+
+
+@pytest.mark.parametrize("active", [{"runs": [{"run_id": 1}]}, {"runs": "x"}])
+def test_J16_any_active_run_or_a_malformed_list_is_refused(active):
+    with pytest.raises(_approval().ApprovalError):
+        _approval().checked_no_active(active)
