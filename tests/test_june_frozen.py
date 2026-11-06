@@ -99,7 +99,7 @@ def test_J1_the_list_hash_is_the_june_list_and_matches_its_manifest(tmp_path):
         list_hash(copy)
 
 
-def test_J1_the_hash_script_prints_the_two_hashes_only():
+def test_J1_the_hash_script_on_the_repo_refuses_with_no_gate_open():
     # Changed in the third fix round of #94: the script prints the two hashes only after both gates passed, which
     # tests/test_job_a.py tests on a checkout copy with both passes recorded. Here, with none recorded, it prints
     # one refusal and no hash.

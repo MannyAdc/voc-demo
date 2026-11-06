@@ -86,8 +86,6 @@ def _june_check(config, root, args):
     lines, passed = june_check_verdict(counts, pin)
     for line in lines:
         print(line)
-    if not passed:
-        raise DataFileError("the June zip fails the check, so the June run log's row must wait")
     changed = frozen.changed_frozen(root)
     if changed is None:
         raise DataFileError("this pass cannot be recorded: run it from the top of the repo's checkout, which git "
@@ -95,8 +93,12 @@ def _june_check(config, root, args):
     if changed:
         raise DataFileError(f"this pass cannot be recorded: {len(changed)} frozen files differ from the files git "
                             "tracks, in name or content")
-    print(f"ran at: {time.strftime('%Y-%m-%d %H:%M')}")
-    print(f"gate record: june-check passed for pin {pin['sha256']} and code {frozen.code_hash(root)}")
+    # The gates log's dates are in UTC, as the robot's check prints them (last review of #94).
+    print(f"ran at: {time.strftime('%Y-%m-%d %H:%M', time.gmtime())} UTC")
+    print(f"gate record: june-check {'passed' if passed else 'failed'} for pin {pin['sha256']} and code "
+          f"{frozen.code_hash(root)}")
+    if not passed:
+        raise DataFileError("the June zip fails the check, so the June run log's row must wait")
 
 
 def _load(config, root, args):

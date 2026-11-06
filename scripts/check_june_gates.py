@@ -4,7 +4,8 @@ and pull request.
 
 Usage: python scripts/check_june_gates.py <gates log on main> <run log on main> <run log here> <data_files.toml>
 
-A missing log on main counts as empty. It prints the result in one line, with no hash but the rule's.
+A missing log on main counts as empty. It prints the result in one line, with no hash but the rule's. It finds the
+new rows by count, so it relies on the step before it in the same CI job, which checks the run log only grows.
 """
 import sys
 import tomllib

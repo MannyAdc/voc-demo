@@ -461,6 +461,16 @@ Written on 6 November 2026, in the third fix round of #94, from the review of it
 - Job A's refusals, Spark's and unpack's, carry no earlier exception at all (J5, minor 6)
 - no text still says the gates come before the upload, the steps run `voc june-check` with the lock file kept, and the owner's steps make the sample before it (J8, minor 10, nits 1 and 8)
 
+Written on 6 November 2026, from the minors of the last review of #94, fixed with no further review round:
+
+- `voc june-check` records a fail too, and both gates print their time in UTC. The robot's check prints its time and the code hash even when it stops early (J1, minors 2 and 3)
+- the robot's run file rule needs a folder boundary (J13, nit 1)
+- a frozen file rewritten with other line endings, or hidden from git's status, counts as changed, and a file with a space in its name does not (J1, minors 4 and 5)
+- a run log row with an impossible date is refused (J1, minor 6)
+- the hash script prints the two hashes on a real git checkout with both gates open, and refuses once a frozen file is added (J1, minor 7)
+- `unpack`'s refusal keeps no exception even when the CSV cannot be removed (J5, nit 6)
+- the steps give every rule of the verdict and the dates in UTC, and the spec says how the dry run gets its hashes (J1, J8, minors 1 and 8, nit 3)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

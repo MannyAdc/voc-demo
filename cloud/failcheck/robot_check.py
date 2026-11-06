@@ -29,6 +29,14 @@ ORDER = ("make_rows", "dbt", "dbt_control")
 RUN_FILE = "run/voc/models/landed_complaints.sql"
 
 
+def _ran_model(names):
+    return any(name == RUN_FILE or name.endswith("/" + RUN_FILE) for name in names)
+
+
+def _now():
+    return f"checked at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC"
+
+
 def _call(url, token=None, data=None, headers=None):
     """One HTTP call. Returns the status and the body, also for an error status."""
     request = urllib.request.Request(url, data=data, headers=dict(headers or {}))
@@ -107,12 +115,26 @@ def _found(body, parsed):
     return ["(the reply)"] if MARKER.encode() in body else []
 
 
+def _code_hash(base, token, listed):
+    """The failcheck code's hash, from the first `make_rows` task's exit value, or None."""
+    first = next((t for t in listed if t.get("task_key") == "make_rows"), None)
+    if first is None:
+        return None
+    status, body = _call(f"{base}/api/2.2/jobs/runs/get-output?run_id={int(first.get('run_id', 0))}", token=token)
+    try:
+        value = json.loads((((_json(body) or {}).get("notebook_output") or {}).get("result")) or "")
+    except ValueError:
+        return None
+    code = value.get("code_sha256") if isinstance(value, dict) else None
+    return code if status == 200 and isinstance(code, str) and re.fullmatch(r"[0-9a-f]{64}", code) else None
+
+
 def report(host, client_id, client_secret, run_id):
     base = f"https://{host}"
     lines, fails = [], []
     status, token, body = _token(base, client_id, client_secret, "jobs")
     if not token:
-        return [f"token: HTTP {status}, {(_json(body) or {}).get('error', 'no token')}",
+        return [f"token: HTTP {status}, {(_json(body) or {}).get('error', 'no token')}", _now(),
                 "verdict: FAIL: no token for the jobs scope"]
     status, wide, body = _token(base, client_id, client_secret, "all-apis")
     if wide:
@@ -130,14 +152,19 @@ def report(host, client_id, client_secret, run_id):
     status, body = _call(f"{base}/api/2.2/jobs/runs/get?run_id={int(run_id)}", token=token)
     run = _json(body)
     if status != 200 or run is None:
-        return lines + [f"runs/get: HTTP {status}", "verdict: FAIL: runs/get could not be read"]
+        return lines + [f"runs/get: HTTP {status}", _now(), "verdict: FAIL: runs/get could not be read"]
     listed = [t for t in run.get("tasks", []) if isinstance(t, dict)]
     tasks = {t.get("task_key"): t for t in listed}
+    # The code hash comes first, so even a check that stops early gives what its fail's row needs.
+    code = _code_hash(base, token, listed)
+    if code:
+        lines.append(f"code sha256: {code}")
     twice = sorted({str(t.get("task_key")) for t in listed if [u.get("task_key") for u in listed].count(
         t.get("task_key")) > 1})
     if twice:
         # A repaired run can list a task again. Which attempt is which cannot be told, so nothing more is read.
-        return lines + ["verdict: FAIL: " + " | ".join(f"the run lists the task {key} twice" for key in twice)]
+        return lines + [_now(), "verdict: FAIL: " + " | ".join(f"the run lists the task {key} twice"
+                                                                for key in twice)]
     outside = {k: v for k, v in run.items() if k != "tasks"}
     run_places = places(outside)
     lines.append(f"run: runs/get: marker {', '.join(run_places) or 'nowhere'}")
@@ -182,15 +209,7 @@ def report(host, client_id, client_secret, run_id):
     if not (make_rows and quiet and control):
         fails.append("the run does not have the tasks make_rows, dbt and dbt_control")
     else:
-        code = None
-        try:
-            code = json.loads(((make_rows.get("value") or {}).get("notebook_output") or {}).get("result", ""))
-            code = code.get("code_sha256") if isinstance(code, dict) else None
-        except ValueError:
-            code = None
-        if isinstance(code, str) and re.fullmatch(r"[0-9a-f]{64}", code):
-            lines.append(f"code sha256: {code}")
-        else:
+        if not code:
             fails.append("no code hash from make_rows")
         if make_rows["state"] != "SUCCESS":
             fails.append("make_rows did not succeed")
@@ -204,14 +223,14 @@ def report(host, client_id, client_secret, run_id):
             fails.append("the marker is in dbt's output")
         if isinstance(quiet["artifacts"], list) and quiet["artifacts"]:
             fails.append("the marker is in dbt's artifacts")
-        if not any(name.endswith(RUN_FILE) for name in quiet["names"]):
+        if not _ran_model(quiet["names"]):
             fails.append("dbt's dbt files are missing or do not show it reached the failing model, so its quiet "
                          "flags were not tested")
         if control["state"] != "FAILED":
             fails.append("the control did not fail")
         if not control["output"]:
             fails.append("the control shows no leak in its output, so the check cannot see one")
-        if not any(name.endswith(RUN_FILE) for name in control["names"]):
+        if not _ran_model(control["names"]):
             fails.append("the control's dbt files are missing or do not show it reached the failing model")
         elif isinstance(control["artifacts"], list) and not control["artifacts"]:
             fails.append("the control shows no leak in its dbt files, so the check cannot see one")
@@ -219,7 +238,7 @@ def report(host, client_id, client_secret, run_id):
     lines.append(f"query history: HTTP {status}, {(_json(body) or {}).get('error_code', 'no error code')}")
     if status not in (401, 403):
         fails.append("the query history was not refused")
-    lines.append(f"checked at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC")
+    lines.append(_now())
     lines.append("verdict: PASS" if not fails else "verdict: FAIL: " + " | ".join(dict.fromkeys(fails)))
     return lines
 

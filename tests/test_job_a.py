@@ -402,7 +402,7 @@ def test_J16_an_expected_cost_that_is_not_two_decimals_is_refused(cost):
 
 def test_J8_job_a_has_a_timeout_and_no_failure_email():
     """Changed in the second fix round (owner decision on minor 5): Job A sends no failure email, an output nobody
-    checks. The owner watches the job page after the upload. The test keeps its name."""
+    checks. The owner watches the job page after the upload. Renamed in the third fix round."""
     job = _job()
     assert job["timeout_seconds"] == 3600
     assert "email_notifications" not in job
@@ -846,7 +846,7 @@ def test_J1_the_committed_logs_keep_the_rule():
     assert (REPO / GATES).is_file()
 
 
-def test_J1_the_hash_script_refuses_without_both_gates_unless_the_row_is_synthetic(tmp_path, capsys):
+def test_J1_the_hash_script_refuses_without_both_gates(tmp_path, capsys):
     import importlib.util
 
     spec = importlib.util.spec_from_file_location("june_hash", REPO / "scripts" / "june_hash.py")
@@ -1011,7 +1011,7 @@ def test_J13_the_robot_check_passes_only_when_every_rule_holds(monkeypatch):
     assert f"code sha256: {B}" in lines
     assert "all-apis token: refused, HTTP 400" in lines
     assert "dbt: runs/get: marker nowhere" in lines
-    assert f"dbt_control: artifacts: files: 2, marker in: logs/dbt.log" in lines
+    assert "dbt_control: artifacts: files: 2, marker in: logs/dbt.log" in lines
     text = "\n".join(lines)
     assert check.MARKER not in text and "synthetic-token" not in text and "syn-secret" not in text
 
@@ -1413,14 +1413,16 @@ def test_J1_a_frozen_file_changed_in_content_counts_as_changed(tmp_path):
 
     root = tmp_path / "repo"
     (root / "src").mkdir(parents=True)
-    (root / "src" / "a.py").write_text("x = 1\n", encoding="utf-8")
-    (root / "uv.lock").write_text("lock\n", encoding="utf-8")
+    # LF bytes, as this repo's checkout has them (`.gitattributes`). Python's write_text writes CRLF on Windows,
+    # which the content check counts as a change (changed in the last fix round).
+    (root / "src" / "a.py").write_bytes(b"x = 1\n")
+    (root / "uv.lock").write_bytes(b"lock\n")
     _git(root, "init", "-q")
     _git(root, "add", "-A")
     _git(root, "commit", "-q", "-m", "first")
     assert changed_frozen(root) == []
-    (root / "uv.lock").write_text("rewritten\n", encoding="utf-8")
-    (root / "src" / "b.py").write_text("y = 2\n", encoding="utf-8")
+    (root / "uv.lock").write_bytes(b"rewritten\n")
+    (root / "src" / "b.py").write_bytes(b"y = 2\n")
     assert sorted(changed_frozen(root)) == ["src/b.py", "uv.lock"]
     assert changed_frozen(tmp_path / "not_a_repo") is None
 

@@ -1951,3 +1951,18 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
   - the timeout test is renamed to say it checks for no failure email
   - the CI test counts the run log's main copy in both steps
 - 14:54 Fix changes written: the robot's check, the gates log's Result column and rules, `scripts/check_june_gates.py` and its CI step, the hash script, `changed_frozen`, Job A's refusals, `voc june-check`, the stale wording, J1, J8, the owner's steps, Known limits, the test list and this log.
+- AI mistake: Claude's commit message for the third round's green commit held the word for the command only the owner runs, so the guard refused the inline command. Caught by the guard. The message went in a file.
+- Green commit `af360f2`, through the gate. The commit times from git: red `aa1ee52` 14:33, green `af360f2` 15:06.
+- A fresh reviewer agent read the third fix round's diff only, the last review round under the owner's stopping rule: no serious finding, 8 minor, 7 nits.
+- 15:25 Its findings posted on #94. With no serious finding, the owner's rule applies: Claude fixes the minors and nits, and the owner merges with no further review round.
+- Pull request 8's two local commits rebased with no push onto `af360f2`. Its tests pass there.
+- Correction to the lines above with no local time (nit 4 of the last review). From git's commit times: the second round's green commit `a5ca424` 11:10 (logged), the third round's red commit `aa1ee52` 14:33 and green commit `af360f2` 15:06. The lines are kept as written.
+- AI mistake: Claude's first draft of these log lines held two commit times not taken from git, 14:22 and 14:51. Caught by Claude checking git before writing them. The times above are git's.
+- Red commit `3a86806`: only `tests/test_job_a.py`, through the gate.
+- Claude's choices in this round, for the owner to see:
+  - Both gates print UTC and both June logs are dated in UTC, so no time is converted by hand (minor 2).
+  - The content check now hashes each frozen file's raw bytes as git hashes a blob, and compares them with the commit's, or the staged files' where nothing is committed. That sees line endings git normalises and files marked skip-worktree. This repo's `.gitattributes` keeps text files LF in a checkout, so a clean checkout matches.
+  - A failcheck that stops before it can read a code hash is recorded with the code hash of the `main` commit the job ran, which Claude computes.
+- AI mistake in the third round's test: it wrote its files with Python's `write_text`, which writes CRLF on Windows, so the raw bytes check saw them as changed against git's LF. Caught by the test run. It now writes LF bytes, as the checkout has them. A test edit in the green commit.
+- In the green commit, tests change: three are renamed or have their docstring fixed to say what they check (nit 2), the content check test writes LF bytes, and an f-string with no placeholder is a plain string (nit 7).
+- 15:47 Fix changes written: `changed_frozen` and `differs_from_git`, the run log's dates, `unpack`'s refusal, `voc june-check`'s fail record and UTC time, the robot's check, the steps, the gates log's text, J1, the plan's item 9, the test list and this log.

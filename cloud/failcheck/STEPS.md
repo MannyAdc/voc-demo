@@ -13,9 +13,13 @@ frozen `cloud/` folder too, so even a typo fix here means both gates run again.
 
 Each result, a pass or a fail, is recorded as a row of `runs/JUNE_GATES.md`, in a pull request Claude opens, from
 the lines the gate prints:
-- Date: the local time the gate ran, from its `ran at` or `checked at` line
+- Date: the time the gate ran, in UTC, from its `ran at` or `checked at` line. Both gates print UTC, so no time
+  is converted.
 - Result: `pass` or `fail`, from its verdict line
-- Pin SHA-256 and Code hash: from its gate record line, or the failcheck's `code sha256` line
+- Pin SHA-256: from june-check's gate record line. For the failcheck, the June pin's `sha256` in
+  `config/data_files.toml` at the code the failcheck ran.
+- Code hash: from june-check's gate record line, or the failcheck's `code sha256` line. If a failcheck stopped
+  before it could read one, Claude computes the code hash of the `main` commit the job ran.
 - Evidence: its verdict line, and for the failcheck its run ID
 
 That pull request merges before pull request 10 opens, since CI refuses a real row whose passes are not on `main`
@@ -33,7 +37,9 @@ June pin.
    - the rows line and the narratives line say `matches`
    - the sampled rows line says `matches`
    - the line on sampled narratives with a carriage return says 0
-   - the last lines are `verdict: PASS`, a `ran at:` line and a `gate record:` line
+   - the last lines are `verdict: PASS`, a `ran at:` line in UTC and a `gate record: june-check passed` line
+
+   On a fail it still prints `ran at:` and a `gate record: june-check failed` line, so the fail can be recorded.
 
    The two counts of line breaks in the whole file are for the record only.
 
@@ -77,13 +83,19 @@ The job also makes these, which you delete at the end:
    cell the text of `cloud/failcheck/robot_check.py` from GitHub. At its top, fill in `CLIENT_ID`,
    `CLIENT_SECRET` and `RUN_ID`. Leave `HOST` empty unless the cell asks for it, then type the workspace's host
    name from the browser's address bar, without `https://`. Connect to serverless and run the cell.
-6. **Read the lines it prints.** They hold task keys, states, places, status codes and the failcheck code's hash,
-   never the secret, the token or a value it read. Paste them to Claude. The gate passes only when the last line
-   is `verdict: PASS`. The check itself applies every rule:
+6. **Read the lines it prints.** They hold task keys, states, places, file counts, status codes, the time in UTC
+   and the failcheck code's hash, never the secret, the token or a value it read. Paste them to Claude. The gate
+   passes only when the last line is `verdict: PASS`. The check itself applies every rule:
+   - both dbt runs' dbt files show they reached the failing model, so the quiet flags were really tested
    - the marker is nowhere in `dbt`'s run details, output or dbt files, and every one of them could be read
-   - the control shows the marker in its output, and in its dbt files when `dbt` has dbt files
-   - a token for `all-apis` is refused, so the secret holds the `jobs` scope only
+   - the marker is in no other task, `make_rows` included
+   - the control shows the marker in its output and in its dbt files, so the check can see a leak
+   - a request for an `all-apis` token is refused with HTTP 400, 401 or 403, or the token given is
+     narrowed to `jobs`, so the secret holds the `jobs` scope only
    - the warehouse's query history is refused (HTTP 401 or 403)
+
+   If Databricks offers no dbt files for the quiet run, the verdict is FAIL, and the design is rethought (owner
+   decision, 6 November).
 
    If the verdict is `FAIL`, stop. The run log's row waits. Tell Claude the verdict line.
 

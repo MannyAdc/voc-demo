@@ -215,19 +215,25 @@ def unpack(incoming, out, pin, labels_file):
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     target_path = out / pin["file_name"]
+    failure = None
     try:
         with zipfile.ZipFile(path) as archive:
             _write_member(archive, pin, target_path)
         _check_shape(target_path, pin)
-        failure = None
-    except JobAError:
-        target_path.unlink(missing_ok=True)
-        raise
+    except JobAError as err:
+        failure = err
     except Exception as err:  # noqa: BLE001, any failure removes the CSV and is refused with its type only
-        target_path.unlink(missing_ok=True)
-        failure = type(err).__name__
-    if failure:
-        raise JobAError(f"the zip cannot be read: {failure}")
+        failure = JobAError(f"the zip cannot be read: {type(err).__name__}")
+    if failure is not None:
+        # Removed and refused outside the except blocks, so the refusal keeps no earlier exception.
+        removed = True
+        try:
+            target_path.unlink(missing_ok=True)
+        except OSError:
+            removed = False
+        if not removed:
+            raise JobAError(f"{failure}, and the CSV could not be removed")
+        raise failure
     return {"month_file": str(target_path), "month_sha256": pin["sha256"], "month_rows": str(pin["rows"]),
             "labels": labels}
 

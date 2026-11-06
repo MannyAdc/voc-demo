@@ -94,11 +94,30 @@ def changed_frozen(root):
                                         *FROZEN_PATHS], capture_output=True, text=True)
         new = subprocess.run(git + ["ls-files", "--others", "--exclude-standard", "--", *FROZEN_PATHS],
                              capture_output=True, text=True)
+        listing = subprocess.run(git + (["ls-tree", "-r", "-z", "HEAD", "--"] if head.returncode == 0
+                                        else ["ls-files", "-s", "-z", "--"]) + list(FROZEN_PATHS), capture_output=True)
     except OSError:
         return None
-    if changed.returncode != 0 or new.returncode != 0:
+    if changed.returncode != 0 or new.returncode != 0 or listing.returncode != 0:
         return None
     paths = {p for p in changed.stdout.splitlines() + new.stdout.splitlines() if p and not _skipped(root / p, root)}
+    # git can hide a change, for example line endings it normalises or a file marked skip-worktree, which the code
+    # hash still sees. So each file's raw bytes are hashed as git hashes a blob, and compared with the listing's.
+    for entry in listing.stdout.decode("utf-8").split("\0"):
+        if not entry or "\t" not in entry:
+            continue
+        meta, rel = entry.split("\t", 1)
+        expected = meta.split()[2 if head.returncode == 0 else 1]
+        path = root / rel
+        if _skipped(path, root):
+            continue
+        if not path.is_file():
+            paths.add(rel)
+            continue
+        data = path.read_bytes()
+        algorithm = hashlib.sha1 if len(expected) == 40 else hashlib.sha256
+        if algorithm(b"blob %d\0" % len(data) + data).hexdigest() != expected:
+            paths.add(rel)
     return sorted(paths | set(differs_from_git(root) or []))
 
 
@@ -110,8 +129,9 @@ def differs_from_git(root):
         top = subprocess.run(["git", "-C", str(root), "rev-parse", "--show-toplevel"], capture_output=True, text=True)
         if top.returncode != 0 or Path(top.stdout.strip()).resolve() != root:
             return None
-        tracked = subprocess.run(["git", "-C", str(root), "ls-files", "--", *FROZEN_PATHS], capture_output=True,
-                                 text=True, check=True).stdout.split()
+        tracked = [p for p in subprocess.run(["git", "-c", "core.quotepath=off", "-C", str(root), "ls-files", "-z",
+                                              "--", *FROZEN_PATHS], capture_output=True, check=True)
+                   .stdout.decode("utf-8").split("\0") if p]
     except (OSError, subprocess.CalledProcessError):
         return None
     return sorted(set(frozen_files(root)) ^ set(tracked))
@@ -139,8 +159,8 @@ def read_runs(path):
         if len(cells) != 5:
             raise JuneRunsError(f"line {number} of the June run log has {len(cells)} columns, not 5")
         entry = Entry(*cells)
-        if not DATE.match(entry.date):
-            raise JuneRunsError(f"line {number} of the June run log has no date of the form 2026-11-07 10:00")
+        if not _real_date(entry.date):
+            raise JuneRunsError(f"line {number} of the June run log has no real date of the form 2026-11-07 10:00")
         if entry.kind not in FIRST_KINDS + LATER_KINDS:
             raise JuneRunsError(f"line {number} of the June run log has an unknown kind")
         if not (HASH.match(entry.list_hash) and HASH.match(entry.code_hash)):
