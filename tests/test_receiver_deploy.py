@@ -452,3 +452,98 @@ def test_J9_the_live_check_s_post_reports_a_status_and_follows_no_redirect(monke
     assert check._post("https://receiver.example.invalid/api/result", b"{}", {}) == status
     redirects = [h for h in check._OPENER.handlers if isinstance(h, check.urllib.request.HTTPRedirectHandler)]
     assert len(redirects) == 1 and isinstance(redirects[0], check._NoRedirect)
+
+
+
+# The second review of #96, on its fix round (owner decision: the last round, fixed with no further review)
+
+STEPS = REPO / "docs" / "RECEIVER_STEPS.md"
+
+
+def _step(word):
+    return next(s for s in _steps() if word in s.get("run", ""))["run"]
+
+
+def test_J9_a_failed_upload_names_one_fixed_word_never_the_cli_s_text():
+    """Minor 3: authorization, not found or other, so the owner knows where to look."""
+    run = _step("config-zip")
+    assert 'err=$(' in run and "2>&1 >/dev/null" in run
+    for word in ("authorization", "not found", "other"):
+        assert f'kind="{word}"' in run, word
+    # The CLI's text is only ever matched, never printed.
+    for line in run.splitlines():
+        if "$err" in line:
+            assert "grep" in line, line
+
+
+def test_J9_the_live_receiver_check_says_what_it_saw_on_its_last_try():
+    """Minor 4: the status and one fixed word on the last try."""
+    run = _step("/api/result")
+    assert 'if [ "$status" = "401" ] && [ "$build" = "$GITHUB_SHA" ]; then' in run
+    for word in ("this commit", "another commit", "no header"):
+        assert word in run, word
+
+
+def test_J9_only_the_receiver_s_five_files_and_the_commit_are_packed_exactly():
+    """Nit 6: the whole pack line, so no extra path can slip in."""
+    assert _step("git archive").strip() == (
+        'git archive --format=zip -o "$RUNNER_TEMP/receiver.zip" --add-virtual-file="BUILD_COMMIT:$GITHUB_SHA" '
+        "HEAD:receiver function_app.py host.json requirements.txt receiver_core.py receiver_adapters.py")
+
+
+def test_J9_the_function_reads_its_commit_from_its_own_folder(monkeypatch):
+    """Nit 6: not only a patched value."""
+    app = _function_app(monkeypatch)
+    assert app.BUILD == _core().build_commit(REPO / "receiver") == "unknown"
+    assert "build_commit(Path(__file__).resolve().parent)" in (REPO / "receiver" / "function_app.py").read_text(
+        encoding="utf-8")
+
+
+def test_J13_the_steps_give_the_exact_trust_subject_and_a_resource_group_of_its_own():
+    """Minors 1 and 2: the subject with the repo's numeric IDs, and the receiver apart from the dashboard."""
+    text = STEPS.read_text(encoding="utf-8")
+    assert "repo:MannyAdc@84450984/voc-demo@1435727562:environment:receiver-deploy" in text
+    assert "https://token.actions.githubusercontent.com" in text and "api://AzureADTokenExchange" in text
+    assert "`voc-receiver-rg`" in text
+    spec = (REPO / "specs" / "004-june-test-and-baselines" / "spec.md").read_text(encoding="utf-8")
+    assert "widens the role to the resource group" not in spec and "Reader on the Function's plan" in spec
+
+
+def test_J9_the_steps_name_the_settings_the_first_deploy_needs():
+    """Minor 5: the deploy's check gets 401 only once the receiver's settings load."""
+    text = STEPS.read_text(encoding="utf-8")
+    for name in ("VOC_BASIC_USER", "VOC_BASIC_PASSWORD", "VOC_HMAC_SECRET", "VOC_JOB_A_JOB_ID"):
+        assert name in text, name
+
+
+def test_J9_the_receiver_s_names_and_address_are_environment_secrets():
+    """Minor 8: only jobs in `receiver-deploy` on main can read them."""
+    text = STEPS.read_text(encoding="utf-8")
+    for name in ("RECEIVER_APP_NAME", "RECEIVER_RESOURCE_GROUP", "RECEIVER_URL", "RECEIVER_AZURE_CLIENT_ID"):
+        row = next(line for line in text.splitlines() if line.startswith(f"| `{name}`"))
+        assert "`receiver-deploy` environment" in row, name
+
+
+def test_J9_the_live_check_s_clean_up_waits_and_says_what_to_do_if_the_row_is_missing():
+    """Minor 7, and nits 8 and 9."""
+    text = STEPS.read_text(encoding="utf-8")
+    for words in ("wait", "june-events-poison", "Storage Table Data Contributor", "printed lines only",
+                  "deployed nothing"):
+        assert words in text, words
+
+
+def test_J9_the_owner_s_steps_create_the_function_before_its_role():
+    """Minor 6."""
+    spec = (REPO / "specs" / "004-june-test-and-baselines" / "spec.md").read_text(encoding="utf-8")
+    steps = spec.split("## Owner's setup steps")[1]
+    assert steps.index("- **Azure:** approve and create the Function") < steps.index("- **Azure, for the receiver's deploy")
+
+
+def test_J9_the_clock_hint_gives_both_limits(monkeypatch, capsys):
+    """Nit 2: the receiver allows 5 minutes behind and 1 minute ahead."""
+    check = _check()
+    monkeypatch.setattr(check.getpass, "getpass", lambda prompt="": SECRET)
+    monkeypatch.setattr(check, "_post", Receiver(secret="syn-" + "other"))
+    check.main(["https://receiver.example.invalid"])
+    out = capsys.readouterr().out
+    assert "5 minutes behind" in out and "1 minute ahead" in out
