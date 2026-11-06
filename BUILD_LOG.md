@@ -2021,3 +2021,5 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
   - A failed token request just before run-now still posts `UNKNOWN` (nit 2). Telling it apart would need a second sign-in step before the start, and `UNKNOWN` errs on the safe side.
   - On a cancel the post gets one try and no wait, since GitHub allows only a few seconds, and the cancel itself is what the job reports.
 - 00:36 Fix changes written: `src/voc/approval.py`, J10, Known limits, the plan's item 9, the test list and this log.
+- Green commit `20fcbb0` at 00:36 (git's commit time), through the gate. CI green on `20fcbb0`.
+- 00:54 Merge verdict on #95: PENDING with every mechanical check passing. Every finding of its two review rounds, all chosen by the owner, is fixed, except nit 2 of the second round, kept by Claude's choice with its reason in this log and in J10. The second review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
