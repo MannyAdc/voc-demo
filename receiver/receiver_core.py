@@ -47,6 +47,20 @@ class Malformed(ValueError):
     pass
 
 
+class Lazy:
+    """A service client made on first use, and only once. The queue function passes its Databricks and GitHub
+    clients this way, so a result message, which needs neither, is stored with no Databricks or GitHub setting at
+    all (owner decision, 6 November)."""
+
+    def __init__(self, make):
+        self._make, self._made = make, None
+
+    def __getattr__(self, name):
+        if self._made is None:
+            self._made = self._make()
+        return getattr(self._made, name)
+
+
 @dataclass(frozen=True)
 class Settings:
     basic_user: str

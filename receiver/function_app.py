@@ -15,7 +15,7 @@ import time
 import azure.functions as func
 
 from receiver_adapters import DatabricksClient, GitHubClient, StorageQueue, TableStore
-from receiver_core import handle_http, handle_queue, load_settings, purge_safely
+from receiver_core import Lazy, handle_http, handle_queue, load_settings, purge_safely
 
 QUEUE = "june-events"
 KEPT_DAYS = 30
@@ -61,5 +61,7 @@ def result(req: func.HttpRequest) -> func.HttpResponse:
 @app.queue_trigger(arg_name="msg", queue_name=QUEUE, connection="VOC_STORAGE")
 def work(msg: func.QueueMessage) -> None:
     purge_safely(_store(), KEPT_DAYS, _log)
-    handle_queue(json.loads(msg.get_body().decode("utf-8")), _settings(), DatabricksClient.from_env(),
-                 GitHubClient.from_env(), _store(), _log)
+    # The clients are made only if the message needs them: a result message needs neither (owner decision,
+    # 6 November).
+    handle_queue(json.loads(msg.get_body().decode("utf-8")), _settings(), Lazy(DatabricksClient.from_env),
+                 Lazy(GitHubClient.from_env), _store(), _log)

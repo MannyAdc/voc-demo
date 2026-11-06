@@ -406,6 +406,12 @@ Written in pull request 7, on 5 November 2026, with fakes for the table, the que
 - the settings refuse an empty or unresolved Key Vault secret and a bad job ID. Strings are checked whole. A list or object in a field gets 400. A finished run names `june-<Job B run ID>`, a stopped one no folder and its reason. IDs above the 64-bit limit get 400. A body over 16 KB gets 413. The Basic scheme and header names are read in any case. The compare's result decides the sign-in. The core imports no service library. A key that cannot be freed, and a failed purge, are logged (J9, J16, review of #91)
 - the Function's files: the extension bundle, the queue encoding, the poison queue's name in the spec, requirements resolved for Linux, 5 tries, one instance of 512 MB per function with none always ready, every secret a Key Vault reference, no Application Insights, two open HTTP functions and one queue function, and pinned requirements (J9)
 
+Written on 7 November 2026, in the receiver's deploy pull request (owner decisions of 6 November):
+
+- the queue function makes its Databricks and GitHub clients only when a message needs them, so a result message is stored with neither, and a lazy client is made once, on first use (J9)
+- the deploy workflow runs by hand on `main` only, with no environment, read-only contents and an OpenID Connect token, one at a time, every action pinned, no value written into a script, the app's names and address as secrets, only `receiver/` packed and built remotely, a check that the live receiver refuses an unsigned call, and an early end until its secrets are set (J9)
+- the owner's live check sends a badly signed and a well signed synthetic message to the receiver's own code, passes only on 401 or 400 and then 202, takes only the address as its argument, asks for the secret with a hidden prompt and drops it, prints status codes and a verdict only, and signs as the receiver checks (J9, J16 item 9)
+
 Written on 6 November 2026, in the fix of the receiver's scope:
 
 - the receiver asks Databricks for one token with the `jobs` scope only, the scope of the robot's secret, with the client's ID and secret in the Basic header and a form body (J13, spike of 6 November, review of #93)

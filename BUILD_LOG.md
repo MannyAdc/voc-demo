@@ -1969,3 +1969,12 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - Red commit `3a86806` at 15:27 and green commit `2117b07` at 15:58 (git's commit times), both through the gate. CI green on `2117b07`.
 - A network drop cut Claude's watch of that CI run. Claude read the checks again when the network came back.
 - 21:47 Merge verdict on #94: PENDING with every mechanical check passing. Every finding of the four review rounds, all chosen by the owner, is fixed. The last review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
+- Work start, before 00:05: spec 004's receiver deploy, branch `feat/receiver-deploy`, worktree `../voc-demo-deploy`, from main at `fec0a7e`, as the owner decided on 6 November.
+- Docs read on 7 November, through a fetch agent, on learn.microsoft.com: a Flex Consumption app takes `az functionapp deployment source config-zip`, with `--build-remote` to build `requirements.txt` remotely. The deploying identity needs Website Contributor on the Function app. A Key Vault reference uses the app's system-assigned identity, which needs the Key Vault Secrets User role. The docs conflict on whether the CLI builds remotely by default, so the workflow says `--build-remote true`.
+- Red commit `7511b4f`: only `tests/test_receiver_deploy.py`, through the gate.
+- Claude's choices, for the owner to see:
+  - The deploy is started by hand, on `main`, not after every merge, since the receiver changes rarely and a deploy should be the owner's act.
+  - The workflow uses the Azure CLI step, as `deploy.yml` does, not a new action to pin.
+  - The deploy's check sends an empty POST to the result route and expects 401, which proves the new code answers and gives the receiver nothing to take.
+  - The live check's message names run 1 for each ID, so it cannot be confused with a real run's.
+- 00:33 Green changes written: `receiver_core.Lazy`, the queue function, `.github/workflows/deploy_receiver.yml`, `scripts/receiver_live_check.py`, J9, the owner's Azure step, Known limits, the test list and this log.

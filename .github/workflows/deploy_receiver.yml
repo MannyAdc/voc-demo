@@ -1,0 +1,86 @@
+# Spec 004, J9: the deploy of the receiver, the Azure Function in receiver/ (owner decision, 6 November).
+#
+# The owner starts it by hand, on main, after the change to receiver/ is merged. Claude never starts it. It signs in
+# to Azure with OpenID Connect, as deploy.yml does, so no password or key is stored, and Azure trusts only this
+# repo's main branch. It packs only receiver/, which the Flex Consumption plan builds remotely from
+# requirements.txt, and then checks that the live receiver refuses an unsigned call. The app's names and its address
+# are secrets, so the receiver's address is not written in this public repo.
+name: Deploy the receiver
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-receiver
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Decide whether to deploy
+        id: ready
+        # Until the owner sets the secrets, the run ends here without failing.
+        env:
+          CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          APP: ${{ secrets.RECEIVER_APP_NAME }}
+          GROUP: ${{ secrets.RECEIVER_RESOURCE_GROUP }}
+          RECEIVER_URL: ${{ secrets.RECEIVER_URL }}
+        run: |
+          if [ -z "$CLIENT_ID" ] || [ -z "$TENANT_ID" ] || [ -z "$SUBSCRIPTION_ID" ] || [ -z "$APP" ] || [ -z "$GROUP" ] || [ -z "$RECEIVER_URL" ]; then
+            echo "The receiver's deploy secrets are not all set yet, so nothing is deployed."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "go=true" >> "$GITHUB_OUTPUT"
+
+      - name: Check out main
+        if: steps.ready.outputs.go == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Pack the committed receiver folder only
+        if: steps.ready.outputs.go == 'true'
+        run: git archive --format=zip -o "$RUNNER_TEMP/receiver.zip" HEAD:receiver
+
+      - name: Sign in to Azure with OpenID Connect
+        if: steps.ready.outputs.go == 'true'
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Upload the ZIP and build it remotely, printing no resource ID
+        if: steps.ready.outputs.go == 'true'
+        env:
+          APP: ${{ secrets.RECEIVER_APP_NAME }}
+          GROUP: ${{ secrets.RECEIVER_RESOURCE_GROUP }}
+        run: az functionapp deployment source config-zip --name "$APP" --resource-group "$GROUP" --src "$RUNNER_TEMP/receiver.zip" --build-remote true -o none
+
+      - name: Check that the live receiver refuses an unsigned call
+        if: steps.ready.outputs.go == 'true'
+        # An empty POST to the result route has no timestamp or signature, so a working receiver answers 401 and
+        # takes nothing. A cold start can be slow: 20 tries, 15 seconds apart, up to about 5 minutes.
+        env:
+          RECEIVER_URL: ${{ secrets.RECEIVER_URL }}
+        run: |
+          for attempt in $(seq 1 20); do
+            status=$(curl --silent --output /dev/null --max-time 15 --write-out '%{http_code}' -X POST "$RECEIVER_URL/api/result") || status=000
+            if [ "$status" = "401" ]; then
+              echo "The live receiver refuses an unsigned call."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "The live receiver did not refuse an unsigned call with 401 within about 5 minutes."
+          exit 1
