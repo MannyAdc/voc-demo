@@ -7,12 +7,22 @@
     "life_cycle_state": "TERMINATED",
     "result_state": "SUCCESS"
   },
+  "status": {
+    "termination_details": {
+      "code": "SUCCESS"
+    }
+  },
   "tasks": [
     {
       "run_id": 900009,
       "state": {
         "life_cycle_state": "TERMINATED",
         "result_state": "SUCCESS"
+      },
+      "status": {
+        "termination_details": {
+          "code": "SUCCESS"
+        }
       },
       "task_key": "unpack"
     },
@@ -22,6 +32,11 @@
         "life_cycle_state": "TERMINATED",
         "result_state": "SUCCESS"
       },
+      "status": {
+        "termination_details": {
+          "code": "SUCCESS"
+        }
+      },
       "task_key": "dbt"
     },
     {
@@ -29,6 +44,11 @@
       "state": {
         "life_cycle_state": "TERMINATED",
         "result_state": "SUCCESS"
+      },
+      "status": {
+        "termination_details": {
+          "code": "SUCCESS"
+        }
       },
       "task_key": "job_a"
     }

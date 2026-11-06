@@ -1969,6 +1969,60 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - Red commit `3a86806` at 15:27 and green commit `2117b07` at 15:58 (git's commit times), both through the gate. CI green on `2117b07`.
 - A network drop cut Claude's watch of that CI run. Claude read the checks again when the network came back.
 - 21:47 Merge verdict on #94: PENDING with every mechanical check passing. Every finding of the four review rounds, all chosen by the owner, is fixed. The last review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
+- 22:03 Claude marked #94 ready, after the MERGE verdict and CI green on its log commit `f4a81d0`.
+- 22:03 The owner merged #94 (time from GitHub, `fec0a7e`).
+- Work start, before 09:52: spec 004's pull request 8, the approval workflow, branch `feat/june-approval`, worktree `../voc-demo-approval`, made from #94's head `4976572`.
+- AI mistake: the new worktree had no names deny list, which git ignores, so the gate refused the first red commit. Caught by the gate. Claude copied the list from another worktree without reading it.
+- 09:53 Red commit, through the gate. With no push, it was rebased as the owner asked: onto #94's fixed heads `a5ca424` and `af360f2`, then onto main after #94 merged, as `9b979d5`. A rebase runs no hook, so the rebased commits were not gated again. Their tests were run again on each new base, and the green commit goes through the gate.
+- Docs checked for this pull request on 6 November: GitHub's workflow syntax says `run-name` "can include expressions and can reference the `github` and `inputs` contexts". Its REST reference lists `display_title` in a workflow run without saying what it holds. Its environments page says a job "cannot access environment secrets until one of the required reviewers approves it". Databricks' runs list page was too long to read in full, so its order and whether it holds active runs were not confirmed.
+- Claude's choices, for the owner to see:
+  - The logic runs on the runner's own Python with its standard library only, so the workflow installs nothing and its code is frozen in `src/`.
+  - Each job reads its own run and checks its exact name, event, branch and path. That is how pull request 8 checks the run name, and the dry run is its first real test.
+  - Since the runs list's order and its active runs were not confirmed, the workflow checks the order itself and asks for active runs separately.
+  - The contract fixture `job_a_run.json` gains the spike's `status.termination_details.code` for the run and each task, which J16 item 5 names since #94. The receiver's tests still pass with it.
+- Red commit, now `e5c18bd` after the same rebases: only `tests/test_approval.py`, the active-run tests, through the gate.
+- 22:17 Green changes written: `src/voc/approval.py`, `.github/workflows/june_approval.yml`, the fixture, J10, J16 items 3 and 5, the owner's GitHub step, the test list and this log.
+- Green commit `1a1272d`, through the gate at 22:32 (git's commit time). The branch was pushed and draft pull request #95 opened.
+- A fresh reviewer agent read the diff: 3 serious, 7 minor, 8 nits.
+- 22:55 Review findings on #95 posted as a comment. Claude stopped #95 and asked the owner.
+- AI mistakes in pull request 8, caught by that review:
+  - The robot's token was fetched once, so following Job B for over an hour would have failed with no result message (serious 1).
+  - Job A's run was read without `include_history` (serious 2, unconfirmed).
+  - The result message could hold a state or an exit value the receiver refuses, and a refused post still ended the job with success (serious 3).
+  - `NOT_STARTED` could be posted after run-now was sent, and some failures before it posted nothing (minors 1 and 2).
+- Owner decisions on that review: fix the three serious findings, minors 1 to 7 and the nits as Claude proposed, and use #94's stopping rule here too. That is one more fresh review on the fix round only, and if it finds nothing serious, the minors are fixed and the owner merges.
+- Owner decision on the plan for a live end-to-end run by Tuesday 10 November: not by Tuesday. The owner's interview preparation comes first, and the estimate was best case. #95 and the receiver's deploy workflow go on at normal pace and review quality. A proposed live proof after both merge: the receiver deployed on Azure, and a short test from the laptop sending one badly signed and one well signed result message. Job B, the dry run's setup, the job IDs and the Databricks setup move to Friday 13 November or later.
+- Claude's answers to the owner on that live proof, from the receiver's code:
+  - It is possible without Databricks, after one small change: the queue function builds its Databricks and GitHub clients before it reads a message, so a result message would fail there. That change goes in the deploy pull request.
+  - A signed result message is stored as one row of the receiver's table and starts nothing. Only the Databricks route can lead to a dispatch, after the receiver confirms the run with Databricks.
+  - The owner's setup is in the Azure portal only, about 1.5 to 2 hours. No Databricks and no GitHub token are needed for the test.
+  - The GitHub token for the dispatch: a fine-grained token for this repo only, with Actions read and write, made only for the Databricks phase, for 30 days at most. It cannot be limited to one workflow, so it could also start `scheduled.yml` and re-run, cancel or delete runs. It cannot approve `june-run`.
+- Owner decisions on the live receiver test: yes, with conditions.
+  - The queue function's fix goes in the deploy pull request, with its test.
+  - The test script asks for the HMAC secret with a hidden prompt, never as an argument or pasted into a command, since PowerShell saves command lines to its history file. It never prints or logs the secret, and drops it at the end. Claude's note: the script is Python with `getpass`. A Python string cannot be wiped from memory, so the script drops the secret straight after signing and exits.
+  - Time box: if #95 and the deploy pull request are not both merged by Monday 9 November, 6 PM, the live test moves to after the interview. Reviews are not rushed to meet it.
+  - When both are merged, Claude gives the portal checklist in one message, in order, with what to click and what to record. The owner does it.
+  - The GitHub token: not until the Databricks phase, Actions read and write only, 30 days at most. Then Known limits says the token can delete runs and their logs, and how that would be noticed.
+  - After the test, Claude says how to delete the fake row.
+- Red commit `cd1db29`: only `tests/test_approval.py`, through the gate. Its new cancelled-run test catches the interrupt itself, since at first, uncaught, it stopped the whole test session. Caught by running it before the commit.
+- Claude's choices, for the owner to see:
+  - Databricks' states `SUCCESS`, `FAILED`, `TIMEDOUT` and `CANCELED` are kept, and any other end is `FAILED`, since Job B did not finish. J16 item 9 says so now.
+  - The token's life comes from Databricks' `expires_in`, or an hour when it is missing. It is renewed five minutes early.
+  - A refused or failed result post ends the job with an error after its tries, so the failure is visible in GitHub.
+- 23:41 Fix changes written: `src/voc/approval.py`, J10, J16 item 9, Known limits, the test list and this log.
+- Green commit `9dbbefe` at 23:52 (git's commit time), through the gate.
+- A fresh reviewer agent read the fix round's diff only, the last review round under the owner's stopping rule: no serious finding, 6 minor, 8 nits.
+- 00:09 on 7 November: its findings posted on #95. With no serious finding, the owner's rule applies: Claude fixes the minors and nits, and the owner merges with no further review round.
+- Correction to the lines above with no local time (nit 8 of that review), from git's commit times: red commit `cd1db29` 23:13 and green commit `9dbbefe` 23:52 on 6 November. The owner's decisions on #95's first review and on the live receiver test came between 22:55 and 23:13. The lines are kept as written.
+- AI mistake, a second time: Claude drafted these commit times, 23:20 and 23:41, before reading them from git. Caught by Claude checking git before writing them. From now on Claude reads a time from its source before drafting a log line.
+- Red commit `e437056`: only `tests/test_approval.py`, through the gate. One existing test's synthetic case gained the reason it is really refused for (minor 6).
+- Claude's choices in this round, for the owner to see:
+  - The follow ends 330 minutes after the job's start, leaving 30 minutes for the end (minor 4).
+  - A failed token request just before run-now still posts `UNKNOWN` (nit 2). Telling it apart would need a second sign-in step before the start, and `UNKNOWN` errs on the safe side.
+  - On a cancel the post gets one try and no wait, since GitHub allows only a few seconds, and the cancel itself is what the job reports.
+- 00:36 Fix changes written: `src/voc/approval.py`, J10, Known limits, the plan's item 9, the test list and this log.
+- Green commit `20fcbb0` at 00:36 (git's commit time), through the gate. CI green on `20fcbb0`.
+- 00:54 Merge verdict on #95: PENDING with every mechanical check passing. Every finding of its two review rounds, all chosen by the owner, is fixed, except nit 2 of the second round, kept by Claude's choice with its reason in this log and in J10. The second review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
 - Work start, before 00:05: spec 004's receiver deploy, branch `feat/receiver-deploy`, worktree `../voc-demo-deploy`, from main at `fec0a7e`, as the owner decided on 6 November.
 - Docs read on 7 November, through a fetch agent, on learn.microsoft.com: a Flex Consumption app takes `az functionapp deployment source config-zip`, with `--build-remote` to build `requirements.txt` remotely. The deploying identity needs Website Contributor on the Function app. A Key Vault reference uses the app's system-assigned identity, which needs the Key Vault Secrets User role. The docs conflict on whether the CLI builds remotely by default, so the workflow says `--build-remote true`.
 - Red commit `7511b4f`: only `tests/test_receiver_deploy.py`, through the gate.
