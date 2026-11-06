@@ -443,6 +443,15 @@ Written on 6 November 2026, in the fix round of #94, from its review and the own
 - the failcheck job runs Job A's own dbt command on its own rows, and the same command without the flags as a control after it, with no trigger. Its rows hold a short row that `unpack` would refuse (J5, owner decision 1)
 - the robot's check holds no secret, finds the marker in nested fields and in downloaded archives, and reports task keys, states, places and status codes only (J5, J13, owner decision 1)
 
+Written on 6 November 2026, in the second fix round of #94, from the review of its fix round and the owner's decisions:
+
+- a real row of the run log needs a recorded pass of both gates, `june-check` and `failcheck`, for its code and the June pin, dated before it. A pass for other code, another pin or a later date does not count, a synthetic row needs none, a malformed gate row is refused, and the committed logs keep the rule. Job A and `scripts/june_hash.py` refuse without both, and CI checks that the gates log only grows (J1, owner decision on minor 2)
+- `job_a` reads Spark only through wrappers that refuse with fixed text and no cause, and its sample's SQL takes only complaint IDs (J5, serious 3)
+- the robot's check reads tar and zip archives and reports any other download as unread, searches `runs/get` too, gets no `all-apis` token, and gives a verdict that fails on any leak, any unread place, a control that shows no leak in each kind of place judged, or a query history that is not refused (J5, J13, serious 1 and 2, minor 1)
+- the failcheck's short row holds the marker at the start of each free-text field, its control differs from the quiet run by the flags only, and its first task returns its code hash for the gate's record (J5, minor 4, nit 8)
+- `voc june-check` checks the frozen sample's rows against their hashes and counts sampled narratives with a carriage return, unpacks inside the June data folder, fails with a non-zero exit on any mismatch, and prints the gate's record only on a pass from unchanged frozen files (J1, J8, minors 3 and 6, nit 1)
+- Job A sends no failure email (J8, owner decision on minor 5)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

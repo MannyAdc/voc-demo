@@ -19,21 +19,23 @@ FOLDER = VOLUME + "/failcheck"
 FILE_NAME = "failcheck.csv"
 
 
-def _row(complaint_id, narrative):
-    return ["2026-06-01", "Mortgage", "Conventional home mortgage", "Trouble during payment process", "",
-            narrative, "", "Synthetic Company", "NY", "10001", "", "Web", "2026-06-02",
+def _row(complaint_id, narrative, text=None):
+    """One row. With `text`, it fills every free-text field, so a shortened error still shows it first."""
+    return ["2026-06-01", "Mortgage", text or "Conventional home mortgage", text or "Trouble during payment process",
+            text or "", narrative, text or "", text or "Synthetic Company", "NY", "10001", "", "Web", "2026-06-02",
             "Closed with explanation", "Yes", complaint_id]
 
 
 def rows_text():
-    """The CFPB header, two well-formed synthetic rows, and a last row one field short, with the marker in its
-    narrative."""
+    """The CFPB header, two well-formed synthetic rows, and a last row one field short, with the marker at the
+    start of its narrative and of its other free-text fields (review of the fix round, minor 4)."""
     buffer = io.StringIO()
     writer = csv.writer(buffer, lineterminator="\r\n")
     writer.writerow(CFPB_COLUMNS)
     writer.writerow(_row("SYN-F1", "Synthetic text: my payment was applied late."))
     writer.writerow(_row("SYN-F2", "Synthetic text: a fee I did not expect."))
-    writer.writerow(_row("SYN-F3", f"Synthetic text that must never reach the robot: {MARKER}")[:-1])
+    writer.writerow(_row("SYN-F3", f"{MARKER} synthetic text that must never reach the robot",
+                         text=f"{MARKER} synthetic text")[:-1])
     return buffer.getvalue()
 
 

@@ -1878,3 +1878,38 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - AI mistake: Claude's new docstring in `src/voc/job_a.py` named dbt's variables flag, which B17's test allows only in the `voc dbt` wrapper. Caught by the full test run before the green commit. Reworded.
 - In the green commit, one test changes: the figures test's cost for 2 complaints is now "0.01", not "0.00", since the cost is rounded up.
 - 09:12 Fix changes written: Job A's logic and notebooks, the failcheck, `voc june-check`, the pin's narrative count, the June cap, J8, J12, the owner's steps, Known limits, the test list and this log.
+- Fix commit `4976572`, through the gate.
+- A fresh reviewer agent read the fix round's diff, since it added much new code: the failcheck, `voc june-check` and Job A's count check. Its findings: 3 serious, 6 minor, 8 nits.
+- 09:53 Claude marked #93 ready, after the MERGE verdict and CI green on its log commit.
+- 09:56 The fix round's review findings on #94 posted as a comment. Claude stopped #94 and asked the owner.
+- AI mistakes in the fix round, caught by that review:
+  - The robot's check called an artifacts download it could not read "nowhere", and its test expected that. A zip or an error page would have passed the gate unread (serious 1).
+  - The robot's check never searched the `runs/get` reply, with its state messages (serious 2).
+  - Job A's new count read the June file with Spark outside dbt's quiet flags, with no fixed-text refusal, a new place where a row could leak (serious 3).
+  - `voc june-check` exited 0 on a mismatch, and the step's rule "every line must say matches" could not be met (minor 3).
+  - The steps put both gates before the upload, not before the frozen run log row, after which a failure could not be fixed (minor 2).
+- 10:08 The owner merged #93 (time from GitHub, `1447f3b`).
+- Owner decisions on the fix round's review, given with the news of that merge:
+  - Fix all three serious findings.
+  - Minors 1 to 6 and all nits. Minor 2 as a hard rule: both gates must pass before the run log row is written, in the steps doc, and the run log step refuses when either gate has no recorded pass for the current pin and code. Minor 5: drop the failure email from Job A, the owner watches the job page after the upload. Minor 1: add the refused `all-apis` request to the robot's check as proof. Minor 3: `june-check` exits non-zero on any mismatch, and the step is worded so it can be met.
+  - Carry on with pull request 8, but never ask the owner to merge it before #94 merges. Rebase it on the fixed #94 and run its tests and review again after the rebase.
+- Merge commit `e165fa3`: main, with #93, merged into this branch. The build log's one conflict, two blocks added at its end, was resolved by keeping both whole, main's first.
+- Correction to the line above that begins "Owner decisions, on the morning of 6 November": it has no time. The decisions arrived before 08:20, when Claude's first command after them ran (nit 7 of the fix round's review). The line is kept as written.
+- Claude's choices in this round, for the owner to see:
+  - The gates' passes go in a new log, `runs/JUNE_GATES.md`, which only grows and is not frozen, so recording a pass changes no code hash. A pass names the June pin's SHA-256 and the code hash. Three places refuse a real row without both passes: `scripts/june_hash.py` (with `--synthetic` for a synthetic row), a test on the committed logs, which CI runs, and Job A.
+  - The robot's check gives its own verdict, so the owner reads one line. Its control rule: the control must show the marker in its output, and in its dbt files whenever the quiet run has dbt files.
+  - `voc june-check` also checks the frozen sample's rows, as Python reads them, against their content hashes. That catches a difference between Python's reading and the laptop's DuckDB load before the upload.
+  - Nit 4, the vertical tab in `\S`: it fails closed, so it is in Known limits with no code change. Nit 6: the steps give no time for the failcheck run, since none was measured.
+- Pull request 8's branch `feat/june-approval` holds only local commits for now. It is rebased on the fixed #94 before it is pushed, which rewrites no pushed commit.
+- Red commit `4a159b5`: only `tests/test_job_a.py`, through the gate.
+- AI mistakes in the red tests, caught by running them on the code before the green commit, and fixed in it:
+  - The test checkout of `_root` had no `config/`, so Job A's new gate check could not read the June pin there. It now copies the repo's `config/` before its code hash is taken, as a checkout has it, and the hash script's test no longer copies it a second time.
+  - The gates log helper wrote into a `runs/` folder that some tests had not made. It now makes the folder.
+- AI mistake: Claude's full test run before the green commit left out the two tests of `tests/test_june_frozen.py` that fail while new files are unstaged, and so missed that one of them runs `scripts/june_hash.py`, which now refuses without both gates. Caught by the gate, which refused the green commit. The test now asks with `--synthetic`, as for a synthetic row.
+- In the green commit, six tests that pinned the old behaviour change:
+  - the timeout test now checks that Job A has no email notice
+  - the robot check's archive test expects an unreadable download to be reported as unread
+  - its report test uses the new lines and both scopes
+  - the two notebook tests look for the Spark wrappers in place of the bare Spark call
+  - the hash script's output test in `tests/test_june_frozen.py` asks with `--synthetic`
+- 10:53 Fix changes written: the gates log and its checks, the robot's check, Job A's Spark wrappers, the failcheck's rows, `voc june-check`, J1, J8, the owner's steps, Known limits, the test list, CLAUDE.md's CI line and this log.

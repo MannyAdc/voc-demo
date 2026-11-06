@@ -94,6 +94,18 @@ jobs:
           fi
           uv run --locked python scripts/check_test_runs.py "$base" runs/JUNE_RUNS.md
 
+      - name: The June gates log only grows compared with main (spec 004, J1)
+        run: |
+          base="$RUNNER_TEMP/june_gates_on_main.md"
+          # Fail if main cannot be read at all, so a git error never counts as "nothing on main yet".
+          git rev-parse --verify origin/main > /dev/null
+          if git cat-file -e origin/main:runs/JUNE_GATES.md 2>/dev/null; then
+            git show origin/main:runs/JUNE_GATES.md > "$base"
+          else
+            rm -f "$base"
+          fi
+          uv run --locked python scripts/check_test_runs.py "$base" runs/JUNE_GATES.md
+
   secret-scan:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

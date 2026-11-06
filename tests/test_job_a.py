@@ -400,9 +400,11 @@ def test_J16_an_expected_cost_that_is_not_two_decimals_is_refused(cost):
 
 
 def test_J8_job_a_has_a_timeout_and_a_failure_notice_set_by_the_owner():
+    """Changed in the second fix round (owner decision on minor 5): Job A sends no failure email, an output nobody
+    checks. The owner watches the job page after the upload. The test keeps its name."""
     job = _job()
     assert job["timeout_seconds"] == 3600
-    assert set(job["email_notifications"]) == {"on_failure"} and len(job["email_notifications"]["on_failure"]) == 1
+    assert "email_notifications" not in job
     assert "@" not in (REPO / "cloud" / "job_a.yml").read_text(encoding="utf-8")
 
 
@@ -417,6 +419,7 @@ def _root(tmp_path, kinds, list_hash=None, code=None, gates=("june-check", "fail
     from voc.frozen import code_hash
 
     root = _sample(tmp_path, ROWS)
+    shutil.copytree(REPO / "config", root / "config")  # the pin, which the gates name, as a checkout has it
     listed = list_hash or hashlib.sha256((root / "splits" / "june" / "june.csv").read_bytes()).hexdigest()
     code = code or code_hash(root)
     (root / "runs").mkdir()
@@ -435,6 +438,7 @@ def _real_pin_sha():
 
 def _gates(root, rows):
     path = Path(root) / "runs" / "JUNE_GATES.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("# June gates\n\n| Date | Gate | Pin SHA-256 | Code hash | Evidence |\n|---|---|---|---|---|\n"
                     + "".join(f"| {' | '.join(row)} |\n" for row in rows), encoding="utf-8")
     return path
@@ -468,7 +472,7 @@ def test_J16_job_a_refuses_code_that_is_not_the_row_s_frozen_code(tmp_path):
         _job_a().checked_target(root)
 
 
-@pytest.mark.parametrize("notebook, first_use", [("unpack.py", "unpack("), ("job_a.py", "spark.sql(")])
+@pytest.mark.parametrize("notebook, first_use", [("unpack.py", "unpack("), ("job_a.py", "spark_counts(")])
 def test_J16_both_notebooks_check_the_target_before_they_touch_the_june_file(notebook, first_use):
     """Review of #94, minor 5: `unpack` and `dbt` handle the June file, so the code check runs in `unpack` too."""
     text = (REPO / "cloud" / "job_a" / notebook).read_text(encoding="utf-8")
@@ -518,7 +522,7 @@ def test_J8_job_a_refuses_a_row_or_narrative_count_that_is_not_the_pin_s():
 
 def test_J8_the_job_a_notebook_checks_the_counts_before_the_sample():
     text = (REPO / "cloud" / "job_a" / "job_a.py").read_text(encoding="utf-8")
-    assert "checked_counts(" in text and "count_sql(" in text
+    assert "checked_counts(" in text and "spark_counts(" in text
     assert text.index("checked_counts(") < text.index("checked_sample(")
 
 
@@ -770,54 +774,20 @@ def test_J13_the_robot_check_finds_the_marker_in_fields_and_archives():
             info.size = len(payload)
             archive.addfile(info, io.BytesIO(payload))
     assert check.archive_places(buffer.getvalue()) == (2, ["logs/dbt.log"])
-    assert check.archive_places(f"not an archive {marker}".encode()) == (1, ["(the whole download)"])
+    # Changed in the second fix round (serious 1): a download it cannot read is reported as unread, never searched.
+    assert check.archive_places(f"not an archive {marker}".encode()) is None
 
 
 def test_J13_the_robot_check_reports_states_and_places_only(monkeypatch):
-    import tarfile
-
+    """Changed in the second fix round: the lines are the new report's, with both scopes asked for."""
     check = _robot_check()
-    marker = check.MARKER
-    buffer = io.BytesIO()
-    with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
-        info = tarfile.TarInfo("logs/dbt.log")
-        info.size = len(marker)
-        archive.addfile(info, io.BytesIO(marker.encode()))
-    host = "https://synthetic.example.invalid"
-    replies = {
-        f"{host}/oidc/v1/token": (200, json.dumps({"access_token": "synthetic-token"}).encode()),
-        f"{host}/api/2.2/jobs/runs/get?run_id=99": (200, json.dumps({"tasks": [
-            {"task_key": "dbt_control", "run_id": 13, "state": {"result_state": "FAILED"}},
-            {"task_key": "make_rows", "run_id": 11, "state": {"result_state": "SUCCESS"}},
-            {"task_key": "dbt", "run_id": 12, "state": {"result_state": "FAILED"}}]}).encode()),
-        f"{host}/api/2.2/jobs/runs/get-output?run_id=11": (200, b'{"notebook_output": {}}'),
-        f"{host}/api/2.2/jobs/runs/get-output?run_id=12": (200, json.dumps({"error": "dbt failed", "dbt_output": {
-            "artifacts_link": f"{host}/a12", "artifacts_headers": {}}}).encode()),
-        f"{host}/api/2.2/jobs/runs/get-output?run_id=13": (200, json.dumps({"error": f"dbt failed {marker}", "dbt_output": {
-            "artifacts_link": f"{host}/a13", "artifacts_headers": {}}}).encode()),
-        f"{host}/a12": (200, b"\x1f\x8b not really"),
-        f"{host}/a13": (200, buffer.getvalue()),
-        f"{host}/api/2.0/sql/history/queries": (403, json.dumps({"error_code": "PERMISSION_DENIED",
-                                                                 "message": marker}).encode()),
-    }
-    calls = []
-
-    def fake(url, token=None, data=None, headers=None):
-        calls.append(url)
-        return replies[url]
-
-    monkeypatch.setattr(check, "_call", fake)
-    lines = check.report("synthetic.example.invalid", "synthetic-id", "syn-" + "secret", 99)
-    text = "\n".join(lines)
-    assert marker not in text and "syn-secret" not in text and "synthetic-token" not in text
-    assert lines.index("make_rows: SUCCESS, marker in the output: nowhere") == 0
-    assert set(calls) == set(replies)
-    assert "make_rows: SUCCESS, marker in the output: nowhere" in lines
-    assert "dbt: FAILED, marker in the output: nowhere" in lines
-    assert "dbt: artifacts: 1 files, marker in: nowhere" in lines
-    assert "dbt_control: FAILED, marker in the output: $.error" in lines
-    assert "dbt_control: artifacts: 1 files, marker in: logs/dbt.log" in lines
+    lines = _report(check, monkeypatch, _replies(check))
+    assert lines[0] == "all-apis token: refused, HTTP 400"
+    assert "make_rows: SUCCESS" in lines and "dbt: FAILED" in lines and "dbt_control: FAILED" in lines
+    assert "dbt: output: marker nowhere" in lines and "dbt: artifacts: files: 1, marker in: nowhere" in lines
+    assert "dbt_control: output: marker $.error" in lines
     assert "query history: HTTP 403, PERMISSION_DENIED" in lines
+    assert check.MARKER not in "\n".join(lines)
 
 
 # The second review of #94, on its fix round, and the owner's decisions on it (6 November)
@@ -884,7 +854,6 @@ def test_J1_the_hash_script_refuses_without_both_gates_unless_the_row_is_synthet
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     root = _root(tmp_path, ["synthetic"], gates=())
-    shutil.copytree(REPO / "config", root / "config")
     assert module.main([str(root)]) == 1
     out = capsys.readouterr().out
     assert out.startswith("refused:") and "gate" in out and "june list sha256" not in out

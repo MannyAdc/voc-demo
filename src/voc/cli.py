@@ -63,27 +63,38 @@ def _data_hash(config, root, args):
 
 
 def _june_check(config, root, args):
-    """Spec 004, J8 (owner decision, 6 November): the owner's check of the June zip before the upload. It runs
-    Job A's `unpack` on a copy in a temporary folder and prints the file's counts only."""
-    from voc.job_a import JobAError, format_june_check, june_check, pin_for
+    """Spec 004, J1 and J8 (owner decisions, 6 November): the owner's check of the June zip, a gate before the June
+    run log's real row. It runs Job A's `unpack` on a copy in a temporary folder inside the June data folder, and
+    prints counts only. It fails on any mismatch. On a pass from unchanged frozen files, it prints the gate's record
+    for `runs/JUNE_GATES.md`."""
+    from voc import frozen
+    from voc.job_a import JobAError, june_check, june_check_verdict, pin_for
 
+    folder = config.get(MONTHS[JUNE])
+    if not folder:
+        raise DataFileError(f"{MONTHS[JUNE]} is not set, in the environment or in .env. The check unpacks inside "
+                            "that folder")
     pin = pin_for(root, "real")
-    if args.zip:
-        path = Path(args.zip)
-    else:
-        folder = config.get(MONTHS[JUNE])
-        if not folder:
-            raise DataFileError(f"{MONTHS[JUNE]} is not set, in the environment or in .env")
-        path = Path(folder) / pin["zip_file_name"]
+    path = Path(args.zip) if args.zip else Path(folder) / pin["zip_file_name"]
     if not path.is_file():
         raise DataFileError("the June zip is not there: give its path with --zip")
     try:
-        counts = june_check(path, pin, Path(root) / "config" / "labels.toml")
+        counts = june_check(path, pin, Path(root) / "config" / "labels.toml", root=root, scratch=folder)
     except JobAError as err:
         raise DataFileError(f"refused, as Job A's unpack would refuse it: {err}") from None
     print("the June zip passes unpack's checks")
-    for line in format_june_check(counts, pin):
+    lines, passed = june_check_verdict(counts, pin)
+    for line in lines:
         print(line)
+    if not passed:
+        raise DataFileError("the June zip fails the check, so the June run log's row must wait")
+    differ = frozen.differs_from_git(root)
+    if differ is None:
+        raise DataFileError("this pass cannot be recorded: there is no git checkout here")
+    if differ:
+        raise DataFileError(f"this pass cannot be recorded: {len(differ)} frozen files differ from the files git "
+                            "tracks")
+    print(f"gate record: june-check passed for pin {pin['sha256']} and code {frozen.code_hash(root)}")
 
 
 def _load(config, root, args):

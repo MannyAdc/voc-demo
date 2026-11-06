@@ -36,7 +36,8 @@ from dataclasses import dataclass
 from decimal import ROUND_UP, Decimal
 from pathlib import Path
 
-from voc.frozen import FIRST_KINDS, RUNS, check_runs, code_hash, list_hash, read_runs
+from voc.frozen import (FIRST_KINDS, GATES, RUNS, JuneRunsError, check_gates, check_runs, code_hash, list_hash,
+                        read_gates, read_runs)
 from voc.repo_checks import CFPB_COLUMNS
 
 CONTRACT = "voc-june-1"
@@ -51,6 +52,8 @@ JUNE_FOLDER = VOLUME + "/june"
 # while it reads (review of #94, minor 3). The largest value a C long holds on every platform.
 FIELD_LIMIT = 2**31 - 1
 NARRATIVE = CFPB_COLUMNS.index("Consumer complaint narrative")
+PRODUCT = CFPB_COLUMNS.index("Product")
+COMPLAINT_ID = CFPB_COLUMNS.index("Complaint ID")
 # Java's white space, as Spark's `rlike '\\S'` reads it (dbt/macros/targets.sql, `has_text`). Python's own `\\s`
 # also holds other Unicode spaces, such as the no-break space, which Spark counts as text.
 JAVA_SPACE = " \t\n\x0b\f\r"
@@ -95,6 +98,12 @@ def checked_target(root):
         raise JobAError("the run log's last row names a June list other than splits/june/june.csv")
     if code_hash(root) != run_target.code_hash:
         raise JobAError("the code this job runs is not the frozen code of the run log's last row")
+    if run_target.entry_kind == "real":
+        # Owner decision, 6 November: both gates passed for this code and the June pin before the row was written.
+        try:
+            check_gates(read_runs(Path(root) / RUNS), read_gates(Path(root) / GATES), pin_for(root, "real")["sha256"])
+        except JuneRunsError as err:
+            raise JobAError(f"the June gates were not passed first: {err}") from None
     return run_target
 
 
@@ -228,15 +237,38 @@ def file_counts(path):
     return counts
 
 
-def june_check(zip_path, pin, labels_file):
-    """The owner's check of the June zip before the upload (owner decision, 6 November): `unpack` on a copy in a
-    temporary folder, then the file's counts. Nothing is left behind, and nothing is printed."""
-    with tempfile.TemporaryDirectory() as scratch:
-        incoming = Path(scratch) / "incoming"
+def sample_counts(path, root):
+    """The frozen June list's rows as Python reads them from the file: how many match their frozen content hash,
+    and how many narratives hold a carriage return, which Spark may read otherwise (owner decision on minor 6)."""
+    from voc.data import content_hash
+
+    list_hash(root)
+    data = (Path(root) / "splits" / "june" / "june.csv").read_text(encoding="utf-8")
+    listed = dict(list(csv.reader(io.StringIO(data)))[1:])
+    matching, returns = set(), set()
+    for record in _records(path):
+        cid = record[COMPLAINT_ID]
+        if cid in listed:
+            if content_hash(record[NARRATIVE], record[PRODUCT]) == listed[cid]:
+                matching.add(cid)
+            if "\r" in record[NARRATIVE]:
+                returns.add(cid)
+    return {"sampled_rows": len(listed), "sampled_matching": len(matching), "sampled_with_returns": len(returns)}
+
+
+def june_check(zip_path, pin, labels_file, root=None, scratch=None):
+    """The owner's check of the June zip before the June run log's row (owner decision, 6 November): `unpack` on a
+    copy in a temporary folder inside `scratch`, the June data folder, then the file's counts, and with `root` the
+    frozen sample's. Nothing is left behind, and nothing is printed."""
+    with tempfile.TemporaryDirectory(dir=scratch) as folder:
+        incoming = Path(folder) / "incoming"
         incoming.mkdir()
         shutil.copyfile(zip_path, incoming / Path(zip_path).name)
-        values = unpack(incoming, Path(scratch) / "june", pin, labels_file)
-        return file_counts(values["month_file"])
+        values = unpack(incoming, Path(folder) / "june", pin, labels_file)
+        counts = file_counts(values["month_file"])
+        if root is not None:
+            counts.update(sample_counts(values["month_file"], root))
+        return counts
 
 
 def format_june_check(counts, pin):
@@ -249,6 +281,24 @@ def format_june_check(counts, pin):
     return lines
 
 
+def june_check_verdict(counts, pin):
+    """The lines `voc june-check` prints, and whether the check passed. It passes only when the rows and the
+    narratives match the pin, every sampled row matches its frozen hash, and no sampled narrative holds a carriage
+    return. The two counts of line breaks in the whole file are shown for the record."""
+    lines = format_june_check(counts, pin)
+    matched = counts["sampled_matching"] == counts["sampled_rows"]
+    lines.append(f"sampled rows matching their frozen hash: {counts['sampled_matching']} of {counts['sampled_rows']} "
+                 f"({'matches' if matched else 'DIFFERS'})")
+    lines.append(f"sampled narratives with a carriage return: {counts['sampled_with_returns']}")
+    fails = [key for key in ("rows", "narratives") if counts[key] != pin[key]]
+    if not matched:
+        fails.append("sampled rows")
+    if counts["sampled_with_returns"]:
+        fails.append("a sampled narrative holds a carriage return, which Spark may read otherwise")
+    lines.append("verdict: PASS" if not fails else "verdict: FAIL: " + ", ".join(fails))
+    return lines, not fails
+
+
 def count_sql(month_file):
     """Spark's counts of the file, read with dbt's options (dbt/macros/targets.sql, `month_file_rows`)."""
     if "'" in month_file or "\\" in month_file:
@@ -256,6 +306,44 @@ def count_sql(month_file):
     return ("select count(*) as rows, count_if(`Consumer complaint narrative` rlike '\\\\S') as narratives "
             f"from read_files('{month_file}', format => 'csv', header => true, multiLine => true, escape => '\"', "
             "mode => 'FAILFAST', inferColumnTypes => false, schemaEvolutionMode => 'none')")
+
+
+def runner(session):
+    """The notebook's Spark session as a function from SQL to rows, for the two reads below."""
+    return lambda sql: session.sql(sql).collect()
+
+
+def spark_counts(run_sql, month_file):
+    """Spark's counts of the file. Spark's own error could quote a row, so any failure is refused with fixed text
+    only (review of the fix round, serious 3)."""
+    sql = count_sql(month_file)
+    try:
+        row = run_sql(sql)[0]
+        return int(row["rows"]), int(row["narratives"])
+    except Exception:  # noqa: BLE001
+        raise JobAError("Spark could not count the June file") from None
+
+
+def listed_ids(root):
+    data = (Path(root) / "splits" / "june" / "june.csv").read_text(encoding="utf-8")
+    return [row[0] for row in list(csv.reader(io.StringIO(data)))[1:]]
+
+
+def sample_sql(listed):
+    # Real IDs are numbers, and the dry run's synthetic ones start with SYN- (pull request 9). They go into the SQL.
+    if not listed or not all(re.fullmatch(r"(SYN-)?[0-9]{1,19}", cid) for cid in listed):
+        raise JobAError("the frozen June list holds an ID that is not a complaint ID")
+    return ("select complaint_id, product, narrative from workspace.voc_june.stg_complaints where complaint_id in ("
+            + ",".join(f"'{cid}'" for cid in listed) + ")")
+
+
+def spark_rows(run_sql, listed):
+    """The frozen sample's rows from the June tables, refused with fixed text only on any failure."""
+    sql = sample_sql(listed)
+    try:
+        return [tuple(r) for r in run_sql(sql)]
+    except Exception:  # noqa: BLE001
+        raise JobAError("Spark could not read the June sample's rows") from None
 
 
 def checked_counts(pin, rows, narratives):

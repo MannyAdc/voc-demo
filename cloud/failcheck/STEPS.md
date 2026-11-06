@@ -1,13 +1,42 @@
-# The failing-row check: the owner's steps
+# The two gates before the June run log's row: the owner's steps
 
-Spec 004, J5 and J13. Owner decision, 6 November: a gate before the June upload. Run it once, after the pull
-request that adds this file is merged. It uses synthetic rows only, and no model call.
+Spec 004, J1, J5 and J13. Owner decisions, 6 November. Two gates must pass before the real row of
+`runs/JUNE_RUNS.md` is written (pull request 10):
+- `june-check`, the owner's check of the June zip on the laptop
+- `failcheck`, the failing-row check in Databricks, read as the robot
+
+## When
+
+Run both after the last code change is merged, that is after pull request 9, and before pull request 10. A pass
+counts only for the code it ran on. So if any code changes after a gate, run both gates again.
+
+Each pass is recorded as a row of `runs/JUNE_GATES.md`, in a pull request Claude opens, with the lines the gate
+prints. `scripts/june_hash.py`, Job A and a test all refuse the real row unless both gates have a recorded pass for
+its code and the June pin.
+
+## Gate 1: june-check, on the laptop
+
+1. In PowerShell, in this repo's folder, on an up-to-date `main` with no changes:
+   `uv run --native-tls voc june-check`
+   If the June zip is not in the June data folder, add `--zip` and its path. It unpacks a copy inside the June
+   data folder and removes it after.
+2. Paste the lines it prints to Claude. They hold counts and hashes only. The gate passes when:
+   - the rows line and the narratives line say `matches`
+   - the sampled rows line says `matches`
+   - the line on sampled narratives with a carriage return says 0
+   - the last lines are `verdict: PASS` and a `gate record:` line
+
+   The two counts of line breaks in the whole file are for the record only.
+
+   If it says `DIFFERS` or `verdict: FAIL`, or stops with an error, stop and tell Claude. The run log's row waits.
+
+## Gate 2: failcheck, in Databricks
 
 It answers one question: when Job A's dbt task fails on a row, can the robot `voc-june-runner` read any of the
 row's text? The job runs Job A's own dbt command on synthetic rows, one of them made to fail. Then it runs the
-same command without the quiet flags, as a control. You read both as the robot.
+same command without the quiet flags, as a control, which must show the marker. You read both as the robot.
 
-## What you create, and for how long
+### What you create, and for how long
 
 | Name | Where | What it is for | Lifetime |
 |---|---|---|---|
@@ -19,34 +48,37 @@ The job also makes these, which you delete at the end:
 - the folder `failcheck` in the `voc_raw` volume, with one synthetic CSV
 - the schema `voc_failcheck` in the `workspace` catalog, which dbt makes
 
-## Databricks
+### Steps
 
 1. **Make the job.** Jobs & Pipelines, then Create, then Job. Open the YAML editor, as for the spike. Replace
    everything in it with the text of `cloud/failcheck.yml` from this repo's `main` on GitHub. In two places, put
    the SQL warehouse's ID where the text says `the SQL warehouse's ID, set by the owner`. Save. The job's name is
    `voc-june-failcheck`. It has three tasks: `make_rows`, `dbt` and `dbt_control`.
 2. **Let the robot read it.** On the job's page, Permissions, add `voc-june-runner` with Can View. Save.
-3. **Run it.** Press Run now. It takes about 5 minutes. Expected:
+3. **Run it.** Press Run now, and wait until all three tasks have ended. Expected:
    - `make_rows` succeeded
    - `dbt` failed
    - `dbt_control` failed
 
    Both dbt tasks are meant to fail. Note the run's ID: the number after `/runs/` in the run page's address.
 4. **Make the robot's secret.** Settings, Identity and access, Service principals, `voc-june-runner`, Secrets,
-   Generate secret. Lifetime 1 day, scope `jobs` only. Copy the client ID and the secret. They are shown once.
+   Generate secret. Lifetime 1 day, scope `jobs` only. It shows the client ID and the secret once. Paste them only
+   into the notebook of step 5, not into a file or a message.
 5. **Make the notebook.** Workspace, Home, Create, Notebook. Rename it `voc-failcheck-robot`. Paste into its first
    cell the text of `cloud/failcheck/robot_check.py` from GitHub. At its top, fill in `CLIENT_ID`,
-   `CLIENT_SECRET` and `RUN_ID`. Leave `HOST` empty. Connect to serverless and run the cell.
-6. **Read the lines it prints.** They hold task keys, states, places and status codes only, never the secret or a
-   value it read. Paste them to Claude. The check passes when:
-   - `dbt: FAILED, marker in the output: nowhere`, and any `dbt: artifacts:` line ends `marker in: nowhere`
-   - a `dbt_control` line names a place, which shows the check can see a leak
-   - `query history: HTTP 401` or `HTTP 403`, so the robot cannot read the warehouse's query history
+   `CLIENT_SECRET` and `RUN_ID`. Leave `HOST` empty unless the cell asks for it, then type the workspace's host
+   name from the browser's address bar, without `https://`. Connect to serverless and run the cell.
+6. **Read the lines it prints.** They hold task keys, states, places, status codes and the failcheck code's hash,
+   never the secret, the token or a value it read. Paste them to Claude. The gate passes only when the last line
+   is `verdict: PASS`. The check itself applies every rule:
+   - the marker is nowhere in `dbt`'s run details, output or dbt files, and every one of them could be read
+   - the control shows the marker in its output, and in its dbt files when `dbt` has dbt files
+   - a token for `all-apis` is refused, so the secret holds the `jobs` scope only
+   - the warehouse's query history is refused (HTTP 401 or 403)
 
-   If the marker is anywhere in `dbt`'s lines, stop. The June upload waits. If `dbt_control` shows it nowhere,
-   the check could not see a leak, so tell Claude before going on.
+   If the verdict is `FAIL`, stop. The run log's row waits. Tell Claude the verdict line.
 
-## Clean up, the same day
+### Clean up, the same day
 
 7. Delete the notebook `voc-failcheck-robot`, then empty it from the Trash. It holds the secret.
 8. Delete the robot's secret: Settings, Identity and access, Service principals, `voc-june-runner`, Secrets.

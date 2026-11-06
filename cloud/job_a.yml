@@ -1,7 +1,8 @@
 # Spec 004, J8: Job A, made by the owner in the job page's YAML editor (the spike of pull request 5a showed the editor
-# takes this form). The owner puts the SQL warehouse's ID, the receiver's notification destination ID and the owner's
-# own email address in place of their text. The trigger stays paused until just before the June upload, and is
-# paused again after the run. The run is stopped after an hour. The spike's run took about 3 minutes.
+# takes this form). The owner puts the SQL warehouse's ID and the receiver's notification destination ID in place of
+# their text. The trigger stays paused until just before the June upload, and is paused again after the run. The
+# run is stopped after an hour. The spike's run took about 3 minutes. It sends no failure email, an output nobody
+# checks (owner decision, 6 November): the owner watches the job page after the upload.
 resources:
   jobs:
     voc_june_job_a:
@@ -19,9 +20,6 @@ resources:
       webhook_notifications:
         on_success:
           - id: the receiver's notification destination ID, set by the owner
-      email_notifications:
-        on_failure:
-          - the owner's own email address, set by the owner
       tasks:
         - task_key: unpack
           notebook_task:

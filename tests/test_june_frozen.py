@@ -100,7 +100,9 @@ def test_J1_the_list_hash_is_the_june_list_and_matches_its_manifest(tmp_path):
 
 
 def test_J1_the_hash_script_prints_the_two_hashes_only():
-    result = subprocess.run([sys.executable, str(REPO / "scripts" / "june_hash.py")], capture_output=True,
+    # Since the second fix round of #94 the real row's hashes need both gates' passes, so this asks as for a
+    # synthetic row. tests/test_job_a.py tests the refusal.
+    result = subprocess.run([sys.executable, str(REPO / "scripts" / "june_hash.py"), "--synthetic"], capture_output=True,
                             text=True, check=True, cwd=REPO, env=SCRIPT_ENV)
     lines = result.stdout.splitlines()
     assert lines[0] == f"june list sha256 {list_hash(REPO)}"

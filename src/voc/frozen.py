@@ -24,6 +24,11 @@ FROZEN_PATHS = ("src", "config", "dbt", "splits", "pyproject.toml", "uv.lock", "
 SKIP_DIRS = {"__pycache__", ".pytest_cache", "target", "logs", "dbt_packages"}
 SKIP_SUFFIXES = (".pyc", ".duckdb", ".wal")
 RUNS = Path("runs") / "JUNE_RUNS.md"
+# The two gates that must pass, for the real row's code and the June pin, before that row is written (owner
+# decision, 6 November). The log only grows, and is not frozen, so recording a pass changes no code hash.
+GATES = Path("runs") / "JUNE_GATES.md"
+GATE_NAMES = ("june-check", "failcheck")
+GATES_HEADER = "| Date | Gate | Pin SHA-256 | Code hash | Evidence |"
 JUNE_LIST = Path("splits") / "june"
 FIRST_KINDS = ("real", "synthetic")
 LATER_KINDS = ("reproduction", "resume", "second")
@@ -117,6 +122,52 @@ def read_runs(path):
             raise JuneRunsError(f"line {number} of the June run log has a hash that is not 64 hex characters")
         entries.append(entry)
     return entries
+
+
+@dataclass(frozen=True)
+class Gate:
+    date: str
+    gate: str
+    pin_sha256: str
+    code_hash: str
+    evidence: str
+
+
+def read_gates(path):
+    """The recorded passes of the June gates. A missing log has none. A malformed row is refused."""
+    path = Path(path)
+    if not path.is_file():
+        return []
+    gates = []
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if line in (GATES_HEADER, SEPARATOR) or not line.lstrip().startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if line != line.lstrip() or len(cells) != 5:
+            raise JuneRunsError(f"line {number} of the June gates log does not have 5 columns at its start")
+        gate = Gate(*cells)
+        if (not DATE.match(gate.date) or gate.gate not in GATE_NAMES or not HASH.match(gate.pin_sha256)
+                or not HASH.match(gate.code_hash) or not gate.evidence):
+            raise JuneRunsError(f"line {number} of the June gates log breaks its format")
+        gates.append(gate)
+    return gates
+
+
+def missing_gates(gates, code, pin_sha256, before=None):
+    """The gates with no recorded pass for this code and pin, dated no later than `before` when it is given."""
+    return [name for name in GATE_NAMES if not any(
+        g.gate == name and g.code_hash == code and g.pin_sha256 == pin_sha256 and (before is None or g.date <= before)
+        for g in gates)]
+
+
+def check_gates(entries, gates, pin_sha256):
+    """Every real row has a recorded pass of both gates for its code and the June pin, dated before it."""
+    for n, entry in enumerate(entries, start=1):
+        if entry.kind == "real":
+            missing = missing_gates(gates, entry.code_hash, pin_sha256, before=entry.date)
+            if missing:
+                raise JuneRunsError(f"entry {n}, a real row, has no recorded pass of the {' and '.join(missing)} "
+                                    "gate for its code and the June pin, dated before it")
 
 
 def check_runs(entries, real_list_hash):
