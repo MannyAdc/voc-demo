@@ -426,6 +426,25 @@ Written on 7 November 2026, from the second review of #96, fixed with no further
 - the steps give the exact trust subject, a resource group of the receiver's own, the settings the first deploy needs, the receiver's names as environment secrets, and a clean-up that waits and covers a missing row (J9, J13, minors 1, 2, 5, 7 and 8, nits 8 and 9)
 - the owner's steps create the Function before its role, and the clock hint gives both limits (J9, minor 6, nit 2)
 
+Written on 7 November 2026, after the live receiver test (owner decision: keep the click-by-click steps in the repo, with placeholders only). One line above changed: the plan's settings now hold the HTTP concurrency.
+
+- each instance takes 4 HTTP calls at once, in the plan file and in J9 with its reason, and in the owner's Azure step (J9)
+- the steps go click by click from step 1 to step 17, set the concurrency before the first deploy, keep the Function's own storage on its managed identity, leave Application Insights and continuous deployment off, and list the five roles with a warning of the Certificate User role (J9)
+- the steps hold placeholders only, never a real address, storage account or ID (J9)
+- the steps test calls in a row from Cloud Shell when the signed message gets no answer, and use Application Insights for a diagnosis only, then remove it (J9)
+
+Written on 7 November 2026, from the review of #97 (owner decision: fix the minors and nits). The repeat of the plan's test and the narrow placeholder test above went, since newer tests cover them.
+
+- the spec lists the five roles the Function was given, says why its own storage never uses the storage key, and turns Application Insights on only for a diagnosis (J9, J13, minors 1 to 3)
+- the roles step warns against the Certificate User role and leaves it out of its list, and the diagnosis deletes the connection setting and then the logbook (J9, minor 4, nit 11)
+- no receiver address, storage URL or ID, in any case, in the steps, the spec or the build log, except the public dashboard's host (J9, minor 5)
+- the Basic user name is random, never the tests' value (J9, minor 6)
+- the steps call one call at a time the most likely cause, name the vault's trade-offs, use one placeholder for the host and give step 9's clicks, and Known limits name the storage account's key access (J9, minor 7, nits 9, 10 and 12)
+
+Written on 7 November 2026, from the fix-round review of #97, fixed with no further review round. The placeholder test above also checks that it finds the placeholders, and covers the test list.
+
+- Known limits say the storage key also reaches the receiver's code, the adapters name the roles the Function was given, and the owner's steps remove the Secrets Officer role after the last secrets (J9, minors 1 to 3, nit 6)
+
 Written on 6 November 2026, in the fix of the receiver's scope:
 
 - the receiver asks Databricks for one token with the `jobs` scope only, the scope of the robot's secret, with the client's ID and secret in the Basic header and a form body (J13, spike of 6 November, review of #93)
@@ -535,7 +554,7 @@ Added on 4 November 2026, revised twice the same day. Each piece adds its tests 
 - every job and workflow entry point, on hostile synthetic text, prints only IDs, labels, reasons, positions, decisions and counts, with no traceback (J5)
 - Job A checks the pin and the sample's hashes, computes the approval figures and makes no model call (J8)
 - the receiver refuses a bad sign-in or signature and an old or future timestamp with 401, replies 202 before the work, drops a duplicate, confirms a Databricks run by asking Databricks, skips a dispatch already made, and moves a message to the failure queue after 5 tries (J9): written in pull request 7, listed above
-- the receiver's settings: maximum instance count 1 for each function, and only Key Vault references in its app settings (J9)
+- the receiver's settings: maximum instance count 1 for each function, 4 HTTP calls at once per instance (added on 7 November), and only Key Vault references in its app settings (J9)
 - written in pull request 8, listed above: the approval workflow's YAML: started only by `workflow_dispatch` on `main`, its run ID input checked and passed through `env:`, permissions per job, the Databricks credential in both jobs and the HMAC secret only in the `june-run` job, one run at a time, actions pinned by SHA. A test can check only the YAML (J10)
 - Job B checks the run entry's hashes and the June and July hashes, refuses unless the workspace header names the cloud workspace and the cap covers the whole worst case, stops on a 400 "usage limits" answer with no retry, is one task that refuses an approval for another Job A run or one already used, and writes only the two results files to the results volume (J11, J12)
 - The copy script reads only the two results file names, refuses any other file, and checks the columns, the label and reason lists, the IDs, the size limit and the CFPB header (J11)

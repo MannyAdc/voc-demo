@@ -2077,3 +2077,74 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - 10:59 Fix changes written: the workflow's failure words, the import order, the clock hint, `docs/RECEIVER_STEPS.md`, J9, J13, the owner's steps, Known limits, the test list and this log.
 - Green commit `18d1067` at 11:10 (git's commit time), through the gate. CI green on `18d1067`. A first run of the merge verdict came before CI had started, and gave FIX FIRST on CI only. Claude waited for CI and ran it again.
 - 11:24 Merge verdict on #96: PENDING with every mechanical check passing. Every finding of its two review rounds, all chosen by the owner, is fixed. The second review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
+- 11:39 Claude marked #96 ready (time from GitHub).
+- 12:34 The owner merged #96 (time from GitHub, `febc891`).
+
+### The live receiver test, 7 November
+
+Times below are local, from GitHub, the chat's message times, Application Insights and the receiver's table. The owner did every step in the portal, on GitHub and on the laptop. Claude gave one step at a time, since the owner got lost in the full checklist at 12:37 and chose single steps at 12:39.
+
+- 12:46 Owner decision: keep the click-by-click steps in the project folder, unless that risks security. Claude's answer: safe with placeholders only, never the five recorded values, and written after the live check, so they hold what worked.
+- 12:46 to 17:46 Steps 1 to 10: the resource group `voc-receiver-rg`, the storage account with its two queues and table, the Key Vault and its three secrets, the Function app, its roles and six settings, the deploy identity `voc-receiver-deploy` with its federated credential and Website Contributor role, and the GitHub environment `receiver-deploy` with its four secrets.
+- AI mistake: Claude's step for the Function app had no word on the portal's Authentication tab, where the default puts the storage account's key in the app's settings, which the deploy identity can read through Website Contributor. Caught by the owner's screenshot at 15:26. On Claude's advice the owner chose the system-assigned managed identity for host and deployment storage, and the portal gave the app its two blob roles.
+- At 15:57 the app's role list showed Key Vault Certificate User in place of Key Vault Secrets User, the next role in the list. Caught on that list, and replaced by 16:02.
+- 17:48 to 17:51 The owner ran "Deploy the receiver", run 1, on `febc891` (times from GitHub). Green, with every step run, so the live receiver refused an unsigned call with 401 and named this commit.
+- 18:23 The live check from the laptop: badly signed 401, signed HTTP 0, so no answer within 30 seconds.
+- AI mistakes in the diagnosis, each ruled out by a test:
+  - Claude first read it as a hang in the receiver's storage step. The owner found both storage addresses right (18:30), no `event` row in the table (18:32), and at 19:35 a second try the same, with both queues empty.
+  - 19:49 Owner decision: Application Insights on, for the diagnosis only, and removed after. The owner asked whether this lowers the project's value. Claude's answer: no, if it is removed after and logged here.
+  - At 20:13 the logbook showed only the badly signed calls reaching the function, at 20:00:23 and 20:01:24. The signed calls never arrived. Claude then blamed the laptop's software that inspects web traffic, the cause of uv's `--native-tls`. At 20:23 the same check from Cloud Shell gave the same HTTP 0.
+  - At 20:28 three unsigned calls in a row from Cloud Shell gave 401 in 1.9 seconds, then 000 after 40 seconds, then 401 in 0.1 seconds. Claude named the HTTP concurrency. At 20:35, with 5 seconds between calls, the same, and Claude dropped the concurrency idea too early, since 5 seconds was too short to test it. Claude then read it as instances stopping after each call. The logbook's count by instance at 20:48 showed one instance at a time, each living 2 to 3 minutes.
+  - At 20:56 Claude read a checkbox under the owner's pointer, in a screenshot, as zone redundancy on. The owner checked that it was off.
+- AI mistake: the plan of 5 November set the maximum instance count but not the HTTP concurrency, and its research missed that Python apps take one call at a time by default. Caught by the live test.
+- 21:00 The owner set the HTTP concurrency to 4 per instance, by hand, with the maximum instance count still 1. Three calls in a row from Cloud Shell: 401 in 2.0, 0.12 and 0.07 seconds.
+- 21:01 The live check from the laptop passed: badly signed 401, signed 202, key `1:1794045694`. The table held the `event` row at 21:01:38 and the `result` row at 21:01:47, with `job_a_run_id` 1 and `result_state` `NOT_STARTED`. So the queue function stored the message 9 seconds after it was taken.
+- 21:10 `june-events-poison` was empty, and the owner deleted both rows.
+- 21:22 Application Insights removed: its connection setting deleted from the app and `voc-receiver-insights` deleted. Its Log Analytics workspace sits in a shared default resource group, so on Claude's suggestion the owner left it. Its few entries expire on their own.
+- Smaller slips in Claude's steps, caught by the owner's questions: the secret's copy icon shows only after Show Secret Value, the Logs page first opened an AI agent pane, and the IAM page's Add button and the app's Identity page were described too briefly.
+- 21:23 The owner asked for this pull request.
+- 21:45 After the clean-up, the owner checked with Claude that the app settings still held the four host storage settings the portal made and the receiver's own. Three unsigned calls in a row from Cloud Shell then all got 401.
+
+### Pull request: the live receiver test's findings
+
+- Work start, 21:24: branch `fix/receiver-live-check`, worktree `../voc-demo-live`, from main at `febc891`.
+- Red commit `d6bf2b7` at 21:27 (git's commit time): only `tests/test_receiver_deploy.py`, 10 new tests, through the gate.
+- Docs read on 7 November, through a fetch agent, on learn.microsoft.com: "In Python apps, all instance sizes use an HTTP trigger concurrency level of one by default" ("Concurrency in Azure Functions"). The portal sets it under Scale and concurrency, Concurrency per instance, Assign manually. The CLI names it `perInstanceConcurrency`. The ARM path was not confirmed.
+- Claude's choices, for the owner to see:
+  - The plan file names the setting `triggers.http.perInstanceConcurrency`, after the CLI's name.
+  - The concurrency is 4, a small number that keeps one instance's memory use low. The receiver gets a few calls per June run.
+  - The click-by-click steps go in `docs/RECEIVER_STEPS.md`, outside the frozen `cloud/` folder, with a test that no real address, storage account or ID is in the file.
+- In the green commit, one test that pinned the old plan changes, marked in the test: the plan now holds the HTTP concurrency.
+- A fresh reviewer agent read the diff, the spec and CLAUDE.md: no serious finding, 7 minor, 7 nits. It found no real address, storage account, ID or personal name.
+- 22:04 Its findings posted on #97.
+- AI mistake, caught by that review (minor 6): Claude's step 4 had the owner set the live Basic user to `voc-databricks`, the tests' public fixture value. The long random password still guards the route.
+- Owner decisions on #97's review, given after 22:04:
+  - Fix the minors and nits as Claude recommended. Shared key access on the storage account stays on, noted in Known limits (nit 10). The owner's Key Vault Secrets Officer role stays until the Databricks phase adds its secrets, then goes (nit 9).
+  - Minor 6: the owner changes the Basic user name in the vault to a random one now, guided step by step.
+  - The same stopping rule: one fresh review of this fix round's diff only, and if it finds nothing serious, Claude fixes the minors and the owner merges.
+- Red commit `e847998` at 22:39 (git's commit time): only `tests/test_receiver_deploy.py`, 9 new tests, 2 tests made stricter and 1 repeated assert removed (nit 11), through the gate.
+- The owner's decisions on #97's review came at 22:37 (the chat's message time).
+- The owner changed the Basic user name, guided by Claude one step at a time:
+  - 22:51 A new version of `voc-basic-user` in the vault, from `openssl rand -hex 8` in Cloud Shell.
+  - 22:53 The Function app restarted, and `VOC_BASIC_USER` showed its green tick.
+  - 22:56 Three unsigned calls in a row from Cloud Shell, with the loop in `docs/RECEIVER_STEPS.md`: 401 in 1.9, 0.22 and 0.42 seconds. The old version, the tests' value, was disabled in the vault.
+- Corrections to the live test's lines above (nits 8 and 14 of the review of #97). The lines are kept as written:
+  - The 19:49 owner decision sits under "AI mistakes in the diagnosis", but it is not one.
+  - Application Insights was on by 19:49, when the owner said it was done. It was removed at 21:22.
+  - At 15:40 the app's role list showed Storage Blob Data Contributor on the package's container and Storage Blob Data Owner on the storage account. That is the source of the blob roles' scopes in the steps.
+  - The Cloud Shell timing runs used the loop in "If the signed message gets no answer" in `docs/RECEIVER_STEPS.md`. The 20:35 run added `sleep 5` after each call.
+- Claude's choices in this round, for the owner to see:
+  - The spec drops Storage Queue Data Message Processor, which was planned but not given. Storage Queue Data Contributor covers reading and deleting queue messages, and the queue function did its work in the live test.
+  - The test of no real address or ID now covers the steps, the spec and this log. The one Azure host it allows is the public dashboard's, already in this log.
+- In the green commit, two tests of the first round go, since newer ones cover them (nit 11 and minor 5): the repeat of the plan's full-equality test, and the narrow placeholder test, which the wider one replaces.
+- Green commit `0597333` at 23:00 (git's commit time), through the gate, and pushed.
+- A fresh reviewer agent read this fix round's diff only, the last round under the owner's stopping rule: no serious finding, 3 minor, 5 nits. All 14 findings of the first review were fixed, finding 5 with a small gap.
+- 23:14 Its findings posted on #97. With no serious finding, the owner's rule applies: Claude fixes the minors and nits, and the owner merges with no further review round.
+- Corrections (nit 5 of the fix-round review). The lines are kept as written:
+  - #97 was opened at 22:00 (time from GitHub). The first reviewer agent ran from then until its findings were posted at 22:04.
+  - "given after 22:04" in the owner's decisions above means 22:37, as the later line says.
+- The 22:56 check shows the app loads its settings with the new Basic user name. A Basic sign-in with that name is first tried by the Databricks destination's test (nit 8).
+- Claude's choice: the change to `receiver/receiver_adapters.py` is to its docstring only, so the receiver is not deployed again for it. The deployed commit stays `febc891` until the next deploy.
+- Red commit `676e556` at 23:15 (git's commit time): only `tests/test_receiver_deploy.py`, 3 new tests and the placeholder test made stricter, through the gate.
+- Green commit `c96d6f7` at 23:40 (git's commit time), through the gate. CI green on `c96d6f7`.
+- 23:57 Merge verdict on #97: PENDING with every mechanical check passing. Every finding of its two review rounds is fixed. Nit 10 of the first round is a Known limits line, as the owner chose. The second review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.

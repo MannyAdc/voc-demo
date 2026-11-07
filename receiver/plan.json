@@ -1,5 +1,10 @@
 {
   "maximumInstanceCount": 1,
   "instanceMemoryMB": 512,
-  "alwaysReady": []
+  "alwaysReady": [],
+  "triggers": {
+    "http": {
+      "perInstanceConcurrency": 4
+    }
+  }
 }
