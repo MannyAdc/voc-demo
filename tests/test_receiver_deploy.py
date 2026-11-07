@@ -585,8 +585,6 @@ def test_J9_the_steps_go_click_by_click_from_the_resource_group_to_the_clean_up(
 def test_J9_the_steps_set_4_http_calls_per_instance_before_the_first_deploy():
     step5 = _step_text(5)
     assert "Concurrency per instance" in step5 and "Assign manually" in step5 and "`4`" in step5
-    text = STEPS.read_text(encoding="utf-8")
-    assert text.index("Assign manually") < text.index("### Step 11 of 17: ")
 
 
 def test_J9_the_steps_keep_the_function_s_own_storage_on_its_managed_identity():
@@ -606,6 +604,9 @@ def test_J9_the_steps_give_the_function_five_roles_and_warn_of_the_certificate_r
     for role in ("Storage Blob Data Owner", "Storage Blob Data Contributor", "Storage Queue Data Contributor",
                  "Storage Table Data Contributor", "Key Vault Secrets User", "Key Vault Certificate User"):
         assert role in step6, role
+    # Review of #97, minor 4: the Certificate User role is named only to warn against it, never in the list.
+    assert "Not **Key Vault Certificate User**" in step6
+    assert "Certificate" not in step6.split("It lists five roles:")[1]
 
 
 def test_J9_the_steps_hold_placeholders_never_a_real_address_or_id():
@@ -623,4 +624,82 @@ def test_J9_the_steps_test_calls_in_a_row_when_the_signed_message_gets_no_answer
 
 def test_J9_application_insights_is_for_a_diagnosis_only_and_removed_after():
     diagnosis = STEPS.read_text(encoding="utf-8").split("## Application Insights, for a diagnosis only")[1]
-    assert "APPLICATIONINSIGHTS_CONNECTION_STRING" in diagnosis and "Delete" in diagnosis
+    # Review of #97, nit 11: the connection setting itself is deleted, and then the logbook.
+    assert "delete `APPLICATIONINSIGHTS_CONNECTION_STRING`" in diagnosis
+    assert "`voc-receiver-insights` and **Delete** it" in diagnosis
+
+
+# The review of #97 (owner decision: fix the minors and nits, with one fresh review of the fix round)
+
+PUBLIC_DASHBOARD = "voc-demo-20261030"
+
+
+def _spec_line(start):
+    return next(line for line in SPEC.read_text(encoding="utf-8").splitlines() if line.lstrip().startswith(start))
+
+
+def test_J9_the_spec_lists_the_five_roles_the_function_was_given():
+    """Minor 1: the two blob roles from the portal, and no Message Processor, which Queue Data Contributor covers."""
+    line = _spec_line("- **Its identity.**")
+    for role in ("Storage Blob Data Owner", "Storage Blob Data Contributor", "Storage Queue Data Contributor",
+                 "Storage Table Data Contributor", "Key Vault Secrets User"):
+        assert role in line, role
+    assert "Message Processor" not in line
+
+
+def test_J13_the_spec_says_why_the_function_s_own_storage_never_uses_the_storage_key():
+    """Minor 2: the deploy identity can read the app's settings through Website Contributor."""
+    line = _spec_line("- **Its identity.**")
+    assert "never the storage account's key" in line and "Website Contributor" in line
+
+
+def test_J9_the_spec_turns_application_insights_on_only_for_a_diagnosis():
+    """Minor 3."""
+    spec = SPEC.read_text(encoding="utf-8")
+    assert "is not turned on" not in spec
+    assert "Application Insights is off, except for a diagnosis, then removed" in spec
+
+
+def test_J9_the_basic_user_name_is_random_never_the_tests_value():
+    """Minor 6: `voc-databricks` is the tests' public value."""
+    assert "voc-databricks" not in STEPS.read_text(encoding="utf-8")
+    assert "`voc-basic-user`, with one line printed by `openssl rand -hex 8`" in _step_text(4)
+
+
+def test_J9_the_steps_call_one_call_at_a_time_the_most_likely_cause():
+    """Minor 7: Known limits says the cause is not fully understood."""
+    section = STEPS.read_text(encoding="utf-8").split("## If the signed message gets no answer")[1].split("\n## ")[0]
+    assert "most likely" in section and " means\nthe app takes" not in section and "means the app takes" not in section
+
+
+def test_J9_the_steps_name_the_vault_s_trade_offs():
+    """Nit 9: purge protection off, and the owner's Secrets Officer role until the Databricks phase."""
+    step3 = _step_text(3)
+    assert "purged at once" in step3
+    assert "Remove it once the Databricks phase has added its secrets" in step3
+
+
+def test_J9_known_limits_name_the_storage_account_s_key_access():
+    """Nit 10."""
+    limits = SPEC.read_text(encoding="utf-8").split("## Known limits")[1]
+    assert "Allow storage account key access" in limits
+
+
+def test_J9_the_steps_use_one_placeholder_for_the_receiver_s_host_and_give_step_9_s_clicks():
+    """Nit 12."""
+    text = STEPS.read_text(encoding="utf-8")
+    assert "<the receiver's host>" not in text
+    assert "**+ Select members**" in _step_text(9)
+
+
+def test_J9_no_receiver_address_storage_url_or_id_in_the_steps_spec_or_log():
+    """Minor 5: placeholders only, in every file this pull request writes. The one Azure host named is the public
+    dashboard's."""
+    guid = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I)
+    host = re.compile(r"([A-Za-z0-9<>`._-]*)\.(?:azurewebsites\.net|vault\.azure\.net|(?:blob|queue|table|file)\.core"
+                      r"\.windows\.net)")
+    for path in (STEPS, SPEC, REPO / "BUILD_LOG.md"):
+        text = path.read_text(encoding="utf-8")
+        assert not guid.search(text), path.name
+        for name in host.findall(text):
+            assert name in ("`", PUBLIC_DASHBOARD) or name.endswith(("account>", "domain>")), (path.name, name)
