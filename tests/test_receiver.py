@@ -407,7 +407,9 @@ def test_J9_failures_retry_5_times_in_all_then_go_to_the_failure_queue():
 
 def test_J9_the_plan_is_one_instance_per_function_of_512_mb_with_none_always_ready():
     plan = json.loads((RECEIVER / "plan.json").read_text(encoding="utf-8"))
-    assert plan == {"maximumInstanceCount": 1, "instanceMemoryMB": 512, "alwaysReady": []}
+    # Changed in the live test's pull request (7 November): the plan also sets 4 HTTP calls at once per instance.
+    assert plan == {"maximumInstanceCount": 1, "instanceMemoryMB": 512, "alwaysReady": [],
+                    "triggers": {"http": {"perInstanceConcurrency": 4}}}
 
 
 def test_J9_the_app_settings_hold_only_key_vault_references_for_secrets_and_no_application_insights():
