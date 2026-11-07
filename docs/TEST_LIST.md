@@ -419,6 +419,13 @@ Written on 7 November 2026, in the fix round of #96, from its review and the own
 - every reply names the deployed commit, and the deploy's check wants it, with an empty body. Only the receiver's own files are packed, with the commit (J9, minors 1 and 3, nits 4 and 8)
 - the real queue function stores a result message with no client settings, and a lazy client survives a copy and a maker that returns None (J9, nits 2 and 3)
 
+Written on 7 November 2026, from the second review of #96, fixed with no further review round. Four lines of the first round above changed in the fix round: the deploy now has an environment, packs the receiver's five own files with the commit, takes only 401, and fails with its secrets unset.
+
+- a failed upload names one fixed word, never the CLI's text, and the deploy's check says what it saw on its last try (J9, minors 3 and 4)
+- the pack line is exact, the `&&` of the check is pinned, and the function reads its commit from its own folder (J9, nit 6)
+- the steps give the exact trust subject, a resource group of the receiver's own, the settings the first deploy needs, the receiver's names as environment secrets, and a clean-up that waits and covers a missing row (J9, J13, minors 1, 2, 5, 7 and 8, nits 8 and 9)
+- the owner's steps create the Function before its role, and the clock hint gives both limits (J9, minor 6, nit 2)
+
 Written on 6 November 2026, in the fix of the receiver's scope:
 
 - the receiver asks Databricks for one token with the `jobs` scope only, the scope of the robot's secret, with the client's ID and secret in the Basic header and a form body (J13, spike of 6 November, review of #93)

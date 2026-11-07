@@ -88,7 +88,8 @@ def main(argv):
     else:
         print("verdict: FAIL")
         if taken == 401:
-            print("A 401 for the signed message means a wrong secret, or this laptop's clock more than 5 minutes off.")
+            print("A 401 for the signed message means a wrong secret, or this laptop's clock more than 5 minutes behind "
+                  "or 1 minute ahead.")
     return 0 if passed else 1
 
 

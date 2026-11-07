@@ -11,11 +11,11 @@ import json
 import logging
 import os
 import time
+from pathlib import Path
 
 import azure.functions as func
 
 from receiver_adapters import DatabricksClient, GitHubClient, StorageQueue, TableStore
-from pathlib import Path
 
 from receiver_core import Lazy, build_commit, handle_http, handle_queue, load_settings, purge_safely
 

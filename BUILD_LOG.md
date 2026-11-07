@@ -2064,3 +2064,14 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
   - The steps live in `docs/RECEIVER_STEPS.md`, outside the frozen `cloud/` folder, so a fix to them changes no code hash.
 - In the green commit, tests that pinned the old behaviour change, each marked in the test: the environment, the client ID's secret, the packed files, the live check's lines and its fresh attempt, and a run with its secrets unset.
 - 09:59 Fix changes written: `receiver_core.Lazy` and `build_commit`, the function's reply header, the workflow, the live check, `docs/RECEIVER_STEPS.md`, J9, J13, the owner's steps, Known limits, the test list and this log.
+- Green commit `0b3fbe5` at 10:10 and merge commit `42c7394` at 10:20 (git's commit times), both through the gate. The merge brought in main, with #95. The spec's owner steps took main's GitHub line and this branch's other lines, both pairs of new Known limits lines were kept, and the build log kept both blocks whole, main's first.
+- A fresh reviewer agent read the fix round's diff only, the last review round under the owner's stopping rule: no serious finding, 8 minor, 9 nits.
+- 10:38 Its findings posted on #96. With no serious finding, the owner's rule applies: Claude fixes the minors and nits, and the owner merges with no further review round.
+- Correction to the line above that says GitHub's token cannot tell two workflows on `main` apart (nit 4): that holds for the default subject only. The token carries `job_workflow_ref`, and a repo's subject template can include it. The environment was chosen as the simpler and visible way. The line is kept as written.
+- Red commit `dad13bb` at 10:39 (git's commit time): only `tests/test_receiver_deploy.py`, through the gate.
+- Claude's choices in this round, for the owner to see:
+  - The receiver gets its own resource group, `voc-receiver-rg`, so the dashboard identity's fallback role on `voc-demo-rg` in `docs/DEPLOY.md` can never reach it, and a plan role is Reader on the plan, never a group role (minor 2).
+  - A failed upload's fixed word comes from matching the CLI's error text, kept in a variable and never printed (minor 3).
+  - The federated credential uses "Other issuer" with the subject in the repo's numeric form, read from GitHub's API on 7 November, since the portal's GitHub scenario builds the old form. On 1 November the dashboard's credential, in the old form, did not match the token's subject (AADSTS700213, in this log). The two numbers are the account's and the repo's public IDs (minor 1).
+- In the green commit, one test is renamed to say what it checks now (nit 5), and the test of the CLI's hidden error text looks for its new redirect, `2>&1 >/dev/null`, since the text is now kept in a variable.
+- 10:59 Fix changes written: the workflow's failure words, the import order, the clock hint, `docs/RECEIVER_STEPS.md`, J9, J13, the owner's steps, Known limits, the test list and this log.

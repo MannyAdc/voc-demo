@@ -76,21 +76,31 @@ jobs:
         env:
           APP: ${{ secrets.RECEIVER_APP_NAME }}
           GROUP: ${{ secrets.RECEIVER_RESOURCE_GROUP }}
+        # The CLI's error text is kept in a variable and only matched, never printed: one fixed word tells the owner
+        # where to look in the Azure portal (second review of #96).
         run: |
           set +e
-          az functionapp deployment source config-zip --name "$APP" --resource-group "$GROUP" --src "$RUNNER_TEMP/receiver.zip" --build-remote true -o none > /dev/null 2> /dev/null
+          err=$(az functionapp deployment source config-zip --name "$APP" --resource-group "$GROUP" --src "$RUNNER_TEMP/receiver.zip" --build-remote true -o none 2>&1 >/dev/null)
           code=$?
           set -e
           if [ "$code" != "0" ]; then
-            echo "The upload failed with exit code $code. The details are in the Azure portal, under the app's Deployment Center."
+            if printf '%s' "$err" | grep -qiE 'authoriz|forbidden|403'; then
+              kind="authorization"
+            elif printf '%s' "$err" | grep -qiE 'not ?found|404'; then
+              kind="not found"
+            else
+              kind="other"
+            fi
+            echo "The upload failed with exit code $code ($kind). See the Azure portal: for authorization, the identity's role on the app, for not found, the app's name and resource group, otherwise the app's Deployment Center."
             exit 1
           fi
 
       - name: Check that the live receiver refuses an unsigned call and runs this commit
         if: steps.ready.outputs.go == 'true'
         # An empty POST to the result route has no timestamp or signature, so a working receiver answers 401 and
-        # takes nothing. Every reply names its commit in X-Voc-Build, so an old instance that still answers does not
-        # count. A cold start can be slow: 20 tries of at most 15 seconds, 15 seconds apart, up to 10 minutes.
+        # takes nothing. Every reply of the receiver's own code names its commit in X-Voc-Build, so an old instance
+        # that still answers does not count. A cold start can be slow: 20 tries of at most 15 seconds, 15 seconds
+        # apart, up to 10 minutes. The last try's status and one fixed word say what it saw.
         env:
           RECEIVER_URL: ${{ secrets.RECEIVER_URL }}
         run: |
@@ -104,5 +114,12 @@ jobs:
             fi
             sleep 15
           done
-          echo "The live receiver did not refuse an unsigned call with 401 from this commit within 10 minutes."
+          if [ -z "$build" ] || [ "$build" = "none" ]; then
+            seen="no header"
+          elif [ "$build" = "$GITHUB_SHA" ]; then
+            seen="this commit"
+          else
+            seen="another commit"
+          fi
+          echo "The live receiver did not refuse an unsigned call with 401 from this commit within 10 minutes. Last try: HTTP $status, $seen."
           exit 1

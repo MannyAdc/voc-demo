@@ -133,7 +133,7 @@ def test_J9_the_deploy_checks_the_live_receiver_refuses_an_unsigned_call():
     assert "X-Voc-Signature" not in runs
 
 
-def test_J9_the_deploy_waits_until_the_owner_has_set_its_secrets():
+def test_J9_the_deploy_fails_until_the_owner_has_set_its_secrets():  # renamed in the last round of #96
     # Changed in the fix round of #96: a run with a secret unset fails, and only a moved main stops it quietly.
     first = _steps()[0]
     assert "go=false" in first["run"] and "exit 0" in first["run"] and "exit 1" in first["run"]
@@ -372,7 +372,8 @@ def test_J9_a_deploy_with_its_secrets_unset_or_main_moved_on_fails_or_stops_plai
 def test_J9_the_cli_s_error_text_never_reaches_the_public_log():
     """Minor 4 of the review: the exit code only. The details are in the Azure portal."""
     deploy = next(s for s in _steps() if "config-zip" in s.get("run", ""))
-    assert "2> /dev/null" in deploy["run"] and "exit code" in deploy["run"]
+    # Changed in the last round of #96: the error text is kept in a variable and only matched, never printed.
+    assert "2>&1 >/dev/null" in deploy["run"] and "exit code" in deploy["run"]
     text = WORKFLOW.read_text(encoding="utf-8")
     assert "set -x" not in text
 

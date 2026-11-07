@@ -16,8 +16,8 @@ import hashlib
 import hmac
 import json
 import re
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
 
 CONTRACT = "voc-june-1"
 RUN_NAME = "June approval for Job A run {}"
