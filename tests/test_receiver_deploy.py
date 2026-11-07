@@ -677,13 +677,40 @@ def test_J9_the_steps_use_one_placeholder_for_the_receiver_s_host_and_give_step_
 
 
 def test_J9_no_receiver_address_storage_url_or_id_in_the_steps_spec_or_log():
-    """Minor 5: placeholders only, in every file this pull request writes. The one Azure host named is the public
+    """Minor 5: placeholders only, in the steps, the spec, the build log and the test list, the four text files this
+    pull request writes. It finds Azure hosts and IDs, not a bare name. The one Azure host named is the public
     dashboard's."""
     guid = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I)
     host = re.compile(r"([A-Za-z0-9<>`._-]*)\.(?:azurewebsites\.net|vault\.azure\.net|(?:blob|queue|table|file)\.core"
                       r"\.windows\.net)")
-    for path in (STEPS, SPEC, REPO / "BUILD_LOG.md"):
+    found = []
+    for path in (STEPS, SPEC, REPO / "BUILD_LOG.md", REPO / "docs" / "TEST_LIST.md"):
         text = path.read_text(encoding="utf-8")
         assert not guid.search(text), path.name
         for name in host.findall(text):
             assert name in ("`", PUBLIC_DASHBOARD) or name.endswith(("account>", "domain>")), (path.name, name)
+            found.append(name)
+    # Fix-round review, minor 3: the pattern does find the steps' storage placeholder and the dashboard's host.
+    assert "account>" in found and PUBLIC_DASHBOARD in found
+
+
+# The fix-round review of #97 (owner's stopping rule: nothing serious, so Claude fixes the minors and nits)
+
+
+def test_J9_known_limits_say_the_storage_key_also_reaches_the_receiver_s_code():
+    """Minor 1: the key writes the blobs too, including the code package's container."""
+    limits = SPEC.read_text(encoding="utf-8").split("## Known limits")[1]
+    line = next(item for item in limits.splitlines() if "Allow storage account key access" in item)
+    assert "code package" in line and "change the receiver's code" in line
+
+
+def test_J9_the_adapters_name_the_roles_the_function_was_given():
+    """Minor 2."""
+    text = (REPO / "receiver" / "receiver_adapters.py").read_text(encoding="utf-8")
+    assert "Message Processor" not in text and "Storage Blob Data Owner" in text
+
+
+def test_J9_the_owner_s_steps_remove_the_secrets_officer_role_after_the_last_secrets():
+    """Nit 6: the reminder is in the spec's owner steps, not only in a setup step already done."""
+    owner = SPEC.read_text(encoding="utf-8").split("## Owner's setup steps")[1].split("\n## ")[0]
+    assert "remove the owner's Key Vault Secrets Officer role" in owner
