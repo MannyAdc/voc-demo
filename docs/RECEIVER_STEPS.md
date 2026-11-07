@@ -66,19 +66,21 @@ shared for help. Use one region for every resource.
 ### Step 3 of 17: the Key Vault
 
 1. **Key vaults**, **+ Create**, resource group `voc-receiver-rg`, pricing tier Standard, purge protection disabled,
-   so the vault can be deleted for good later.
+   so the vault can be deleted for good later. The trade-off: a deleted secret can then be purged at once, before
+   its 90 days in the recycle bin.
 2. Name `<key vault>`, for example `voc-june-kv`, unique across Azure. **Record** it.
 3. **Access configuration**: permission model **Azure role-based access control**.
 4. **Review + create**, **Create**, **Go to resource**.
 5. **Access control (IAM)**, **+ Add**, **Add role assignment**: **Key Vault Secrets Officer** for your own account,
    so you can add secrets. It can take a few minutes to work.
+   Remove it once the Databricks phase has added its secrets.
 
 ### Step 4 of 17: the three secrets
 
 1. Open **Cloud Shell** (`>_` at the top right), **Bash**, and **No storage account required** if asked.
 2. In the vault, **Objects**, **Secrets**, **+ Generate/Import**, upload option **Manual**, no dates:
-   - `voc-basic-user`, with the value `voc-databricks`
-   - `voc-basic-password`, with one line printed by `openssl rand -hex 32` in Cloud Shell
+   - `voc-basic-user`, with one line printed by `openssl rand -hex 8` in Cloud Shell, never the tests' user name
+   - `voc-basic-password`, with one line printed by `openssl rand -hex 32`
    - `voc-hmac-secret`, with a second, new line from `openssl rand -hex 32`
 3. Close Cloud Shell. Clear the clipboard and its history (Windows key and V, **Clear all**). The values stay only
    in the vault.
@@ -148,8 +150,9 @@ the role of step 6 is not active yet.
 
 ### Step 9 of 17: the deploy identity's one role
 
-On the Function app, **Access control (IAM)**, **Add role assignment**, **Website Contributor**, **Managed
-identity**, **User-assigned managed identity**, `voc-receiver-deploy`. Nothing on the resource group.
+On the Function app, **Access control (IAM)**, **+ Add**, **Add role assignment**, **Website Contributor**,
+**Next**, **Managed identity**, **+ Select members**, then in the panel **User-assigned managed identity**,
+`voc-receiver-deploy`, **Select**, and **Review + assign** twice. Nothing on the resource group.
 
 ### Step 10 of 17: the GitHub environment
 
@@ -165,8 +168,8 @@ identity**, **User-assigned managed identity**, `voc-receiver-deploy`. Nothing o
 
 ### Step 11 of 17: the deploy
 
-**Actions**, **Deploy the receiver**, **Run workflow**, branch `main`. It shows **Queued** for a minute or two,
-then takes 3 to 5 minutes. It passes when the job has a green tick and every step a ticked circle. A step with a
+**Actions**, **Deploy the receiver**, **Run workflow**, branch `main`. It shows **Queued** at first, and on 7
+November it took 3 minutes. It passes when the job has a green tick and every step a ticked circle. A step with a
 slashed circle was skipped (see "Before the first deploy"). On a red cross, tell Claude the failed step's name and
 its last line, which holds fixed words only.
 
@@ -203,7 +206,7 @@ Delete both rows (step 7 below). The table is then empty.
 1. Copy the HMAC secret from the Key Vault page. Windows keeps a clipboard history (Windows key and V). After the
    check, clear it: Settings, System, Clipboard, Clear.
 2. In PowerShell, in this repo's folder, on an up-to-date `main`:
-   `uv run --locked --native-tls python scripts/receiver_live_check.py https://<the receiver's host>`
+   `uv run --locked --native-tls python scripts/receiver_live_check.py https://<default domain>`
    Paste the secret only at its hidden prompt.
 3. It passes when it prints `badly signed: HTTP 401`, `signed: HTTP 202` and `verdict: PASS`, with a key such as
    `1:1793000000`. Paste the printed lines only to Claude, not the command, which holds the receiver's host.
@@ -229,8 +232,9 @@ laptop and needs no secret:
 for i in 1 2 3; do curl -s -o /dev/null -m 40 --data '' -w "call $i: HTTP %{http_code} in %{time_total}s\n" https://<default domain>/api/result; done
 ```
 
-Each call should print `HTTP 401` within a few seconds. `HTTP 000` for a call straight after an answered one means
-the app takes one call at a time: set the HTTP concurrency of step 5, item 9. On 7 November this was the cause.
+Each call should print `HTTP 401` within a few seconds. `HTTP 000` for a call straight after an answered one is
+most likely the app taking one call at a time: set the HTTP concurrency of step 5, item 9. On 7 November that
+change fixed it, though why the call was lost is not known (spec, Known limits).
 Three calls in a row gave 401, then 000 after 40 seconds, then 401. With 5 seconds between them, the same. After
 the change, three times 401, the slowest in 2.0 seconds.
 

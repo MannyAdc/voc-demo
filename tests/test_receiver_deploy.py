@@ -561,14 +561,6 @@ def _step_text(number):
     return text.split(f"### Step {number} of 17: ")[1].split("\n### ")[0].split("\n## ")[0]
 
 
-def test_J9_each_instance_takes_4_http_calls_at_once():
-    """With Python's default of one call per instance and one instance, the second of two calls in a row got no
-    answer in 40 seconds. With 4, three calls in a row were all answered (live test, 7 November)."""
-    plan = json.loads((REPO / "receiver" / "plan.json").read_text(encoding="utf-8"))
-    assert plan["maximumInstanceCount"] == 1
-    assert plan["triggers"] == {"http": {"perInstanceConcurrency": 4}}
-
-
 def test_J9_the_spec_says_why_each_instance_takes_4_http_calls():
     spec = SPEC.read_text(encoding="utf-8")
     j9 = spec.split("- **J9. The receiver.**")[1].split("- **J10.")[0]
@@ -607,14 +599,6 @@ def test_J9_the_steps_give_the_function_five_roles_and_warn_of_the_certificate_r
     # Review of #97, minor 4: the Certificate User role is named only to warn against it, never in the list.
     assert "Not **Key Vault Certificate User**" in step6
     assert "Certificate" not in step6.split("It lists five roles:")[1]
-
-
-def test_J9_the_steps_hold_placeholders_never_a_real_address_or_id():
-    text = STEPS.read_text(encoding="utf-8")
-    assert not re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", text)
-    assert set(re.findall(r"(\S*)azurewebsites\.net", text)) <= {"`."}
-    found = re.findall(r"https://(<storage account>|[^\s`<]*)\.(?:queue|table)\.core\.windows\.net", text)
-    assert found and set(found) == {"<storage account>"}
 
 
 def test_J9_the_steps_test_calls_in_a_row_when_the_signed_message_gets_no_answer():

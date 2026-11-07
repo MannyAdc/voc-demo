@@ -433,6 +433,14 @@ Written on 7 November 2026, after the live receiver test (owner decision: keep t
 - the steps hold placeholders only, never a real address, storage account or ID (J9)
 - the steps test calls in a row from Cloud Shell when the signed message gets no answer, and use Application Insights for a diagnosis only, then remove it (J9)
 
+Written on 7 November 2026, from the review of #97 (owner decision: fix the minors and nits). The repeat of the plan's test and the narrow placeholder test above went, since newer tests cover them.
+
+- the spec lists the five roles the Function was given, says why its own storage never uses the storage key, and turns Application Insights on only for a diagnosis (J9, J13, minors 1 to 3)
+- the roles step warns against the Certificate User role and leaves it out of its list, and the diagnosis deletes the connection setting and then the logbook (J9, minor 4, nit 11)
+- no receiver address, storage URL or ID, in any case, in the steps, the spec or the build log, except the public dashboard's host (J9, minor 5)
+- the Basic user name is random, never the tests' value (J9, minor 6)
+- the steps call one call at a time the most likely cause, name the vault's trade-offs, use one placeholder for the host and give step 9's clicks, and Known limits name the storage account's key access (J9, minor 7, nits 9, 10 and 12)
+
 Written on 6 November 2026, in the fix of the receiver's scope:
 
 - the receiver asks Databricks for one token with the `jobs` scope only, the scope of the robot's secret, with the client's ID and secret in the Basic header and a form body (J13, spike of 6 November, review of #93)

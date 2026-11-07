@@ -2115,3 +2115,25 @@ Times below are local, from GitHub, the chat's message times, Application Insigh
   - The concurrency is 4, a small number that keeps one instance's memory use low. The receiver gets a few calls per June run.
   - The click-by-click steps go in `docs/RECEIVER_STEPS.md`, outside the frozen `cloud/` folder, with a test that no real address, storage account or ID is in the file.
 - In the green commit, one test that pinned the old plan changes, marked in the test: the plan now holds the HTTP concurrency.
+- A fresh reviewer agent read the diff, the spec and CLAUDE.md: no serious finding, 7 minor, 7 nits. It found no real address, storage account, ID or personal name.
+- 22:04 Its findings posted on #97.
+- AI mistake, caught by that review (minor 6): Claude's step 4 had the owner set the live Basic user to `voc-databricks`, the tests' public fixture value. The long random password still guards the route.
+- Owner decisions on #97's review, given after 22:04:
+  - Fix the minors and nits as Claude recommended. Shared key access on the storage account stays on, noted in Known limits (nit 10). The owner's Key Vault Secrets Officer role stays until the Databricks phase adds its secrets, then goes (nit 9).
+  - Minor 6: the owner changes the Basic user name in the vault to a random one now, guided step by step.
+  - The same stopping rule: one fresh review of this fix round's diff only, and if it finds nothing serious, Claude fixes the minors and the owner merges.
+- Red commit `e847998` at 22:39 (git's commit time): only `tests/test_receiver_deploy.py`, 9 new tests, 2 tests made stricter and 1 repeated assert removed (nit 11), through the gate.
+- The owner's decisions on #97's review came at 22:37 (the chat's message time).
+- The owner changed the Basic user name, guided by Claude one step at a time:
+  - 22:51 A new version of `voc-basic-user` in the vault, from `openssl rand -hex 8` in Cloud Shell.
+  - 22:53 The Function app restarted, and `VOC_BASIC_USER` showed its green tick.
+  - 22:56 Three unsigned calls in a row from Cloud Shell, with the loop in `docs/RECEIVER_STEPS.md`: 401 in 1.9, 0.22 and 0.42 seconds. The old version, the tests' value, was disabled in the vault.
+- Corrections to the live test's lines above (nits 8 and 14 of the review of #97). The lines are kept as written:
+  - The 19:49 owner decision sits under "AI mistakes in the diagnosis", but it is not one.
+  - Application Insights was on by 19:49, when the owner said it was done. It was removed at 21:22.
+  - At 15:40 the app's role list showed Storage Blob Data Contributor on the package's container and Storage Blob Data Owner on the storage account. That is the source of the blob roles' scopes in the steps.
+  - The Cloud Shell timing runs used the loop in "If the signed message gets no answer" in `docs/RECEIVER_STEPS.md`. The 20:35 run added `sleep 5` after each call.
+- Claude's choices in this round, for the owner to see:
+  - The spec drops Storage Queue Data Message Processor, which was planned but not given. Storage Queue Data Contributor covers reading and deleting queue messages, and the queue function did its work in the live test.
+  - The test of no real address or ID now covers the steps, the spec and this log. The one Azure host it allows is the public dashboard's, already in this log.
+- In the green commit, two tests of the first round go, since newer ones cover them (nit 11 and minor 5): the repeat of the plan's full-equality test, and the narrow placeholder test, which the wider one replaces.
