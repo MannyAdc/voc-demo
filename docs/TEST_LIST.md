@@ -441,6 +441,10 @@ Written on 7 November 2026, from the review of #97 (owner decision: fix the mino
 - the Basic user name is random, never the tests' value (J9, minor 6)
 - the steps call one call at a time the most likely cause, name the vault's trade-offs, use one placeholder for the host and give step 9's clicks, and Known limits name the storage account's key access (J9, minor 7, nits 9, 10 and 12)
 
+Written on 7 November 2026, from the fix-round review of #97, fixed with no further review round. The placeholder test above also checks that it finds the placeholders, and covers the test list.
+
+- Known limits say the storage key also reaches the receiver's code, the adapters name the roles the Function was given, and the owner's steps remove the Secrets Officer role after the last secrets (J9, minors 1 to 3, nit 6)
+
 Written on 6 November 2026, in the fix of the receiver's scope:
 
 - the receiver asks Databricks for one token with the `jobs` scope only, the scope of the robot's secret, with the client's ID and secret in the Basic header and a form body (J13, spike of 6 November, review of #93)

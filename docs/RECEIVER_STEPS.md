@@ -233,10 +233,11 @@ for i in 1 2 3; do curl -s -o /dev/null -m 40 --data '' -w "call $i: HTTP %{http
 ```
 
 Each call should print `HTTP 401` within a few seconds. `HTTP 000` for a call straight after an answered one is
-most likely the app taking one call at a time: set the HTTP concurrency of step 5, item 9. On 7 November that
-change fixed it, though why the call was lost is not known (spec, Known limits).
-Three calls in a row gave 401, then 000 after 40 seconds, then 401. With 5 seconds between them, the same. After
-the change, three times 401, the slowest in 2.0 seconds.
+most likely the app taking one call at a time: set the HTTP concurrency of step 5, item 9.
+
+On 7 November three calls in a row gave 401, then 000 after 40 seconds, then 401. With 5 seconds between them,
+the same. After the change, three times 401, the slowest in 2.0 seconds. Why the call was lost is not known (spec,
+Known limits).
 
 ## Application Insights, for a diagnosis only
 

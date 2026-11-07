@@ -2137,3 +2137,12 @@ Times below are local, from GitHub, the chat's message times, Application Insigh
   - The spec drops Storage Queue Data Message Processor, which was planned but not given. Storage Queue Data Contributor covers reading and deleting queue messages, and the queue function did its work in the live test.
   - The test of no real address or ID now covers the steps, the spec and this log. The one Azure host it allows is the public dashboard's, already in this log.
 - In the green commit, two tests of the first round go, since newer ones cover them (nit 11 and minor 5): the repeat of the plan's full-equality test, and the narrow placeholder test, which the wider one replaces.
+- Green commit `0597333` at 23:00 (git's commit time), through the gate, and pushed.
+- A fresh reviewer agent read this fix round's diff only, the last round under the owner's stopping rule: no serious finding, 3 minor, 5 nits. All 14 findings of the first review were fixed, finding 5 with a small gap.
+- 23:14 Its findings posted on #97. With no serious finding, the owner's rule applies: Claude fixes the minors and nits, and the owner merges with no further review round.
+- Corrections (nit 5 of the fix-round review). The lines are kept as written:
+  - #97 was opened at 22:00 (time from GitHub). The first reviewer agent ran from then until its findings were posted at 22:04.
+  - "given after 22:04" in the owner's decisions above means 22:37, as the later line says.
+- The 22:56 check shows the app loads its settings with the new Basic user name. A Basic sign-in with that name is first tried by the Databricks destination's test (nit 8).
+- Claude's choice: the change to `receiver/receiver_adapters.py` is to its docstring only, so the receiver is not deployed again for it. The deployed commit stays `febc891` until the next deploy.
+- Red commit `676e556` at 23:15 (git's commit time): only `tests/test_receiver_deploy.py`, 3 new tests and the placeholder test made stricter, through the gate.

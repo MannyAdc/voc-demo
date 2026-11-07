@@ -1,7 +1,9 @@
 """Spec 004, J9: the receiver's links to the storage table and queue, Databricks and GitHub.
 
 The table and the queue use the Function's system-assigned managed identity, which needs the roles Storage Queue
-Data Contributor, Storage Queue Data Message Processor and Storage Table Data Contributor on its storage account. Databricks is reached with the robot account's OAuth
+Data Contributor and Storage Table Data Contributor on its storage account. Its own storage uses that identity too,
+with Storage Blob Data Owner on the account and Storage Blob Data Contributor on the code package's container
+(spec 004, J9, "Its identity"). Databricks is reached with the robot account's OAuth
 credential (J13), GitHub with the fine-grained token that has "Actions" write on this repo only. Every secret comes
 from an app setting that is a Key Vault reference (`app_settings.json`). The tests use fakes in their place, and the
 dry run of pull request 9 is the first to run these against the real services.
