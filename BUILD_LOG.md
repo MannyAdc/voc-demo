@@ -2146,3 +2146,5 @@ Times below are local, from GitHub, the chat's message times, Application Insigh
 - The 22:56 check shows the app loads its settings with the new Basic user name. A Basic sign-in with that name is first tried by the Databricks destination's test (nit 8).
 - Claude's choice: the change to `receiver/receiver_adapters.py` is to its docstring only, so the receiver is not deployed again for it. The deployed commit stays `febc891` until the next deploy.
 - Red commit `676e556` at 23:15 (git's commit time): only `tests/test_receiver_deploy.py`, 3 new tests and the placeholder test made stricter, through the gate.
+- Green commit `c96d6f7` at 23:40 (git's commit time), through the gate. CI green on `c96d6f7`.
+- 23:57 Merge verdict on #97: PENDING with every mechanical check passing. Every finding of its two review rounds is fixed. Nit 10 of the first round is a Known limits line, as the owner chose. The second review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
