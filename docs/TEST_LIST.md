@@ -406,6 +406,26 @@ Written in pull request 7, on 5 November 2026, with fakes for the table, the que
 - the settings refuse an empty or unresolved Key Vault secret and a bad job ID. Strings are checked whole. A list or object in a field gets 400. A finished run names `june-<Job B run ID>`, a stopped one no folder and its reason. IDs above the 64-bit limit get 400. A body over 16 KB gets 413. The Basic scheme and header names are read in any case. The compare's result decides the sign-in. The core imports no service library. A key that cannot be freed, and a failed purge, are logged (J9, J16, review of #91)
 - the Function's files: the extension bundle, the queue encoding, the poison queue's name in the spec, requirements resolved for Linux, 5 tries, one instance of 512 MB per function with none always ready, every secret a Key Vault reference, no Application Insights, two open HTTP functions and one queue function, and pinned requirements (J9)
 
+Written on 7 November 2026, in the receiver's deploy pull request (owner decisions of 6 November):
+
+- the queue function makes its Databricks and GitHub clients only when a message needs them, so a result message is stored with neither, and a lazy client is made once, on first use (J9)
+- the deploy workflow runs by hand on `main` only, with no environment, read-only contents and an OpenID Connect token, one at a time, every action pinned, no value written into a script, the app's names and address as secrets, only `receiver/` packed and built remotely, a check that the live receiver refuses an unsigned call, and an early end until its secrets are set (J9)
+- the owner's live check sends a badly signed and a well signed synthetic message to the receiver's own code, passes only on 401 or 400 and then 202, takes only the address as its argument, asks for the secret with a hidden prompt and drops it, prints status codes and a verdict only, and signs as the receiver checks (J9, J16 item 9)
+
+Written on 7 November 2026, in the fix round of #96, from its review and the owner's decisions:
+
+- each live check uses a fresh synthetic key, says queued, names its key, takes only 401 for the bad message, hints at the clock when the signed one is refused, and its post reports a status and follows no redirect (J9, serious 1, minors 10 and 11, nit 5)
+- the deploy runs in its own environment with its own identity, every step after the first runs only when it goes ahead, it fails with its secrets unset and stops on a moved `main`, and the CLI's error text never reaches the public log (J9, J13, minors 2, 4, 5 and 9)
+- every reply names the deployed commit, and the deploy's check wants it, with an empty body. Only the receiver's own files are packed, with the commit (J9, minors 1 and 3, nits 4 and 8)
+- the real queue function stores a result message with no client settings, and a lazy client survives a copy and a maker that returns None (J9, nits 2 and 3)
+
+Written on 7 November 2026, from the second review of #96, fixed with no further review round. Four lines of the first round above changed in the fix round: the deploy now has an environment, packs the receiver's five own files with the commit, takes only 401, and fails with its secrets unset.
+
+- a failed upload names one fixed word, never the CLI's text, and the deploy's check says what it saw on its last try (J9, minors 3 and 4)
+- the pack line is exact, the `&&` of the check is pinned, and the function reads its commit from its own folder (J9, nit 6)
+- the steps give the exact trust subject, a resource group of the receiver's own, the settings the first deploy needs, the receiver's names as environment secrets, and a clean-up that waits and covers a missing row (J9, J13, minors 1, 2, 5, 7 and 8, nits 8 and 9)
+- the owner's steps create the Function before its role, and the clock hint gives both limits (J9, minor 6, nit 2)
+
 Written on 6 November 2026, in the fix of the receiver's scope:
 
 - the receiver asks Databricks for one token with the `jobs` scope only, the scope of the robot's secret, with the client's ID and secret in the Basic header and a form body (J13, spike of 6 November, review of #93)

@@ -11,14 +11,18 @@ import json
 import logging
 import os
 import time
+from pathlib import Path
 
 import azure.functions as func
 
 from receiver_adapters import DatabricksClient, GitHubClient, StorageQueue, TableStore
-from receiver_core import handle_http, handle_queue, load_settings, purge_safely
+
+from receiver_core import Lazy, build_commit, handle_http, handle_queue, load_settings, purge_safely
 
 QUEUE = "june-events"
 KEPT_DAYS = 30
+# The deployed commit, from the deploy's BUILD_COMMIT file, named in every reply (review of #96).
+BUILD = build_commit(Path(__file__).resolve().parent)
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
@@ -45,7 +49,7 @@ def _log(event, **fields):
 def _http(route, req):
     reply = handle_http(route, dict(req.headers), req.get_body(), _settings(), _store(), _queue(), int(time.time()),
                         _log)
-    return func.HttpResponse(status_code=reply.status)
+    return func.HttpResponse(status_code=reply.status, headers={"X-Voc-Build": BUILD})
 
 
 @app.route(route="databricks", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
@@ -61,5 +65,7 @@ def result(req: func.HttpRequest) -> func.HttpResponse:
 @app.queue_trigger(arg_name="msg", queue_name=QUEUE, connection="VOC_STORAGE")
 def work(msg: func.QueueMessage) -> None:
     purge_safely(_store(), KEPT_DAYS, _log)
-    handle_queue(json.loads(msg.get_body().decode("utf-8")), _settings(), DatabricksClient.from_env(),
-                 GitHubClient.from_env(), _store(), _log)
+    # The clients are made only if the message needs them: a result message needs neither (owner decision,
+    # 6 November).
+    handle_queue(json.loads(msg.get_body().decode("utf-8")), _settings(), Lazy(DatabricksClient.from_env),
+                 Lazy(GitHubClient.from_env), _store(), _log)

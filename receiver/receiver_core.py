@@ -17,6 +17,7 @@ import hmac
 import json
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 CONTRACT = "voc-june-1"
 RUN_NAME = "June approval for Job A run {}"
@@ -45,6 +46,36 @@ class ReceiverError(Exception):
 
 class Malformed(ValueError):
     pass
+
+
+class Lazy:
+    """A service client made on first use, and only once. The queue function passes its Databricks and GitHub
+    clients this way, so a result message, which needs neither, is stored with no Databricks or GitHub setting at
+    all (owner decision, 6 November)."""
+
+    _NOT_MADE = object()
+
+    def __init__(self, make):
+        self._make, self._made = make, Lazy._NOT_MADE
+
+    def __getattr__(self, name):
+        # Its own names are never looked up through the client, so a copy of an unset Lazy cannot recurse (review
+        # of #96).
+        if name.startswith("_"):
+            raise AttributeError(name)
+        if self._made is Lazy._NOT_MADE:
+            self._made = self._make()
+        return getattr(self._made, name)
+
+
+def build_commit(folder):
+    """The commit the deploy packed into `BUILD_COMMIT`, or "unknown". Every reply names it, so the deploy's check
+    can tell the new code from the old (review of #96). It is public: the repo is public."""
+    try:
+        text = (Path(folder) / "BUILD_COMMIT").read_text(encoding="ascii").strip()
+    except (OSError, UnicodeDecodeError):
+        return "unknown"
+    return text if re.fullmatch(r"[0-9a-f]{40}", text) else "unknown"
 
 
 @dataclass(frozen=True)

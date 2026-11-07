@@ -2023,3 +2023,57 @@ The entries from 00:06 to 01:31 above were also on this day. They stay under Sun
 - 00:36 Fix changes written: `src/voc/approval.py`, J10, Known limits, the plan's item 9, the test list and this log.
 - Green commit `20fcbb0` at 00:36 (git's commit time), through the gate. CI green on `20fcbb0`.
 - 00:54 Merge verdict on #95: PENDING with every mechanical check passing. Every finding of its two review rounds, all chosen by the owner, is fixed, except nit 2 of the second round, kept by Claude's choice with its reason in this log and in J10. The second review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
+- Work start, before 00:05: spec 004's receiver deploy, branch `feat/receiver-deploy`, worktree `../voc-demo-deploy`, from main at `fec0a7e`, as the owner decided on 6 November.
+- Docs read on 7 November, through a fetch agent, on learn.microsoft.com: a Flex Consumption app takes `az functionapp deployment source config-zip`, with `--build-remote` to build `requirements.txt` remotely. The deploying identity needs Website Contributor on the Function app. A Key Vault reference uses the app's system-assigned identity, which needs the Key Vault Secrets User role. The docs conflict on whether the CLI builds remotely by default, so the workflow says `--build-remote true`.
+- Red commit `7511b4f`: only `tests/test_receiver_deploy.py`, through the gate.
+- Claude's choices, for the owner to see:
+  - The deploy is started by hand, on `main`, not after every merge, since the receiver changes rarely and a deploy should be the owner's act.
+  - The workflow uses the Azure CLI step, as `deploy.yml` does, not a new action to pin.
+  - The deploy's check sends an empty POST to the result route and expects 401, which proves the new code answers and gives the receiver nothing to take.
+  - The live check's message names run 1 for each ID, so it cannot be confused with a real run's.
+- 00:33 Green changes written: `receiver_core.Lazy`, the queue function, `.github/workflows/deploy_receiver.yml`, `scripts/receiver_live_check.py`, J9, the owner's Azure step, Known limits, the test list and this log.
+- Green commit `f1d7fdf` at 00:46 (git's commit time), through the gate. The branch was pushed and draft pull request #96 opened.
+- A fresh reviewer agent read the diff: 1 serious, 11 minor, 8 nits.
+- 01:05 Review findings on #96 posted as a comment. Claude stopped #96 and asked the owner.
+- AI mistakes in #96, caught by that review:
+  - The live check's key was always `1:1`, so a re-run passed as a duplicate with nothing queued, and a 202 was called "stored" (serious 1).
+  - The deploy's check could not tell old code from new, and a re-run could roll the receiver back (minors 1 and 2).
+  - The dashboard's deploy identity was reused, so its workflow could also reach the receiver's Key Vault through deployed code (minor 5).
+  - The owner's steps missed this pull request's secrets, role and clean-up (minor 7).
+- 01:11 Claude marked #95 ready, after the MERGE verdict and CI green on its log commit `b376471`.
+- 01:15 The owner merged #95 (time from GitHub, `c62deee`).
+- Owner decisions on #96's review, given after 01:05:
+  - Fix the serious finding: a fresh synthetic key each run, "queued" not "stored", and the owner's table check and clean-up step after the run.
+  - Minor 4: hide the Azure CLI's error text and print only the exit code. The owner reads failure details in the Azure portal.
+  - Minor 5: a second deploy identity, trusted only for the receiver's workflow, with the portal step in J13.
+  - All other minors and nits.
+  - The same stopping rule: one fresh review of this fix round's diff only, and if it finds nothing serious, the minors are fixed and the owner merges.
+  - The Monday 9 November, 6 PM time box stands, and reviews are not rushed for it.
+- The owner asked whether to install `azure.functions` on the laptop. Claude's answer: no. Azure builds it from `receiver/requirements.txt`, the tests use a small stand-in, and installing it would change the frozen `uv.lock`.
+- Correction to the lines above (nit 7 of the review): the entries of 6 November, and of 7 November until here, sit under the heading of Thursday 5 November. The work start of this pull request has no time of its own. Its red commit `7511b4f` began at 00:05 by git. The lines are kept as written.
+
+## Saturday 7 November 2026
+
+- The first try of this round's red commit began at 01:15 and was cut off when the owner switched the laptop off for the night, as Claude had said was safe. No lock file was left, and the staged tests were unchanged.
+- Red commit `b7b19f8` at 09:27 (git's commit time), made again: only `tests/test_receiver_deploy.py`, through the gate.
+- AI mistake: Claude tried to merge main, with #95, into this branch between the red commit and the green one. The gate refused the merge commit, since the merged tree held the red tests without the code that makes them pass. Caught by the gate. Claude backed up the five working files, aborted the merge, checked the files were unchanged, and makes the green commit first, then the merge.
+- Claude's choices, for the owner to see:
+  - "Trusted only for the receiver's workflow" needs a GitHub environment, since GitHub's token cannot tell two workflows on `main` apart. The identity trusts only the token of `receiver-deploy`, which only this workflow uses.
+  - Every reply names its commit in a header, `X-Voc-Build`, read from a `BUILD_COMMIT` file the deploy packs. The commit is public anyway, since the repo is.
+  - The deploy packs the receiver's five own files by name, so the two settings notes, `app_settings.json` and `plan.json`, stay out of the package.
+  - The steps live in `docs/RECEIVER_STEPS.md`, outside the frozen `cloud/` folder, so a fix to them changes no code hash.
+- In the green commit, tests that pinned the old behaviour change, each marked in the test: the environment, the client ID's secret, the packed files, the live check's lines and its fresh attempt, and a run with its secrets unset.
+- 09:59 Fix changes written: `receiver_core.Lazy` and `build_commit`, the function's reply header, the workflow, the live check, `docs/RECEIVER_STEPS.md`, J9, J13, the owner's steps, Known limits, the test list and this log.
+- Green commit `0b3fbe5` at 10:10 and merge commit `42c7394` at 10:20 (git's commit times), both through the gate. The merge brought in main, with #95. The spec's owner steps took main's GitHub line and this branch's other lines, both pairs of new Known limits lines were kept, and the build log kept both blocks whole, main's first.
+- A fresh reviewer agent read the fix round's diff only, the last review round under the owner's stopping rule: no serious finding, 8 minor, 9 nits.
+- 10:38 Its findings posted on #96. With no serious finding, the owner's rule applies: Claude fixes the minors and nits, and the owner merges with no further review round.
+- Correction to the line above that says GitHub's token cannot tell two workflows on `main` apart (nit 4): that holds for the default subject only. The token carries `job_workflow_ref`, and a repo's subject template can include it. The environment was chosen as the simpler and visible way. The line is kept as written.
+- Red commit `dad13bb` at 10:39 (git's commit time): only `tests/test_receiver_deploy.py`, through the gate.
+- Claude's choices in this round, for the owner to see:
+  - The receiver gets its own resource group, `voc-receiver-rg`, so the dashboard identity's fallback role on `voc-demo-rg` in `docs/DEPLOY.md` can never reach it, and a plan role is Reader on the plan, never a group role (minor 2).
+  - A failed upload's fixed word comes from matching the CLI's error text, kept in a variable and never printed (minor 3).
+  - The federated credential uses "Other issuer" with the subject in the repo's numeric form, read from GitHub's API on 7 November, since the portal's GitHub scenario builds the old form. On 1 November the dashboard's credential, in the old form, did not match the token's subject (AADSTS700213, in this log). The two numbers are the account's and the repo's public IDs (minor 1).
+- In the green commit, one test is renamed to say what it checks now (nit 5), and the test of the CLI's hidden error text looks for its new redirect, `2>&1 >/dev/null`, since the text is now kept in a variable.
+- 10:59 Fix changes written: the workflow's failure words, the import order, the clock hint, `docs/RECEIVER_STEPS.md`, J9, J13, the owner's steps, Known limits, the test list and this log.
+- Green commit `18d1067` at 11:10 (git's commit time), through the gate. CI green on `18d1067`. A first run of the merge verdict came before CI had started, and gave FIX FIRST on CI only. Claude waited for CI and ran it again.
+- 11:24 Merge verdict on #96: PENDING with every mechanical check passing. Every finding of its two review rounds, all chosen by the owner, is fixed. The second review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
