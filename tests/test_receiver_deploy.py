@@ -548,3 +548,79 @@ def test_J9_the_clock_hint_gives_both_limits(monkeypatch, capsys):
     check.main(["https://receiver.example.invalid"])
     out = capsys.readouterr().out
     assert "5 minutes behind" in out and "1 minute ahead" in out
+
+
+# The live receiver test of 7 November (owner decision: keep the click-by-click steps in the repo, with
+# placeholders only)
+
+SPEC = REPO / "specs" / "004-june-test-and-baselines" / "spec.md"
+
+
+def _step_text(number):
+    text = STEPS.read_text(encoding="utf-8")
+    return text.split(f"### Step {number} of 17: ")[1].split("\n### ")[0].split("\n## ")[0]
+
+
+def test_J9_each_instance_takes_4_http_calls_at_once():
+    """With Python's default of one call per instance and one instance, the second of two calls in a row got no
+    answer in 40 seconds. With 4, three calls in a row were all answered (live test, 7 November)."""
+    plan = json.loads((REPO / "receiver" / "plan.json").read_text(encoding="utf-8"))
+    assert plan["maximumInstanceCount"] == 1
+    assert plan["triggers"] == {"http": {"perInstanceConcurrency": 4}}
+
+
+def test_J9_the_spec_says_why_each_instance_takes_4_http_calls():
+    spec = SPEC.read_text(encoding="utf-8")
+    j9 = spec.split("- **J9. The receiver.**")[1].split("- **J10.")[0]
+    assert "4 HTTP calls at once" in j9 and "one by default" in j9
+    owner = spec.split("## Owner's setup steps")[1]
+    assert "(maximum instance count 1, 4 HTTP calls at once, 512 MB)" in owner
+
+
+def test_J9_the_steps_go_click_by_click_from_the_resource_group_to_the_clean_up():
+    text = STEPS.read_text(encoding="utf-8")
+    assert [int(n) for n in re.findall(r"^### Step (\d+) of 17: ", text, flags=re.M)] == list(range(1, 18))
+
+
+def test_J9_the_steps_set_4_http_calls_per_instance_before_the_first_deploy():
+    step5 = _step_text(5)
+    assert "Concurrency per instance" in step5 and "Assign manually" in step5 and "`4`" in step5
+    text = STEPS.read_text(encoding="utf-8")
+    assert text.index("Assign manually") < text.index("### Step 11 of 17: ")
+
+
+def test_J9_the_steps_keep_the_function_s_own_storage_on_its_managed_identity():
+    """No storage key in the app's settings, which the deploy identity can read through Website Contributor."""
+    step5 = _step_text(5)
+    assert "**Authentication**" in step5 and "System-assigned managed identity" in step5
+    assert "not **Secrets**" in step5
+
+
+def test_J9_the_steps_leave_application_insights_and_continuous_deployment_off():
+    step5 = _step_text(5)
+    assert "**Enable Application Insights:** No" in step5 and "**Continuous deployment:** Disable" in step5
+
+
+def test_J9_the_steps_give_the_function_five_roles_and_warn_of_the_certificate_role():
+    step6 = _step_text(6)
+    for role in ("Storage Blob Data Owner", "Storage Blob Data Contributor", "Storage Queue Data Contributor",
+                 "Storage Table Data Contributor", "Key Vault Secrets User", "Key Vault Certificate User"):
+        assert role in step6, role
+
+
+def test_J9_the_steps_hold_placeholders_never_a_real_address_or_id():
+    text = STEPS.read_text(encoding="utf-8")
+    assert not re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", text)
+    assert set(re.findall(r"(\S*)azurewebsites\.net", text)) <= {"`."}
+    found = re.findall(r"https://(<storage account>|[^\s`<]*)\.(?:queue|table)\.core\.windows\.net", text)
+    assert found and set(found) == {"<storage account>"}
+
+
+def test_J9_the_steps_test_calls_in_a_row_when_the_signed_message_gets_no_answer():
+    text = STEPS.read_text(encoding="utf-8")
+    assert "for i in 1 2 3; do curl" in text and "--data ''" in text and "HTTP 000" in text
+
+
+def test_J9_application_insights_is_for_a_diagnosis_only_and_removed_after():
+    diagnosis = STEPS.read_text(encoding="utf-8").split("## Application Insights, for a diagnosis only")[1]
+    assert "APPLICATIONINSIGHTS_CONNECTION_STRING" in diagnosis and "Delete" in diagnosis
