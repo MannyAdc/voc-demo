@@ -469,7 +469,7 @@ def test_J11_the_dry_run_note_gives_the_accepted_and_quarantined_counts(monkeypa
     job_b.run(REPO, {"job_a_run_id": "900001", "github_run_id": "600001", "job_b_run_id": "900002"},
               Jobs(job_a_exit), GitHub(), job_b.VolumeStore(files), lambda sql: copy.deepcopy(rows),
               sleep=lambda s: None)
-    note = files.files["/Volumes/workspace/default/voc_results/june-900002/DRY_RUN.txt"].decode("utf-8")
+    note = files.files["/Volumes/workspace/voc_results/voc_results/june-900002/DRY_RUN.txt"].decode("utf-8")
     assert note.endswith("Labelled: 8. Accepted: 7. Quarantined: 1.\n")  # fix-round review of #99, nit 4
     assert not any(cid in note for cid, _, _ in rows) and MARKER not in note
 

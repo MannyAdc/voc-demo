@@ -3,8 +3,8 @@
 Spec 004, plan item 9, owner decisions of 6 and 8 November. The dry run runs the whole cloud chain once on synthetic
 data with the mock backend: the upload, Job A in Databricks, Databricks' webhook to the Azure receiver, the approval
 workflow on GitHub, the owner's approval, Job B, and the result message back to the receiver. It holds no API key
-and calls no model. Claude gives the click-by-click steps in the chat at the time, one step at a time, and this page
-keeps their order, what each checks, and the clean-up.
+and calls no model. The setup before it is in `docs/DATABRICKS_STEPS.md`, click by click. This page keeps the run's
+order, what each step checks, and the clean-up.
 
 ## Before the dry run, in this order
 

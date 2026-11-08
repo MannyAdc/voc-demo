@@ -602,6 +602,12 @@ Written on 9 November 2026, after the owner made Job A and Job B in the workspac
 - `config/june_cloud.toml` holds Job A's and Job B's IDs, and a checkout without it is made by removing the copy (J16 item 10)
 - `docs/DATABRICKS_STEPS.md` gives steps 1.1 to 1.8 click by click, with placeholders only and no real address or ID (J1, owner decision of 9 November)
 
+Written on 9 November 2026, in the fix round of #100, from its review and the owner's decisions:
+
+- Job B writes its results in a schema of its own, `workspace.voc_results`, never in `default` (J13, serious 1)
+- the steps make that schema and say what a schema is, check each job's Run as and the live job against its file, give the robot's rights in full, copy secrets without showing them and clear the clipboard either way, and hold no workspace host, vault address or warehouse ID (J1, J13, minors 2, 3, 5 to 7, nits 9 and 10)
+- the spec and the dry run's steps name the dry run as the webhook's test, and link the steps page (J8, minor 4, nit 11)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

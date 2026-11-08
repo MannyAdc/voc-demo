@@ -2,7 +2,9 @@
 # takes this form). The owner puts the SQL warehouse's ID and the receiver's notification destination ID in place of
 # their text. The trigger stays paused until just before the June upload, and is paused again after the run. The
 # run is stopped after an hour. The spike's run took about 3 minutes. It sends no failure email, an output nobody
-# checks (owner decision, 6 November): the owner watches the job page after the upload.
+# checks (owner decision, 6 November): the owner watches the job page after the upload. The owner may delete the three
+# webhook lines before pasting and attach the destination by clicking, which writes the same block
+# (docs/DATABRICKS_STEPS.md, step 1.6).
 resources:
   jobs:
     voc_june_job_a:

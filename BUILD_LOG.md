@@ -2264,3 +2264,31 @@ Times are local, from the chat's message times. The owner did every step in the 
   - The synthetic row comes after this pull request, in one of its own, since its code hash covers `config/`.
 - The first try of the red commit began at 01:03 and stopped when the owner closed the laptop for the night, as Claude had said was safe. No lock file was left.
 - Red commit `3dba462` at 08:02 (git's commit time), made again: only `tests/test_dry_run.py`, through the gate. The full suite passed with the IDs file in place.
+- Green commit `d32227f` at 08:35 (git's commit time), through the gate. Draft pull request #100 opened at 08:47.
+
+### The setup, step 2
+
+Times are local, from the chat's message times. The owner did each step, one at a time.
+
+- 08:09 Step 2.1: the GitHub environment `june-figures`, `main` only, no reviewer.
+- 08:13 Step 2.2: the GitHub environment `june-run`, `main` only, the owner as required reviewer, "prevent self-review" off.
+- 08:28 Step 2.3: `VOC_DATABRICKS_HOST` in both environments, and `VOC_RECEIVER_URL` and `VOC_RESULT_SECRET` in `june-run`.
+- 08:40 Step 2.4: the robot's secret, 30 days, `jobs` scope, in both environments and the Key Vault.
+- 08:45 Step 2.5: the fine-grained token `voc-receiver-dispatch`, this repo only, Actions read and write, 30 days, in the Key Vault.
+- 08:51 Step 2.6: the receiver's settings, `VOC_JOB_A_JOB_ID` set to Job A's ID and four new ones. At 09:36 the owner's screenshot showed every Key Vault row with a green tick.
+
+### The review of #100
+
+- A fresh reviewer agent read the diff, the spec and CLAUDE.md: 1 serious, 7 minor, 4 nits. No private value leaked.
+- 08:51 Its findings posted on #100. Claude stopped for the owner's decision on the serious finding.
+- AI mistake, caught by that review (serious 1): Claude's step 1.2 had the owner make `voc_results` in `workspace.default`, beside `voc_raw`, while J13 puts it in a schema of its own, so the reader's grants never reach the schema that holds the raw uploads. Job B's path in #98 had the same mistake, and neither #98's reviews nor Claude caught it.
+- 08:55 to 09:21 The owner asked what "one layer of protection fewer" means and what a schema is. Claude explained the three permissions a read needs, and that a schema here is a folder that holds tables and volumes, not a table's columns. Owner feedback: put a plain meaning in brackets after a technical word.
+- 08:55 Owner decisions: fix the minor and nit findings as recommended, and the same stopping rule. 09:21: option A, the volume in its own schema.
+- 09:25 to 09:29 The owner made the schema `workspace.voc_results` and its volume `voc_results`, then deleted the empty volume in `default`. `voc_raw` stays.
+- 09:37 The owner read the destination's authentication mode for the steps: Basic Auth.
+- Claude's choices, for the owner to see:
+  - The steps page now holds steps 2.1 to 2.6 too, at the same level, so the whole setup is in one place.
+  - The steps copy every secret with its copy icon and never show it, and give a way to clear the clipboard when clipboard history is off.
+  - The live job is checked against `cloud/job_a.yml` in step 1.6, and `cloud/job_a.yml` and the spec say the webhook may be attached by clicking.
+- Red commit `91c3742` at 09:30 (git's commit time): only `tests/test_dry_run.py`, 6 new tests, through the gate.
+- In the green commit, the tests that named the old results path take the new one, marked by this log line: three in `tests/test_job_b.py` and one in `tests/test_dry_run.py`.
