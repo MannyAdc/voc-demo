@@ -582,6 +582,14 @@ Written on 8 November 2026, on synthetic data only (owner decisions of 6 and 8 N
 - the dry run's hash path refuses until the jobs' IDs are committed, then prints its list hash and the code hash with no gate and never the June list's hash, and the script still has no synthetic flag (J1)
 - the script prints names, sizes and hashes only, and writes the zip only outside the repo (J5)
 
+Written on 8 November 2026, in the fix round of #99, from its review and the owner's decisions. The tests above now read the round from the pin, and the June list check reads every ID.
+
+- the pin's round must match the list's, and a synthetic row naming another round's list is refused (J8, J16, minors 4 and 5)
+- `unpack` refuses a dry run CSV with an ID that is not synthetic, and removes the CSV (J8, minor 6)
+- the dry run's note ends with the labelled, accepted and quarantined counts, with no ID and no text (J11, minor 1)
+- Job B runs on a checkout with its real run log row, the jobs' IDs and its code hash, with nothing patched (J11, nit 11)
+- the steps keep `main` still from the upload, ask for a fresh upload on a re-run once Job B marked its run used, use the repo's Python, and drop every table and view (J1, minors 2, 3 and 7, nit 10)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

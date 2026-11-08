@@ -364,6 +364,11 @@ def marked_used(store, run_target, job_a_run_id, github_run_id, job_b_run_id):
 
 def labelled(root, rows, answers):
     """The mock backend's labels for the rows. Returns how many were decided, and whether the run stopped."""
+    outcomes, stopped = _outcomes(root, rows, answers)
+    return len(outcomes), stopped
+
+
+def _outcomes(root, rows, answers):
     from voc import pipeline
     from voc.backends import make_backend
     from voc.labels import load_labels
@@ -384,7 +389,7 @@ def labelled(root, rows, answers):
         outcomes, stopped = pipeline.label_complaints(complaints, version, labels, call, "mock"), False
     except RunStopped as stop:
         outcomes, stopped = stop.outcomes, True
-    return len(outcomes), stopped
+    return outcomes, stopped
 
 
 def exit_value(run_target, complaints, count, stopped, job_b_run_id):
@@ -423,7 +428,11 @@ def run(root, values, databricks, github, store, run_sql, sleep=time.sleep):
     checked_figures(computed, approved)
     answers = mock_answers(root, run_target)
     marked_used(store, run_target, job_a_run_id, github_run_id, job_b_run_id)
-    count, stopped = labelled(root, rows, answers)
+    outcomes, stopped = _outcomes(root, rows, answers)
     if not stopped:
-        store.create(f"{RESULTS_VOLUME}/june-{job_b_run_id}/{DRY_RUN_FILE}", DRY_RUN_NOTE.encode("utf-8"))
-    return exit_value(run_target, complaints, count, stopped, job_b_run_id)
+        # Review of #99: the split is seen in the cloud, as counts only.
+        accepted = sum(o.decision.label is not None for o in outcomes)
+        counts = f"Labelled: {len(outcomes)}. Accepted: {accepted}. Quarantined: {len(outcomes) - accepted}.\n"
+        store.create(f"{RESULTS_VOLUME}/june-{job_b_run_id}/{DRY_RUN_FILE}",
+                     (DRY_RUN_NOTE + counts).encode("utf-8"))
+    return exit_value(run_target, complaints, len(outcomes), stopped, job_b_run_id)

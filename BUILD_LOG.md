@@ -2211,3 +2211,17 @@ Times below are local, from GitHub, the chat's message times, Application Insigh
   - `scripts/june_hash.py --dry-run` refuses until `config/june_cloud.toml` holds the jobs' IDs, so the order of the pull requests is kept in code.
   - The mock answers quote each narrative's first sentence, except the last listed complaint's, which quotes a sentence its text does not hold, so the dry run shows 7 accepted and 1 quarantined.
 - In the green commit, two tests go, since the new ones replace them: Job A's synthetic pin waiting for pull request 9, and Job B's list and answers waiting for 9a.
+- The owner's "Go" on 9a above came at 14:51 (the chat's message time).
+- Green commit `5342503` at 15:36 (git's commit time), through the gate. The full suite passed on it first. Draft pull request #99 opened at 15:49.
+- A fresh reviewer agent read the diff, the spec and CLAUDE.md: no serious finding, 7 minor, 5 nits. It found the real June path unchanged, synthetic kept synthetic, the CSV passing the dbt models and tests, the zip the same bytes on every platform, and the mock answers matching Job B's prompts.
+- 15:57 Its findings posted on #99.
+- At 15:52 and 15:54 the owner asked whether the thread could go offline while the reviewer agent ran. Claude's answer: yes, everything was pushed and nothing ran in the cloud, and the read-only reviewer would only stop, to be run again.
+- AI mistakes in 9a, caught by that review:
+  - The steps promised the owner would see "7 accepted and 1 quarantined", which nothing in the cloud showed (minor 1).
+  - The steps started the window with no merge to `main` at the approval, but it must start at the upload (minor 2).
+  - The steps said a re-run of the same round needs only a fresh workflow run, but once Job B marks the Job A run used it needs a fresh upload too (minor 3).
+  - The steps used plain `python`, not the repo's `uv run` (minor 7).
+  - The build log line above says Job A's real refusal "still names `splits/june/june.csv`". That holds for `checked_target` only. `checked_sample`'s real refusal changed to "the frozen list does not match its hash" (nit 8). The line is kept as written.
+- 20:19 Owner decisions on #99's review: fix every minor and nit as Claude recommended, with Job B's note giving the counts for minor 1, and the same stopping rule, one fresh review of this fix round's diff only, and if it finds nothing serious, Claude fixes the minors and the owner merges.
+- AI mistake in the fix round, caught by Python before any commit: Claude's script that edits the tests broke its own string escapes twice, and a third try wrote a line break into a test's string. Claude fixed the test file by hand and ran the tests before the red commit.
+- Red commit `d9323b7` at 20:21 (git's commit time): only `tests/test_dry_run.py`, 6 new tests and the round 1 tests made to read the round from the pin, through the gate. Two of the new tests passed at once, since the code already refused those cases.

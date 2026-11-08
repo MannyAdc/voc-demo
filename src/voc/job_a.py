@@ -115,7 +115,8 @@ def checked_target(root):
     except (OSError, ValueError, KeyError):  # JuneRunsError is a ValueError
         expected = None
     if expected is None:
-        raise JobAError(f"the run log's last row names a June list other than {name}, which cannot be read")
+        raise JobAError(f"the run log's last row names a June list other than {name}: the checkout's {name} or its "
+                        "manifest cannot be read")
     if run_target.list_hash != expected:
         raise JobAError(f"the run log's last row names a June list other than {name}")
     if code_hash(root) != run_target.code_hash:
@@ -143,6 +144,15 @@ def pin_for(root, kind):
         if not str(pin.get("file_name", "")).startswith("syn_") or not str(pin.get("zip_file_name", "")).startswith(
                 "syn_"):
             raise JobAError("the dry run's pin must name syn_ files")
+        # Review of #99: the pin and the list come from the same round of scripts/make_dry_run.py.
+        pin_round = load_pins(Path(root) / "config" / "june_dry_run.toml").get("round")
+        try:
+            manifest = json.loads((Path(root) / DRY_LIST / "manifest.json").read_text(encoding="utf-8"))
+            list_round = manifest["lists"]["june_dry"]["round"]
+        except (OSError, ValueError, KeyError, TypeError):
+            list_round = None
+        if not isinstance(pin_round, int) or pin_round != list_round:
+            raise JobAError("the dry run's pin and list are not of the same round")
     else:
         raise JobAError("a run's kind is real or synthetic")
     for key in ("file_name", "size_bytes", "sha256", "rows", "narratives", "zip_file_name", "zip_size_bytes",
@@ -217,8 +227,14 @@ def _records(path):
 
 
 def _check_shape(path, pin):
-    """The CFPB header, the same number of fields on every row, and the pinned row count. Counts only."""
-    rows = sum(1 for _ in _records(path))
+    """The CFPB header, the same number of fields on every row, and the pinned row count. Counts only. The dry
+    run's CSV must hold `SYN-` IDs only, a second guard behind its pin (review of #99)."""
+    synthetic = str(pin.get("file_name", "")).startswith("syn_")
+    rows = 0
+    for record in _records(path):
+        rows += 1
+        if synthetic and not SYNTHETIC_ID.fullmatch(record[COMPLAINT_ID]):
+            raise JobAError(f"row {rows} of the dry run's CSV has an ID that is not synthetic")
     if rows != pin["rows"]:
         raise JobAError(f"the CSV has {rows} rows, and the pin has {pin['rows']}")
 
@@ -386,7 +402,7 @@ def listed_ids(root, run_target=None):
 
 
 def sample_sql(listed):
-    # Real IDs are numbers, and the dry run's synthetic ones start with SYN- (pull request 9). They go into the SQL.
+    # Real IDs are numbers, and the dry run's synthetic ones start with SYN- (pull request 9a). They go into the SQL.
     if not listed or not all(re.fullmatch(r"(SYN-)?[0-9]{1,19}", cid) for cid in listed):
         raise JobAError("the frozen June list holds an ID that is not a complaint ID")
     return ("select complaint_id, product, narrative from workspace.voc_june.stg_complaints where complaint_id in ("
