@@ -171,7 +171,8 @@ def _dry_root(tmp_path, kind="synthetic", dry_ids=None, with_files=False):
         data = ("complaint_id,content_hash\n" + "".join(f"{cid},{'a' * 64}\n" for cid in dry_ids)).encode()
         (root / "splits" / "june_dry" / "june_dry.csv").write_bytes(data)
         (root / "splits" / "june_dry" / "manifest.json").write_text(json.dumps(
-            {"lists": {"june_dry": {"count": len(dry_ids), "round": 1, "sha256": hashlib.sha256(data).hexdigest()}}}),
+            {"lists": {"june_dry": {"count": len(dry_ids), "round": ROUND,
+                                    "sha256": hashlib.sha256(data).hexdigest()}}}),
             encoding="utf-8")
     shutil.copytree(REPO / "config", root / "config")
     if with_files:  # review of #99, nit 11: what Job B reads, and the jobs' IDs, before the code hash
@@ -263,12 +264,14 @@ def test_J11_the_mock_answers_cover_every_dry_run_prompt_with_one_quarantine():
     """Seven accepted labels with their quotes, and one quote the text does not hold, for the quarantine path."""
     from voc import pipeline
     from voc.backends import make_backend
-    from voc.job_b import labelled, mock_answers
+    from voc.job_b import _outcomes, mock_answers
     from voc.labels import load_labels
     from voc.replay import Answer, Reply
 
     answers, rows = mock_answers(REPO, _target()), _listed_rows()
-    assert len(answers) == 8 and labelled(REPO, rows, answers) == (8, False)
+    # Fix-round review of #99, nit 6: the function `run` itself uses.
+    decided, stopped = _outcomes(REPO, rows, answers)
+    assert len(answers) == 8 and len(decided) == 8 and stopped is False
     version = pipeline.load_prompt_version(REPO, "v1")
     backend = make_backend("mock", fixtures={a["prompt"]: Answer(a["text"], None, None, "end_turn") for a in answers})
     outcomes = pipeline.label_complaints(
@@ -464,7 +467,7 @@ def test_J11_the_dry_run_note_gives_the_accepted_and_quarantined_counts(monkeypa
               Jobs(job_a_exit), GitHub(), job_b.VolumeStore(files), lambda sql: copy.deepcopy(rows),
               sleep=lambda s: None)
     note = files.files["/Volumes/workspace/default/voc_results/june-900002/DRY_RUN.txt"].decode("utf-8")
-    assert "Labelled: 8. Accepted: 7. Quarantined: 1." in note
+    assert note.endswith("Labelled: 8. Accepted: 7. Quarantined: 1.\n")  # fix-round review of #99, nit 4
     assert not any(cid in note for cid, _, _ in rows) and MARKER not in note
 
 
@@ -491,5 +494,27 @@ def test_J1_the_dry_run_steps_keep_main_still_from_the_upload_and_use_the_repo_s
     assert "a fresh upload" in text
     assert "uv run --native-tls --locked python scripts/make_dry_run.py" in text
     assert "uv run --native-tls --locked python scripts/june_hash.py --dry-run" in text
-    assert "\n   `python scripts/" not in text and "`python scripts/" not in text
+    assert "`python scripts/" not in text
     assert "every table and view" in text
+
+
+# The fix-round review of #99 (owner's stopping rule: nothing serious, so Claude fixes the minors and nits)
+
+
+def test_J16_an_unreadable_dry_run_list_is_refused_as_unreadable(tmp_path):
+    """Minor 2: the refusal says the checkout's file cannot be read, not that the row names another list."""
+    from voc.job_a import JobAError, checked_target
+
+    root = _dry_root(tmp_path)
+    (root / "splits" / "june_dry" / "manifest.json").unlink()
+    with pytest.raises(JobAError) as refused:
+        checked_target(root)
+    assert str(refused.value) == ("the checkout's June list file, splits/june_dry/june_dry.csv, or its manifest "
+                                  "cannot be read, so the run log's last row cannot be checked")
+
+
+def test_J1_the_re_run_steps_say_how_to_start_a_fresh_workflow_run_and_the_note_holds_counts():
+    """Minor 1 and nit 3."""
+    text = (REPO / "docs" / "DRY_RUN_STEPS.md").read_text(encoding="utf-8")
+    assert "start `June approval` by hand on `main`" in text and "GitHub's re-run button" in text
+    assert "IDs, states, counts and fixed text only" in text
