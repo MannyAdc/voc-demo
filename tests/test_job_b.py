@@ -52,7 +52,9 @@ def _approved(rows=ROWS, **change):
     """Job A's exit value for these rows, with the figures Job A's own code gives them."""
     from voc.job_a import figures
 
-    return {**_fixture("job_a_exit.json"), **figures(REPO, rows, 0), **change}
+    # Changed in the fix round of #98: the exit value names the dry run's list hash, bound to the row.
+    return {**_fixture("job_a_exit.json"), "june_list_sha256": _list_hash(rows), **figures(REPO, rows, 0),
+            **change}
 
 
 def _output(value):
@@ -140,12 +142,14 @@ def _patched(monkeypatch, kind="synthetic", entry_kind=None, rows=ROWS, answers=
 
     approval, job_b = _approval(), _job_b()
     entry_kind = entry_kind or kind
-    target = Target(kind=kind, entry_kind=entry_kind, list_hash=A, code_hash=B, row=1)
-    entry = Entry(date="2026-11-08 10:00", kind=entry_kind, list_hash=A, code_hash=B, reason="the dry run")
+    # Changed in the fix round of #98: the row names the dry run's list hash, and the list comes as its bytes.
+    target = Target(kind=kind, entry_kind=entry_kind, list_hash=_list_hash(rows), code_hash=B, row=1)
+    entry = Entry(date="2026-11-08 10:00", kind=entry_kind, list_hash=_list_hash(rows), code_hash=B,
+                  reason="the dry run")
     monkeypatch.setattr(approval, "_target_and_entry", lambda root: (target, entry))
     monkeypatch.setattr(approval, "_pin", lambda root, k: {"sha256": D, "zip_sha256": E})
     monkeypatch.setattr(approval, "cloud_settings", lambda root: {"job_a_job_id": JOB_A, "job_b_job_id": JOB_B})
-    monkeypatch.setattr(job_b, "listed_for", lambda root, t: _listed(rows))
+    monkeypatch.setattr(job_b, "listed_for", lambda root, t: _list_bytes(rows))
     monkeypatch.setattr(job_b, "mock_answers", lambda root, t: _answers(rows) if answers is None else answers)
     return job_b
 
@@ -238,7 +242,8 @@ def test_J11_job_b_refuses_an_id_that_is_not_synthetic(monkeypatch):
     job_b = _patched(monkeypatch, rows=rows)
     files = FakeFiles()
     with pytest.raises(job_b.JobBError, match="not synthetic"):
-        _run(job_b, files=files, rows=rows)
+        # Changed in the fix round of #98: Job A's exit value names these rows' list hash.
+        _run(job_b, jobs=FakeJobs(job_a_exit=_approved(rows)), files=files, rows=rows)
     assert files.files == {}
 
 
@@ -383,23 +388,6 @@ def test_J11_a_github_refusal_that_is_not_retried_is_refused_at_once(monkeypatch
 # Job A's run, checked again (J11, J16 item 5)
 
 
-@pytest.mark.parametrize("jobs", [
-    lambda: FakeJobs(run={**_fixture("job_a_run.json"), "job_id": 800009}),
-    lambda: FakeJobs(run={**_fixture("job_a_run.json"), "state": {"result_state": "FAILED"}}),
-    lambda: FakeJobs(run={**_fixture("job_a_run.json"), "repair_history": [{"type": "ORIGINAL"}]}),
-    lambda: FakeJobs(runs={"runs": [{"job_id": JOB_A, "run_id": 900005, "start_time": 1793000000000}] +
-                           _fixture("job_a_runs_list.json")["runs"]}),
-    lambda: FakeJobs(active={"runs": [{"job_id": JOB_A, "run_id": 900005}]}),
-    lambda: FakeJobs(job_a_exit=_approved(june_list_sha256=B)),
-    lambda: FakeJobs(job_a_exit=_approved(source_sha256=A))])
-def test_J16_job_b_checks_job_a_s_run_again(monkeypatch, jobs):
-    job_b = _patched(monkeypatch)
-    files = FakeFiles()
-    with pytest.raises(job_b.JobBError):
-        _run(job_b, jobs=jobs(), files=files)
-    assert files.files == {}
-
-
 @pytest.mark.parametrize("jobs,words", [
     (lambda: FakeJobs(run={**_fixture("job_a_run.json"), "job_id": 800009}), "not this run of Job A"),
     (lambda: FakeJobs(run={**_fixture("job_a_run.json"), "state": {"result_state": "FAILED"}}),
@@ -467,7 +455,7 @@ def test_J16_job_b_marks_the_github_run_and_the_job_a_run_for_its_row_as_used(mo
                                                "job_b_run_id": JOB_B_RUN, "row": 1}
     assert json.loads(files.files[pair]) == {"code_sha256": B, "github_run_id": GITHUB_RUN,
                                              "job_a_run_id": JOB_A_RUN, "job_b_run_id": JOB_B_RUN,
-                                             "june_list_sha256": A, "row": 1}
+                                             "june_list_sha256": _list_hash(), "row": 1}  # fix round of #98
 
 
 @pytest.mark.parametrize("used", [0, 1])
@@ -575,10 +563,11 @@ def test_J5_job_b_prints_nothing_and_its_refusals_hold_no_row_text(monkeypatch, 
     marker = "SYNMARKER complaint text"
     rows = [("SYN-1", "Mortgage", marker), ("SYN-2", "Mortgage", marker + " again")]
     job_b = _patched(monkeypatch, rows=rows)
-    _run(job_b, rows=rows)
+    jobs = FakeJobs(job_a_exit=_approved(rows))  # changed in the fix round of #98: the list hash of these rows
+    _run(job_b, jobs=jobs, rows=rows)
     bad = [(rows[0][0], rows[0][1], marker + " changed"), rows[1]]
     with pytest.raises(job_b.JobBError) as refused:
-        _run(job_b, rows=bad)
+        _run(job_b, jobs=FakeJobs(job_a_exit=_approved(rows)), rows=bad)
     assert marker not in str(refused.value) and refused.value.__context__ is None
     out = capsys.readouterr()
     assert out.out == "" and out.err == ""
@@ -616,6 +605,12 @@ def test_J11_the_notebook_runs_job_b_s_logic_and_names_no_secret():
 
 
 # The review of #98 (owner decision: fix every finding, with one fresh review of the fix round)
+
+
+def _list_hash(rows=ROWS):
+    import hashlib
+
+    return hashlib.sha256(_list_bytes(rows)).hexdigest()
 
 
 def _list_bytes(rows=ROWS):

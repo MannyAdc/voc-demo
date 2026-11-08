@@ -14,13 +14,16 @@ Every check runs before the first marker is written, in this order:
    the commit Job B runs, with the exact name for the Job A run, first attempt, approved for `june-run` by the owner
    and never rejected (J11, J16 item 7)
 5. Job A's run again, as the approval workflow checks it (J16 item 5)
-6. the sample: only `SYN-` IDs, exactly the dry run's list, each row with its content hash
+6. the sample: the dry run's list, whose bytes hash to the row's list hash, with only `SYN-` IDs, checked before
+   any SQL runs, then exactly its rows from the June tables, each with its content hash
 7. Job A's figures, computed again from the rows: the same counts, and no more tokens or cost than approved
 Then it marks the GitHub run, and the Job A run for its row, as used. A marker already there is refused, and an
 upload never overwrites. Then it labels, writes the note and returns the contract's exit value (J16 item 8).
 
 B21 and J5: nothing here prints. Every refusal holds fixed text, IDs and counts only, and carries no earlier exception.
 """
+import csv
+import hashlib
 import io
 import json
 import re
@@ -46,6 +49,7 @@ ENVIRONMENT = "june-run"
 GITHUB_TRIES = 3
 GITHUB_WAITS = (20, 60)
 COMMIT = re.compile(r"[0-9a-f]{40}")
+HASH = re.compile(r"[0-9a-f]{64}")
 SYNTHETIC_ID = re.compile(r"SYN-[0-9]{1,19}")
 
 
@@ -90,7 +94,7 @@ def _job_parameters(run):
     if not isinstance(items, list) or not all(isinstance(i, dict) for i in items):
         return None
     names = [i.get("name") for i in items]
-    if sorted(names) != sorted(JOB_PARAMETERS):
+    if not all(isinstance(n, str) for n in names) or sorted(names) != sorted(JOB_PARAMETERS):
         return None
     return {i["name"]: i.get("value") for i in items}
 
@@ -181,13 +185,41 @@ def checked_approvals(approvals):
 
 
 def listed_for(root, run_target):
-    """The dry run's frozen list, complaint ID to content hash. Pull request 9a adds it."""
+    """The dry run's frozen list file's bytes, `complaint_id,content_hash` rows. Pull request 9a adds it, and its
+    SHA-256 must be the run log row's list hash (review of #98)."""
     raise JobBError("the dry run's list is added in pull request 9a, so Job B cannot run yet")
 
 
 def mock_answers(root, run_target):
     """The mock backend's synthetic answers for the dry run's prompts. Pull request 9a adds them."""
     raise JobBError("the dry run's mock answers are added in pull request 9a, so Job B cannot run yet")
+
+
+def checked_list(data, run_target):
+    """The dry run's list, bound to its row: its bytes hash to the row's list hash. Every ID synthetic and every
+    hash a SHA-256, checked before any SQL runs (review of #98). Returns complaint ID to content hash."""
+    if not isinstance(data, bytes) or hashlib.sha256(data).hexdigest() != run_target.list_hash:
+        raise JobBError("the dry run's list does not match the run log row's list hash")
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        text = None
+    if text is None:
+        raise JobBError("the dry run's list is not UTF-8")
+    records = list(csv.reader(io.StringIO(text)))
+    if (len(records) < 2 or records[0] != ["complaint_id", "content_hash"]
+            or not all(len(r) == 2 for r in records[1:])):
+        raise JobBError("the dry run's list is not a list of complaint IDs and content hashes")
+    listed = {}
+    for cid, digest in records[1:]:
+        if not SYNTHETIC_ID.fullmatch(cid):
+            raise JobBError("the dry run's list holds an ID that is not synthetic")
+        if not HASH.fullmatch(digest):
+            raise JobBError("the dry run's list holds a content hash that is not a SHA-256")
+        listed[cid] = digest
+    if len(listed) != len(records) - 1:
+        raise JobBError("the dry run's list repeats a complaint ID")
+    return listed
 
 
 def checked_rows(listed, rows):
@@ -251,8 +283,10 @@ class VolumeStore:
             self.files.get_metadata(path)
             found, failure = True, None
         except Exception as err:  # noqa: BLE001, read by its type only, outside the except block
-            found, failure = False, type(err).__name__
-        if failure is not None and failure != "NotFound":
+            # The SDK's NotFound, or any of its subclasses, means the file is missing (review of #98).
+            missing = any(kind.__name__ == "NotFound" for kind in type(err).__mro__)
+            found, failure = False, None if missing else type(err).__name__
+        if failure is not None:
             raise JobBError(f"the volume could not be read: {failure}")
         return found
 
@@ -359,7 +393,7 @@ def run(root, values, databricks, github, store, run_sql, sleep=time.sleep):
     checked_github_run(github_json(github, f"/{github_run_id}", sleep), github_run_id, job_a_run_id, commit)
     checked_approvals(github_json(github, f"/{github_run_id}/approvals", sleep))
     (_, _, approved, _), _ = _checked(approval._checked_job_a, root, job_a_run_id, databricks)
-    listed = listed_for(root, run_target)
+    listed = checked_list(listed_for(root, run_target), run_target)
     rows = _spark_rows(run_sql, listed)[0]
     complaints = checked_rows(listed, rows)
     try:

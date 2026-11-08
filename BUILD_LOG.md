@@ -2168,3 +2168,17 @@ Times below are local, from GitHub, the chat's message times, Application Insigh
   - The Jobs API and the Files API are read through the notebook's own sign-in, as the owner, and any failure is refused with its type only, since the SDK's message is not Job B's.
   - The dry run's labels count every decided complaint, as the contract's `labelled` does. With no answer for three complaints in a row, the labelling stops, and Job B returns a stopped exit value with the reason `error`.
   - The spec's plan names 6a and 6b, and 9a before the dry run. `job_a.py`'s refusal that names "pull request 6" stays, since the June ledger comes in 6b, which is part of 6.
+- Green commit `d708eae` at 11:36 (git's commit time), through the gate. The full suite passed on it first. Draft pull request #98 opened at 11:47.
+- The owner's decisions on 6a above came at 10:42 (the chat's message time).
+- A fresh reviewer agent read the diff, the spec and CLAUDE.md: no serious finding, 5 minor, 7 nits. It found no way to score without the owner's approval, to reuse an approval, to reach a real model or to leak complaint text.
+- 11:54 Its findings posted on #98.
+- AI mistakes in 6a, caught by that review:
+  - Job B read the sample's rows with SQL before it checked that the list's IDs were synthetic, so a bad list would have touched the June table before the refusal (minor 1).
+  - Nothing tied the dry run's list to the run log row's list hash. Only the count matched (minor 2).
+  - The order test and some refusal tests did not show that no marker comes before every check (minor 3).
+  - A test said "the receiver's checks" but called only the workflow's copy of them (minor 4).
+- 11:59 Owner decisions on #98's review: fix every minor and nit as Claude recommended, and the same stopping rule, one fresh review of this fix round's diff only, and if it finds nothing serious, Claude fixes the minors and the owner merges.
+- AI mistake in the fix round, caught by the gate: Claude's first red commit gave each case of the Job A re-check test its own reason, which changed the cases' generated names, so the gate saw seven tests removed and refused the commit. The red commit keeps that test as it was and adds the per-reason version as a new test. The green commit removes the old one, which the new one covers.
+- Red commit `9e099ab` at 12:20 (git's commit time): only `tests/test_job_b.py`, 10 new tests and five made stricter, through the gate.
+- In the green commit, tests change, each marked in the test: the dry run's list comes as its bytes, bound to the row's list hash, so the helper, Job A's exit value in two tests and one marker's expected hash change. The old Job A re-check test goes, since the per-reason one covers it.
+- Claude's choice: a missing marker is any error whose class, or a parent class, is named `NotFound`, read without importing the SDK, so the laptop's tests need no Databricks package.
