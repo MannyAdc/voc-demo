@@ -2189,3 +2189,5 @@ Times below are local, from GitHub, the chat's message times, Application Insigh
   - The red commit `9e099ab` made six tests stricter, not five: the frozen paths, the approvals, the rejection, the rows, the figures and the exit values.
   - In the green commit `65abf30`, "the helper" was two changed helpers, `_approved` and `_patched`, and a new one, `_list_hash`.
 - Red commit `0782d4b` at 12:52 (git's commit time): only `tests/test_job_b.py`, 3 new tests and 4 made stricter, through the gate. Two of the new ones passed at once, since the code already refused those cases. They now show it.
+- Green commit `ad3264a` at 13:19 (git's commit time), through the gate. CI green on `ad3264a`.
+- 13:37 Merge verdict on #98: PENDING with every mechanical check passing. Every finding of its two review rounds is fixed, all chosen by the owner. The second review found no serious problem, so under the owner's stopping rule its minor and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
