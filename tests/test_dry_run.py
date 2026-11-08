@@ -363,6 +363,9 @@ def _hash_root(tmp_path, with_ids):
     if with_ids:
         (root / "config" / "june_cloud.toml").write_text("job_a_job_id = 800001\njob_b_job_id = 800002\n",
                                                          encoding="utf-8")
+    else:
+        # The job IDs pull request commits the file, so a checkout without it is made by removing the copy.
+        (root / "config" / "june_cloud.toml").unlink(missing_ok=True)
     return root
 
 
@@ -518,3 +521,28 @@ def test_J1_the_re_run_steps_say_how_to_start_a_fresh_workflow_run_and_the_note_
     text = (REPO / "docs" / "DRY_RUN_STEPS.md").read_text(encoding="utf-8")
     assert "start `June approval` by hand on `main`" in text and "GitHub's re-run button" in text
     assert "IDs, states, counts and fixed text only" in text
+
+
+# The jobs' IDs and the Databricks setup steps (owner decisions of 8 and 9 November)
+
+DATABRICKS_STEPS = REPO / "docs" / "DATABRICKS_STEPS.md"
+
+
+def test_J16_the_jobs_ids_are_the_jobs_the_owner_made():
+    """J16 item 10: Job A's and Job B's IDs, made by the owner in the workspace on 9 November."""
+    from voc.approval import cloud_settings
+
+    assert cloud_settings(REPO) == {"job_a_job_id": 980148595231243, "job_b_job_id": 111509808656471}
+
+
+def test_J1_the_databricks_steps_go_click_by_click_with_placeholders_only():
+    """Owner decision, 9 November: every step names its clicks in order, for a reader new to Databricks."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    steps = re.findall(r"^### Step (1\.[0-9]+): ", text, flags=re.M)
+    assert steps == [f"1.{n}" for n in range(1, 9)]
+    for words in ("Copy raw file", "just left of the grey **Run now** button", "**Can View**", "**Can Manage Run**",
+                  "**Paused**", "`voc_results`", "`voc-receiver`", "**On success**", "Clear all"):
+        assert words in text, words
+    assert not re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", text, re.I)
+    assert set(re.findall(r"(\S*)azurewebsites\.net", text)) <= {"`."}
+    assert "<default domain>" in text and "<the ID>" in text
