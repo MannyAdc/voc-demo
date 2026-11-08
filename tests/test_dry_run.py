@@ -546,3 +546,58 @@ def test_J1_the_databricks_steps_go_click_by_click_with_placeholders_only():
     assert not re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", text, re.I)
     assert set(re.findall(r"(\S*)azurewebsites\.net", text)) <= {"`."}
     assert "<default domain>" in text and "<the ID>" in text
+
+
+# The review of #100 (owner decisions of 9 November: option A, the results volume in its own schema, and every
+# other finding fixed)
+
+
+def test_J13_job_b_writes_its_results_to_their_own_schema():
+    """Serious 1: `voc_results` sits in its own schema, apart from `default`, which holds the raw uploads."""
+    from voc.job_b import RESULTS_VOLUME
+
+    assert RESULTS_VOLUME == "/Volumes/workspace/voc_results/voc_results" and "/default/" not in RESULTS_VOLUME
+
+
+def test_J1_the_databricks_steps_make_the_results_schema_and_explain_the_word():
+    """Serious 1: the step makes the schema, then the volume, and says what a schema is the first time."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    step = text.split("### Step 1.2: ")[1].split("\n### ")[0]
+    assert "schema (a folder that holds tables and volumes)" in text
+    assert step.index("Create schema") < step.index("Volume") and "`workspace` → `voc_results`" in step
+
+
+def test_J1_the_databricks_steps_check_the_live_jobs_against_their_files():
+    """Minors 2 and 3, nits 9 and 10."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    assert "**Run as**" in text and "never `voc-june-runner`" in text
+    assert "compare it with `cloud/job_a.yml`" in text and "`pause_status: PAUSED`" in text
+    assert "`email_notifications`" in text and "cancel" in text
+    job_a = (REPO / "cloud" / "job_a.yml").read_text(encoding="utf-8")
+    for line in ("warehouse_id: the SQL warehouse's ID, set by the owner", "webhook_notifications:", "on_success:",
+                 "- id: the receiver's notification destination ID, set by the owner"):
+        assert line in job_a and f"`{line}`" in text, line
+    assert "attach the destination by clicking" in job_a
+
+
+def test_J1_the_databricks_steps_copy_secrets_without_showing_them_and_clear_the_clipboard_either_way():
+    """Minor 6."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    assert "Show Secret Value" not in text
+    assert "clipboard history is off" in text
+
+
+def test_J1_the_databricks_steps_hold_no_workspace_host_vault_address_or_warehouse_id():
+    """Minor 7."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    for host in ("cloud.databricks.com", "azuredatabricks.net", "vault.azure.net"):
+        assert host not in text, host
+    assert not re.search(r"\b[0-9a-f]{16}\b", text)
+
+
+def test_J8_the_spec_and_the_steps_name_the_dry_run_as_the_webhook_s_test():
+    """Minor 4, nit 11."""
+    spec = (REPO / "specs" / "004-june-test-and-baselines" / "spec.md").read_text(encoding="utf-8")
+    assert "the dry run's Job A run is that test" in spec and "attach the destination by clicking" in spec
+    dry = (REPO / "docs" / "DRY_RUN_STEPS.md").read_text(encoding="utf-8")
+    assert "DATABRICKS_STEPS.md" in dry and "Claude gives the click-by-click steps in the chat" not in dry
