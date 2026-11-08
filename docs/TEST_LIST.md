@@ -542,6 +542,33 @@ Written on 7 November 2026, from the second review of #95, fixed with no further
 - the opener's only redirect handler refuses, a redirect comes back as its status, the post is tried again after a 429 or no answer, and `main`'s refusal of the run job holds no field it does not read (J5, J13, nits 6 and 7)
 - the synthetic case of the real target test is refused by the run log's rule, as it says now (minor 6)
 
+## The dry-run Job B ([spec 004](../specs/004-june-test-and-baselines/spec.md), pull request 6a, J11, J16), `tests/test_job_b.py`
+
+Written on 8 November 2026, with fakes for the Jobs API, GitHub and the volume (owner decisions of 6 and 8 November):
+
+- Job B is one task, one run at a time, on `main`, with no trigger, exactly run-now's two job parameters, and its own run ID filled by Databricks. Its file, its notebook and its logic are frozen with the code (J1, J11, J16 item 6)
+- its three parameters are read exactly, each a whole number in range (J16 item 1)
+- it takes only a synthetic first row and `SYN-` IDs, waits for pull request 9a for its list and mock answers, and never makes the API backend or reads a key (J11)
+- it refuses its own run unless it is a running run of Job B with exactly the two run IDs and a known commit (J11)
+- it reads the GitHub run and its approvals with no token and no redirect, tries 3 times after no answer, 403, 429 or a server error, and refuses each broken field, a missing owner approval of `june-run` and any rejection of it (J11, J16 item 7)
+- it checks Job A's run again: its job, its success, no repair, the newest run, no active run, and the exit value against the row and the pin (J16 item 5)
+- it refuses rows that are not exactly the listed sample with their content hashes, and figures other than the approved ones (J11)
+- it marks the GitHub run and the Job A run for its row as used, only after every check, looks for both first, and never overwrites, so a used one or one made in between is refused (J11, J16 item 7)
+- its exit value has the contract's keys as compact sorted JSON and passes the workflow's and the receiver's checks. A finished run's results folder holds only the dry run's note, and a stopped run names no folder and gives its reason (J16 item 8)
+- it prints nothing, its refusals hold no row text and no earlier exception, a failure of the Jobs API or the volume is refused with its type only, and the notebook names no secret (J5)
+
+Written on 8 November 2026, in the fix round of #98, from its review and the owner's decisions. What two lines above describe changed: the list now comes as its bytes, and the exit values pass the receiver's own check too.
+
+- the dry run's list is read from its bytes, which must hash to the run log row's list hash, and its IDs and hashes are checked before any SQL runs (J11, minors 1 and 2)
+- every marker comes after every outside call, and no refusal writes a file (J11, minor 3)
+- the exit values pass the receiver's own check, any kind of not-found error means a marker is missing, and a job parameter with no name is refused (J11, J16 item 8, minors 4 and 5, nit 6)
+- the contract defines `labelled`, the job file names no `run_as`, frozen paths match whole, and each re-check of Job A is refused for its own reason (J1, J11, J16, nits 7, 9, 10 and 11)
+
+Written on 8 November 2026, from the fix-round review of #98, fixed with no further review round:
+
+- the GitHub, list-hash and list-shape refusals write no file, a list with only its header or with an ID twice is refused, a June table row that is not synthetic is refused, and the rows check keeps its own check of the list (J11, minor 1, nits 2 and 3)
+- `labelled` counts every complaint with a decision, the ones not run for the budget included (J16 item 8, nit 6)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

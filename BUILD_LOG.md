@@ -2148,3 +2148,46 @@ Times below are local, from GitHub, the chat's message times, Application Insigh
 - Red commit `676e556` at 23:15 (git's commit time): only `tests/test_receiver_deploy.py`, 3 new tests and the placeholder test made stricter, through the gate.
 - Green commit `c96d6f7` at 23:40 (git's commit time), through the gate. CI green on `c96d6f7`.
 - 23:57 Merge verdict on #97: PENDING with every mechanical check passing. Every finding of its two review rounds is fixed. Nit 10 of the first round is a Known limits line, as the owner chose. The second review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
+- 00:15 Claude marked #97 ready, and 00:29 the owner merged it (times from GitHub, `a7797c3`), on 8 November.
+
+## Sunday 8 November 2026
+
+- The owner asked Claude to proceed with the next pull request while they prepare other things.
+- A planning agent read the spec's J11, J12, J13 and J16 and the code of Job A and the approval workflow, and proposed the dry-run Job B. Claude checked its key points against the spec and the code.
+- Owner decisions on the dry-run Job B (pull request 6a):
+  - Its results folder: option A, the folder `june-<Job B run ID>` exists with a small marker file, `DRY_RUN.txt`, saying it is a synthetic dry run and that the results files arrive in pull request 6b. The receiver and the approval workflow treat the folder as present, as they will for real. The owner asked whether an empty folder persists on a volume.
+  - Claude's seven points, agreed: Job B reads its own run ID from a value Databricks fills in and checks that run, the approved GitHub run must come from the commit Job B runs, it recomputes Job A's figures, it refuses any rejection of `june-run`, the start marker and the real model wait for 6b, the dry run's list and mock answers come in 9a, and the Known limits lines.
+  - On the same commit: the run steps say no merges to `main` between the owner's approval and Job B's end, since a moved `main` makes Job B refuse and costs a fresh upload.
+- Docs read on 8 November, through a fetch agent, on docs.databricks.com ("Work with files in Unity Catalog volumes", updated 27 October 2026, and the Files API reference): the Files API's create directory "Creates an empty directory", and its upload with `overwrite` false returns "an error" if the file exists. Neither page says whether an empty directory persists on the object store, or whether the no-overwrite upload is atomic. So the marker file makes the folder exist, and the markers' atomicity goes in Known limits.
+- Work start, 10:42: branch `feat/job-b-dry`, worktree `../voc-demo-jobb`, from main at `a7797c3`.
+- Red commit `52c2260` at 10:49 (git's commit time): only `tests/test_job_b.py`, through the gate.
+- Before that commit, Claude ran the new tests against a first version of the code. Two tests had a fault of their own: with two rows, the mock backend's missing answers fail only twice, and the labelling stops after three in a row. The stopped run's tests now use three synthetic rows. Nothing else in the tests changed.
+- Claude's choices, for the owner to see:
+  - Job B's logic is in `src/voc/job_b.py`, and its notebook `cloud/job_b/job_b.py` stays thin, as Job A's do. It reuses the approval workflow's checks of Job A's run and Job A's sample read and figures, rather than copying them.
+  - The used markers are in `voc_raw/job_b_used/`, apart from the results volume, which the reader can read: `github/<GitHub run ID>.json` and `job_a/<Job A run ID>-row<row>.json`, holding IDs and hashes only.
+  - The Jobs API and the Files API are read through the notebook's own sign-in, as the owner, and any failure is refused with its type only, since the SDK's message is not Job B's.
+  - The dry run's labels count every decided complaint, as the contract's `labelled` does. With no answer for three complaints in a row, the labelling stops, and Job B returns a stopped exit value with the reason `error`.
+  - The spec's plan names 6a and 6b, and 9a before the dry run. `job_a.py`'s refusal that names "pull request 6" stays, since the June ledger comes in 6b, which is part of 6.
+- Green commit `d708eae` at 11:36 (git's commit time), through the gate. The full suite passed on it first. Draft pull request #98 opened at 11:47.
+- The owner's decisions on 6a above came at 10:42 (the chat's message time).
+- A fresh reviewer agent read the diff, the spec and CLAUDE.md: no serious finding, 5 minor, 7 nits. It found no way to score without the owner's approval, to reuse an approval, to reach a real model or to leak complaint text.
+- 11:54 Its findings posted on #98.
+- AI mistakes in 6a, caught by that review:
+  - Job B read the sample's rows with SQL before it checked that the list's IDs were synthetic, so a bad list would have touched the June table before the refusal (minor 1).
+  - Nothing tied the dry run's list to the run log row's list hash. Only the count matched (minor 2).
+  - The order test and some refusal tests did not show that no marker comes before every check (minor 3).
+  - A test said "the receiver's checks" but called only the workflow's copy of them (minor 4).
+- 11:59 Owner decisions on #98's review: fix every minor and nit as Claude recommended, and the same stopping rule, one fresh review of this fix round's diff only, and if it finds nothing serious, Claude fixes the minors and the owner merges.
+- AI mistake in the fix round, caught by the gate: Claude's first red commit gave each case of the Job A re-check test its own reason, which changed the cases' generated names, so the gate saw seven tests removed and refused the commit. The red commit keeps that test as it was and adds the per-reason version as a new test. The green commit removes the old one, which the new one covers.
+- Red commit `9e099ab` at 12:20 (git's commit time): only `tests/test_job_b.py`, 10 new tests and five made stricter, through the gate.
+- In the green commit, tests change, each marked in the test: the dry run's list comes as its bytes, bound to the row's list hash, so the helper, Job A's exit value in two tests and one marker's expected hash change. The old Job A re-check test goes, since the per-reason one covers it.
+- Claude's choice: a missing marker is any error whose class, or a parent class, is named `NotFound`, read without importing the SDK, so the laptop's tests need no Databricks package.
+- Green commit `65abf30` at 12:38 (git's commit time), through the gate, and pushed.
+- A fresh reviewer agent read this fix round's diff only, the last round under the owner's stopping rule: no serious finding, 1 minor, 5 nits. All 12 findings of the first review were fixed as intended, every changed test is marked, and nothing was weakened.
+- 12:51 Its findings posted on #98. With no serious finding, the owner's rule applies: Claude fixes the minor and the nits, and the owner merges with no further review round.
+- Corrections to this round's lines above (nit 4). The lines are kept as written:
+  - The red commit `9e099ab` made six tests stricter, not five: the frozen paths, the approvals, the rejection, the rows, the figures and the exit values.
+  - In the green commit `65abf30`, "the helper" was two changed helpers, `_approved` and `_patched`, and a new one, `_list_hash`.
+- Red commit `0782d4b` at 12:52 (git's commit time): only `tests/test_job_b.py`, 3 new tests and 4 made stricter, through the gate. Two of the new ones passed at once, since the code already refused those cases. They now show it.
+- Green commit `ad3264a` at 13:19 (git's commit time), through the gate. CI green on `ad3264a`.
+- 13:37 Merge verdict on #98: PENDING with every mechanical check passing. Every finding of its two review rounds is fixed, all chosen by the owner. The second review found no serious problem, so under the owner's stopping rule its minor and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
