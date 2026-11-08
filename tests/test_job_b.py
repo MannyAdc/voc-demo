@@ -198,7 +198,9 @@ def test_J1_job_b_s_file_and_notebook_are_frozen_with_the_code():
     from voc.frozen import FROZEN_PATHS
 
     for path in (JOB, NOTEBOOK, REPO / "src" / "voc" / "job_b.py"):
-        assert any(path.relative_to(REPO).as_posix().startswith(f) for f in FROZEN_PATHS), path.name
+        name = path.relative_to(REPO).as_posix()
+        # Review of #98, nit 10: a whole path, or a folder followed by its slash.
+        assert any(name == f or name.startswith(f.rstrip("/") + "/") for f in FROZEN_PATHS), name
 
 
 # Its parameters (J16 item 1)
@@ -320,8 +322,10 @@ def test_J16_job_b_refuses_each_broken_github_run_field(monkeypatch, change, wor
     {"not": "a list"}])
 def test_J16_job_b_refuses_without_an_owner_approval_for_june_run(monkeypatch, approvals):
     job_b = _patched(monkeypatch)
+    files = FakeFiles()
     with pytest.raises(job_b.JobBError, match="approval"):
-        _run(job_b, github=FakeGitHub(approvals=approvals))
+        _run(job_b, github=FakeGitHub(approvals=approvals), files=files)
+    assert files.files == {}  # review of #98, minor 3
 
 
 def test_J16_job_b_refuses_any_rejection_of_june_run_even_beside_an_approval(monkeypatch):
@@ -329,8 +333,10 @@ def test_J16_job_b_refuses_any_rejection_of_june_run_even_beside_an_approval(mon
     approved = _fixture("github_approvals.json")[0]
     rejected = {**approved, "state": "rejected", "user": {"login": "someone-else"}}
     job_b = _patched(monkeypatch)
+    files = FakeFiles()
     with pytest.raises(job_b.JobBError, match="rejected"):
-        _run(job_b, github=FakeGitHub(approvals=[approved, rejected]))
+        _run(job_b, github=FakeGitHub(approvals=[approved, rejected]), files=files)
+    assert files.files == {}  # review of #98, minor 3
 
 
 def test_J11_github_is_read_with_no_token_and_no_redirect(monkeypatch):
@@ -394,6 +400,26 @@ def test_J16_job_b_checks_job_a_s_run_again(monkeypatch, jobs):
     assert files.files == {}
 
 
+@pytest.mark.parametrize("jobs,words", [
+    (lambda: FakeJobs(run={**_fixture("job_a_run.json"), "job_id": 800009}), "not this run of Job A"),
+    (lambda: FakeJobs(run={**_fixture("job_a_run.json"), "state": {"result_state": "FAILED"}}),
+     "did not finish successfully"),
+    (lambda: FakeJobs(run={**_fixture("job_a_run.json"), "repair_history": [{"type": "ORIGINAL"}]}),
+     "repaired"),
+    (lambda: FakeJobs(runs={"runs": [{"job_id": JOB_A, "run_id": 900005, "start_time": 1793000000000}] +
+                            _fixture("job_a_runs_list.json")["runs"]}), "newer run"),
+    (lambda: FakeJobs(active={"runs": [{"job_id": JOB_A, "run_id": 900005}]}), "active runs"),
+    (lambda: FakeJobs(job_a_exit=_approved(june_list_sha256=B)), "last row"),
+    (lambda: FakeJobs(job_a_exit=_approved(source_sha256=A)), "pin")])
+def test_J16_job_b_refuses_each_re_check_of_job_a_for_its_own_reason(monkeypatch, jobs, words):
+    job_b = _patched(monkeypatch)
+    files = FakeFiles()
+    # Review of #98, nit 11: each case is refused for its own reason.
+    with pytest.raises(job_b.JobBError, match=words):
+        _run(job_b, jobs=jobs(), files=files)
+    assert files.files == {}
+
+
 # The sample and the figures (J11)
 
 
@@ -402,16 +428,20 @@ def test_J11_job_b_refuses_rows_that_are_not_exactly_the_listed_sample(monkeypat
     for rows, words in ((ROWS[:1], "missing"), (ROWS + [("SYN-3", "Mortgage", "x")], "not in the dry run's list"),
                         ([(ROWS[0][0], ROWS[0][1], "changed text"), ROWS[1]], "content hash"),
                         (ROWS + ROWS[:1], "repeat")):
+        files = FakeFiles()
         with pytest.raises(job_b.JobBError, match=words):
-            _run(job_b, rows=rows)
+            _run(job_b, rows=rows, files=files)
+        assert files.files == {}  # review of #98, minor 3
 
 
 @pytest.mark.parametrize("change", [{"complaints": 3}, {"calls": 1}, {"worst_case_tokens": 10},
                                     {"expected_cost_usd": "0.00"}])
 def test_J11_job_b_refuses_figures_other_than_the_approved_ones(monkeypatch, change):
     job_b = _patched(monkeypatch)
+    files = FakeFiles()
     with pytest.raises(job_b.JobBError, match="figures"):
-        _run(job_b, jobs=FakeJobs(job_a_exit=_approved(**change)))
+        _run(job_b, jobs=FakeJobs(job_a_exit=_approved(**change)), files=files)
+    assert files.files == {}  # review of #98, minor 3
 
 
 def test_J11_figures_at_or_under_the_approved_ones_pass(monkeypatch):
@@ -525,6 +555,10 @@ def test_J16_job_b_s_exit_values_pass_the_workflow_s_and_receiver_s_checks(monke
         output = {"notebook_output": {"result": json.dumps(value), "truncated": False}}
         assert approval.job_b_exit(output) == value
         assert approval.exit_for_receiver(value, JOB_B_RUN) == value
+        # Review of #98, minor 4: the receiver's own code takes it too.
+        import receiver_core
+
+        assert receiver_core._job_b_exit(value, JOB_B_RUN) == value
 
 
 def test_J16_the_exit_value_is_compact_json_with_sorted_keys(monkeypatch):
@@ -579,3 +613,111 @@ def test_J11_the_notebook_runs_job_b_s_logic_and_names_no_secret():
         assert f'dbutils.widgets.get("{name}")' in text
     assert "WorkspaceClient()" in text and "print(" not in text
     assert not re.search(r"dbutils\.secrets|\bsecrets\b", text)
+
+
+# The review of #98 (owner decision: fix every finding, with one fresh review of the fix round)
+
+
+def _list_bytes(rows=ROWS):
+    return ("complaint_id,content_hash\n" + "".join(f"{cid},{h}\n" for cid, h in _listed(rows).items())).encode()
+
+
+def _patched_list(monkeypatch, data, rows=ROWS):
+    """The dry run's list as pull request 9a will give it: the file's bytes, whose hash is the row's list hash."""
+    import hashlib
+
+    from voc.frozen import Entry
+    from voc.job_a import Target
+
+    approval, job_b = _approval(), _patched(monkeypatch, rows=rows)
+    digest = hashlib.sha256(data).hexdigest()
+    target = Target(kind="synthetic", entry_kind="synthetic", list_hash=digest, code_hash=B, row=1)
+    entry = Entry(date="2026-11-08 10:00", kind="synthetic", list_hash=digest, code_hash=B, reason="the dry run")
+    monkeypatch.setattr(approval, "_target_and_entry", lambda root: (target, entry))
+    monkeypatch.setattr(job_b, "listed_for", lambda root, t: data)
+    return job_b, FakeJobs(job_a_exit=_approved(rows, june_list_sha256=digest))
+
+
+def test_J11_the_dry_run_s_list_is_read_from_its_bytes_and_job_b_runs_on_it(monkeypatch):
+    job_b, jobs = _patched_list(monkeypatch, _list_bytes())
+    value, _, _ = _run(job_b, jobs=jobs)
+    assert value["stopped"] is False and value["complaints"] == 2
+
+
+def test_J11_job_b_checks_the_list_s_ids_before_it_reads_the_june_table(monkeypatch):
+    """Minor 1: a real ID in the list is refused before any SQL runs."""
+    rows = ROWS + [("3141592", "Mortgage", "Not synthetic.")]
+    job_b, jobs = _patched_list(monkeypatch, _list_bytes(rows), rows=rows)
+    asked, files = [], FakeFiles()
+    with pytest.raises(job_b.JobBError, match="not synthetic"):
+        job_b.run(REPO, _values(), jobs, FakeGitHub(), job_b.VolumeStore(files), lambda sql: asked.append(sql) or [],
+                  sleep=lambda s: None)
+    assert asked == [] and files.files == {}
+
+
+def test_J11_the_dry_run_s_list_must_be_the_run_log_row_s_list(monkeypatch):
+    """Minor 2: the list's bytes must hash to the row's list hash, so 9a's list is bound to its row."""
+    job_b, jobs = _patched_list(monkeypatch, _list_bytes())
+    monkeypatch.setattr(job_b, "listed_for", lambda root, t: _list_bytes(ROWS[:1]))
+    asked = []
+    with pytest.raises(job_b.JobBError, match="list hash"):
+        job_b.run(REPO, _values(), jobs, FakeGitHub(), job_b.VolumeStore(FakeFiles()),
+                  lambda sql: asked.append(sql) or [], sleep=lambda s: None)
+    assert asked == []
+
+
+@pytest.mark.parametrize("data", [b"complaint_id\nSYN-1\n", b"", "complaint_id,content_hash\n".encode() + b"\xff\n",
+                                  b"complaint_id,content_hash\nSYN-1,abc\n"])
+def test_J11_a_dry_run_list_that_is_not_ids_and_hashes_is_refused(monkeypatch, data):
+    job_b, jobs = _patched_list(monkeypatch, data)
+    with pytest.raises(job_b.JobBError, match="dry run's list"):
+        _run(job_b, jobs=jobs)
+
+
+def test_J11_every_marker_comes_after_every_outside_call(monkeypatch):
+    """Minor 3: the Jobs API, GitHub and the June table are all read before the first marker is written."""
+    job_b = _patched(monkeypatch)
+    order = []
+    jobs, github, files = FakeJobs(), FakeGitHub(), FakeFiles()
+    get_job, get_github, upload = jobs.get, github.get, files.upload
+    jobs.get = lambda path, params: order.append("jobs") or get_job(path, params)
+    github.get = lambda path: order.append("github") or get_github(path)
+    files.upload = lambda path, contents, overwrite=None: order.append("upload") or upload(path, contents, overwrite)
+    job_b.run(REPO, _values(), jobs, github, job_b.VolumeStore(files), lambda sql: order.append("sql") or list(ROWS),
+              sleep=lambda s: None)
+    first = order.index("upload")
+    assert {"jobs", "github", "sql"} <= set(order[:first]) and set(order[first:]) == {"upload"}
+
+
+def test_J11_any_kind_of_not_found_error_means_the_marker_is_missing():
+    """Minor 5: the SDK may raise a subclass of NotFound for a missing file."""
+    job_b = _job_b()
+    not_found = type("NotFound", (Exception,), {})
+    missing = type("ResourceDoesNotExist", (not_found,), {})
+
+    class Files(FakeFiles):
+        def get_metadata(self, path):
+            raise missing("gone")
+
+    assert job_b.VolumeStore(Files()).exists("/Volumes/workspace/default/x/y.json") is False
+
+
+def test_J11_a_job_parameter_item_with_no_name_is_refused(monkeypatch):
+    """Nit 6."""
+    job_b = _patched(monkeypatch)
+    own = _own_run(job_parameters=[{"value": str(JOB_A_RUN)}, {"name": "github_run_id", "value": str(GITHUB_RUN)}])
+    with pytest.raises(job_b.JobBError, match="Job B's own run"):
+        _run(job_b, jobs=FakeJobs(own=own))
+
+
+def test_J16_the_contract_defines_labelled():
+    """Nit 7."""
+    spec = (REPO / "specs" / "004-june-test-and-baselines" / "spec.md").read_text(encoding="utf-8")
+    item = next(line for line in spec.splitlines() if "**8. Job B's exit value**" in line)
+    assert "`labelled` is the count of complaints decided" in item
+
+
+def test_J11_job_b_s_file_names_no_run_as_so_it_runs_as_its_owner():
+    """Nit 9."""
+    text = JOB.read_text(encoding="utf-8")
+    assert "run_as" not in text and "service_principal" not in text
