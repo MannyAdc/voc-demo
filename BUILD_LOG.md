@@ -2191,3 +2191,23 @@ Times below are local, from GitHub, the chat's message times, Application Insigh
 - Red commit `0782d4b` at 12:52 (git's commit time): only `tests/test_job_b.py`, 3 new tests and 4 made stricter, through the gate. Two of the new ones passed at once, since the code already refused those cases. They now show it.
 - Green commit `ad3264a` at 13:19 (git's commit time), through the gate. CI green on `ad3264a`.
 - 13:37 Merge verdict on #98: PENDING with every mechanical check passing. Every finding of its two review rounds is fixed, all chosen by the owner. The second review found no serious problem, so under the owner's stopping rule its minor and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
+- 13:54 Claude marked #98 ready, and 14:14 the owner merged it (times from GitHub, `c45af5f`).
+- The owner asked Claude to start pull request 9a, the dry run's setup, at the same pace.
+- A planning agent read spec 004, the frozen-code rules, Job A, Job B, the approval workflow, the hash script and dbt, and proposed 9a. Claude checked its key points against the code: the run log allows one first row per list (`check_runs`), and the June staging table only adds rows (`stg_complaints`, incremental).
+- The owner asked whether the recommendations would cut the demonstration's scope, the cloud chain with Databricks' webhook, the Azure receiver and the GitHub approval. Claude's answer: none removes a link. They change only the order of the pull requests and add a clean-up step, and the dry run still exercises every link from the upload to the result message. It still leaves the real model, its key, ledger and spend limit to 6b and the real run, as agreed.
+- Owner decisions on 9a ("Go"):
+  - The synthetic run log row leaves 9a for a pull request of its own, after the job IDs, since any later change to the frozen code, review fixes and the job IDs file included, would make it stale.
+  - The job IDs stay with the Databricks setup, from 13 November. The order is 9a, the owner creates the jobs, the job IDs pull request, the row's pull request, then the dry run.
+  - The script that makes the dry run's files takes a round number, so a re-run after a code fix gets new synthetic IDs, a new list and a new row.
+  - A clean-up after the dry run is required: the dry run's tables in the June schema, and the synthetic CSV and zip in the volume.
+- AI mistake, caught by Claude when it read the dbt tests after the owner's decision: Claude had said that leftover synthetic rows would make the real June run's data tests fail. They would not. The row count test counts the file, and the staging table's tests pass synthetic rows. The clean-up stays required for a smaller reason: otherwise the June staging table keeps synthetic rows tagged as June beside the real ones. Claude told the owner at once.
+- Work start, 14:52: branch `feat/dry-run-setup`, worktree `../voc-demo-dry`, from main at `c45af5f`.
+- Red commit `062b45b` at 14:59 (git's commit time): only `tests/test_dry_run.py`, through the gate.
+- Claude's choices, for the owner to see:
+  - The round 1 CSV is a committed synthetic fixture, `tests/fixtures/june_dry_run/syn_june_dry_run_r1.csv`: 12 rows with `SYN-91xx` IDs, 11 narratives, one marker for a live J5 check, one line break inside a narrative, and one empty narrative. The list holds the first 8 narrative rows, so the sample is not the whole file.
+  - `scripts/make_dry_run.py` makes the zip outside the repo for the upload, and with `--repo` writes the committed list, manifest, pin and mock answers. The zip is stored with no compression and fixed fields, so it is the same bytes on Windows and Linux, and CI rebuilds it and compares it with the pin.
+  - The dry run's pin is `config/june_dry_run.toml`, apart from `config/data_files.toml`, so B16's file holds only real exports.
+  - Job A's real path is unchanged: with no target, or a real one, it reads the June list, and its refusal still names `splits/june/june.csv`. A synthetic target reads the dry run's list, with `SYN-` IDs only.
+  - `scripts/june_hash.py --dry-run` refuses until `config/june_cloud.toml` holds the jobs' IDs, so the order of the pull requests is kept in code.
+  - The mock answers quote each narrative's first sentence, except the last listed complaint's, which quotes a sentence its text does not hold, so the dry run shows 7 accepted and 1 quarantined.
+- In the green commit, two tests go, since the new ones replace them: Job A's synthetic pin waiting for pull request 9, and Job B's list and answers waiting for 9a.

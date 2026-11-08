@@ -569,6 +569,19 @@ Written on 8 November 2026, from the fix-round review of #98, fixed with no furt
 - the GitHub, list-hash and list-shape refusals write no file, a list with only its header or with an ID twice is refused, a June table row that is not synthetic is refused, and the rows check keeps its own check of the list (J11, minor 1, nits 2 and 3)
 - `labelled` counts every complaint with a decision, the ones not run for the budget included (J16 item 8, nit 6)
 
+## The dry run's setup ([spec 004](../specs/004-june-test-and-baselines/spec.md), pull request 9a, J1, J8, J11, J16), `tests/test_dry_run.py`
+
+Written on 8 November 2026, on synthetic data only (owner decisions of 6 and 8 November). Two earlier tests went in its green commit, since these replace them: Job A's pin waiting for pull request 9, and Job B's list and answers waiting for 9a.
+
+- the round 1 CSV has the CFPB header, `SYN-` IDs only, the pinned counts, Products from the label list, dbt's date and flag forms, one marker, one line break inside a narrative and one empty narrative (J8)
+- its pin names `syn_` files apart from the June pin, and its zip is stored with fixed fields, so it is the same bytes on every platform and the pin's (J8)
+- the script makes every committed file byte for byte, and `unpack` takes the zip against its pin (J8)
+- the dry run's list is the CSV's narrative rows with their content hashes, bound to its manifest and never the June list (J1)
+- Job A takes a synthetic row naming the dry run's list, with its pin, reads that list with `SYN-` IDs only, the notebook passes the target to both list reads, and its exit value on the dry run's rows passes the workflow's checks (J8, J16)
+- Job B reads the committed list bound to the row and the mock answers, seven accepted and one quarantined, refuses both for a real row, and runs end to end on fakes with no marker in any file and nothing printed (J5, J11)
+- the dry run's hash path refuses until the jobs' IDs are committed, then prints its list hash and the code hash with no gate and never the June list's hash, and the script still has no synthetic flag (J1)
+- the script prints names, sizes and hashes only, and writes the zip only outside the repo (J5)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

@@ -32,6 +32,8 @@ GATES_HEADER = "| Date | Gate | Result | Pin SHA-256 | Code hash | Evidence |"
 GATES_SEPARATOR = "|---|---|---|---|---|---|"
 GATE_RESULTS = ("pass", "fail")
 JUNE_LIST = Path("splits") / "june"
+# The dry run's own synthetic list (pull request 9a), apart from the June list, with `SYN-` IDs only.
+DRY_LIST = Path("splits") / "june_dry"
 FIRST_KINDS = ("real", "synthetic")
 LATER_KINDS = ("reproduction", "resume", "second")
 HASH = re.compile(r"^[0-9a-f]{64}$")
@@ -144,6 +146,16 @@ def list_hash(root):
     found = hashlib.sha256((folder / "june.csv").read_bytes()).hexdigest()
     if found != manifest["lists"]["june"]["sha256"]:
         raise JuneRunsError("splits/june/june.csv does not match its hash in splits/june/manifest.json")
+    return found
+
+
+def dry_run_list_hash(root):
+    """The SHA-256 of `splits/june_dry/june_dry.csv`, refused unless it matches its manifest."""
+    folder = Path(root) / DRY_LIST
+    manifest = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
+    found = hashlib.sha256((folder / "june_dry.csv").read_bytes()).hexdigest()
+    if found != manifest["lists"]["june_dry"]["sha256"]:
+        raise JuneRunsError("splits/june_dry/june_dry.csv does not match its hash in splits/june_dry/manifest.json")
     return found
 
 

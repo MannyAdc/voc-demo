@@ -22,8 +22,9 @@ run_sql = runner(spark)  # noqa: F821, the notebook's own global
 # Owner decision, 6 November: the counts Spark reads, with dbt's options, must be the laptop's for the pinned file.
 rows_read, narratives_read = spark_counts(run_sql, f"{JUNE_FOLDER}/{pin['file_name']}")
 checked_counts(pin, rows_read, narratives_read)
-rows = spark_rows(run_sql, listed_ids(root))
-checked_sample(root, rows)
+# Pull request 9a: a synthetic target reads the dry run's own list, with SYN- IDs only.
+rows = spark_rows(run_sql, listed_ids(root, run_target))
+checked_sample(root, rows, run_target)
 # Until pull request 6, Job A runs only a first row (checked_target), so the June ledger is new and nothing has been
 # used yet. Job B checks its own ledger (J12).
 dbutils.notebook.exit(exit_value(run_target, pin, figures(root, rows, 0)))  # noqa: F821

@@ -1,7 +1,8 @@
 """Spec 004, J11 and J16: Job B's logic, as the dry run of pull request 6a. Its one task, `job_b`, runs in Databricks
 as the owner (`cloud/job_b.yml`). The notebook in `cloud/job_b/` stays thin and calls `run`.
 
-The dry run takes only a synthetic first row of the run log, labels the synthetic sample with the mock backend, and
+The dry run takes only a synthetic first row of the run log, labels the synthetic sample with the mock backend's
+committed answers (`cloud/job_b/dry_run_answers.json`, pull request 9a), and
 writes no results file. Its results folder holds a note, `DRY_RUN.txt`, so the folder exists on the object store and
 explains itself (owner decision, 8 November). The real labelling, its ledger, its start marker, the TF-IDF refit, the
 scoring and the results files come in pull request 6b.
@@ -29,6 +30,7 @@ import json
 import re
 import time
 from decimal import Decimal
+from pathlib import Path
 
 from voc import approval
 from voc.job_a import VOLUME
@@ -185,14 +187,30 @@ def checked_approvals(approvals):
 
 
 def listed_for(root, run_target):
-    """The dry run's frozen list file's bytes, `complaint_id,content_hash` rows. Pull request 9a adds it, and its
-    SHA-256 must be the run log row's list hash (review of #98)."""
-    raise JobBError("the dry run's list is added in pull request 9a, so Job B cannot run yet")
+    """The dry run's frozen list file's bytes, `complaint_id,content_hash` rows (pull request 9a). Its SHA-256 must
+    be the run log row's list hash (review of #98), which `checked_list` checks."""
+    from voc.job_a import list_file
+
+    if run_target.kind != "synthetic":
+        raise JobBError("Job B reads the dry run's list for a synthetic row only")
+    return list_file(root, "synthetic").read_bytes()
+
+
+ANSWERS = Path("cloud") / "job_b" / "dry_run_answers.json"
 
 
 def mock_answers(root, run_target):
-    """The mock backend's synthetic answers for the dry run's prompts. Pull request 9a adds them."""
-    raise JobBError("the dry run's mock answers are added in pull request 9a, so Job B cannot run yet")
+    """The mock backend's synthetic answers for the dry run's prompts (pull request 9a), each a prompt and a text."""
+    if run_target.kind != "synthetic":
+        raise JobBError("Job B reads the dry run's mock answers for a synthetic row only")
+    try:
+        answers = json.loads((Path(root) / ANSWERS).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        answers = None
+    if (not isinstance(answers, list) or not all(isinstance(a, dict) and set(a) == {"prompt", "text"}
+                                                 and all(isinstance(v, str) for v in a.values()) for a in answers)):
+        raise JobBError("the dry run's mock answers cannot be read")
+    return answers
 
 
 def checked_list(data, run_target):
