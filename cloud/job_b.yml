@@ -1,0 +1,27 @@
+# Spec 004, J11: Job B, as the dry run of pull request 6a, made by the owner in the job page's YAML editor, as Job A
+# is. It runs as the owner, never as the robot, which may only start it (Can Manage Run). It has no trigger: the
+# approval workflow starts it with run-now and exactly its two run IDs (J16 item 6). Databricks fills its own run ID.
+# One run at a time, stopped after an hour. Between the owner's approval and Job B's end, nothing is merged to main,
+# since Job B refuses a GitHub run made from another commit than the one it runs (owner decision, 8 November).
+resources:
+  jobs:
+    voc_june_job_b:
+      name: voc-june-job-b
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      git_source:
+        git_url: https://github.com/MannyAdc/voc-demo
+        git_provider: gitHub
+        git_branch: main
+      parameters:
+        - name: job_a_run_id
+          default: ""
+        - name: github_run_id
+          default: ""
+      tasks:
+        - task_key: job_b
+          notebook_task:
+            notebook_path: cloud/job_b/job_b
+            source: GIT
+            base_parameters:
+              job_b_run_id: "{{job.run_id}}"
