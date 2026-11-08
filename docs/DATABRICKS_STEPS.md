@@ -7,10 +7,10 @@ computer, never in this repo or a chat.
 
 Three words used below:
 
-- A **catalog** is the top folder of Databricks' data. This workspace has one, `workspace`.
+- A catalog is the top folder of Databricks' data. This workspace has one, `workspace`.
 - A schema (a folder that holds tables and volumes) sits inside a catalog. In Databricks a schema is a folder, not
   a table's list of columns.
-- A **volume** (a folder for files, such as a zip) sits inside a schema.
+- A volume (a folder for files, such as a zip) sits inside a schema.
 
 What these steps make, and for how long:
 
@@ -27,8 +27,8 @@ What these steps make, and for how long:
 
 ## Copying a secret safely
 
-Every secret below is copied with a **copy icon** and never shown on screen. The copy icon works without showing the
-value. After the last paste of a step, clear the clipboard: press the Windows key and V together, then **Clear all**.
+Every secret below is copied with a **copy icon**, which works without showing the value on screen. Two boxes show a
+new secret once, in steps 2.4 and 2.5: while they are open, never take a screenshot or share your screen. After the last paste of a step, clear the clipboard: press the Windows key and V together, then **Clear all**.
 If that opens nothing because clipboard history is off, copy any harmless word instead, so the secret leaves the
 clipboard.
 
@@ -113,8 +113,9 @@ On 9 November the form had no test button. The dry run's Job A run is the destin
    `/Volumes/workspace/default/voc_raw/incoming/`. Never click the ▶ next to it until the dry run's step says so,
    since that unpauses it.
 5. Last, compare the live job with its file. Click the ⋮ just left of **Run now**, then the **YAML** item, and
-   compare it with `cloud/job_a.yml`. Only two places may differ: `warehouse_id` holds the warehouse's ID, and
-   `webhook_notifications` names the destination's ID. It must still say `pause_status: PAUSED`, and hold no
+   compare it with `cloud/job_a.yml`. Two places differ by design: `warehouse_id` holds the warehouse's ID, and
+   `webhook_notifications` names the destination's ID. The editor also adds or leaves out three defaults, listed in
+   step 2.7. It must still say `pause_status: PAUSED`, and hold no
    `email_notifications` block, since the job sends no failure email. Close the editor without saving.
 
 ### Step 1.7: Job B, `voc-june-job-b`
@@ -136,7 +137,8 @@ On 9 November the form had no test button. The dry run's Job A run is the destin
 2. In the search field, type `voc-june-runner` and click it. In the permission dropdown next to it, choose
    **Can View**. Click **Add**, then **Save**.
 3. In **Jobs & Pipelines**, click `voc-june-job-b`, and do the same with **Can Manage Run**. It lets the robot start
-   Job B, look at its runs and their output, and cancel a run, which the approval workflow needs.
+   Job B and look at its runs and their output, which the approval workflow needs. It also lets the robot cancel a
+   run, which nothing uses.
 4. Never give the robot **Can Manage** or **Is Owner**. They give far more than it needs.
 
 The two job IDs then go into `config/june_cloud.toml`, in a pull request of their own.
@@ -155,7 +157,9 @@ The two job IDs then go into `config/june_cloud.toml`, in a pull request of thei
 
 1. On the same Environments page, click **New environment**. **Name:** `june-run`. Click **Configure environment**.
 2. Tick **Required reviewers**, type `MannyAdc` in the box under it and click the account. Make sure **Prevent
-   self-review** is unticked, so the owner can approve a run the receiver started. Click **Save protection rules**.
+   self-review** is unticked, so the owner can approve a run the receiver started. If the page offers a setting that
+   lets administrators bypass the rules, leave it as it is: Job B refuses any run with no approval on record. Click
+   **Save protection rules**.
 3. Under **Deployment branches and tags**, allow the branch `main` only, as in step 2.1.
 
 ### Step 2.3: the addresses and the result secret
@@ -177,7 +181,8 @@ Databricks shows the secret once, so keep its box open until all six pastes are 
    Scope: `jobs` only. Click **Generate**. A box shows the **Client ID** and the **Secret**, each with a copy button.
 2. In GitHub's **june-figures**, add `VOC_DATABRICKS_CLIENT_ID` (the Client ID) and `VOC_DATABRICKS_CLIENT_SECRET`
    (the Secret). Do the same in **june-run**.
-3. In the Key Vault, **Objects**, **Secrets**, **+ Generate/Import**: `voc-databricks-client-id` with the Client ID,
+3. In the Key Vault, **Objects**, **Secrets**, **+ Generate/Import**, upload option **Manual**, no dates:
+   `voc-databricks-client-id` with the Client ID,
    then `voc-databricks-client-secret` with the Secret.
 4. Close the Databricks box. Clear the clipboard. **june-figures** lists 3 secrets, **june-run** lists 5.
 
@@ -187,16 +192,48 @@ Databricks shows the secret once, so keep its box open until all six pastes are 
    settings**, then **Personal access tokens**, **Fine-grained tokens**, **Generate new token**.
 2. **Token name:** `voc-receiver-dispatch`. **Resource owner:** `MannyAdc`. **Expiration:** 30 days. **Repository
    access:** **Only select repositories**, `MannyAdc/voc-demo`. Under **Repository permissions**, **Actions**:
-   **Read and write**. Nothing else. Click **Generate token**.
+   **Read and write**. Nothing else. GitHub adds **Metadata: Read-only** by itself, which is fine. Click
+   **Generate token**.
 3. In the Key Vault, **+ Generate/Import**: `voc-github-token` with the token, using GitHub's copy button. Clear the
    clipboard.
 
 ### Step 2.6: the receiver's settings
 
 1. In the Azure portal, the Function app, **Environment variables**, **App settings**.
-2. Click `VOC_JOB_A_JOB_ID` and set its value to Job A's ID. Click **Apply** in its box.
-3. Click **+ Add** for each, and **Apply**: `VOC_DATABRICKS_HOST` with the host, and
-   `VOC_DATABRICKS_CLIENT_ID`, `VOC_DATABRICKS_CLIENT_SECRET` and `VOC_GITHUB_TOKEN`, each as
-   `@Microsoft.KeyVault(VaultName=voc-june-kv;SecretName=<its secret's name>)`.
+2. Click `VOC_JOB_A_JOB_ID` and set its value to Job A's ID: `job_a_job_id` in `config/june_cloud.toml`, the same
+   number as your Notepad's `Job A ID`. Click **Apply** in its box.
+3. Click **+ Add** for each of these four, and **Apply**:
+   - `VOC_DATABRICKS_HOST` with the host from Notepad
+   - `VOC_DATABRICKS_CLIENT_ID` with `@Microsoft.KeyVault(VaultName=voc-june-kv;SecretName=voc-databricks-client-id)`
+   - `VOC_DATABRICKS_CLIENT_SECRET` with `@Microsoft.KeyVault(VaultName=voc-june-kv;SecretName=voc-databricks-client-secret)`
+   - `VOC_GITHUB_TOKEN` with `@Microsoft.KeyVault(VaultName=voc-june-kv;SecretName=voc-github-token)`
 4. Click **Apply** at the bottom, then **Confirm**. After a minute, **Refresh**. Every Key Vault row shows a green
-   tick under **Source**. On 9 November all five did.
+   tick under **Source**. On 9 November all six did.
+
+### Step 2.7: check the live Job A against its file
+
+Done by the owner on 9 November, as step 1.6, item 5, says. Copy the live job's YAML (the ⋮ just left of **Run now**,
+the **YAML** item, Ctrl+A, Ctrl+C, then close without saving) into Notepad and compare it with `cloud/job_a.yml`. On 9
+November Claude compared them from a copy the owner saved on the Desktop for the check, deleted after it. Beside the warehouse's ID
+and the destination's ID, the editor differed in three defaults, none a problem:
+
+- `max_concurrent_runs` is left out, since 1 is Databricks' default.
+- `queue` is on, Databricks' default: a second start waits instead of being dropped, and `unpack` refuses a second
+  file anyway.
+- `performance_target` is `PERFORMANCE_OPTIMIZED`: the serverless compute starts faster and uses more of Free
+  Edition's daily allowance. Job A is small.
+
+The trigger was still paused, and there was no failure email.
+
+### Step 2.8: remove the owner's Key Vault Secrets Officer role
+
+The owner gave themselves Key Vault Secrets Officer on 7 November to add secrets. Once the last ones are in, it goes,
+so a stolen sign-in or a wrong click cannot read or change the secrets without adding the role back first, which Azure
+logs. The owner stays the owner of everything, and can add it back in two minutes, for example to renew the robot's
+secret and the token after 30 days.
+
+1. In the Azure portal, open **Key vaults**, then click the name `voc-june-kv`.
+2. In its left menu, click **Access control (IAM)**, then the **Role assignments** tab.
+3. Under **Key Vault Secrets Officer**, tick the row with your own account only. Never tick the Function app's row
+   under **Key Vault Secrets User**, which the receiver needs.
+4. Click **Remove**, then **Yes**. Done on 9 November.

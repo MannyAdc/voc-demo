@@ -2292,3 +2292,14 @@ Times are local, from the chat's message times. The owner did each step, one at 
   - The live job is checked against `cloud/job_a.yml` in step 1.6, and `cloud/job_a.yml` and the spec say the webhook may be attached by clicking.
 - Red commit `91c3742` at 09:30 (git's commit time): only `tests/test_dry_run.py`, 6 new tests, through the gate.
 - In the green commit, the tests that named the old results path take the new one, marked by this log line: three in `tests/test_job_b.py` and one in `tests/test_dry_run.py`.
+- Green commit `d6ec146` at 09:47 (git's commit time), through the gate, and pushed.
+- A fresh reviewer agent read this fix round's diff only, the last round under the owner's stopping rule: no serious finding, 7 minor, 5 nits. The results path is consistent everywhere, and steps 2.1 to 2.6 match J10 and J13.
+- 10:02 Its findings posted on #100. With no serious finding, the owner's rule applies: Claude fixes the minors and nits, and the owner merges with no further review round. Two needed the owner in the portals first.
+- 10:11 Step 2.7: the owner copied the live Job A's YAML to a file on the Desktop. Claude compared it with `cloud/job_a.yml`, reading key paths and showing the warehouse and destination IDs as set only. Beside those two, the editor left out `max_concurrent_runs` (1 is the default), and added `queue` on and `performance_target: PERFORMANCE_OPTIMIZED`. The trigger was paused and there was no failure email.
+- AI mistake, caught by that comparison: the steps said only two places may differ. The three defaults are now listed.
+- 10:20 The owner asked why their own account should lose a role. Claude explained that only the day-to-day right to read and change the vault's secrets goes, the owner stays the owner, and can add it back in two minutes, for example to renew the robot's secret and the token after 30 days.
+- 10:23 Step 2.8: the owner removed their Key Vault Secrets Officer role. The Function app keeps Key Vault Secrets User.
+- AI mistake, caught by the review (minor 3): step 2.6 said five green ticks. The owner's screenshot at 09:36 shows six Key Vault rows with a green tick, as the receiver has six Key Vault references.
+- The owner deleted the Desktop copy of the live job's YAML after the check.
+- Red commit `fdfb6db` at 10:24 (git's commit time): only `tests/test_dry_run.py`, 4 new tests, through the gate.
+- In the green commit, the test of steps 1.1 to 1.8 is renamed for what it checks (nit 8 of the fix-round review).

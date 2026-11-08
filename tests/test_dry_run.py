@@ -535,7 +535,7 @@ def test_J16_the_jobs_ids_are_the_jobs_the_owner_made():
     assert cloud_settings(REPO) == {"job_a_job_id": 980148595231243, "job_b_job_id": 111509808656471}
 
 
-def test_J1_the_databricks_steps_go_click_by_click_with_placeholders_only():
+def test_J1_the_databricks_steps_1_go_click_by_click_with_no_azure_host_or_guid():
     """Owner decision, 9 November: every step names its clicks in order, for a reader new to Databricks."""
     text = DATABRICKS_STEPS.read_text(encoding="utf-8")
     steps = re.findall(r"^### Step (1\.[0-9]+): ", text, flags=re.M)
