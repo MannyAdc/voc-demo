@@ -601,3 +601,45 @@ def test_J8_the_spec_and_the_steps_name_the_dry_run_as_the_webhook_s_test():
     assert "the dry run's Job A run is that test" in spec and "attach the destination by clicking" in spec
     dry = (REPO / "docs" / "DRY_RUN_STEPS.md").read_text(encoding="utf-8")
     assert "DATABRICKS_STEPS.md" in dry and "Claude gives the click-by-click steps in the chat" not in dry
+
+
+# The fix-round review of #100 (owner's stopping rule: nothing serious, so Claude fixes the minors and nits)
+
+
+def test_J8_the_dry_run_steps_say_what_to_do_if_no_approval_run_appears():
+    """Minor 1: the dry run's Job A run is the webhook's test, and the spec no longer names a destination test."""
+    spec = (REPO / "specs" / "004-june-test-and-baselines" / "spec.md").read_text(encoding="utf-8")
+    assert "Use the destination's test" not in spec
+    dry = (REPO / "docs" / "DRY_RUN_STEPS.md").read_text(encoding="utf-8")
+    assert "no `June approval` run appears" in dry and "J8's fallback" in dry
+
+
+def test_J1_the_steps_record_the_live_job_check_and_the_officer_role_s_removal():
+    """Minors 2 and 6: the owner compared the live Job A with its file, and removed the Secrets Officer role."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    assert "### Step 2.7: " in text and "### Step 2.8: " in text
+    check = text.split("### Step 2.7: ")[1].split("\n### ")[0]
+    for words in ("`max_concurrent_runs`", "`queue`", "`performance_target`"):
+        assert words in check, words
+    role = text.split("### Step 2.8: ")[1].split("\n### ")[0]
+    assert "Key Vault Secrets Officer" in role and "Key Vault Secrets User" in role
+
+
+def test_J10_the_steps_name_every_secret_the_workflow_and_the_receiver_read():
+    """Minor 5: the steps' secret names are the workflow's and the receiver's own."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    workflow = (REPO / ".github" / "workflows" / "june_approval.yml").read_text(encoding="utf-8")
+    for name in set(re.findall(r"secrets\.([A-Z_]+)", workflow)):
+        assert f"`{name}`" in text, name
+    settings = json.loads((REPO / "receiver" / "app_settings.json").read_text(encoding="utf-8"))
+    for value in settings.values():
+        found = re.search(r"SecretName=([a-z-]+)\)", value)
+        if found and found.group(1) not in ("voc-basic-user", "voc-basic-password", "voc-hmac-secret"):
+            assert f"SecretName={found.group(1)})" in text, found.group(1)
+
+
+def test_J1_the_steps_count_six_green_ticks_and_warn_about_the_one_time_boxes():
+    """Minors 3 and 4: the receiver has six Key Vault references, and two boxes show a new secret once."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    assert "all six did" in text and "all five did" not in text
+    assert "never take a screenshot or share your screen" in text
