@@ -2182,3 +2182,10 @@ Times below are local, from GitHub, the chat's message times, Application Insigh
 - Red commit `9e099ab` at 12:20 (git's commit time): only `tests/test_job_b.py`, 10 new tests and five made stricter, through the gate.
 - In the green commit, tests change, each marked in the test: the dry run's list comes as its bytes, bound to the row's list hash, so the helper, Job A's exit value in two tests and one marker's expected hash change. The old Job A re-check test goes, since the per-reason one covers it.
 - Claude's choice: a missing marker is any error whose class, or a parent class, is named `NotFound`, read without importing the SDK, so the laptop's tests need no Databricks package.
+- Green commit `65abf30` at 12:38 (git's commit time), through the gate, and pushed.
+- A fresh reviewer agent read this fix round's diff only, the last round under the owner's stopping rule: no serious finding, 1 minor, 5 nits. All 12 findings of the first review were fixed as intended, every changed test is marked, and nothing was weakened.
+- 12:51 Its findings posted on #98. With no serious finding, the owner's rule applies: Claude fixes the minor and the nits, and the owner merges with no further review round.
+- Corrections to this round's lines above (nit 4). The lines are kept as written:
+  - The red commit `9e099ab` made six tests stricter, not five: the frozen paths, the approvals, the rejection, the rows, the figures and the exit values.
+  - In the green commit `65abf30`, "the helper" was two changed helpers, `_approved` and `_patched`, and a new one, `_list_hash`.
+- Red commit `0782d4b` at 12:52 (git's commit time): only `tests/test_job_b.py`, 3 new tests and 4 made stricter, through the gate. Two of the new ones passed at once, since the code already refused those cases. They now show it.

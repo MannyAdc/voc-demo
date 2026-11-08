@@ -557,12 +557,17 @@ Written on 8 November 2026, with fakes for the Jobs API, GitHub and the volume (
 - its exit value has the contract's keys as compact sorted JSON and passes the workflow's and the receiver's checks. A finished run's results folder holds only the dry run's note, and a stopped run names no folder and gives its reason (J16 item 8)
 - it prints nothing, its refusals hold no row text and no earlier exception, a failure of the Jobs API or the volume is refused with its type only, and the notebook names no secret (J5)
 
-Written on 8 November 2026, in the fix round of #98, from its review and the owner's decisions. Two lines above changed: the list now comes as its bytes, and the exit values pass the receiver's own check too.
+Written on 8 November 2026, in the fix round of #98, from its review and the owner's decisions. What two lines above describe changed: the list now comes as its bytes, and the exit values pass the receiver's own check too.
 
 - the dry run's list is read from its bytes, which must hash to the run log row's list hash, and its IDs and hashes are checked before any SQL runs (J11, minors 1 and 2)
 - every marker comes after every outside call, and no refusal writes a file (J11, minor 3)
 - the exit values pass the receiver's own check, any kind of not-found error means a marker is missing, and a job parameter with no name is refused (J11, J16 item 8, minors 4 and 5, nit 6)
 - the contract defines `labelled`, the job file names no `run_as`, frozen paths match whole, and each re-check of Job A is refused for its own reason (J1, J11, J16, nits 7, 9, 10 and 11)
+
+Written on 8 November 2026, from the fix-round review of #98, fixed with no further review round:
+
+- the GitHub, list-hash and list-shape refusals write no file, a list with only its header or with an ID twice is refused, a June table row that is not synthetic is refused, and the rows check keeps its own check of the list (J11, minor 1, nits 2 and 3)
+- `labelled` counts every complaint with a decision, the ones not run for the budget included (J16 item 8, nit 6)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
