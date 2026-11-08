@@ -595,6 +595,13 @@ Written on 8 November 2026, from the fix-round review of #99, fixed with no furt
 - an unreadable dry run list is refused as unreadable, the re-run steps say how to start a fresh workflow run by hand, and the kept note holds counts (J1, J16, minors 1 and 2, nit 3)
 - the note ends with its counts, and the mock answers test uses the function Job B's run uses (J11, nits 4 and 6)
 
+## The jobs' IDs and the Databricks steps ([spec 004](../specs/004-june-test-and-baselines/spec.md), J1, J16 item 10), `tests/test_dry_run.py`
+
+Written on 9 November 2026, after the owner made Job A and Job B in the workspace:
+
+- `config/june_cloud.toml` holds Job A's and Job B's IDs, and a checkout without it is made by removing the copy (J16 item 10)
+- `docs/DATABRICKS_STEPS.md` gives steps 1.1 to 1.8 click by click, with placeholders only and no real address or ID (J1, owner decision of 9 November)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

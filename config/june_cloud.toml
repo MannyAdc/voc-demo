@@ -1,0 +1,5 @@
+# Spec 004, J16 item 10: the jobs' IDs, made by the owner in the workspace on 9 November 2026 from cloud/job_a.yml and
+# cloud/job_b.yml (docs/DATABRICKS_STEPS.md). Frozen with the code (J1). The receiver's VOC_JOB_A_JOB_ID setting holds
+# Job A's ID.
+job_a_job_id = 980148595231243
+job_b_job_id = 111509808656471
