@@ -362,13 +362,8 @@ def marked_used(store, run_target, job_a_run_id, github_run_id, job_b_run_id):
 # The labelling and the exit value
 
 
-def labelled(root, rows, answers):
-    """The mock backend's labels for the rows. Returns how many were decided, and whether the run stopped."""
-    outcomes, stopped = _outcomes(root, rows, answers)
-    return len(outcomes), stopped
-
-
 def _outcomes(root, rows, answers):
+    """The mock backend's decisions for the rows, and whether the labelling stopped."""
     from voc import pipeline
     from voc.backends import make_backend
     from voc.labels import load_labels

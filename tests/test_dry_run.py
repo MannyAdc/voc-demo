@@ -420,7 +420,7 @@ def test_J8_the_pin_s_round_must_match_the_list_s_round(tmp_path):
         pin_for(root, "synthetic")
 
 
-def test_J16_job_a_refuses_a_synthetic_row_naming_another_round_s_list(tmp_path):
+def test_J16_job_a_refuses_a_synthetic_row_naming_another_list_hash(tmp_path):
     """Minor 5: the checkout's dry run list is there, and the row names a stale one."""
     from voc.job_a import JobAError, checked_target
 

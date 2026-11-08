@@ -590,6 +590,11 @@ Written on 8 November 2026, in the fix round of #99, from its review and the own
 - Job B runs on a checkout with its real run log row, the jobs' IDs and its code hash, with nothing patched (J11, nit 11)
 - the steps keep `main` still from the upload, ask for a fresh upload on a re-run once Job B marked its run used, use the repo's Python, and drop every table and view (J1, minors 2, 3 and 7, nit 10)
 
+Written on 8 November 2026, from the fix-round review of #99, fixed with no further review round. The stale list test above is renamed for what it checks, a list hash other than the checkout's.
+
+- an unreadable dry run list is refused as unreadable, the re-run steps say how to start a fresh workflow run by hand, and the kept note holds counts (J1, J16, minors 1 and 2, nit 3)
+- the note ends with its counts, and the mock answers test uses the function Job B's run uses (J11, nits 4 and 6)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

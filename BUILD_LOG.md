@@ -2225,3 +2225,9 @@ Times below are local, from GitHub, the chat's message times, Application Insigh
 - 20:19 Owner decisions on #99's review: fix every minor and nit as Claude recommended, with Job B's note giving the counts for minor 1, and the same stopping rule, one fresh review of this fix round's diff only, and if it finds nothing serious, Claude fixes the minors and the owner merges.
 - AI mistake in the fix round, caught by Python before any commit: Claude's script that edits the tests broke its own string escapes twice, and a third try wrote a line break into a test's string. Claude fixed the test file by hand and ran the tests before the red commit.
 - Red commit `d9323b7` at 20:21 (git's commit time): only `tests/test_dry_run.py`, 6 new tests and the round 1 tests made to read the round from the pin, through the gate. Two of the new tests passed at once, since the code already refused those cases.
+- Green commit `401f691` at 20:44 (git's commit time), through the gate, and pushed.
+- A fresh reviewer agent read this fix round's diff only, the last round under the owner's stopping rule: no serious finding, 2 minor, 6 nits. All 12 findings of the first review were fixed, and the real June path is unchanged in behaviour.
+- 20:56 Its findings posted on #99. With no serious finding, the owner's rule applies: Claude fixes the minors and nits, and the owner merges with no further review round.
+- AI mistake, caught by that review: the re-run steps did not say how to start a fresh workflow run, which the owner does by hand on `main`, since GitHub's re-run button gives a second attempt that Job B refuses (minor 1).
+- Red commit `d40a1c0` at 20:57 (git's commit time): only `tests/test_dry_run.py`, 2 new tests and 4 tests tightened, through the gate.
+- In the green commit, the stale list test is renamed for what it checks, a list hash other than the checkout's, and Job B's `labelled` goes, since only a test called it.

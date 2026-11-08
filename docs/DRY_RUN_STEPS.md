@@ -46,14 +46,16 @@ If a step fails, tell Claude the step and its fixed text or status. Refusals hol
 14. Drop every table and view in the `voc_june` schema, so the June staging table holds no synthetic row tagged
     as June beside the real ones. The real run builds them again.
 15. Keep the receiver's `result` row, the used markers and the results folder's `DRY_RUN.txt`, as the dry run's
-    record. They hold IDs, states and fixed text only.
+    record. They hold IDs, states, counts and fixed text only.
 
 The real run's last step checks that this clean-up was done.
 
 ## A re-run
 
 A re-run with no code change uses the same round. If Job B refused before it marked anything used, a fresh
-workflow run and a fresh approval are enough. Once Job B has marked the Job A run used, it needs a fresh Job A
+workflow run and a fresh approval are enough. The receiver starts the workflow only on Job A's webhook, and
+GitHub's re-run button gives a second attempt, which Job B refuses. So the owner will
+start `June approval` by hand on `main`, with the Job A run's ID (J8's fallback), and approve it again. Once Job B has marked the Job A run used, it needs a fresh Job A
 run too: empty the `incoming` folder and make a fresh upload of the same zip (review of #99). A re-run after a
 code fix is a new round: Claude adds the round's synthetic CSV with new `SYN-` IDs, and `scripts/make_dry_run.py
 --round <n> --repo` writes its list, pin and mock answers. A list has one first row, and the June staging table

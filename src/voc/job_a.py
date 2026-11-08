@@ -115,8 +115,8 @@ def checked_target(root):
     except (OSError, ValueError, KeyError):  # JuneRunsError is a ValueError
         expected = None
     if expected is None:
-        raise JobAError(f"the run log's last row names a June list other than {name}: the checkout's {name} or its "
-                        "manifest cannot be read")
+        raise JobAError(f"the checkout's June list file, {name}, or its manifest cannot be read, so the run log's "
+                        "last row cannot be checked")
     if run_target.list_hash != expected:
         raise JobAError(f"the run log's last row names a June list other than {name}")
     if code_hash(root) != run_target.code_hash:
