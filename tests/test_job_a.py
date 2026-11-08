@@ -141,13 +141,6 @@ def test_J16_a_run_log_that_breaks_its_rules_is_refused(tmp_path):
         _job_a().target(_log(tmp_path, [("2026-11-06 10:00", "synthetic", C, B, "dry run")]), real_list_hash=C)
 
 
-def test_J16_the_real_kind_uses_the_june_pin_and_the_dry_run_s_pin_waits_for_pull_request_9():
-    pin = _job_a().pin_for(REPO, "real")
-    assert pin["file_name"].endswith(".csv") and pin["zip_file_name"].endswith(".zip") and pin["rows"] > 0
-    with pytest.raises(_job_a().JobAError, match="pull request 9"):
-        _job_a().pin_for(REPO, "synthetic")
-
-
 # unpack: the zip and the CSV against the pin, before dbt reads a byte (J8, J5)
 
 

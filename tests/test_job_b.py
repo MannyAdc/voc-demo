@@ -247,15 +247,6 @@ def test_J11_job_b_refuses_an_id_that_is_not_synthetic(monkeypatch):
     assert files.files == {}
 
 
-def test_J11_job_b_s_list_and_answers_wait_for_pull_request_9a(tmp_path):
-    from voc.job_a import Target
-
-    target = Target(kind="synthetic", entry_kind="synthetic", list_hash=A, code_hash=B, row=1)
-    for seam in (_job_b().listed_for, _job_b().mock_answers):
-        with pytest.raises(_job_b().JobBError, match="pull request 9a"):
-            seam(tmp_path, target)
-
-
 def test_J11_job_b_never_makes_the_api_backend_or_reads_a_key(monkeypatch):
     monkeypatch.setenv("LLM_BACKEND", "api")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-" + "ant-" + "syn" * 10)

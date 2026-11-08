@@ -2191,3 +2191,46 @@ Times below are local, from GitHub, the chat's message times, Application Insigh
 - Red commit `0782d4b` at 12:52 (git's commit time): only `tests/test_job_b.py`, 3 new tests and 4 made stricter, through the gate. Two of the new ones passed at once, since the code already refused those cases. They now show it.
 - Green commit `ad3264a` at 13:19 (git's commit time), through the gate. CI green on `ad3264a`.
 - 13:37 Merge verdict on #98: PENDING with every mechanical check passing. Every finding of its two review rounds is fixed, all chosen by the owner. The second review found no serious problem, so under the owner's stopping rule its minor and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
+- 13:54 Claude marked #98 ready, and 14:14 the owner merged it (times from GitHub, `c45af5f`).
+- The owner asked Claude to start pull request 9a, the dry run's setup, at the same pace.
+- A planning agent read spec 004, the frozen-code rules, Job A, Job B, the approval workflow, the hash script and dbt, and proposed 9a. Claude checked its key points against the code: the run log allows one first row per list (`check_runs`), and the June staging table only adds rows (`stg_complaints`, incremental).
+- The owner asked whether the recommendations would cut the demonstration's scope, the cloud chain with Databricks' webhook, the Azure receiver and the GitHub approval. Claude's answer: none removes a link. They change only the order of the pull requests and add a clean-up step, and the dry run still exercises every link from the upload to the result message. It still leaves the real model, its key, ledger and spend limit to 6b and the real run, as agreed.
+- Owner decisions on 9a ("Go"):
+  - The synthetic run log row leaves 9a for a pull request of its own, after the job IDs, since any later change to the frozen code, review fixes and the job IDs file included, would make it stale.
+  - The job IDs stay with the Databricks setup, from 13 November. The order is 9a, the owner creates the jobs, the job IDs pull request, the row's pull request, then the dry run.
+  - The script that makes the dry run's files takes a round number, so a re-run after a code fix gets new synthetic IDs, a new list and a new row.
+  - A clean-up after the dry run is required: the dry run's tables in the June schema, and the synthetic CSV and zip in the volume.
+- AI mistake, caught by Claude when it read the dbt tests after the owner's decision: Claude had said that leftover synthetic rows would make the real June run's data tests fail. They would not. The row count test counts the file, and the staging table's tests pass synthetic rows. The clean-up stays required for a smaller reason: otherwise the June staging table keeps synthetic rows tagged as June beside the real ones. Claude told the owner at once.
+- Work start, 14:52: branch `feat/dry-run-setup`, worktree `../voc-demo-dry`, from main at `c45af5f`.
+- Red commit `062b45b` at 14:59 (git's commit time): only `tests/test_dry_run.py`, through the gate.
+- Claude's choices, for the owner to see:
+  - The round 1 CSV is a committed synthetic fixture, `tests/fixtures/june_dry_run/syn_june_dry_run_r1.csv`: 12 rows with `SYN-91xx` IDs, 11 narratives, one marker for a live J5 check, one line break inside a narrative, and one empty narrative. The list holds the first 8 narrative rows, so the sample is not the whole file.
+  - `scripts/make_dry_run.py` makes the zip outside the repo for the upload, and with `--repo` writes the committed list, manifest, pin and mock answers. The zip is stored with no compression and fixed fields, so it is the same bytes on Windows and Linux, and CI rebuilds it and compares it with the pin.
+  - The dry run's pin is `config/june_dry_run.toml`, apart from `config/data_files.toml`, so B16's file holds only real exports.
+  - Job A's real path is unchanged: with no target, or a real one, it reads the June list, and its refusal still names `splits/june/june.csv`. A synthetic target reads the dry run's list, with `SYN-` IDs only.
+  - `scripts/june_hash.py --dry-run` refuses until `config/june_cloud.toml` holds the jobs' IDs, so the order of the pull requests is kept in code.
+  - The mock answers quote each narrative's first sentence, except the last listed complaint's, which quotes a sentence its text does not hold, so the dry run shows 7 accepted and 1 quarantined.
+- In the green commit, two tests go, since the new ones replace them: Job A's synthetic pin waiting for pull request 9, and Job B's list and answers waiting for 9a.
+- The owner's "Go" on 9a above came at 14:51 (the chat's message time).
+- Green commit `5342503` at 15:36 (git's commit time), through the gate. The full suite passed on it first. Draft pull request #99 opened at 15:49.
+- A fresh reviewer agent read the diff, the spec and CLAUDE.md: no serious finding, 7 minor, 5 nits. It found the real June path unchanged, synthetic kept synthetic, the CSV passing the dbt models and tests, the zip the same bytes on every platform, and the mock answers matching Job B's prompts.
+- 15:57 Its findings posted on #99.
+- At 15:52 and 15:54 the owner asked whether the thread could go offline while the reviewer agent ran. Claude's answer: yes, everything was pushed and nothing ran in the cloud, and the read-only reviewer would only stop, to be run again.
+- AI mistakes in 9a, caught by that review:
+  - The steps promised the owner would see "7 accepted and 1 quarantined", which nothing in the cloud showed (minor 1).
+  - The steps started the window with no merge to `main` at the approval, but it must start at the upload (minor 2).
+  - The steps said a re-run of the same round needs only a fresh workflow run, but once Job B marks the Job A run used it needs a fresh upload too (minor 3).
+  - The steps used plain `python`, not the repo's `uv run` (minor 7).
+  - The build log line above says Job A's real refusal "still names `splits/june/june.csv`". That holds for `checked_target` only. `checked_sample`'s real refusal changed to "the frozen list does not match its hash" (nit 8). The line is kept as written.
+- 20:19 Owner decisions on #99's review: fix every minor and nit as Claude recommended, with Job B's note giving the counts for minor 1, and the same stopping rule, one fresh review of this fix round's diff only, and if it finds nothing serious, Claude fixes the minors and the owner merges.
+- AI mistake in the fix round, caught by Python before any commit: Claude's script that edits the tests broke its own string escapes twice, and a third try wrote a line break into a test's string. Claude fixed the test file by hand and ran the tests before the red commit.
+- Red commit `d9323b7` at 20:21 (git's commit time): only `tests/test_dry_run.py`, 6 new tests and the round 1 tests made to read the round from the pin, through the gate. Two of the new tests passed at once, since the code already refused those cases.
+- Green commit `401f691` at 20:44 (git's commit time), through the gate, and pushed.
+- A fresh reviewer agent read this fix round's diff only, the last round under the owner's stopping rule: no serious finding, 2 minor, 6 nits. All 12 findings of the first review were fixed, and the real June path is unchanged in behaviour.
+- 20:56 Its findings posted on #99. With no serious finding, the owner's rule applies: Claude fixes the minors and nits, and the owner merges with no further review round.
+- AI mistake, caught by that review: the re-run steps did not say how to start a fresh workflow run, which the owner does by hand on `main`, since GitHub's re-run button gives a second attempt that Job B refuses (minor 1).
+- Red commit `d40a1c0` at 20:57 (git's commit time): only `tests/test_dry_run.py`, 2 new tests and 4 tests tightened, through the gate.
+- In the green commit, the stale list test is renamed for what it checks, a list hash other than the checkout's, and Job B's `labelled` goes, since only a test called it.
+- Green commit `856d2fa` at 21:19 (git's commit time), through the gate, and pushed.
+- CI on `856d2fa` ran twice, as on every push to a pull request. One run passed every check. The other failed all three jobs at their first download step: installing the packages, the repo checks and the gitleaks download (step results read from GitHub's API, never the logs). Claude never re-runs a workflow, so the owner re-ran the failed jobs, with debug logging left off, since the repo's logs are public. The re-run passed, so CI is green on `856d2fa`.
+- 22:04 Merge verdict on #99: PENDING with every mechanical check passing. Every finding of its two review rounds is fixed, all chosen by the owner. The second review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.

@@ -3,7 +3,9 @@
 
 - The run's target is the last row of `runs/JUNE_RUNS.md` at the frozen commit, with the kind of its list's first
   row, `real` or `synthetic` (J16). With no row, Job A refuses. Both notebooks first check that the row is a first
-  row, that its list is `splits/june/june.csv` and that its code is the code they run (`checked_target`). A later
+  row, that its list is its kind's list, `splits/june/june.csv` for a real row and the dry run's
+  `splits/june_dry/june_dry.csv` for a synthetic one (pull request 9a), and that its code is the code they run
+  (`checked_target`). A synthetic row takes the dry run's pin, `config/june_dry_run.toml`, and `SYN-` IDs only. A later
   row (a resume, a reproduction or a second run) is refused until Job A can read the June ledger's use, in pull
   request 6 (owner decision, 6 November).
 - `unpack` takes the one zip from the incoming folder and checks it against the pin of its kind: the zip's name,
@@ -39,8 +41,8 @@ from dataclasses import dataclass
 from decimal import ROUND_UP, Decimal
 from pathlib import Path
 
-from voc.frozen import (FIRST_KINDS, GATES, RUNS, JuneRunsError, check_gates, check_runs, code_hash, list_hash,
-                        read_gates, read_runs)
+from voc.frozen import (DRY_LIST, FIRST_KINDS, GATES, JUNE_LIST, RUNS, JuneRunsError, check_gates, check_runs,
+                        code_hash, dry_run_list_hash, list_hash, read_gates, read_runs)
 from voc.repo_checks import CFPB_COLUMNS
 
 CONTRACT = "voc-june-1"
@@ -60,6 +62,7 @@ COMPLAINT_ID = CFPB_COLUMNS.index("Complaint ID")
 # Java's white space, as Spark's `rlike '\\S'` reads it (dbt/macros/targets.sql, `has_text`). Python's own `\\s`
 # also holds other Unicode spaces, such as the no-break space, which Spark counts as text.
 JAVA_SPACE = " \t\n\x0b\f\r"
+SYNTHETIC_ID = re.compile(r"SYN-[0-9]{1,19}")
 
 
 class JobAError(ValueError):
@@ -91,14 +94,31 @@ def target_for(root):
     return target(Path(root) / RUNS, real_list_hash=list_hash(root))
 
 
+def list_file(root, kind):
+    """The frozen list of the run's kind: the June list for a real row, the dry run's for a synthetic one."""
+    return Path(root) / (JUNE_LIST / "june.csv" if kind == "real" else DRY_LIST / "june_dry.csv")
+
+
+def list_hash_for(root, kind):
+    return list_hash(root) if kind == "real" else dry_run_list_hash(root)
+
+
 def checked_target(root):
     """The run's target, refused unless Job A can run it from this checkout. Both notebooks call it first."""
     run_target = target_for(root)
     if run_target.entry_kind not in FIRST_KINDS:
         raise JobAError(f"the run log's last row is a {run_target.entry_kind} row, and Job A runs only a first row "
                         "until it can read the June ledger's use (pull request 6)")
-    if run_target.list_hash != list_hash(root):
-        raise JobAError("the run log's last row names a June list other than splits/june/june.csv")
+    name = list_file(".", run_target.kind).as_posix().removeprefix("./")
+    try:
+        expected = list_hash_for(root, run_target.kind)
+    except (OSError, ValueError, KeyError):  # JuneRunsError is a ValueError
+        expected = None
+    if expected is None:
+        raise JobAError(f"the checkout's June list file, {name}, or its manifest cannot be read, so the run log's "
+                        "last row cannot be checked")
+    if run_target.list_hash != expected:
+        raise JobAError(f"the run log's last row names a June list other than {name}")
     if code_hash(root) != run_target.code_hash:
         raise JobAError("the code this job runs is not the frozen code of the run log's last row")
     if run_target.entry_kind == "real":
@@ -116,9 +136,25 @@ def checked_target(root):
 def pin_for(root, kind):
     from voc.datafile import load_pins
 
-    if kind != "real":
-        raise JobAError("the dry run's pin is named in pull request 9, so a synthetic run cannot start yet")
-    pin = load_pins(Path(root) / "config" / "data_files.toml")[MONTH]
+    if kind == "real":
+        pin = load_pins(Path(root) / "config" / "data_files.toml")[MONTH]
+    elif kind == "synthetic":
+        # The dry run's own pin (pull request 9a), never the June pin.
+        pin = load_pins(Path(root) / "config" / "june_dry_run.toml").get("june_dry_run", {})
+        if not str(pin.get("file_name", "")).startswith("syn_") or not str(pin.get("zip_file_name", "")).startswith(
+                "syn_"):
+            raise JobAError("the dry run's pin must name syn_ files")
+        # Review of #99: the pin and the list come from the same round of scripts/make_dry_run.py.
+        pin_round = load_pins(Path(root) / "config" / "june_dry_run.toml").get("round")
+        try:
+            manifest = json.loads((Path(root) / DRY_LIST / "manifest.json").read_text(encoding="utf-8"))
+            list_round = manifest["lists"]["june_dry"]["round"]
+        except (OSError, ValueError, KeyError, TypeError):
+            list_round = None
+        if not isinstance(pin_round, int) or pin_round != list_round:
+            raise JobAError("the dry run's pin and list are not of the same round")
+    else:
+        raise JobAError("a run's kind is real or synthetic")
     for key in ("file_name", "size_bytes", "sha256", "rows", "narratives", "zip_file_name", "zip_size_bytes",
                 "zip_sha256"):
         if key not in pin:
@@ -191,8 +227,14 @@ def _records(path):
 
 
 def _check_shape(path, pin):
-    """The CFPB header, the same number of fields on every row, and the pinned row count. Counts only."""
-    rows = sum(1 for _ in _records(path))
+    """The CFPB header, the same number of fields on every row, and the pinned row count. Counts only. The dry
+    run's CSV must hold `SYN-` IDs only, a second guard behind its pin (review of #99)."""
+    synthetic = str(pin.get("file_name", "")).startswith("syn_")
+    rows = 0
+    for record in _records(path):
+        rows += 1
+        if synthetic and not SYNTHETIC_ID.fullmatch(record[COMPLAINT_ID]):
+            raise JobAError(f"row {rows} of the dry run's CSV has an ID that is not synthetic")
     if rows != pin["rows"]:
         raise JobAError(f"the CSV has {rows} rows, and the pin has {pin['rows']}")
 
@@ -345,13 +387,22 @@ def spark_counts(run_sql, month_file):
     return counts
 
 
-def listed_ids(root):
-    data = (Path(root) / "splits" / "june" / "june.csv").read_text(encoding="utf-8")
-    return [row[0] for row in list(csv.reader(io.StringIO(data)))[1:]]
+def _synthetic_only(ids, kind):
+    if kind != "real" and not all(SYNTHETIC_ID.fullmatch(cid) for cid in ids):
+        raise JobAError("the dry run's list holds an ID that is not synthetic")
+
+
+def listed_ids(root, run_target=None):
+    """The frozen list's IDs: the June list's, or the dry run's for a synthetic target (pull request 9a)."""
+    kind = "real" if run_target is None else run_target.kind
+    data = list_file(root, kind).read_text(encoding="utf-8")
+    ids = [row[0] for row in list(csv.reader(io.StringIO(data)))[1:]]
+    _synthetic_only(ids, kind)
+    return ids
 
 
 def sample_sql(listed):
-    # Real IDs are numbers, and the dry run's synthetic ones start with SYN- (pull request 9). They go into the SQL.
+    # Real IDs are numbers, and the dry run's synthetic ones start with SYN- (pull request 9a). They go into the SQL.
     if not listed or not all(re.fullmatch(r"(SYN-)?[0-9]{1,19}", cid) for cid in listed):
         raise JobAError("the frozen June list holds an ID that is not a complaint ID")
     return ("select complaint_id, product, narrative from workspace.voc_june.stg_complaints where complaint_id in ("
@@ -378,17 +429,18 @@ def checked_counts(pin, rows, narratives):
         raise JobAError(f"Spark read {narratives} narratives, and the pin has {pin['narratives']}")
 
 
-def checked_sample(root, rows):
+def checked_sample(root, rows, run_target=None):
     """`rows` are (complaint_id, product, narrative) from the June tables. Refused unless they are exactly the frozen
-    June list, each with its content hash. Returns the count."""
+    list of the target's kind, the June list or the dry run's, each with its content hash. Returns the count."""
     from voc.data import content_hash
 
-    folder = Path(root) / "splits" / "june"
-    listed_hash = list_hash(root)
-    data = (folder / "june.csv").read_bytes()
+    kind = "real" if run_target is None else run_target.kind
+    listed_hash = list_hash_for(root, kind)
+    data = list_file(root, kind).read_bytes()
     if hashlib.sha256(data).hexdigest() != listed_hash:
-        raise JobAError("splits/june/june.csv does not match its hash")
+        raise JobAError("the frozen list does not match its hash")
     listed = dict(list(csv.reader(io.StringIO(data.decode("utf-8"))))[1:])
+    _synthetic_only(listed, kind)
     given = {cid: (product, narrative) for cid, product, narrative in rows}
     if len(given) != len(rows):
         raise JobAError("the June rows repeat a complaint ID")

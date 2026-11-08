@@ -1,7 +1,8 @@
 """Spec 004, J11 and J16: Job B's logic, as the dry run of pull request 6a. Its one task, `job_b`, runs in Databricks
 as the owner (`cloud/job_b.yml`). The notebook in `cloud/job_b/` stays thin and calls `run`.
 
-The dry run takes only a synthetic first row of the run log, labels the synthetic sample with the mock backend, and
+The dry run takes only a synthetic first row of the run log, labels the synthetic sample with the mock backend's
+committed answers (`cloud/job_b/dry_run_answers.json`, pull request 9a), and
 writes no results file. Its results folder holds a note, `DRY_RUN.txt`, so the folder exists on the object store and
 explains itself (owner decision, 8 November). The real labelling, its ledger, its start marker, the TF-IDF refit, the
 scoring and the results files come in pull request 6b.
@@ -29,6 +30,7 @@ import json
 import re
 import time
 from decimal import Decimal
+from pathlib import Path
 
 from voc import approval
 from voc.job_a import VOLUME
@@ -185,14 +187,30 @@ def checked_approvals(approvals):
 
 
 def listed_for(root, run_target):
-    """The dry run's frozen list file's bytes, `complaint_id,content_hash` rows. Pull request 9a adds it, and its
-    SHA-256 must be the run log row's list hash (review of #98)."""
-    raise JobBError("the dry run's list is added in pull request 9a, so Job B cannot run yet")
+    """The dry run's frozen list file's bytes, `complaint_id,content_hash` rows (pull request 9a). Its SHA-256 must
+    be the run log row's list hash (review of #98), which `checked_list` checks."""
+    from voc.job_a import list_file
+
+    if run_target.kind != "synthetic":
+        raise JobBError("Job B reads the dry run's list for a synthetic row only")
+    return list_file(root, "synthetic").read_bytes()
+
+
+ANSWERS = Path("cloud") / "job_b" / "dry_run_answers.json"
 
 
 def mock_answers(root, run_target):
-    """The mock backend's synthetic answers for the dry run's prompts. Pull request 9a adds them."""
-    raise JobBError("the dry run's mock answers are added in pull request 9a, so Job B cannot run yet")
+    """The mock backend's synthetic answers for the dry run's prompts (pull request 9a), each a prompt and a text."""
+    if run_target.kind != "synthetic":
+        raise JobBError("Job B reads the dry run's mock answers for a synthetic row only")
+    try:
+        answers = json.loads((Path(root) / ANSWERS).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        answers = None
+    if (not isinstance(answers, list) or not all(isinstance(a, dict) and set(a) == {"prompt", "text"}
+                                                 and all(isinstance(v, str) for v in a.values()) for a in answers)):
+        raise JobBError("the dry run's mock answers cannot be read")
+    return answers
 
 
 def checked_list(data, run_target):
@@ -344,8 +362,8 @@ def marked_used(store, run_target, job_a_run_id, github_run_id, job_b_run_id):
 # The labelling and the exit value
 
 
-def labelled(root, rows, answers):
-    """The mock backend's labels for the rows. Returns how many were decided, and whether the run stopped."""
+def _outcomes(root, rows, answers):
+    """The mock backend's decisions for the rows, and whether the labelling stopped."""
     from voc import pipeline
     from voc.backends import make_backend
     from voc.labels import load_labels
@@ -366,7 +384,7 @@ def labelled(root, rows, answers):
         outcomes, stopped = pipeline.label_complaints(complaints, version, labels, call, "mock"), False
     except RunStopped as stop:
         outcomes, stopped = stop.outcomes, True
-    return len(outcomes), stopped
+    return outcomes, stopped
 
 
 def exit_value(run_target, complaints, count, stopped, job_b_run_id):
@@ -405,7 +423,11 @@ def run(root, values, databricks, github, store, run_sql, sleep=time.sleep):
     checked_figures(computed, approved)
     answers = mock_answers(root, run_target)
     marked_used(store, run_target, job_a_run_id, github_run_id, job_b_run_id)
-    count, stopped = labelled(root, rows, answers)
+    outcomes, stopped = _outcomes(root, rows, answers)
     if not stopped:
-        store.create(f"{RESULTS_VOLUME}/june-{job_b_run_id}/{DRY_RUN_FILE}", DRY_RUN_NOTE.encode("utf-8"))
-    return exit_value(run_target, complaints, count, stopped, job_b_run_id)
+        # Review of #99: the split is seen in the cloud, as counts only.
+        accepted = sum(o.decision.label is not None for o in outcomes)
+        counts = f"Labelled: {len(outcomes)}. Accepted: {accepted}. Quarantined: {len(outcomes) - accepted}.\n"
+        store.create(f"{RESULTS_VOLUME}/june-{job_b_run_id}/{DRY_RUN_FILE}",
+                     (DRY_RUN_NOTE + counts).encode("utf-8"))
+    return exit_value(run_target, complaints, len(outcomes), stopped, job_b_run_id)

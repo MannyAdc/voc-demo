@@ -569,6 +569,32 @@ Written on 8 November 2026, from the fix-round review of #98, fixed with no furt
 - the GitHub, list-hash and list-shape refusals write no file, a list with only its header or with an ID twice is refused, a June table row that is not synthetic is refused, and the rows check keeps its own check of the list (J11, minor 1, nits 2 and 3)
 - `labelled` counts every complaint with a decision, the ones not run for the budget included (J16 item 8, nit 6)
 
+## The dry run's setup ([spec 004](../specs/004-june-test-and-baselines/spec.md), pull request 9a, J1, J8, J11, J16), `tests/test_dry_run.py`
+
+Written on 8 November 2026, on synthetic data only (owner decisions of 6 and 8 November). Two earlier tests went in its green commit, since these replace them: Job A's pin waiting for pull request 9, and Job B's list and answers waiting for 9a.
+
+- the round 1 CSV has the CFPB header, `SYN-` IDs only, the pinned counts, Products from the label list, dbt's date and flag forms, one marker, one line break inside a narrative and one empty narrative (J8)
+- its pin names `syn_` files apart from the June pin, and its zip is stored with fixed fields, so it is the same bytes on every platform and the pin's (J8)
+- the script makes every committed file byte for byte, and `unpack` takes the zip against its pin (J8)
+- the dry run's list is the CSV's narrative rows with their content hashes, bound to its manifest and never the June list (J1)
+- Job A takes a synthetic row naming the dry run's list, with its pin, reads that list with `SYN-` IDs only, the notebook passes the target to both list reads, and its exit value on the dry run's rows passes the workflow's checks (J8, J16)
+- Job B reads the committed list bound to the row and the mock answers, seven accepted and one quarantined, refuses both for a real row, and runs end to end on fakes with no marker in any file and nothing printed (J5, J11)
+- the dry run's hash path refuses until the jobs' IDs are committed, then prints its list hash and the code hash with no gate and never the June list's hash, and the script still has no synthetic flag (J1)
+- the script prints names, sizes and hashes only, and writes the zip only outside the repo (J5)
+
+Written on 8 November 2026, in the fix round of #99, from its review and the owner's decisions. The tests above now read the round from the pin, and the June list check reads every ID.
+
+- the pin's round must match the list's, and a synthetic row naming another round's list is refused (J8, J16, minors 4 and 5)
+- `unpack` refuses a dry run CSV with an ID that is not synthetic, and removes the CSV (J8, minor 6)
+- the dry run's note ends with the labelled, accepted and quarantined counts, with no ID and no text (J11, minor 1)
+- Job B runs on a checkout with its real run log row, the jobs' IDs and its code hash, with nothing patched (J11, nit 11)
+- the steps keep `main` still from the upload, ask for a fresh upload on a re-run once Job B marked its run used, use the repo's Python, and drop every table and view (J1, minors 2, 3 and 7, nit 10)
+
+Written on 8 November 2026, from the fix-round review of #99, fixed with no further review round. The stale list test above is renamed for what it checks, a list hash other than the checkout's.
+
+- an unreadable dry run list is refused as unreadable, the re-run steps say how to start a fresh workflow run by hand, and the kept note holds counts (J1, J16, minors 1 and 2, nit 3)
+- the note ends with its counts, and the mock answers test uses the function Job B's run uses (J11, nits 4 and 6)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
