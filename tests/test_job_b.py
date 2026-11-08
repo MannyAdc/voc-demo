@@ -364,10 +364,11 @@ def test_J11_github_is_read_with_no_token_and_no_redirect(monkeypatch):
 def test_J11_github_is_retried_three_times_then_refused(monkeypatch, status):
     job_b = _patched(monkeypatch)
     github = FakeGitHub(run_replies=[(status, b"")])
-    waits = []
+    waits, files = [], FakeFiles()
     with pytest.raises(job_b.JobBError, match=f"did not answer after 3 tries: HTTP {status}"):
-        _run(job_b, github=github, sleep=waits.append)
+        _run(job_b, github=github, sleep=waits.append, files=files)
     assert github.calls == [f"/{GITHUB_RUN}"] * 3 and waits == [20, 60]
+    assert files.files == {}  # fix-round review of #98, minor 1
 
 
 def test_J11_a_github_retry_that_succeeds_goes_on(monkeypatch):
@@ -379,10 +380,10 @@ def test_J11_a_github_retry_that_succeeds_goes_on(monkeypatch):
 
 def test_J11_a_github_refusal_that_is_not_retried_is_refused_at_once(monkeypatch):
     job_b = _patched(monkeypatch)
-    github = FakeGitHub(run_replies=[(404, b"")])
+    github, files = FakeGitHub(run_replies=[(404, b"")]), FakeFiles()
     with pytest.raises(job_b.JobBError, match="HTTP 404"):
-        _run(job_b, github=github)
-    assert github.calls == [f"/{GITHUB_RUN}"]
+        _run(job_b, github=github, files=files)
+    assert github.calls == [f"/{GITHUB_RUN}"] and files.files == {}  # fix-round review of #98, minor 1
 
 
 # Job A's run, checked again (J11, J16 item 5)
@@ -654,19 +655,24 @@ def test_J11_the_dry_run_s_list_must_be_the_run_log_row_s_list(monkeypatch):
     """Minor 2: the list's bytes must hash to the row's list hash, so 9a's list is bound to its row."""
     job_b, jobs = _patched_list(monkeypatch, _list_bytes())
     monkeypatch.setattr(job_b, "listed_for", lambda root, t: _list_bytes(ROWS[:1]))
-    asked = []
+    asked, files = [], FakeFiles()
     with pytest.raises(job_b.JobBError, match="list hash"):
-        job_b.run(REPO, _values(), jobs, FakeGitHub(), job_b.VolumeStore(FakeFiles()),
+        job_b.run(REPO, _values(), jobs, FakeGitHub(), job_b.VolumeStore(files),
                   lambda sql: asked.append(sql) or [], sleep=lambda s: None)
-    assert asked == []
+    assert asked == [] and files.files == {}  # fix-round review of #98, minor 1
 
 
 @pytest.mark.parametrize("data", [b"complaint_id\nSYN-1\n", b"", "complaint_id,content_hash\n".encode() + b"\xff\n",
-                                  b"complaint_id,content_hash\nSYN-1,abc\n"])
+                                  b"complaint_id,content_hash\nSYN-1,abc\n",
+                                  # Fix-round review of #98, nit 2: a header only, and an ID twice.
+                                  b"complaint_id,content_hash\n",
+                                  ("complaint_id,content_hash\n" + f"SYN-1,{'a' * 64}\n" * 2).encode()])
 def test_J11_a_dry_run_list_that_is_not_ids_and_hashes_is_refused(monkeypatch, data):
     job_b, jobs = _patched_list(monkeypatch, data)
+    files = FakeFiles()
     with pytest.raises(job_b.JobBError, match="dry run's list"):
-        _run(job_b, jobs=jobs)
+        _run(job_b, jobs=jobs, files=files)
+    assert files.files == {}  # fix-round review of #98, minor 1
 
 
 def test_J11_every_marker_comes_after_every_outside_call(monkeypatch):
@@ -716,3 +722,29 @@ def test_J11_job_b_s_file_names_no_run_as_so_it_runs_as_its_owner():
     """Nit 9."""
     text = JOB.read_text(encoding="utf-8")
     assert "run_as" not in text and "service_principal" not in text
+
+
+# The fix-round review of #98 (owner's stopping rule: nothing serious, so Claude fixes the minors and nits)
+
+
+def test_J11_a_june_table_row_that_is_not_synthetic_is_refused_for_a_synthetic_list(monkeypatch):
+    """Nit 3: the June table's answer is checked too, not only the list."""
+    job_b = _patched(monkeypatch)
+    files = FakeFiles()
+    with pytest.raises(job_b.JobBError, match="the sample holds an ID that is not synthetic"):
+        _run(job_b, rows=ROWS + [("3141592", "Mortgage", "Not synthetic.")], files=files)
+    assert files.files == {}
+
+
+def test_J11_the_rows_check_refuses_a_list_that_is_not_synthetic():
+    """Nit 3: `checked_rows` keeps its own check of the list's IDs, as a second line behind `checked_list`."""
+    listed = {"3141592": "a" * 64}
+    with pytest.raises(_job_b().JobBError, match="list holds an ID that is not synthetic"):
+        _job_b().checked_rows(listed, [("3141592", "Mortgage", "x")])
+
+
+def test_J16_labelled_counts_every_complaint_with_a_decision():
+    """Nit 6: a complaint not run for the budget has a decision too."""
+    spec = (REPO / "specs" / "004-june-test-and-baselines" / "spec.md").read_text(encoding="utf-8")
+    item = next(line for line in spec.splitlines() if "**8. Job B's exit value**" in line)
+    assert "not run for the budget" in item
