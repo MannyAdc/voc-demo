@@ -665,3 +665,30 @@ def test_J1_the_run_log_s_last_row_is_the_dry_run_s_on_the_frozen_code():
     run_target = checked_target(REPO)
     assert (run_target.kind, run_target.entry_kind, run_target.row) == ("synthetic", "synthetic", 1)
     assert pin_for(REPO, run_target.kind) == _pin()
+
+
+# The dry run's round 2 (owner decisions of 9 November, after round 1 stopped at the repair history check)
+
+
+def test_J8_round_2_has_its_own_synthetic_ids_apart_from_round_1():
+    """A list has one first row, and the June staging table never changes a row it has built, so a round after a code
+    fix gets new IDs. Round 1's CSV stays, as its record."""
+    assert ROUND == 2
+    old = REPO / "tests" / "fixtures" / "june_dry_run" / "syn_june_dry_run_r1.csv"
+    old_ids = {r[15] for r in list(csv.reader(io.StringIO(old.read_text(encoding="utf-8"), newline="")))[1:]}
+    new_ids = {r[15] for r in _records()[1:]}
+    assert all(re.fullmatch(r"SYN-92[0-9]{2}", cid) for cid in new_ids) and not old_ids & new_ids
+    assert len(new_ids) == len(old_ids) == 12
+
+
+def test_J13_the_steps_give_the_robot_s_secret_the_jobs_scope_with_read_and_write():
+    """Round 1: the secret made with `jobs:read` was refused (HTTP 403). The run-now of Job B needs write."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    step = text.split("### Step 2.4: ")[1].split("\n### ")[0]
+    assert "**Read + Write**" in step and "`jobs:read`" in step and "**Other APIs**" in step
+
+
+def test_J1_the_dry_run_steps_make_the_zip_of_round_2_and_clean_up_round_1_first():
+    text = (REPO / "docs" / "DRY_RUN_STEPS.md").read_text(encoding="utf-8")
+    assert "--round 2" in text and "--round 1" not in text
+    assert "round 1's zip" in text and "every table and view in the `voc_june` schema" in text
