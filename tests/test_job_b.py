@@ -282,6 +282,46 @@ def test_J11_job_b_refuses_its_own_run_unless_running_job_b_with_these_parameter
     assert files.files == {}
 
 
+# The dry run's round 2 (10 November): Databricks keeps the commit on each task of the run, at
+# tasks[].git_source.git_snapshot.used_commit, and not on the run itself. The task was also retried once on its own.
+
+
+def _task(commit=C, attempt=0, key="job_b"):
+    return {"task_key": key, "attempt_number": attempt, "run_id": 970000 + attempt,
+            "git_source": {"git_branch": "main", "git_provider": "gitHub", "git_snapshot": {"used_commit": commit},
+                           "git_url": "https://github.com/MannyAdc/voc-demo"}}
+
+
+def _live_own_run(tasks):
+    run = _own_run(tasks=tasks)
+    del run["git_source"]
+    return run
+
+
+@pytest.mark.parametrize("tasks", [[_task()], [_task(attempt=0), _task(attempt=1)]])
+def test_J11_job_b_takes_its_commit_from_its_task_as_round_2_saw_it(monkeypatch, tasks):
+    job_b = _patched(monkeypatch)
+    value, _, _ = _run(job_b, jobs=FakeJobs(own=_live_own_run(tasks)))
+    assert value["stopped"] is False
+
+
+@pytest.mark.parametrize("own", [
+    _live_own_run([]),
+    _live_own_run([_task(key="other")]),
+    _live_own_run([_task(commit="main")]),
+    _live_own_run([_task(attempt=0), _task(commit="d" * 40, attempt=1)]),
+    _live_own_run([{"task_key": "job_b", "attempt_number": 0, "git_source": {}}]),
+    # The shape the code first expected, with the commit on the run only, is refused now.
+    {**_live_own_run([{"task_key": "job_b", "attempt_number": 0}]), "git_source": {"git_snapshot": {"used_commit": C}}},
+])
+def test_J11_job_b_refuses_its_own_run_unless_every_attempt_of_its_task_names_one_commit(monkeypatch, own):
+    job_b = _patched(monkeypatch)
+    files = FakeFiles()
+    with pytest.raises(job_b.JobBError, match="Job B's own run"):
+        _run(job_b, jobs=FakeJobs(own=own), files=files)
+    assert files.files == {}
+
+
 # The approval on GitHub (J11, J16 item 7)
 
 
