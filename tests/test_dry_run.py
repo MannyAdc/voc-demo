@@ -643,3 +643,25 @@ def test_J1_the_steps_count_six_green_ticks_and_warn_about_the_one_time_boxes():
     text = DATABRICKS_STEPS.read_text(encoding="utf-8")
     assert "all six did" in text and "all five did" not in text
     assert "never take a screenshot or share your screen" in text
+
+
+# The dry run's row (plan item 9, owner decisions of 8 November: the row comes last, after the jobs' IDs)
+
+
+def test_J1_the_run_log_s_last_row_is_the_dry_run_s_on_the_frozen_code():
+    """The last row is synthetic, names the dry run's list and this checkout's frozen code, and Job A takes it.
+
+    It pins round 1's one row and today's code hash on purpose, as a tripwire: any later change to a frozen file
+    fails it in CI before the dry run. The next row, a round 2 or the real June row, or the next frozen change
+    after the dry run retires it, in that pull request, marked and logged (review of #101)."""
+    from voc.frozen import code_hash, dry_run_list_hash, read_runs
+    from voc.job_a import checked_target, pin_for
+
+    entries = read_runs(REPO / "runs" / "JUNE_RUNS.md")
+    assert len(entries) == 1
+    row = entries[-1]
+    assert row.kind == "synthetic" and row.list_hash == dry_run_list_hash(REPO) and row.code_hash == code_hash(REPO)
+    assert re.fullmatch(r"2026-11-09 [0-9]{2}:[0-9]{2}", row.date) and "round 1" in row.reason
+    run_target = checked_target(REPO)
+    assert (run_target.kind, run_target.entry_kind, run_target.row) == ("synthetic", "synthetic", 1)
+    assert pin_for(REPO, run_target.kind) == _pin()

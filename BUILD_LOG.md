@@ -2305,3 +2305,22 @@ Times are local, from the chat's message times. The owner did each step, one at 
 - In the green commit, the test of steps 1.1 to 1.8 is renamed for what it checks (nit 8 of the fix-round review).
 - Green commit `dc51c9e` at 10:44 (git's commit time), through the gate. CI green on `dc51c9e`, both runs, with no re-run.
 - 10:59 Merge verdict on #100: PENDING with every mechanical check passing. Every finding of its two review rounds is fixed: the serious one by the owner's option A, the results volume in a schema of its own, and the rest as the owner chose. The second review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
+- 11:17 Claude marked #100 ready, and 11:27 the owner merged it (times from GitHub, `20bce4a`).
+
+### Pull request: the dry run's row
+
+- Work start, 11:28: branch `feat/dry-run-row`, worktree `../voc-demo-row`, a clean checkout of main at `20bce4a`, after the jobs' IDs, as the owner decided on 8 November.
+- In that clean checkout, `uv run --native-tls --locked python scripts/june_hash.py --dry-run` printed `dry-run list sha256 0cc696205a81ce55bfe505f3ff83e2bf1e1e770ecad0167d63cf9fa027f89cbf` and `frozen code sha256 6335e9b1d795628dcbb6da45ba76b577c1654f0b6bc83da206968e5146b3af67 over 110 files`. The list hash is the committed manifest's.
+- The row's date, 2026-11-09 00:30, is in UTC, as J1 says both June logs' dates are. It was 11:30 local.
+- This pull request changes no frozen file: only `runs/`, `tests/`, `docs/TEST_LIST.md` and this log. So the code hash stays the one the row names, and the test checks it against the checkout.
+- Red commit `fbe0402` at 11:30 (git's commit time): only `tests/test_dry_run.py`, through the gate. The full suite passed with the row in place.
+- In the green commit, the test that expected an empty run log checks its header only, marked in the test.
+- Green commit `b00c26d` at 12:01 (git's commit time), through the gate. Draft pull request #101 opened at 12:12.
+- A fresh reviewer agent read the diff, the spec and CLAUDE.md. It derived both hashes again itself, from the list file and its manifest and with `scripts/june_hash.py --dry-run` in the clean checkout, and both match the row. No serious finding, 3 minor, 3 nits.
+- 12:15 Its findings posted on #101.
+- Correction to the line above about the red commit `fbe0402` (nit 4 of that review): the full suite ran on the green tree, locally, before the green commit `b00c26d`, not on the red commit. The line is kept as written.
+- 12:17 Owner decision ("go"): fix minor 1 and nits 4 and 5 with no further review, since they are a docstring, a comment and this log. Minors 2 and 3 are risks for the dry run, told to the owner before the upload. Nit 6 needs no change.
+- Claude's choice: this fix is one commit with no failing-test commit first, since it changes no behaviour: a test's docstring, a test's comment and this log.
+- For the dry run (minor 3): nothing is merged to `main` from the upload until Job B ends, including the build log entry for this pull request's merge, which waits until after Job B.
+- Fix commit `eede3cc` at 12:17 (git's commit time), through the gate. CI green on `eede3cc`.
+- 12:32 Merge verdict on #101: PENDING with every mechanical check passing. The owner chose minor 1 and nits 4 and 5, and all three are fixed. Minors 2 and 3 are risks told to the owner, and nit 6 needs no change. Claude's verdict: MERGE, after this log commit's CI.
