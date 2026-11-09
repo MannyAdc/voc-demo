@@ -654,24 +654,32 @@ def test_J1_the_run_log_s_first_row_is_round_1_s():
     from voc.frozen import code_hash, dry_run_list_hash, read_runs
     # Changed in the round 2 pull request, as the docstring planned: the code changed, so round 1's row is a record
     # now, and round 2's row comes in a pull request of its own.
+    from voc.job_a import JobAError, checked_target
     entries = read_runs(REPO / "runs" / "JUNE_RUNS.md")
     row = entries[0]
     assert row.kind == "synthetic" and "round 1" in row.reason
     assert row.list_hash == "0cc696205a81ce55bfe505f3ff83e2bf1e1e770ecad0167d63cf9fa027f89cbf"
     assert row.code_hash != code_hash(REPO) and row.list_hash != dry_run_list_hash(REPO)
+    # Review of #102, nit 7: Job A takes the checkout only once its last row is this round's.
+    if f"round {ROUND}" in entries[-1].reason:
+        checked_target(REPO)
+    else:
+        with pytest.raises(JobAError):
+            checked_target(REPO)
 
 
 # The dry run's round 2 (owner decisions of 9 November, after round 1 stopped at the repair history check)
+# Review of #102, minor 6: the tests below read the round from the pin, so a new round rewrites no test.
 
 
-def test_J8_round_2_has_its_own_synthetic_ids_apart_from_round_1():
+def test_J8_each_round_has_its_own_synthetic_ids_apart_from_the_round_before():
     """A list has one first row, and the June staging table never changes a row it has built, so a round after a code
-    fix gets new IDs. Round 1's CSV stays, as its record."""
-    assert ROUND == 2
-    old = REPO / "tests" / "fixtures" / "june_dry_run" / "syn_june_dry_run_r1.csv"
+    fix gets new IDs. The round before's CSV stays, as its record."""
+    assert ROUND >= 2
+    old = REPO / "tests" / "fixtures" / "june_dry_run" / f"syn_june_dry_run_r{ROUND - 1}.csv"
     old_ids = {r[15] for r in list(csv.reader(io.StringIO(old.read_text(encoding="utf-8"), newline="")))[1:]}
     new_ids = {r[15] for r in _records()[1:]}
-    assert all(re.fullmatch(r"SYN-92[0-9]{2}", cid) for cid in new_ids) and not old_ids & new_ids
+    assert all(IDS.fullmatch(cid) for cid in new_ids) and not old_ids & new_ids
     assert len(new_ids) == len(old_ids) == 12
 
 
@@ -682,7 +690,10 @@ def test_J13_the_steps_give_the_robot_s_secret_the_jobs_scope_with_read_and_writ
     assert "**Read + Write**" in step and "`jobs:read`" in step and "**Other APIs**" in step
 
 
-def test_J1_the_dry_run_steps_make_the_zip_of_round_2_and_clean_up_round_1_first():
+def test_J1_the_dry_run_steps_make_this_round_s_zip_and_clean_up_the_round_before_first():
     text = (REPO / "docs" / "DRY_RUN_STEPS.md").read_text(encoding="utf-8")
-    assert "--round 2" in text and "--round 1" not in text
-    assert "round 1's zip" in text and "every table and view in the `voc_june` schema" in text
+    assert f"--round {ROUND}" in text and f"--round {ROUND - 1}" not in text
+    assert f"round {ROUND - 1}'s zip" in text and "every table and view in the `voc_june` schema" in text
+    # Review of #102, minor 4: the row first, the trigger left paused, and the logbook removed after the round.
+    assert f"round {ROUND}'s row is merged" in text.lower() and "**Paused**" in text
+    assert "16. If Application Insights was turned on" in text

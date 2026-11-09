@@ -181,7 +181,8 @@ Databricks shows the secret once, so keep its box open until all six pastes are 
    **Scope:** click **Other APIs**, then **Add scope**, and choose `jobs`. Set its access to **Read + Write**, never
    **Read** alone, which makes the scope `jobs:read`: Databricks refuses a token for `jobs` from it (HTTP 403, round
    1 of the dry run, 9 November), and starting Job B needs write. The robot's real rights stay its two job
-   permissions of step 1.8. Click **Generate**. A box shows the **Client ID** and the **Secret**, each with a copy button.
+   permissions of step 1.8. Click **Generate**. A box shows the **Client ID** and the **Secret**, each with a copy
+   button.
 2. In GitHub's **june-figures**, add `VOC_DATABRICKS_CLIENT_ID` (the Client ID) and `VOC_DATABRICKS_CLIENT_SECRET`
    (the Secret). Do the same in **june-run**.
 3. In the Key Vault, **Objects**, **Secrets**, **+ Generate/Import**, upload option **Manual**, no dates:
