@@ -29,6 +29,8 @@ that check. Then:
 - **Round 2's row is merged.** After round 2's pull request is merged, Claude opens a pull request with round 2's
   row in `runs/JUNE_RUNS.md` (step 4). Upload nothing before it is merged: until then the last row is round 1's,
   and Job A refuses it, since its code is no longer the code on `main`.
+- **Any other open pull request is merged first, or waits.** Every pull request the owner means to merge before
+  round 2, such as CI's fix, is merged before the upload. Anything else waits until Job B ends (review of #103).
 - **Job A's trigger stays paused.** It was paused at 16:07 on 9 November. To check: in Databricks, in the left menu,
   click **Jobs & Pipelines**, then Job A, `voc-june-job-a`. On the right side, **Schedules & Triggers** says
   **Paused**. Leave it so until step 6.
