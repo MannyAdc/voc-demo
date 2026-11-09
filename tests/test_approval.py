@@ -617,6 +617,37 @@ def test_J16_databricks_end_states_map_onto_the_receiver_s_six(monkeypatch, caps
     assert f"result: {mapped}" in lines and "SYNMARKER" not in "\n".join(lines) + capsys.readouterr().out
 
 
+# Review of #105, serious 1: in the dry run's round 2 (10 November) the platform retried Job B's task once on its
+# own, so the run held two `job_b` items. The exit value is read from the latest attempt.
+
+
+@pytest.mark.parametrize("tasks", [
+    [{"task_key": "job_b", "run_id": 900099, "attempt_number": 0},
+     {"task_key": "job_b", "run_id": 900003, "attempt_number": 1}],
+    [{"task_key": "job_b", "run_id": 900003, "attempt_number": 1},
+     {"task_key": "job_b", "run_id": 900099, "attempt_number": 0}],
+])
+def test_J16_after_a_retry_the_exit_value_is_read_from_job_b_s_latest_attempt(monkeypatch, tasks):
+    approval = _patched(monkeypatch)
+    receiver = RealReceiver()
+    ended = {"state": {"life_cycle_state": "TERMINATED", "result_state": "SUCCESS"}, "tasks": tasks}
+    approval.run_job(REPO, _env(), FakeDatabricks(follow=[ended]), FakeGitHub(), receiver, sleep=lambda s: None)
+    assert receiver.replies == [202] and receiver.queued[0]["job_b_exit"] == _fixture("job_b_exit.json")
+
+
+@pytest.mark.parametrize("tasks", [
+    [{"task_key": "job_b", "run_id": 900099, "attempt_number": 1},
+     {"task_key": "job_b", "run_id": 900003, "attempt_number": 1}],
+    [{"task_key": "job_b", "run_id": 900099}, {"task_key": "job_b", "run_id": 900003}],
+])
+def test_J16_attempts_that_cannot_be_ordered_send_no_exit_value(monkeypatch, tasks):
+    approval = _patched(monkeypatch)
+    receiver = RealReceiver()
+    ended = {"state": {"life_cycle_state": "TERMINATED", "result_state": "SUCCESS"}, "tasks": tasks}
+    approval.run_job(REPO, _env(), FakeDatabricks(follow=[ended]), FakeGitHub(), receiver, sleep=lambda s: None)
+    assert receiver.replies == [202] and receiver.queued[0]["job_b_exit"] is None
+
+
 @pytest.mark.parametrize("change", [lambda v: v.update(results_folder="june-1"),
                                     lambda v: v.update(stopped=True),
                                     lambda v: v.update(stop_reason="quota")])
