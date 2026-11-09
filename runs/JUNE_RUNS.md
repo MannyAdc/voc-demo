@@ -13,3 +13,4 @@ of the commit that merged it. Job B refuses to score unless a row names both has
 | Date | Kind | June list hash | Code hash | Reason |
 |---|---|---|---|---|
 | 2026-11-09 00:30 | synthetic | 0cc696205a81ce55bfe505f3ff83e2bf1e1e770ecad0167d63cf9fa027f89cbf | 6335e9b1d795628dcbb6da45ba76b577c1654f0b6bc83da206968e5146b3af67 | the dry run, round 1, on the jobs' IDs of #100 |
+| 2026-11-09 10:45 | synthetic | 6d619f00843fa99fb098a08d7c142c7fdb415b77d3553c7858d71acde8fce412 | 0095cfc74d9b3ded993101653f8a4486d30385b604c420d9e973ba770a5c9f07 | the dry run, round 2, after the fixes of #102 |

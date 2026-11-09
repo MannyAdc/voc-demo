@@ -635,6 +635,10 @@ Written on 9 November 2026, in the fix round of #102, from its review and the ow
 - the steps put the round's row first, keep Job A's trigger paused, and remove Application Insights after the round (J1, minor 4)
 - Job A refuses the checkout until its last row is this round's (J1, nit 7)
 
+Written on 9 November 2026, for round 2's row (owner decision of 8 November: the row comes last).
+
+- the run log's last row is this round's, synthetic, naming the dry run's list and the checkout's frozen code, and Job A takes it with the dry run's pin (J1, J16)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
