@@ -103,11 +103,31 @@ def _job_parameters(run):
     return {i["name"]: i.get("value") for i in items}
 
 
+def _task_commit(task):
+    source = task.get("git_source") if isinstance(task, dict) else None
+    snapshot = source.get("git_snapshot") if isinstance(source, dict) else None
+    return snapshot.get("used_commit") if isinstance(snapshot, dict) else None
+
+
+def _run_commit(run):
+    """The commit Job B runs. Databricks keeps it on each task of the run, at `git_source.git_snapshot.used_commit`,
+    and not on the run itself (the dry run's round 2, 10 November). Every task must be Job B's one task, and every
+    attempt of it, since Databricks retried it once on its own in round 2, must name the same commit."""
+    tasks = run.get("tasks")
+    if not isinstance(tasks, list) or not tasks:
+        return None
+    if not all(isinstance(task, dict) and task.get("task_key") == "job_b" for task in tasks):
+        return None
+    commits = {_task_commit(task) for task in tasks}
+    if len(commits) != 1:
+        return None
+    return commits.pop()
+
+
 def checked_own_run(run, job_b_run_id, job_b_job_id, job_a_run_id, github_run_id):
     """Its own run is Job B's, still running, with exactly the two run IDs it was given. Returns the commit it runs.
     So a run ID filled by hand that names another run is refused (owner decision, 8 November)."""
-    snapshot = (run.get("git_source") or {}).get("git_snapshot") if isinstance(run.get("git_source"), dict) else None
-    commit = snapshot.get("used_commit") if isinstance(snapshot, dict) else None
+    commit = _run_commit(run)
     if (run.get("run_id") != job_b_run_id or run.get("job_id") != job_b_job_id
             or (run.get("state") or {}).get("life_cycle_state") != "RUNNING"
             or _job_parameters(run) != {"job_a_run_id": str(job_a_run_id), "github_run_id": str(github_run_id)}

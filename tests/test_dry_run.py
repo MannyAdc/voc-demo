@@ -294,7 +294,8 @@ class Jobs:
             return {"run_id": 900002, "job_id": 800002, "state": {"life_cycle_state": "RUNNING"},
                     "job_parameters": [{"name": "job_a_run_id", "value": "900001"},
                                        {"name": "github_run_id", "value": "600001"}],
-                    "git_source": {"git_snapshot": {"used_commit": "c" * 40}}}
+                    # Changed in round 3's pull request: the commit is on the task, as round 2 saw it.
+                    "tasks": [{"task_key": "job_b", "git_source": {"git_snapshot": {"used_commit": "c" * 40}}}]}
         if path == "/api/2.2/jobs/runs/get":
             return json.loads((fixtures / "job_a_run.json").read_text(encoding="utf-8"))
         if path == "/api/2.2/jobs/runs/list" and "active_only" in params:
@@ -674,9 +675,16 @@ def test_J1_the_run_log_s_last_row_is_this_round_s():
     the row comes last)."""
     from voc import job_b
     from voc.frozen import code_hash, dry_run_list_hash, read_runs
-    from voc.job_a import checked_target, pin_for
+    from voc.job_a import JobAError, checked_target, pin_for
     entries = read_runs(REPO / "runs" / "JUNE_RUNS.md")
     last = entries[-1]
+    # Changed in round 3's pull request: between a round's code pull request and its row pull request, the last row is
+    # the round before's, and Job A refuses the checkout until this round's row is added.
+    if not re.search(rf"\bround {ROUND}\b", last.reason):
+        assert re.search(rf"\bround {ROUND - 1}\b", last.reason)
+        with pytest.raises(JobAError, match="names a June list other than|not the frozen code"):
+            checked_target(REPO)
+        return
     # Review of #103, nit 4: the round as a whole word, so round 2 never matches round 20.
     assert last.kind == "synthetic" and re.search(rf"\bround {ROUND}\b", last.reason)
     assert len(entries) >= 2 and last.date > entries[-2].date

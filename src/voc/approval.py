@@ -486,6 +486,18 @@ def _ids(env):
             parse_id(env.get("GITHUB_RUN_ATTEMPT"), "GITHUB_RUN_ATTEMPT"))
 
 
+def _latest_attempt(tasks):
+    """Job B's latest task attempt: its one item, or the item with the highest of distinct whole attempt numbers,
+    since the platform retried Job B's task once on its own in the dry run's round 2 (review of #105). None if the
+    attempts cannot be ordered."""
+    if len(tasks) == 1:
+        return tasks[0]
+    numbers = [task.get("attempt_number") for task in tasks]
+    if not tasks or not all(type(n) is int for n in numbers) or len(set(numbers)) != len(numbers):
+        return None
+    return max(tasks, key=lambda task: task["attempt_number"])
+
+
 def run_job(root, env, databricks, github, receiver, sleep=time.sleep, polls=None, clock=time.monotonic):
     deadline = clock() + FOLLOW_SECONDS
     job_a_run_id, github_run_id, attempt = _ids(env)
@@ -524,11 +536,12 @@ def run_job(root, env, databricks, github, receiver, sleep=time.sleep, polls=Non
         if run is not None:
             tasks = run.get("tasks") if isinstance(run.get("tasks"), list) else []
             tasks = [t for t in tasks if isinstance(t, dict) and t.get("task_key") == "job_b"]
-            if len(tasks) == 1 and state in ("SUCCESS", "FAILED"):
+            latest = _latest_attempt(tasks)
+            if latest is not None and state in ("SUCCESS", "FAILED"):
                 try:
                     value = exit_for_receiver(job_b_exit(databricks.get(
                         "/api/2.2/jobs/runs/get-output",
-                        {"run_id": _whole(tasks[0].get("run_id"), "job_b's run ID")})), job_b_run_id)
+                        {"run_id": _whole(latest.get("run_id"), "job_b's run ID")})), job_b_run_id)
                 except (ApprovalError, OSError, http.client.HTTPException):
                     value = None
     except BaseException as err:
