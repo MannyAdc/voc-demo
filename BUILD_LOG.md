@@ -2303,3 +2303,5 @@ Times are local, from the chat's message times. The owner did each step, one at 
 - The owner deleted the Desktop copy of the live job's YAML after the check.
 - Red commit `fdfb6db` at 10:24 (git's commit time): only `tests/test_dry_run.py`, 4 new tests, through the gate.
 - In the green commit, the test of steps 1.1 to 1.8 is renamed for what it checks (nit 8 of the fix-round review).
+- Green commit `dc51c9e` at 10:44 (git's commit time), through the gate. CI green on `dc51c9e`, both runs, with no re-run.
+- 10:59 Merge verdict on #100: PENDING with every mechanical check passing. Every finding of its two review rounds is fixed: the serious one by the owner's option A, the results volume in a schema of its own, and the rest as the owner chose. The second review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
