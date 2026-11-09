@@ -2322,3 +2322,5 @@ Times are local, from the chat's message times. The owner did each step, one at 
 - 12:17 Owner decision ("go"): fix minor 1 and nits 4 and 5 with no further review, since they are a docstring, a comment and this log. Minors 2 and 3 are risks for the dry run, told to the owner before the upload. Nit 6 needs no change.
 - Claude's choice: this fix is one commit with no failing-test commit first, since it changes no behaviour: a test's docstring, a test's comment and this log.
 - For the dry run (minor 3): nothing is merged to `main` from the upload until Job B ends, including the build log entry for this pull request's merge, which waits until after Job B.
+- Fix commit `eede3cc` at 12:17 (git's commit time), through the gate. CI green on `eede3cc`.
+- 12:32 Merge verdict on #101: PENDING with every mechanical check passing. The owner chose minor 1 and nits 4 and 5, and all three are fixed. Minors 2 and 3 are risks told to the owner, and nit 6 needs no change. Claude's verdict: MERGE, after this log commit's CI.
