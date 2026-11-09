@@ -66,7 +66,8 @@ def _own_run(**change):
     run = {"run_id": JOB_B_RUN, "job_id": JOB_B, "state": {"life_cycle_state": "RUNNING"},
            "job_parameters": [{"name": "job_a_run_id", "default": "", "value": str(JOB_A_RUN)},
                               {"name": "github_run_id", "default": "", "value": str(GITHUB_RUN)}],
-           "git_source": {"git_snapshot": {"used_commit": C}}}
+           # Changed in round 3's pull request: the commit is on the task, as round 2 saw it.
+           "tasks": [{"task_key": "job_b", "attempt_number": 0, "git_source": {"git_snapshot": {"used_commit": C}}}]}
     run.update(change)
     return run
 
@@ -273,7 +274,9 @@ def test_J11_job_b_never_makes_the_api_backend_or_reads_a_key(monkeypatch):
     {"job_parameters": [{"name": "job_a_run_id", "value": "900005"}, {"name": "github_run_id", "value": "600001"}]},
     {"job_parameters": [{"name": "job_a_run_id", "value": "900001"}, {"name": "github_run_id", "value": "600001"},
                         {"name": "job_b_run_id", "value": "900002"}]},
-    {"git_source": {"git_snapshot": {"used_commit": "main"}}}, {"git_source": {}}])
+    # Changed in round 3's pull request: the commit cases name the task, where the commit is.
+    {"tasks": [{"task_key": "job_b", "git_source": {"git_snapshot": {"used_commit": "main"}}}]},
+    {"tasks": [{"task_key": "job_b", "git_source": {}}]}])
 def test_J11_job_b_refuses_its_own_run_unless_running_job_b_with_these_parameters(monkeypatch, change):
     job_b = _patched(monkeypatch)
     files = FakeFiles()
@@ -293,8 +296,9 @@ def _task(commit=C, attempt=0, key="job_b"):
 
 
 def _live_own_run(tasks):
+    # Changed in the green commit: the helper above has no run-level `git_source` any more.
     run = _own_run(tasks=tasks)
-    del run["git_source"]
+    run.pop("git_source", None)
     return run
 
 

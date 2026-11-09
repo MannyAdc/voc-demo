@@ -2406,3 +2406,37 @@ Times are local, from the chat's message times, GitHub, Databricks and the recei
 - Both #103 and this pull request added lines at the end of this log, so Claude merged `main` into this branch, keeping both, with #103's lines first: commit `0c67233`, through the gate.
 - Fixes: spec 004 says a push runs the pushed commit's own `ci.yml`, with the triggers it sets, spec 001's B17 says a branch with no pull request, or a pull request with a merge conflict, gets no CI run, the last try no longer sleeps, the comments and the test file name each day's fault, and the tests check that a failure is never swallowed, that no later step installs with uv, and that the download keeps `-f` with the checksum after it.
 - Fix round commit `e642618` at 23:08 (git's commit time), through the gate. CI ran once on it, one set of three checks, all green, so the new trigger works. 23:24 `scripts/merge_verdict.py 104`: PASS on the base, CI, conflicts and the red commit first. PENDING on the review findings and the build log, which Claude checked: findings 1 to 6 and 8 are fixed, 7 is kept with its reason in the test file and the test list, and the log holds the work start, the findings and the owner's choices. Verdict: MERGE.
+- 23:37 Claude marked #104 ready, and 23:57 the owner merged it (times from GitHub, `2c1e746`). 00:04 Claude ran `uv run --native-tls --locked python scripts/june_hash.py --dry-run` on `main` at `2c1e746`: the list and code hashes were still round 2's row's.
+
+### The dry run's round 2, 10 November
+
+Times are local, from the chat's message times, GitHub and Databricks. The owner did every step in Databricks, GitHub and Azure. Nothing was merged to `main` from the upload until Job B ended.
+
+- After 00:04 (exact times not recorded) The owner opened, with no sign-in, GitHub's API pages for the approval run 42565108225 and its approvals, the reads Job B makes: the run's `display_title` was `June approval for Job A run 799709723207063`, and the approvals list was `[]`.
+- The owner checked that Job A's trigger was paused, deleted round 1's zip from `incoming` and round 1's CSV from `june`, and deleted the four items in `voc_june`: `curated_complaints`, `landed_complaints`, `stg_complaints` and `test_list`.
+- The owner made the zip on the laptop: `syn_june_dry_run_r2.zip  3380 bytes  sha256 ffe985f8324ce956b5f1fe66a8be24d55cb30d02d8c5fbf7f17060349c9c624d`, the pin's. The owner unpaused Job A's trigger.
+- 00:49 The owner uploaded the zip. Job A's run 581855834137042 ran from 00:50 to 00:53 and succeeded.
+- 00:53 The receiver started the approval workflow on its own: run 42629501410, named for that Job A run (time from GitHub). So the webhook, the receiver's queue, its Databricks check and its dispatch to GitHub all worked. Its `figures` job passed, so round 1's fix held: the check took the never-repaired Job A run.
+- 00:59 The owner approved `june-run`. The owner had not checked the complaint count first, and said so. The `figures` job checks the count against the pin. The `run` job failed at once: "refused: VOC_RECEIVER_URL must be the receiver's https address, with no path" (the owner's screenshot of the step). The secret in `june-run` did not have the exact form `https://<default domain>`. Its old value cannot be read, so the exact fault is not known. The owner replaced it with `https://` and the **Default domain** copied from the Function app's **Overview** page. Job B had no runs (the owner's screenshot).
+- 01:07 The owner started the approval workflow by hand on `main` with the same Job A run ID (J8's fallback): run 42631590210. Its `figures` job passed. The owner approved, and at 01:08 the `run` job failed: "refused: /api/2.2/jobs/run-now answered HTTP 403". The cause: the robot `voc-june-runner` had **Can View** on Job B, not **Can Manage Run** as step 1.8 says. The owner changed it to **Can Manage Run**. On Job A it had **Can View**, as it should.
+- The owner started a third run by hand, 42632681761. Its figures, from the owner's screenshot: complaints 8, calls 8, worst case 115,407 tokens, 40,000,000 tokens left under the cap, expected cost $0.01. 01:15 The owner approved. The `run` job started Job B, followed it and delivered the result message to the receiver, and passed at 01:16 (times from GitHub).
+- AI mistake, caught by the owner's screenshot of an empty results volume: Claude told the owner the whole chain had run end to end, from the `run` job's success alone. That job passes whenever it delivers the result, a FAILED one included. Claude then read the code and corrected itself.
+- Job B's run 713095287056759 ran from 01:15 to 01:16 and failed: "JobBError: Job B's own run cannot be confirmed: it must be a running run of Job B with exactly these two run IDs and a known commit" (the owner's screenshot). It stopped at its third check, before it marked anything used or read any data. After 01:17 the owner paused Job A's trigger again.
+- The owner ran two notebooks in the workspace, written by Claude, that read Job B's run and Job A's run and printed only key names, IDs and yes or no:
+  - The run and job IDs and both `job_parameters` matched.
+  - The run has no `git_source`. Each task has one, with `git_snapshot`, and its `used_commit` was `main`'s `2c1e746` on both tries.
+  - Job B's task ran twice, attempts 0 and 1, both FAILED, and the run's state was `INTERNAL_ERROR`. Databricks retried it on its own. Why is not known.
+  - Job A's run has no run-level `git_source` either.
+- AI mistake, caught by round 2: Claude's Job B looked for the commit at the run's `git_source.git_snapshot.used_commit`, taken from the docs and never seen live, and the tests' samples were written from the same guess. It is the same kind of mistake as round 1's repair history.
+- AI mistake, caught by the owner ("So are you working right now or what?"): after the last notebook check, Claude ended its turn instead of starting the fix.
+- Not checked: whether the receiver's table holds a `result` row for each of the three workflow runs.
+
+### Pull request: round 2's finding, and round 3
+
+- Work start, 01:32: branch `fix/dry-run-round-3`, worktree `../voc-demo-r3`, from main at `2c1e746`.
+- Red commit `9eb1745` at 01:34 (git's commit time): only `tests/test_job_b.py`, new tests that Job B takes its commit from its task, with every attempt agreeing, and refuses the old run-level shape, through the gate.
+- The fix: Job B takes the commit from its run's tasks. Every task must be its one task `job_b`, and every attempt must name the same 40-character commit. The run-level `git_source` is not read.
+- In the green commit, tests that pinned the old shape change, each marked: Job B's own-run helper and its commit cases in `tests/test_job_b.py`, and the fake own run in `tests/test_dry_run.py`. The last-row test now says that, between a round's code pull request and its row pull request, Job A refuses the checkout.
+- Round 3's CSV is round 2's rows with `SYN-93` IDs. Its list, pin and mock answers come from `uv run --native-tls --locked python scripts/make_dry_run.py --round 3 --repo`. The mock answers did not change, since the prompts hold no ID.
+- The dry run's steps now say what to do before round 3, including the check of the robot's **Can Manage Run** on Job B.
+- Before round 3, Claude will list every field the frozen code reads from Databricks and GitHub that no run has shown yet, for one read-only check by the owner.

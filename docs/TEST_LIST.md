@@ -651,6 +651,14 @@ Written on 9 November 2026, for round 2's row (owner decision of 8 November: the
 - the run log's last row is this round's, synthetic, naming the dry run's list and the checkout's frozen code, and Job A takes it with the dry run's pin (J1, J16)
 - in the fix round of #103: Job B takes it too, the round is matched as a whole word, and the row is dated after the one before it (J1, minor 1, nit 4)
 
+## The dry run's round 3 ([spec 004](../specs/004-june-test-and-baselines/spec.md), J1, J11), `tests/test_job_b.py`, `tests/test_dry_run.py`
+
+Written on 10 November 2026, after round 2 stopped at Job B's check of its own run. In the green commit, Job B's own-run helper, its commit cases and the dry run's fake own run hold the commit on the task, as round 2 saw it.
+
+- Job B takes its commit from its task's `git_source.git_snapshot.used_commit`, one attempt or two (J11)
+- Job B refuses its own run with no task, another task, a commit that is not 40 hex characters, attempts that name different commits, a task with no snapshot, or the commit on the run only (J11)
+- between a round's code pull request and its row pull request, Job A refuses the checkout (J1)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

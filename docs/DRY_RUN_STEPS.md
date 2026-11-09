@@ -21,35 +21,40 @@ to `main` from the upload until Job B ends: Job A runs `main` from the upload, t
 from `main` when the receiver starts it, and Job B refuses a GitHub run made from another commit than the one it
 runs (review of #99).
 
-## Before round 2, in this order
+## Before round 3, in this order
 
-Round 1 ran on 9 November and stopped at the approval workflow's check of Job A's run. Round 2's pull request fixes
-that check. Then:
+Round 1 ran on 9 November and stopped at the approval workflow's check of Job A's run. Round 2 ran on 10 November
+and stopped at Job B's check of its own run, which looked for its commit on the run, where Databricks does not keep
+it. Round 3's pull request fixes that check. Then:
 
-- **Round 2's row is merged.** After round 2's pull request is merged, Claude opens a pull request with round 2's
-  row in `runs/JUNE_RUNS.md` (step 4). Upload nothing before it is merged: until then the last row is round 1's,
+- **Round 3's row is merged.** After round 3's pull request is merged, Claude opens a pull request with round 3's
+  row in `runs/JUNE_RUNS.md` (step 4). Upload nothing before it is merged: until then the last row is round 2's,
   and Job A refuses it, since its code is no longer the code on `main`.
 - **Any other open pull request is merged first, or waits.** Every pull request the owner means to merge before
-  round 2, such as CI's fix, is merged before the upload. Anything else waits until Job B ends (review of #103).
-- **Job A's trigger stays paused.** It was paused at 16:07 on 9 November. To check: in Databricks, in the left menu,
-  click **Jobs & Pipelines**, then Job A, `voc-june-job-a`. On the right side, **Schedules & Triggers** says
+  round 3 is merged before the upload. Anything else waits until Job B ends (review of #103).
+- **Job A's trigger stays paused.** It was paused again after 01:17 on 10 November. To check: in Databricks, in the left
+  menu, click **Jobs & Pipelines**, then Job A, `voc-june-job-a`. On the right side, **Schedules & Triggers** says
   **Paused**. Leave it so until step 6.
-- **Delete round 1's zip.** In the left menu, click **Catalog**, then `workspace`, then `default`, then `voc_raw`,
-  then the folder `incoming`. On the row of `syn_june_dry_run_r1.zip`, click the ⋮ at the right end of the row,
+- **The robot can start Job B.** In **Jobs & Pipelines**, click `voc-june-job-b`. On the right side, under
+  **Permissions**, `voc-june-runner` shows **Can Manage Run**. In round 2 it showed **Can View**, and Databricks
+  refused to start Job B (HTTP 403).
+- **Delete round 2's zip.** In the left menu, click **Catalog**, then `workspace`, then `default`, then `voc_raw`,
+  then the folder `incoming`. On the row of `syn_june_dry_run_r2.zip`, click the ⋮ at the right end of the row,
   then **Delete**, and confirm. The folder `incoming` itself stays. If the menu has no **Delete**, stop and tell
   Claude.
-- **Delete round 1's CSV.** The same way, in the folder `june` of `voc_raw`, delete `syn_june_dry_run_r1.csv`, and
+- **Delete round 2's CSV.** The same way, in the folder `june` of `voc_raw`, delete `syn_june_dry_run_r2.csv`, and
   nothing else. Open no other file in `voc_raw`, since it holds real complaint text.
 - **Drop every table and view in the `voc_june` schema** (a schema is a folder that holds tables and volumes). In
   **Catalog**, click `workspace`, then `voc_june`. For each item it lists: click the item, click the ⋮ at the top
   right of its page, then **Delete**, and confirm. If the menu has no **Delete**, stop and tell Claude. Check:
   `voc_june` lists nothing. The schema itself stays. Job A's next run builds the tables again.
-- **Application Insights stays on** until round 2 ends (owner decision, 9 November). Step 16 removes it.
+- **Application Insights stays on** until round 3 ends (owner decision, 9 November, until the dry run ends). Step
+  16 removes it.
 
 ## The run
 
 5. On the laptop, in the repo's folder:
-   `uv run --native-tls --locked python scripts/make_dry_run.py --round 2 <a folder outside the repo>`. It prints
+   `uv run --native-tls --locked python scripts/make_dry_run.py --round 3 <a folder outside the repo>`. It prints
    the zip's name, size and SHA-256, which must be the pin's in `config/june_dry_run.toml`.
 6. In Databricks, check that the volume's `incoming` folder is empty, then unpause Job A's trigger.
 7. Upload the zip to the volume's `incoming` folder. Job A starts on its own.
