@@ -658,6 +658,7 @@ Written on 10 November 2026, after round 2 stopped at Job B's check of its own r
 - Job B takes its commit from its task's `git_source.git_snapshot.used_commit`, one attempt or two (J11)
 - Job B refuses its own run with no task, another task, a commit that is not 40 hex characters, attempts that name different commits, a task with no snapshot, or the commit on the run only (J11)
 - between a round's code pull request and its row pull request, Job A refuses the checkout (J1)
+- in the fix round of #105: after a retry, the approval workflow reads Job B's exit value from its latest attempt, in either order, and sends none when the attempts cannot be ordered (J16, serious 1)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
