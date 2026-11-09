@@ -2367,3 +2367,14 @@ Times are local, from the chat's message times, GitHub, Databricks and the recei
 - 18:06 Under the stopping rule, Claude fixed the findings with no further review round: the spec's Known limits on the robot's `runs/get`, plan item 9 on the repaired run, the time of Application Insights, what the notebook did not print, step 16's pointer to steps 3 and 4 of the receiver's steps, Job A's name and the drop-tables fallback in the steps, and the row test's refusal reason and docstring.
 - Correction: the line above timed 18:06 has a guessed time. The fixes were written by 18:05, when commit `817c903` started (git's commit time). AI mistake, caught by Claude on the commit's time.
 - 18:21 `scripts/merge_verdict.py 102`: PASS on the base, CI on `817c903`, conflicts and the red commit first. PENDING on the review findings and the build log, which Claude checked: every finding the owner chose is fixed, nit 8 is in Known limits with its reason, nit 9 needs nothing, and every fix-round finding is fixed. Verdict: MERGE.
+
+### Pull request: CI runs once per change and retries its downloads
+
+- Work start, 21:57: branch `fix/ci-downloads`, worktree `../voc-demo-ci`, from main at `fe61204` (owner decision, option A).
+- Red commit `da6e87f` at 21:58 (git's commit time): only the new `tests/test_ci_workflow.py`, three tests, all failing, through the gate. It ran beside #103's gates.
+- The change, in `.github/workflows/ci.yml`:
+  - CI runs on every pull request and on pushes to `main` only. A pull request's push ran CI twice before, once for the push and once for the pull request. The dashboard's deploy follows CI's push run on `main` (A15), so `main` keeps it.
+  - The `tests` and `repo-checks` jobs install Python and the project with `uv sync --locked` first, up to 3 tries with 20 seconds between them. `repo-checks` had no install step, so its first `uv run` downloaded Python, where the 504 of 9 November hit.
+  - The secret scan's `curl` retries 3 times, on any error. Its SHA-256 check is unchanged.
+- Spec 001's B17 says CI runs on every pull request and every push to `main`.
+- Not covered: the `setup-uv` and `checkout` actions download too, and this change adds no retry around them. A fault there still needs the owner's re-run.

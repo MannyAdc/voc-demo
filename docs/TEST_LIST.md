@@ -331,6 +331,12 @@ Every test feeds the checks synthetic `gh pr view` JSON. No test runs `gh` or op
 - any tracked file with the CFPB header row and a non-`SYN-` ID fails (review)
 - dbt build with data tests runs, with usage stats off (review, deferred to T011)
 
+Written on 9 November 2026, after two CI runs failed at a download from GitHub (8 and 9 November), `tests/test_ci_workflow.py`:
+
+- CI runs on every pull request and on pushes to `main` only, so a pull request's push runs once (T003)
+- each job that uses uv installs Python and the project first, retried up to 3 times, so no later step downloads them (T003)
+- the secret scan retries its download, and the checksum still decides whether it is used (T003)
+
 ## Validation review ([spec 003](../specs/003-validation-review/spec.md)), `tests/test_validation.py`
 
 Added on 2 November 2026. Each piece adds its tests in its own pull request, failing first.
