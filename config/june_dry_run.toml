@@ -1,13 +1,13 @@
 # Spec 004, pull request 9a: the pin of the dry run's synthetic zip and CSV, made by
 # scripts/make_dry_run.py. Job A takes it for a synthetic row (J8, J16). Never the June pin.
-round = 1
+round = 2
 
 [june_dry_run]
-file_name = "syn_june_dry_run_r1.csv"
+file_name = "syn_june_dry_run_r2.csv"
 size_bytes = 3236
-sha256 = "d387b88c052aa1fc3c7fbea77c0e5c3d208b69afcb33829cdc6e0e79bd1842a6"
+sha256 = "666ca9c47a68501e28ad4a69b6c47e889831949f00c9ee74bbefde373f4d4661"
 rows = 12
 narratives = 11
-zip_file_name = "syn_june_dry_run_r1.zip"
+zip_file_name = "syn_june_dry_run_r2.zip"
 zip_size_bytes = 3380
-zip_sha256 = "8b0bb78dbb2be75c741ca99004b448ca005a42654d6154c12b678b8b392d908c"
+zip_sha256 = "ffe985f8324ce956b5f1fe66a8be24d55cb30d02d8c5fbf7f17060349c9c624d"

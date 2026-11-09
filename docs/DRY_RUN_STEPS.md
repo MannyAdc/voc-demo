@@ -23,8 +23,12 @@ runs (review of #99).
 
 ## The run
 
+Round 1 ran on 9 November and stopped at the approval workflow's check of Job A's run, which a code fix in round
+2's pull request corrects. Before round 2: delete round 1's zip from the volume's `incoming` folder and its CSV
+from the volume's `june` folder, and drop every table and view in the `voc_june` schema, as in step 14.
+
 5. On the laptop, in the repo's folder:
-   `uv run --native-tls --locked python scripts/make_dry_run.py --round 1 <a folder outside the repo>`. It prints
+   `uv run --native-tls --locked python scripts/make_dry_run.py --round 2 <a folder outside the repo>`. It prints
    the zip's name, size and SHA-256, which must be the pin's in `config/june_dry_run.toml`.
 6. In Databricks, check that the volume's `incoming` folder is empty, then unpause Job A's trigger.
 7. Upload the zip to the volume's `incoming` folder. Job A starts on its own.

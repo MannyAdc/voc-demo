@@ -648,23 +648,17 @@ def test_J1_the_steps_count_six_green_ticks_and_warn_about_the_one_time_boxes():
 # The dry run's row (plan item 9, owner decisions of 8 November: the row comes last, after the jobs' IDs)
 
 
-def test_J1_the_run_log_s_last_row_is_the_dry_run_s_on_the_frozen_code():
-    """The last row is synthetic, names the dry run's list and this checkout's frozen code, and Job A takes it.
-
-    It pins round 1's one row and today's code hash on purpose, as a tripwire: any later change to a frozen file
-    fails it in CI before the dry run. The next row, a round 2 or the real June row, or the next frozen change
-    after the dry run retires it, in that pull request, marked and logged (review of #101)."""
+def test_J1_the_run_log_s_first_row_is_round_1_s():
+    """Round 1's row stays as the record of the dry run's first round. Its list and code are no longer the
+    checkout's, so Job A refuses it until round 2's row is added after it."""
     from voc.frozen import code_hash, dry_run_list_hash, read_runs
-    from voc.job_a import checked_target, pin_for
-
+    # Changed in the round 2 pull request, as the docstring planned: the code changed, so round 1's row is a record
+    # now, and round 2's row comes in a pull request of its own.
     entries = read_runs(REPO / "runs" / "JUNE_RUNS.md")
-    assert len(entries) == 1
-    row = entries[-1]
-    assert row.kind == "synthetic" and row.list_hash == dry_run_list_hash(REPO) and row.code_hash == code_hash(REPO)
-    assert re.fullmatch(r"2026-11-09 [0-9]{2}:[0-9]{2}", row.date) and "round 1" in row.reason
-    run_target = checked_target(REPO)
-    assert (run_target.kind, run_target.entry_kind, run_target.row) == ("synthetic", "synthetic", 1)
-    assert pin_for(REPO, run_target.kind) == _pin()
+    row = entries[0]
+    assert row.kind == "synthetic" and "round 1" in row.reason
+    assert row.list_hash == "0cc696205a81ce55bfe505f3ff83e2bf1e1e770ecad0167d63cf9fa027f89cbf"
+    assert row.code_hash != code_hash(REPO) and row.list_hash != dry_run_list_hash(REPO)
 
 
 # The dry run's round 2 (owner decisions of 9 November, after round 1 stopped at the repair history check)

@@ -109,6 +109,14 @@ def _succeeded(item):
             and status["termination_details"].get("code") == "SUCCESS")
 
 
+def _never_repaired(history):
+    """A never-repaired run read with `include_history` holds exactly one repair history item, of type ORIGINAL,
+    the run itself (the dry run's round 1, 9 November). A repair adds an item. An empty or missing history means
+    the history was not given, so it is refused too."""
+    return (isinstance(history, list) and len(history) == 1 and isinstance(history[0], dict)
+            and history[0].get("type") == "ORIGINAL")
+
+
 def checked_run(run, run_id, job_a_job_id):
     """J16 item 5: Job A's run, finished successfully, with exactly its three tasks by key, all succeeded, never
     repaired. Returns the `job_a` task's run ID."""
@@ -116,7 +124,7 @@ def checked_run(run, run_id, job_a_job_id):
         raise ApprovalError("the run is not this run of Job A")
     if not _succeeded(run):
         raise ApprovalError("Job A's run did not finish successfully")
-    if run.get("repair_history") != []:
+    if not _never_repaired(run.get("repair_history")):
         raise ApprovalError("Job A's run was repaired, or its repair history is missing")
     tasks = run.get("tasks")
     if (not isinstance(tasks, list) or len(tasks) != len(TASKS)

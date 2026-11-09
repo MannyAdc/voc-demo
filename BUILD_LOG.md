@@ -2324,3 +2324,35 @@ Times are local, from the chat's message times. The owner did each step, one at 
 - For the dry run (minor 3): nothing is merged to `main` from the upload until Job B ends, including the build log entry for this pull request's merge, which waits until after Job B.
 - Fix commit `eede3cc` at 12:17 (git's commit time), through the gate. CI green on `eede3cc`.
 - 12:32 Merge verdict on #101: PENDING with every mechanical check passing. The owner chose minor 1 and nits 4 and 5, and all three are fixed. Minors 2 and 3 are risks told to the owner, and nit 6 needs no change. Claude's verdict: MERGE, after this log commit's CI.
+- 12:48 Claude marked #101 ready, and 13:04 the owner merged it (times from GitHub, `00b966e`).
+
+### The dry run's round 1, 9 November
+
+Times are local, from the chat's message times, GitHub, Databricks and the receiver's logbook. The owner did every step. Nothing was merged to `main` from the upload until the round stopped.
+
+- 13:45 The owner made the zip on the laptop: `syn_june_dry_run_r1.zip  3380 bytes  sha256 8b0bb78dbb2be75c741ca99004b448ca005a42654d6154c12b678b8b392d908c`, the pin's.
+- 13:57 The volume `voc_raw` had no `incoming` folder. The owner made it. 13:58 Job A's trigger unpaused.
+- 14:06 The owner uploaded the zip. 14:09 Job A's run 183323422885765 succeeded: `unpack`, the dbt build in Databricks and `job_a`.
+- 14:14 No approval workflow run after 5 minutes. 14:17 The receiver's table held an `event` row for that Job A run, so Databricks' webhook reached the receiver and its Basic sign-in worked. The queue's message was in `june-events-poison` after 5 tries.
+- 15:06 Owner decision: J8's fallback, the approval workflow started by hand, and the receiver diagnosed afterwards. Its run failed at the figures job: "refused: Databricks' token request answered HTTP 403".
+- 15:28 The cause: the robot's secret had the scope `jobs:read`. The page's scope list gives `jobs` with an access of Read or Read + Write, and Read makes `jobs:read`.
+- AI mistake, caught by the dry run: Claude's step 2.4 said "scope `jobs` only, as in the spike" and did not warn that the access must be Read + Write.
+- 15:33 to 15:48 The owner added their Key Vault Secrets Officer role back, made a new secret with `jobs` and Read + Write, put it in the vault as a new version and in both GitHub environments, deleted the old secret, removed the role again, and restarted the receiver. The client ID stayed the same.
+- 15:51 to 15:54 The owner emptied `incoming` and uploaded the zip again. Job A's run 799709723207063 succeeded, and its webhook reached the receiver again. 16:01 Its queue message was in `june-events-poison` after 5 tries too.
+- 16:04 The approval workflow started by hand for that run signed in to Databricks now, then refused: "Job A's run was repaired, or its repair history is missing". 16:07 The owner paused Job A's trigger. Round 1 stopped there.
+- 16:09 The owner ran a notebook in the workspace, written by Claude, that read both Job A runs with `include_history` and printed only IDs, counts and types: each held one repair history item, of type `ORIGINAL`. This settles the Known limits line on `repair_history`: the spike saw an empty list, read without `include_history`, and the check expected that.
+- 16:14 Owner decision: Application Insights on again, for the receiver's diagnosis.
+- AI mistake, caught by the logbook and the owner's screenshot: Claude told the owner to copy a poison message's "text", and the copy took the whole details panel, so the re-sent message failed with `JSONDecodeError` five times (16:18 to 16:24). At 16:43 Claude gave the exact line to paste instead.
+- 16:52 The re-sent message for run 183323422885765 logged `dispatch_skipped_already_made`: the receiver signed in to Databricks with the new secret, confirmed the run, read GitHub's runs with its token, and found the manual run of that name. So the receiver works up to the dispatch itself, which round 2 tests. The receiver's earlier failures fit the old secret's scope, but the logbook was off then, so their cause is not proven.
+- 16:55 Owner decision: keep the logbook on until round 2 ends. 16:57 The owner cleared `june-events-poison`, which held the two receiver messages and the bad re-send.
+
+### Pull request: round 1's findings, and round 2
+
+- Work start, 16:57: branch `fix/dry-run-round-2`, worktree `../voc-demo-r2`, from main at `00b966e`.
+- Claude's choices, for the owner to see:
+  - The check takes exactly one `ORIGINAL` item and refuses anything else, an empty list included, since the workflow always asks for the history.
+  - The contract fixture `job_a_run.json` now holds the `ORIGINAL` item, with the keys the notebook printed.
+  - Round 2's CSV is round 1's rows with `SYN-92` IDs, so its list hash differs and the June staging table takes its rows as new. Round 1's CSV stays as its record.
+  - Round 1's row stays in the run log as its record. Round 2's row comes in its own pull request, after this one.
+- Red commit `e1fa8da` at 16:59 (git's commit time): only test files, through the gate.
+- In the green commit, tests that pinned the old behaviour change, each marked: the Job B re-check case that used an ORIGINAL item as a repair now uses a REPAIR item, and round 1's row test now checks it as a record.
