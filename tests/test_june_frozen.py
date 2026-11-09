@@ -116,9 +116,10 @@ def _log(tmp_path, rows):
     return path
 
 
-def test_J1_the_committed_june_run_log_has_its_header_and_no_entry_yet():
-    entries = read_runs(REPO / "runs" / "JUNE_RUNS.md")
-    assert entries == []
+def test_J1_the_committed_june_run_log_has_its_header():
+    # Changed in the dry run's row pull request: the log now holds the dry run's row, which
+    # tests/test_dry_run.py checks.
+    read_runs(REPO / "runs" / "JUNE_RUNS.md")
     text = (REPO / "runs" / "JUNE_RUNS.md").read_text(encoding="utf-8")
     assert "| Date | Kind | June list hash | Code hash | Reason |" in text and "only grows" in text
 

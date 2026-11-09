@@ -613,6 +613,12 @@ Written on 9 November 2026, from the fix-round review of #100, fixed with no fur
 - the dry run's steps say what to do if no approval run appears, and the spec names no destination test (J8, minor 1)
 - the steps record the owner's check of the live Job A and the removal of the Secrets Officer role, name every secret the workflow and the receiver read, count six green ticks, and warn about the two boxes that show a new secret once (J1, J10, J13, minors 2 to 6)
 
+## The dry run's row ([spec 004](../specs/004-june-test-and-baselines/spec.md), plan item 9, J1), `tests/test_dry_run.py`
+
+Written on 9 November 2026, after the jobs' IDs (owner decision of 8 November: the row comes last). The test that expected an empty run log now checks its header only.
+
+- the run log's one row is the dry run's, synthetic, round 1, naming the dry run's list and the checkout's frozen code, and Job A takes it with the dry run's pin (J1, J16)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
