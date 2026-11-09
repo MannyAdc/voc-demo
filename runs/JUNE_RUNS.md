@@ -14,3 +14,4 @@ of the commit that merged it. Job B refuses to score unless a row names both has
 |---|---|---|---|---|
 | 2026-11-09 00:30 | synthetic | 0cc696205a81ce55bfe505f3ff83e2bf1e1e770ecad0167d63cf9fa027f89cbf | 6335e9b1d795628dcbb6da45ba76b577c1654f0b6bc83da206968e5146b3af67 | the dry run, round 1, on the jobs' IDs of #100 |
 | 2026-11-09 10:45 | synthetic | 6d619f00843fa99fb098a08d7c142c7fdb415b77d3553c7858d71acde8fce412 | 0095cfc74d9b3ded993101653f8a4486d30385b604c420d9e973ba770a5c9f07 | the dry run, round 2, after the fixes of #102 |
+| 2026-11-09 22:24 | synthetic | 92c133d48483da34a499692d47e0aa8eedf31cbe687435a72c6870a9dd24fc94 | 634c46d3d006c201b98b7a5772fc3d38d8b2eb15621e55703a6e5439c8c866b6 | the dry run, round 3, after the fixes of #105 |

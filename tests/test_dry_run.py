@@ -697,6 +697,19 @@ def test_J1_the_run_log_s_last_row_is_this_round_s():
     assert (b_target.kind, b_target.entry_kind) == ("synthetic", "synthetic") and b_entry == last
 
 
+def test_J1_round_3_s_row_names_the_code_merged_in_105():
+    """Round 3's row names the dry run's list and the frozen code that `scripts/june_hash.py --dry-run` printed on
+    `main` at `bbbf29d`, after #105 merged. The run log only grows, so this stays true in later rounds."""
+    from voc.frozen import read_runs
+    # Review of #106, minor 1: the row's own words, so a later row that names round 3 is not taken for it.
+    rows = [e for e in read_runs(REPO / "runs" / "JUNE_RUNS.md") if "the dry run, round 3," in e.reason]
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.kind == "synthetic" and "#105" in row.reason
+    assert row.list_hash == "92c133d48483da34a499692d47e0aa8eedf31cbe687435a72c6870a9dd24fc94"
+    assert row.code_hash == "634c46d3d006c201b98b7a5772fc3d38d8b2eb15621e55703a6e5439c8c866b6"
+
+
 # The dry run's round 2 (owner decisions of 9 November, after round 1 stopped at the repair history check)
 # Review of #102, minor 6: the tests below read the round from the pin, so a new round rewrites no test.
 
