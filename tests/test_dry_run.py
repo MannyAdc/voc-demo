@@ -670,15 +670,23 @@ def test_J1_the_run_log_s_first_row_is_round_1_s():
 
 def test_J1_the_run_log_s_last_row_is_this_round_s():
     """The run log's last row is the current round's: synthetic, naming the dry run's list and the checkout's frozen
-    code, so Job A takes it with the dry run's pin (owner decision of 9 November, after round 1)."""
+    code, so Job A takes it with the dry run's pin, and Job B takes it too (plan item 9, owner decision of 8 November:
+    the row comes last)."""
+    from voc import job_b
     from voc.frozen import code_hash, dry_run_list_hash, read_runs
     from voc.job_a import checked_target, pin_for
-    last = read_runs(REPO / "runs" / "JUNE_RUNS.md")[-1]
-    assert last.kind == "synthetic" and f"round {ROUND}" in last.reason
+    entries = read_runs(REPO / "runs" / "JUNE_RUNS.md")
+    last = entries[-1]
+    # Review of #103, nit 4: the round as a whole word, so round 2 never matches round 20.
+    assert last.kind == "synthetic" and re.search(rf"\bround {ROUND}\b", last.reason)
+    assert len(entries) >= 2 and last.date > entries[-2].date
     assert last.list_hash == dry_run_list_hash(REPO) and last.code_hash == code_hash(REPO)
     run_target = checked_target(REPO)
     assert run_target.kind == "synthetic"
     pin_for(REPO, run_target.kind)  # refuses a pin whose round is not the list's
+    # Review of #103, minor 1: Job B's own check of the row, offline.
+    b_target, b_entry = job_b.checked_target(REPO)
+    assert (b_target.kind, b_target.entry_kind) == ("synthetic", "synthetic") and b_entry == last
 
 
 # The dry run's round 2 (owner decisions of 9 November, after round 1 stopped at the repair history check)

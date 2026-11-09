@@ -638,6 +638,7 @@ Written on 9 November 2026, in the fix round of #102, from its review and the ow
 Written on 9 November 2026, for round 2's row (owner decision of 8 November: the row comes last).
 
 - the run log's last row is this round's, synthetic, naming the dry run's list and the checkout's frozen code, and Job A takes it with the dry run's pin (J1, J16)
+- in the fix round of #103: Job B takes it too, the round is matched as a whole word, and the row is dated after the one before it (J1, minor 1, nit 4)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
