@@ -2324,3 +2324,46 @@ Times are local, from the chat's message times. The owner did each step, one at 
 - For the dry run (minor 3): nothing is merged to `main` from the upload until Job B ends, including the build log entry for this pull request's merge, which waits until after Job B.
 - Fix commit `eede3cc` at 12:17 (git's commit time), through the gate. CI green on `eede3cc`.
 - 12:32 Merge verdict on #101: PENDING with every mechanical check passing. The owner chose minor 1 and nits 4 and 5, and all three are fixed. Minors 2 and 3 are risks told to the owner, and nit 6 needs no change. Claude's verdict: MERGE, after this log commit's CI.
+- 12:48 Claude marked #101 ready, and 13:04 the owner merged it (times from GitHub, `00b966e`).
+
+### The dry run's round 1, 9 November
+
+Times are local, from the chat's message times, GitHub, Databricks and the receiver's logbook. The owner did every step. Nothing was merged to `main` from the upload until the round stopped.
+
+- 13:45 The owner made the zip on the laptop: `syn_june_dry_run_r1.zip  3380 bytes  sha256 8b0bb78dbb2be75c741ca99004b448ca005a42654d6154c12b678b8b392d908c`, the pin's.
+- 13:57 The volume `voc_raw` had no `incoming` folder. The owner made it. 13:58 Job A's trigger unpaused.
+- 14:06 The owner uploaded the zip. 14:09 Job A's run 183323422885765 succeeded: `unpack`, the dbt build in Databricks and `job_a`.
+- 14:14 No approval workflow run after 5 minutes. 14:17 The receiver's table held an `event` row for that Job A run, so Databricks' webhook reached the receiver and its Basic sign-in worked. The queue's message was in `june-events-poison` after 5 tries.
+- 15:06 Owner decision: J8's fallback, the approval workflow started by hand, and the receiver diagnosed afterwards. Its run failed at the figures job: "refused: Databricks' token request answered HTTP 403".
+- 15:28 The cause: the robot's secret had the scope `jobs:read`. The page's scope list gives `jobs` with an access of Read or Read + Write, and Read makes `jobs:read`.
+- AI mistake, caught by the dry run: Claude's step 2.4 said "Scope: `jobs` only." and did not warn that the access must be Read + Write. (Corrected in the fix round of #102: this line first quoted it with words the step never held.)
+- 15:33 to 15:48 The owner added their Key Vault Secrets Officer role back, made a new secret with `jobs` and Read + Write, put it in the vault as a new version and in both GitHub environments, deleted the old secret, removed the role again, and restarted the receiver. The client ID stayed the same.
+- 15:51 to 15:54 The owner emptied `incoming` and uploaded the zip again. Job A's run 799709723207063 succeeded, and its webhook reached the receiver again. 16:01 Its queue message was in `june-events-poison` after 5 tries too.
+- 16:04 The approval workflow started by hand for that run signed in to Databricks now, then refused: "Job A's run was repaired, or its repair history is missing". 16:07 The owner paused Job A's trigger. Round 1 stopped there.
+- 16:09 The owner ran a notebook in the workspace, written by Claude, that read both Job A runs with `include_history` and printed only IDs, counts and types: each held one repair history item, of type `ORIGINAL`. This settles the Known limits line on `repair_history`: the spike saw an empty list, read without `include_history`, and the check expected that.
+- 16:14 Owner decision: Application Insights on again, for the receiver's diagnosis.
+- AI mistake, caught by the logbook and the owner's screenshot: Claude told the owner to copy a poison message's "text", and the copy took the whole details panel, so the re-sent message failed with `JSONDecodeError` five times (16:18 to 16:24). At 16:43 Claude gave the exact line to paste instead.
+- 16:52 The re-sent message for run 183323422885765 logged `dispatch_skipped_already_made`: the receiver signed in to Databricks with the new secret, confirmed the run, read GitHub's runs with its token, and found the manual run of that name. So the receiver works up to the dispatch itself, which round 2 tests. The receiver's earlier failures fit the old secret's scope, but the logbook was off then, so their cause is not proven.
+- 16:55 Owner decision: keep the logbook on until round 2 ends. 16:57 The owner cleared `june-events-poison`, which held the two receiver messages and the bad re-send.
+
+### Pull request: round 1's findings, and round 2
+
+- Work start, 16:57: branch `fix/dry-run-round-2`, worktree `../voc-demo-r2`, from main at `00b966e`.
+- Claude's choices, for the owner to see:
+  - The check takes exactly one `ORIGINAL` item and refuses anything else, an empty list included, since the workflow always asks for the history.
+  - The contract fixture `job_a_run.json` now holds the `ORIGINAL` item, with the keys the notebook printed.
+  - Round 2's CSV is round 1's rows with `SYN-92` IDs, so its list hash differs and the June staging table takes its rows as new. Round 1's CSV stays as its record.
+  - Round 1's row stays in the run log as its record. Round 2's row comes in its own pull request, after this one.
+- Red commit `e1fa8da` at 16:59 (git's commit time): only test files, through the gate.
+- In the green commit, tests that pinned the old behaviour change, each marked: the Job B re-check case that used an ORIGINAL item as a repair now uses a REPAIR item, and round 1's row test now checks it as a record.
+- Green commit `a6b1f77` at 17:27 (git's commit time): through the gate, the full suite passing. 17:36 Claude opened draft #102 (time from GitHub).
+- 17:40 The fresh reviewer's findings on #102 were posted as a comment. Nothing serious. Six minor and six nits.
+- AI mistake, caught by the reviewer (minor 3): the round 1 account above quoted step 2.4 with words it never held. Fixed to the step's own words.
+- After 17:40 (exact time not recorded) Owner decision: Claude's recommendation. Fix minors 1 to 6 and nits 7, 10, 11 and 12. Skip nit 8, comparing the `ORIGINAL` item's `task_run_ids` with the tasks' run IDs, since round 1's notebook printed the item's keys and its `type`, but not the `task_run_ids` values, and a wrong guess would cost round 2. It goes in Known limits. Nit 9 needs nothing: the change is committed, marked and logged, and history is not rewritten.
+- 17:51 Fixes written: the spec's Known limits on the repair history and Application Insights, J13 on `runs/get`, the test list, the dry run's steps before round 2 click by click, with a step 16 for Application Insights, the round 2 tests reading the round from the pin, the row test's check that Job A refuses the checkout until its last row is this round's, and one line rewrapped. Two round 2 tests are renamed for what they check now.
+- Fix round commit `7d103fd` at 17:52 (git's commit time), through the gate.
+- 18:04 The fresh review of the fix round was posted on #102. Nothing serious. Three minor and five nits.
+- AI mistake, caught by the reviewer (minor 1): the fix round added step assertions to `tests/test_dry_run.py` that would have failed before its doc fixes, in the same commit, with no failing-test commit first. History is not rewritten. The last fixes below add no new failing check.
+- 18:06 Under the stopping rule, Claude fixed the findings with no further review round: the spec's Known limits on the robot's `runs/get`, plan item 9 on the repaired run, the time of Application Insights, what the notebook did not print, step 16's pointer to steps 3 and 4 of the receiver's steps, Job A's name and the drop-tables fallback in the steps, and the row test's refusal reason and docstring.
+- Correction: the line above timed 18:06 has a guessed time. The fixes were written by 18:05, when commit `817c903` started (git's commit time). AI mistake, caught by Claude on the commit's time.
+- 18:21 `scripts/merge_verdict.py 102`: PASS on the base, CI on `817c903`, conflicts and the red commit first. PENDING on the review findings and the build log, which Claude checked: every finding the owner chose is fixed, nit 8 is in Known limits with its reason, nit 9 needs nothing, and every fix-round finding is fixed. Verdict: MERGE.

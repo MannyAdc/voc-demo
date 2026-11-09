@@ -573,7 +573,7 @@ Written on 8 November 2026, from the fix-round review of #98, fixed with no furt
 
 Written on 8 November 2026, on synthetic data only (owner decisions of 6 and 8 November). Two earlier tests went in its green commit, since these replace them: Job A's pin waiting for pull request 9, and Job B's list and answers waiting for 9a.
 
-- the round 1 CSV has the CFPB header, `SYN-` IDs only, the pinned counts, Products from the label list, dbt's date and flag forms, one marker, one line break inside a narrative and one empty narrative (J8)
+- the round's CSV has the CFPB header, `SYN-` IDs only, the pinned counts, Products from the label list, dbt's date and flag forms, one marker, one line break inside a narrative and one empty narrative (J8)
 - its pin names `syn_` files apart from the June pin, and its zip is stored with fixed fields, so it is the same bytes on every platform and the pin's (J8)
 - the script makes every committed file byte for byte, and `unpack` takes the zip against its pin (J8)
 - the dry run's list is the CSV's narrative rows with their content hashes, bound to its manifest and never the June list (J1)
@@ -617,7 +617,23 @@ Written on 9 November 2026, from the fix-round review of #100, fixed with no fur
 
 Written on 9 November 2026, after the jobs' IDs (owner decision of 8 November: the row comes last). The test that expected an empty run log now checks its header only.
 
-- the run log's one row is the dry run's, synthetic, round 1, naming the dry run's list and the checkout's frozen code, and Job A takes it with the dry run's pin (J1, J16)
+- the run log's one row is the dry run's, synthetic, round 1, naming the dry run's list and the checkout's frozen code, and Job A takes it with the dry run's pin (J1, J16). Retired in round 2's pull request, below.
+
+## The dry run's round 2 ([spec 004](../specs/004-june-test-and-baselines/spec.md), J1, J8, J13, J16 item 5), `tests/test_approval.py`, `tests/test_dry_run.py`
+
+Written on 9 November 2026, after round 1 stopped at the approval workflow's check of Job A's run. In the green commit, round 1's row test above now checks that row as a record, and Job B's re-check case for a repaired run uses an `ORIGINAL` and a `REPAIR` item.
+
+- a never-repaired run's one `ORIGINAL` repair history item is taken, and any other history is refused, an empty or missing one included (J16 item 5)
+- round 1's row stays in the run log as a record, with its list and code no longer the checkout's (J1)
+- round 2 has its own `SYN-` IDs, apart from round 1's (J8)
+- the steps give the robot's secret the `jobs` scope with **Read + Write**, never **Read** alone (J13)
+- the dry run's steps make round 2's zip, after round 1's clean-up (J1)
+
+Written on 9 November 2026, in the fix round of #102, from its review and the owner's decisions. The two round 2 tests above are renamed and read the round from the pin.
+
+- each round has its own `SYN-` IDs, apart from the round before's, and the steps make this round's zip after the round before's clean-up (J1, J8, minor 6)
+- the steps put the round's row first, keep Job A's trigger paused, and remove Application Insights after the round (J1, minor 4)
+- Job A refuses the checkout until its last row is this round's (J1, nit 7)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 

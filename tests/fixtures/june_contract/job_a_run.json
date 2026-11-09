@@ -1,6 +1,27 @@
 {
   "job_id": 800001,
-  "repair_history": [],
+  "repair_history": [
+    {
+      "effective_performance_target": "PERFORMANCE_OPTIMIZED",
+      "end_time": 1792999180000,
+      "start_time": 1792999000000,
+      "state": {
+        "life_cycle_state": "TERMINATED",
+        "result_state": "SUCCESS"
+      },
+      "status": {
+        "termination_details": {
+          "code": "SUCCESS"
+        }
+      },
+      "task_run_ids": [
+        900009,
+        900010,
+        900011
+      ],
+      "type": "ORIGINAL"
+    }
+  ],
   "run_id": 900001,
   "start_time": 1792999000000,
   "state": {

@@ -384,7 +384,9 @@ def test_J11_a_github_refusal_that_is_not_retried_is_refused_at_once(monkeypatch
     (lambda: FakeJobs(run={**_fixture("job_a_run.json"), "job_id": 800009}), "not this run of Job A"),
     (lambda: FakeJobs(run={**_fixture("job_a_run.json"), "state": {"result_state": "FAILED"}}),
      "did not finish successfully"),
-    (lambda: FakeJobs(run={**_fixture("job_a_run.json"), "repair_history": [{"type": "ORIGINAL"}]}),
+    # Changed after the dry run's round 1: one ORIGINAL item is a never-repaired run, so a repair is a REPAIR item.
+    (lambda: FakeJobs(run={**_fixture("job_a_run.json"),
+                           "repair_history": [{"type": "ORIGINAL"}, {"type": "REPAIR"}]}),
      "repaired"),
     (lambda: FakeJobs(runs={"runs": [{"job_id": JOB_A, "run_id": 900005, "start_time": 1793000000000}] +
                             _fixture("job_a_runs_list.json")["runs"]}), "newer run"),

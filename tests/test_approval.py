@@ -1019,3 +1019,28 @@ def test_J5_main_s_refusal_of_the_run_job_holds_no_field_it_does_not_read(monkey
     assert approval.main(["run"], env=env) == 1
     out = capsys.readouterr()
     assert out.out.startswith("refused:") and marker not in out.out + out.err
+
+
+# The dry run's round 1, 9 November: a never-repaired run read with `include_history` holds exactly one repair
+# history item, of type ORIGINAL (the owner's notebook, Job A runs 183323422885765 and 799709723207063)
+
+ORIGINAL = {"type": "ORIGINAL", "start_time": 1792999000000, "end_time": 1792999180000,
+            "state": {"life_cycle_state": "TERMINATED", "result_state": "SUCCESS"},
+            "status": {"termination_details": {"code": "SUCCESS"}}, "task_run_ids": [900009, 900010, 900011],
+            "effective_performance_target": "PERFORMANCE_OPTIMIZED"}
+
+
+def test_J16_a_never_repaired_run_s_one_original_history_item_is_taken():
+    run = {**_run(), "repair_history": [copy.deepcopy(ORIGINAL)]}
+    assert _approval().checked_run(run, 900001, JOB_A) == 900011
+
+
+@pytest.mark.parametrize("history", [
+    [], [copy.deepcopy(ORIGINAL), copy.deepcopy(ORIGINAL)], [copy.deepcopy(ORIGINAL), {"type": "REPAIR", "id": 2}],
+    [{"type": "REPAIR", "id": 1}], [{**ORIGINAL, "type": "ORIGINAL_RUN"}], ["ORIGINAL"], {"type": "ORIGINAL"}])
+def test_J16_any_repair_history_but_one_original_item_is_refused(history):
+    """An empty list, as `runs/get` gives without `include_history`, no longer counts: the workflow always asks for
+    the history, so an empty one means the history was not given."""
+    run = {**_run(), "repair_history": history}
+    with pytest.raises(_approval().ApprovalError, match="repaired, or its repair history"):
+        _approval().checked_run(run, 900001, JOB_A)
