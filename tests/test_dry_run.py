@@ -363,6 +363,9 @@ def _hash_root(tmp_path, with_ids):
     if with_ids:
         (root / "config" / "june_cloud.toml").write_text("job_a_job_id = 800001\njob_b_job_id = 800002\n",
                                                          encoding="utf-8")
+    else:
+        # The job IDs pull request commits the file, so a checkout without it is made by removing the copy.
+        (root / "config" / "june_cloud.toml").unlink(missing_ok=True)
     return root
 
 
@@ -466,7 +469,7 @@ def test_J11_the_dry_run_note_gives_the_accepted_and_quarantined_counts(monkeypa
     job_b.run(REPO, {"job_a_run_id": "900001", "github_run_id": "600001", "job_b_run_id": "900002"},
               Jobs(job_a_exit), GitHub(), job_b.VolumeStore(files), lambda sql: copy.deepcopy(rows),
               sleep=lambda s: None)
-    note = files.files["/Volumes/workspace/default/voc_results/june-900002/DRY_RUN.txt"].decode("utf-8")
+    note = files.files["/Volumes/workspace/voc_results/voc_results/june-900002/DRY_RUN.txt"].decode("utf-8")
     assert note.endswith("Labelled: 8. Accepted: 7. Quarantined: 1.\n")  # fix-round review of #99, nit 4
     assert not any(cid in note for cid, _, _ in rows) and MARKER not in note
 
@@ -518,3 +521,125 @@ def test_J1_the_re_run_steps_say_how_to_start_a_fresh_workflow_run_and_the_note_
     text = (REPO / "docs" / "DRY_RUN_STEPS.md").read_text(encoding="utf-8")
     assert "start `June approval` by hand on `main`" in text and "GitHub's re-run button" in text
     assert "IDs, states, counts and fixed text only" in text
+
+
+# The jobs' IDs and the Databricks setup steps (owner decisions of 8 and 9 November)
+
+DATABRICKS_STEPS = REPO / "docs" / "DATABRICKS_STEPS.md"
+
+
+def test_J16_the_jobs_ids_are_the_jobs_the_owner_made():
+    """J16 item 10: Job A's and Job B's IDs, made by the owner in the workspace on 9 November."""
+    from voc.approval import cloud_settings
+
+    assert cloud_settings(REPO) == {"job_a_job_id": 980148595231243, "job_b_job_id": 111509808656471}
+
+
+def test_J1_the_databricks_steps_1_go_click_by_click_with_no_azure_host_or_guid():
+    """Owner decision, 9 November: every step names its clicks in order, for a reader new to Databricks."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    steps = re.findall(r"^### Step (1\.[0-9]+): ", text, flags=re.M)
+    assert steps == [f"1.{n}" for n in range(1, 9)]
+    for words in ("Copy raw file", "just left of the grey **Run now** button", "**Can View**", "**Can Manage Run**",
+                  "**Paused**", "`voc_results`", "`voc-receiver`", "**On success**", "Clear all"):
+        assert words in text, words
+    assert not re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", text, re.I)
+    assert set(re.findall(r"(\S*)azurewebsites\.net", text)) <= {"`."}
+    assert "<default domain>" in text and "<the ID>" in text
+
+
+# The review of #100 (owner decisions of 9 November: option A, the results volume in its own schema, and every
+# other finding fixed)
+
+
+def test_J13_job_b_writes_its_results_to_their_own_schema():
+    """Serious 1: `voc_results` sits in its own schema, apart from `default`, which holds the raw uploads."""
+    from voc.job_b import RESULTS_VOLUME
+
+    assert RESULTS_VOLUME == "/Volumes/workspace/voc_results/voc_results" and "/default/" not in RESULTS_VOLUME
+
+
+def test_J1_the_databricks_steps_make_the_results_schema_and_explain_the_word():
+    """Serious 1: the step makes the schema, then the volume, and says what a schema is the first time."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    step = text.split("### Step 1.2: ")[1].split("\n### ")[0]
+    assert "schema (a folder that holds tables and volumes)" in text
+    assert step.index("Create schema") < step.index("Volume") and "`workspace` → `voc_results`" in step
+
+
+def test_J1_the_databricks_steps_check_the_live_jobs_against_their_files():
+    """Minors 2 and 3, nits 9 and 10."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    assert "**Run as**" in text and "never `voc-june-runner`" in text
+    assert "compare it with `cloud/job_a.yml`" in text and "`pause_status: PAUSED`" in text
+    assert "`email_notifications`" in text and "cancel" in text
+    job_a = (REPO / "cloud" / "job_a.yml").read_text(encoding="utf-8")
+    for line in ("warehouse_id: the SQL warehouse's ID, set by the owner", "webhook_notifications:", "on_success:",
+                 "- id: the receiver's notification destination ID, set by the owner"):
+        assert line in job_a and f"`{line}`" in text, line
+    assert "attach the destination by clicking" in job_a
+
+
+def test_J1_the_databricks_steps_copy_secrets_without_showing_them_and_clear_the_clipboard_either_way():
+    """Minor 6."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    assert "Show Secret Value" not in text
+    assert "clipboard history is off" in text
+
+
+def test_J1_the_databricks_steps_hold_no_workspace_host_vault_address_or_warehouse_id():
+    """Minor 7."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    for host in ("cloud.databricks.com", "azuredatabricks.net", "vault.azure.net"):
+        assert host not in text, host
+    assert not re.search(r"\b[0-9a-f]{16}\b", text)
+
+
+def test_J8_the_spec_and_the_steps_name_the_dry_run_as_the_webhook_s_test():
+    """Minor 4, nit 11."""
+    spec = (REPO / "specs" / "004-june-test-and-baselines" / "spec.md").read_text(encoding="utf-8")
+    assert "the dry run's Job A run is that test" in spec and "attach the destination by clicking" in spec
+    dry = (REPO / "docs" / "DRY_RUN_STEPS.md").read_text(encoding="utf-8")
+    assert "DATABRICKS_STEPS.md" in dry and "Claude gives the click-by-click steps in the chat" not in dry
+
+
+# The fix-round review of #100 (owner's stopping rule: nothing serious, so Claude fixes the minors and nits)
+
+
+def test_J8_the_dry_run_steps_say_what_to_do_if_no_approval_run_appears():
+    """Minor 1: the dry run's Job A run is the webhook's test, and the spec no longer names a destination test."""
+    spec = (REPO / "specs" / "004-june-test-and-baselines" / "spec.md").read_text(encoding="utf-8")
+    assert "Use the destination's test" not in spec
+    dry = (REPO / "docs" / "DRY_RUN_STEPS.md").read_text(encoding="utf-8")
+    assert "no `June approval` run appears" in dry and "J8's fallback" in dry
+
+
+def test_J1_the_steps_record_the_live_job_check_and_the_officer_role_s_removal():
+    """Minors 2 and 6: the owner compared the live Job A with its file, and removed the Secrets Officer role."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    assert "### Step 2.7: " in text and "### Step 2.8: " in text
+    check = text.split("### Step 2.7: ")[1].split("\n### ")[0]
+    for words in ("`max_concurrent_runs`", "`queue`", "`performance_target`"):
+        assert words in check, words
+    role = text.split("### Step 2.8: ")[1].split("\n### ")[0]
+    assert "Key Vault Secrets Officer" in role and "Key Vault Secrets User" in role
+
+
+def test_J10_the_steps_name_every_secret_the_workflow_and_the_receiver_read():
+    """Minor 5: the steps' secret names are the workflow's and the receiver's own."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    workflow = (REPO / ".github" / "workflows" / "june_approval.yml").read_text(encoding="utf-8")
+    for name in set(re.findall(r"secrets\.([A-Z_]+)", workflow)):
+        assert f"`{name}`" in text, name
+    settings = json.loads((REPO / "receiver" / "app_settings.json").read_text(encoding="utf-8"))
+    for value in settings.values():
+        found = re.search(r"SecretName=([a-z-]+)\)", value)
+        if found and found.group(1) not in ("voc-basic-user", "voc-basic-password", "voc-hmac-secret"):
+            assert f"SecretName={found.group(1)})" in text, found.group(1)
+
+
+def test_J1_the_steps_count_six_green_ticks_and_warn_about_the_one_time_boxes():
+    """Minors 3 and 4: the receiver has six Key Vault references, and two boxes show a new secret once."""
+    text = DATABRICKS_STEPS.read_text(encoding="utf-8")
+    assert "all six did" in text and "all five did" not in text
+    assert "never take a screenshot or share your screen" in text

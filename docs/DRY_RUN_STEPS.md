@@ -3,8 +3,8 @@
 Spec 004, plan item 9, owner decisions of 6 and 8 November. The dry run runs the whole cloud chain once on synthetic
 data with the mock backend: the upload, Job A in Databricks, Databricks' webhook to the Azure receiver, the approval
 workflow on GitHub, the owner's approval, Job B, and the result message back to the receiver. It holds no API key
-and calls no model. Claude gives the click-by-click steps in the chat at the time, one step at a time, and this page
-keeps their order, what each checks, and the clean-up.
+and calls no model. The setup before it is in `docs/DATABRICKS_STEPS.md`, click by click. This page keeps the run's
+order, what each step checks, and the clean-up.
 
 ## Before the dry run, in this order
 
@@ -29,7 +29,9 @@ runs (review of #99).
 6. In Databricks, check that the volume's `incoming` folder is empty, then unpause Job A's trigger.
 7. Upload the zip to the volume's `incoming` folder. Job A starts on its own.
 8. Job A ends green. Its webhook reaches the receiver, which checks the run with Databricks and starts the approval
-   workflow on GitHub, named for Job A's run.
+   workflow on GitHub, named for Job A's run. If no `June approval` run appears on GitHub's **Actions** tab within 10
+   minutes of Job A ending green, the webhook did not get through. Tell Claude. The way on is J8's fallback: the owner
+   starts `June approval` by hand on `main` with Job A's run ID.
 9. The workflow's first job prints the figures: 8 complaints. Approve `june-run` on GitHub.
 10. The workflow starts Job B. Job B checks the approval and Job A's run again, marks both used, and labels the 8
     complaints with the mock answers. Its results folder holds only `DRY_RUN.txt`, which ends with the counts:

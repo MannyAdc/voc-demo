@@ -507,9 +507,9 @@ def test_J11_the_results_folder_holds_a_dry_run_note_until_6b(monkeypatch):
     """Owner decision, 8 November: an empty folder may not persist on the object store, so a note makes it exist."""
     job_b = _patched(monkeypatch)
     _, files, _ = _run(job_b)
-    folder = f"/Volumes/workspace/default/voc_results/june-{JOB_B_RUN}"
+    folder = f"/Volumes/workspace/voc_results/voc_results/june-{JOB_B_RUN}"
     note = files.files[f"{folder}/DRY_RUN.txt"].decode("utf-8")
-    assert [p for p in files.files if p.startswith("/Volumes/workspace/default/voc_results")] == [
+    assert [p for p in files.files if p.startswith("/Volumes/workspace/voc_results/voc_results")] == [
         f"{folder}/DRY_RUN.txt"]
     assert "synthetic dry run" in note and "pull request 6b" in note
     assert all(cid not in note for cid, _, _ in ROWS)
@@ -523,7 +523,7 @@ def test_J16_a_stopped_run_names_no_folder_and_gives_its_reason(monkeypatch):
     job_b = _patched(monkeypatch, rows=THREE, answers=[])
     value, files, _ = _run(job_b, jobs=FakeJobs(job_a_exit=_approved(THREE)), rows=THREE)
     assert value == {**_fixture("job_b_exit_stopped.json"), "complaints": 3, "labelled": 3, "stop_reason": "error"}
-    assert not any(p.startswith("/Volumes/workspace/default/voc_results") for p in files.files)
+    assert not any(p.startswith("/Volumes/workspace/voc_results/voc_results") for p in files.files)
     assert len([p for p in files.files if p.startswith(job_b.USED_FOLDER)]) == 2
 
 

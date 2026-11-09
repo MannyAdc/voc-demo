@@ -37,7 +37,9 @@ from voc.job_a import VOLUME
 
 CONTRACT = "voc-june-1"
 USED_FOLDER = VOLUME + "/job_b_used"
-RESULTS_VOLUME = "/Volumes/workspace/default/voc_results"
+# The results volume sits in a schema of its own, apart from `default`, which holds the raw uploads, so the
+# reader's grants never reach a schema with complaint data (J13, review of #100).
+RESULTS_VOLUME = "/Volumes/workspace/voc_results/voc_results"
 DRY_RUN_FILE = "DRY_RUN.txt"
 DRY_RUN_NOTE = ("This folder is a synthetic dry run of spec 004's Job B (pull request 6a). Job B labelled the "
                 "synthetic sample with the mock backend and wrote no results file. The results files arrive in pull "

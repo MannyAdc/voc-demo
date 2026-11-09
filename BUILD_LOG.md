@@ -2234,3 +2234,74 @@ Times below are local, from GitHub, the chat's message times, Application Insigh
 - Green commit `856d2fa` at 21:19 (git's commit time), through the gate, and pushed.
 - CI on `856d2fa` ran twice, as on every push to a pull request. One run passed every check. The other failed all three jobs at their first download step: installing the packages, the repo checks and the gitleaks download (step results read from GitHub's API, never the logs). Claude never re-runs a workflow, so the owner re-ran the failed jobs, with debug logging left off, since the repo's logs are public. The re-run passed, so CI is green on `856d2fa`.
 - 22:04 Merge verdict on #99: PENDING with every mechanical check passing. Every finding of its two review rounds is fixed, all chosen by the owner. The second review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
+- CI on the log commit `ea7f349` failed once more in its push run, at the secret scan's gitleaks step only. The pull request run on the same commit passed every check, so no leak was in the branch. The owner re-ran the failed job, which passed. Both of the day's failures were in push runs at download or tool steps.
+- 22:39 Claude marked #99 ready, and 23:14 the owner merged it (times from GitHub, `34f2612`).
+
+## Monday 9 November 2026
+
+### The Databricks setup, step 1
+
+Times are local, from the chat's message times. The owner did every step in the workspace and the Azure portal. Claude gave one step at a time.
+
+- 00:12 Step 1.1, a look first: the only job was `voc-june-spike`, paused and watching a folder of its own, so it stays. The test jobs of 4 November were already gone. The only volume was `voc_raw`.
+- 00:14 Step 1.2: the volume `voc_results`, managed, in `workspace.default`.
+- 00:32 Step 1.3: the webhook destination `voc-receiver`, with the receiver's address and the Basic user name and password from the Key Vault. Its form had no test button, so Job A's first run tests it.
+- Owner feedback, 00:32: "you must instruct me and document in this level. Otherwise I would not understand and other noob audience will also not understand this demo work." Claude's steps since give every click from the page the owner is on, and say where each value comes from every time. The repo's step documents are written at the same level.
+- AI mistakes in the instructions, caught by the owner: Claude told the owner to take the receiver's address "from your private note", and did not say that the user name and password fields appear only after the authentication mode is changed, or how to reach a Key Vault secret from the vaults list.
+- 00:40 Step 1.4: the SQL warehouse's ID, kept in the owner's note.
+- 00:53 Step 1.5: Job A, `voc-june-job-a`, from `cloud/job_a.yml` with the warehouse ID, and the webhook lines taken out to be connected by clicking.
+- AI mistake, caught by the owner: Claude said to open the YAML editor "the way you did for the spike" and "at the top right", not the exact button, the ⋮ just left of Run now. Owner feedback: "Please be considerate about cases where we human are tired and need a spoon-feeding level guidance."
+- 00:56 Step 1.6: Job A notifies `voc-receiver` on success, and its file-arrival trigger on `voc_raw/incoming/` is paused.
+- 00:59 Step 1.7: Job B, `voc-june-job-b`, from `cloud/job_b.yml` with no edit.
+- 01:02 Step 1.8: the robot `voc-june-runner` has Can View on Job A and Can Manage Run on Job B.
+
+### Pull request: the jobs' IDs
+
+- Work start, 01:03: branch `feat/job-ids`, worktree `../voc-demo-ids`, from main at `34f2612`.
+- Claude's choices, for the owner to see:
+  - `config/june_cloud.toml` holds Job A's ID, 980148595231243, and Job B's, 111509808656471. Job IDs are not secret, and J16 item 10 freezes them with the code.
+  - `docs/DATABRICKS_STEPS.md` keeps steps 1.1 to 1.8 at the click level the owner asked for, with placeholders for private values. The steps still to do are added as they are done.
+  - The synthetic row comes after this pull request, in one of its own, since its code hash covers `config/`.
+- The first try of the red commit began at 01:03 and stopped when the owner closed the laptop for the night, as Claude had said was safe. No lock file was left.
+- Red commit `3dba462` at 08:02 (git's commit time), made again: only `tests/test_dry_run.py`, through the gate. The full suite passed with the IDs file in place.
+- Green commit `d32227f` at 08:35 (git's commit time), through the gate. Draft pull request #100 opened at 08:47.
+
+### The setup, step 2
+
+Times are local, from the chat's message times. The owner did each step, one at a time.
+
+- 08:09 Step 2.1: the GitHub environment `june-figures`, `main` only, no reviewer.
+- 08:13 Step 2.2: the GitHub environment `june-run`, `main` only, the owner as required reviewer, "prevent self-review" off.
+- 08:28 Step 2.3: `VOC_DATABRICKS_HOST` in both environments, and `VOC_RECEIVER_URL` and `VOC_RESULT_SECRET` in `june-run`.
+- 08:40 Step 2.4: the robot's secret, 30 days, `jobs` scope, in both environments and the Key Vault.
+- 08:45 Step 2.5: the fine-grained token `voc-receiver-dispatch`, this repo only, Actions read and write, 30 days, in the Key Vault.
+- 08:51 Step 2.6: the receiver's settings, `VOC_JOB_A_JOB_ID` set to Job A's ID and four new ones. At 09:36 the owner's screenshot showed every Key Vault row with a green tick.
+
+### The review of #100
+
+- A fresh reviewer agent read the diff, the spec and CLAUDE.md: 1 serious, 7 minor, 4 nits. No private value leaked.
+- 08:51 Its findings posted on #100. Claude stopped for the owner's decision on the serious finding.
+- AI mistake, caught by that review (serious 1): Claude's step 1.2 had the owner make `voc_results` in `workspace.default`, beside `voc_raw`, while J13 puts it in a schema of its own, so the reader's grants never reach the schema that holds the raw uploads. Job B's path in #98 had the same mistake, and neither #98's reviews nor Claude caught it.
+- 08:55 to 09:21 The owner asked what "one layer of protection fewer" means and what a schema is. Claude explained the three permissions a read needs, and that a schema here is a folder that holds tables and volumes, not a table's columns. Owner feedback: put a plain meaning in brackets after a technical word.
+- 08:55 Owner decisions: fix the minor and nit findings as recommended, and the same stopping rule. 09:21: option A, the volume in its own schema.
+- 09:25 to 09:29 The owner made the schema `workspace.voc_results` and its volume `voc_results`, then deleted the empty volume in `default`. `voc_raw` stays.
+- 09:37 The owner read the destination's authentication mode for the steps: Basic Auth.
+- Claude's choices, for the owner to see:
+  - The steps page now holds steps 2.1 to 2.6 too, at the same level, so the whole setup is in one place.
+  - The steps copy every secret with its copy icon and never show it, and give a way to clear the clipboard when clipboard history is off.
+  - The live job is checked against `cloud/job_a.yml` in step 1.6, and `cloud/job_a.yml` and the spec say the webhook may be attached by clicking.
+- Red commit `91c3742` at 09:30 (git's commit time): only `tests/test_dry_run.py`, 6 new tests, through the gate.
+- In the green commit, the tests that named the old results path take the new one, marked by this log line: three in `tests/test_job_b.py` and one in `tests/test_dry_run.py`.
+- Green commit `d6ec146` at 09:47 (git's commit time), through the gate, and pushed.
+- A fresh reviewer agent read this fix round's diff only, the last round under the owner's stopping rule: no serious finding, 7 minor, 5 nits. The results path is consistent everywhere, and steps 2.1 to 2.6 match J10 and J13.
+- 10:02 Its findings posted on #100. With no serious finding, the owner's rule applies: Claude fixes the minors and nits, and the owner merges with no further review round. Two needed the owner in the portals first.
+- 10:11 Step 2.7: the owner copied the live Job A's YAML to a file on the Desktop. Claude compared it with `cloud/job_a.yml`, reading key paths and showing the warehouse and destination IDs as set only. Beside those two, the editor left out `max_concurrent_runs` (1 is the default), and added `queue` on and `performance_target: PERFORMANCE_OPTIMIZED`. The trigger was paused and there was no failure email.
+- AI mistake, caught by that comparison: the steps said only two places may differ. The three defaults are now listed.
+- 10:20 The owner asked why their own account should lose a role. Claude explained that only the day-to-day right to read and change the vault's secrets goes, the owner stays the owner, and can add it back in two minutes, for example to renew the robot's secret and the token after 30 days.
+- 10:23 Step 2.8: the owner removed their Key Vault Secrets Officer role. The Function app keeps Key Vault Secrets User.
+- AI mistake, caught by the review (minor 3): step 2.6 said five green ticks. The owner's screenshot at 09:36 shows six Key Vault rows with a green tick, as the receiver has six Key Vault references.
+- The owner deleted the Desktop copy of the live job's YAML after the check.
+- Red commit `fdfb6db` at 10:24 (git's commit time): only `tests/test_dry_run.py`, 4 new tests, through the gate.
+- In the green commit, the test of steps 1.1 to 1.8 is renamed for what it checks (nit 8 of the fix-round review).
+- Green commit `dc51c9e` at 10:44 (git's commit time), through the gate. CI green on `dc51c9e`, both runs, with no re-run.
+- 10:59 Merge verdict on #100: PENDING with every mechanical check passing. Every finding of its two review rounds is fixed: the serious one by the owner's option A, the results volume in a schema of its own, and the rest as the owner chose. The second review found no serious problem, so under the owner's stopping rule its minors and nits were fixed with no further review round. Claude's verdict: MERGE, after this log commit's CI.
