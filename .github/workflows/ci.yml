@@ -26,13 +26,13 @@ jobs:
         with:
           version: "0.6.17"
 
-      # Retried, since a download of Python or a package can time out (a 504 from GitHub on 9 November).
+      # Retried, since a download from GitHub can fail (on 8 November this job's first download step failed).
       - name: Install the project (fails if uv.lock does not match pyproject.toml)
         run: |
           for attempt in 1 2 3; do
             uv sync --locked && exit 0
             echo "uv sync failed, attempt $attempt of 3"
-            sleep 20
+            if [ "$attempt" -lt 3 ]; then sleep 20; fi
           done
           exit 1
 
@@ -78,7 +78,7 @@ jobs:
           for attempt in 1 2 3; do
             uv sync --locked && exit 0
             echo "uv sync failed, attempt $attempt of 3"
-            sleep 20
+            if [ "$attempt" -lt 3 ]; then sleep 20; fi
           done
           exit 1
 

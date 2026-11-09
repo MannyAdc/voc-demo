@@ -337,6 +337,11 @@ Written on 9 November 2026, after two CI runs failed at a download from GitHub (
 - each job that uses uv installs Python and the project first, retried up to 3 times, so no later step downloads them (T003)
 - the secret scan retries its download, and the checksum still decides whether it is used (T003)
 
+Written on 9 November 2026, in the fix round of #104. The tests are named after task T003, the CI task, as the merge verdict's tests are named after T006b, since no spec rule covers CI's own setup.
+
+- the install step ends on a pass, fails after the third failure, swallows no failure, and no later step installs or downloads with uv (T003, minor 2)
+- the secret scan's download fails on an error page, and the checksum comes after it (T003, nit 8)
+
 ## Validation review ([spec 003](../specs/003-validation-review/spec.md)), `tests/test_validation.py`
 
 Added on 2 November 2026. Each piece adds its tests in its own pull request, failing first.

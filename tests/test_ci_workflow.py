@@ -1,10 +1,15 @@
 """CI's own setup (T003): it runs once per change and retries its downloads.
 
-On 8 and 9 November a CI run failed at a download from GitHub (a 504 for uv's Python, and the first download step of
-each job), and the owner had to re-run it, since Claude never re-runs a workflow. Every push to a pull request also ran
-CI twice, once for the push and once for the pull request, which doubled the chance of such a fault.
+On 8 November all three jobs of a push run failed at their first download step, and on 9 November the repo checks'
+download of Python got a 504 from GitHub. Each time the owner re-ran CI, since Claude never re-runs a workflow. Every
+push to a pull request also ran CI twice, once for the push and once for the pull request, which doubled the chance
+of such a fault.
+
+The tests are named after task T003, the CI task, as the merge verdict's tests are named after T006b, since no spec
+rule covers CI's own setup (review of #104, nit 7).
 """
 
+import re
 from pathlib import Path
 
 import yaml
@@ -40,14 +45,22 @@ def test_T003_each_job_installs_python_and_the_project_with_retries_before_using
         install = [i for i, run in enumerate(runs) if "uv sync --locked" in run]
         assert len(install) == 1, job
         step = runs[install[0]]
-        assert "for attempt in 1 2 3" in step and "sleep" in step and "exit 1" in step, job
+        assert "for attempt in 1 2 3" in step and "sleep" in step, job
+        # Review of #104, minor 2: a pass ends the step, three failures fail it, and no failure is swallowed.
+        lines = [line.strip() for line in step.splitlines()]
+        assert "uv sync --locked && exit 0" in lines and lines[-1] == "exit 1", job
+        assert "|| true" not in step and "|| :" not in step, job
         # No later step may download Python or a package on its own first.
         first_use = min(i for i, run in enumerate(runs) if "uv run" in run or ".venv/bin/python" in run)
         assert install[0] < first_use, job
+        for run in runs[install[0] + 1:]:
+            assert not re.search(r"\buvx\b|\buv (pip|sync|python|tool|add|lock)\b", run), job
+            assert all("--locked" in line for line in run.splitlines() if "uv run" in line), job
 
 
 def test_T003_the_secret_scan_retries_its_download():
     curl = next(run for run in _runs("secret-scan") if "curl" in run)
     assert "--retry 3" in curl and "--retry-all-errors" in curl
-    # The checksum still decides whether the download is used.
-    assert "sha256sum -c -" in curl
+    # Review of #104, nit 8: an error page fails the download (-f), and the checksum, after it, decides its use.
+    assert re.search(r"curl -\w*f", curl)
+    assert curl.index("curl") < curl.index("sha256sum -c -") < curl.index("tar ")
