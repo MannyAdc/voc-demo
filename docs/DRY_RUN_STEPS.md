@@ -35,10 +35,9 @@ it. Round 3's pull request fixes that check. Then:
 - **Job A's trigger stays paused.** It was paused again after 01:17 on 10 November. To check: in Databricks, in the left
   menu, click **Jobs & Pipelines**, then Job A, `voc-june-job-a`. On the right side, **Schedules & Triggers** says
   **Paused**. Leave it so until step 6.
-- **The robot can start Job B.** In **Jobs & Pipelines**, click `voc-june-job-b`. On the right side, under
-  **Permissions**, or in the **⋮** menu just left of **Run now**, then **Edit permissions**, `voc-june-runner`
-  shows **Can Manage Run**. If it shows anything else, click **Edit permissions**, choose **Can Manage Run** next
-  to it, and click **Save**. Never **Can Manage** or **Is Owner**. In round 2 it showed **Can View**, and
+- **The robot can start Job B.** In **Jobs & Pipelines**, click `voc-june-job-b`. On the right side, scroll to
+  **Permissions** (as on Job A's page, seen on 10 November): `voc-june-runner` shows **Can Manage Run**. If it shows anything
+  else, click **Edit permissions** just below the list, choose **Can Manage Run** next to it, and click **Save**. Never **Can Manage** or **Is Owner**. In round 2 it showed **Can View**, and
   Databricks refused to start Job B (HTTP 403).
 - **Delete round 2's zip.** In the left menu, click **Catalog**, then `workspace`, then `default`, then `voc_raw`,
   then the folder `incoming`. On the row of `syn_june_dry_run_r2.zip`, click the ⋮ at the right end of the row,

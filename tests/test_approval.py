@@ -639,6 +639,11 @@ def test_J16_after_a_retry_the_exit_value_is_read_from_job_b_s_latest_attempt(mo
     [{"task_key": "job_b", "run_id": 900099, "attempt_number": 1},
      {"task_key": "job_b", "run_id": 900003, "attempt_number": 1}],
     [{"task_key": "job_b", "run_id": 900099}, {"task_key": "job_b", "run_id": 900003}],
+    # Fix-round review of #105, nit 2: a bool or a string is not an attempt number.
+    [{"task_key": "job_b", "run_id": 900099, "attempt_number": False},
+     {"task_key": "job_b", "run_id": 900003, "attempt_number": True}],
+    [{"task_key": "job_b", "run_id": 900099, "attempt_number": 0},
+     {"task_key": "job_b", "run_id": 900003, "attempt_number": "1"}],
 ])
 def test_J16_attempts_that_cannot_be_ordered_send_no_exit_value(monkeypatch, tasks):
     approval = _patched(monkeypatch)
