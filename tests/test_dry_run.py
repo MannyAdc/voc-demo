@@ -701,7 +701,8 @@ def test_J1_round_3_s_row_names_the_code_merged_in_105():
     """Round 3's row names the dry run's list and the frozen code that `scripts/june_hash.py --dry-run` printed on
     `main` at `bbbf29d`, after #105 merged. The run log only grows, so this stays true in later rounds."""
     from voc.frozen import read_runs
-    rows = [e for e in read_runs(REPO / "runs" / "JUNE_RUNS.md") if re.search(r"\bround 3\b", e.reason)]
+    # Review of #106, minor 1: the row's own words, so a later row that names round 3 is not taken for it.
+    rows = [e for e in read_runs(REPO / "runs" / "JUNE_RUNS.md") if "the dry run, round 3," in e.reason]
     assert len(rows) == 1
     row = rows[0]
     assert row.kind == "synthetic" and "#105" in row.reason
