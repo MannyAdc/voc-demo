@@ -2450,3 +2450,14 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - 02:38 Fixes written: `approval.py` reads Job B's exit value from its latest attempt, the spec's Known limits say what a retry does and J16 item 7 that the commit is read from the run's task, and the steps give the permissions' second place and what to do if it is wrong.
 - Fix round commit `88920e5` at 02:38 (git's commit time), through the gate.
 - 02:50 The fresh review of the fix round was posted on #105. Nothing serious. One minor and two nits. Under the stopping rule Claude fixed them with no further review round: J16 item 8 says the exit value is read from the latest attempt, the test pins bool and string attempt numbers, and the steps give only the place to change the robot's right that the owner's screenshot of Job A's page on 10 November shows, under **Permissions**, with **Edit permissions** below the list.
+- Fix round commit `2b2ccc0` at 02:51 (git's commit time), through the gate. 03:05 CI green on it (time from GitHub). 03:05 `scripts/merge_verdict.py 105`: PENDING on the review findings and the build log, which Claude checked: every finding the owner chose is fixed, the others are in Known limits or skipped with the reviewer's reason, and the log holds the work start, the findings, the owner's choices and the AI mistakes. Verdict: MERGE, posted as a comment on #105 (lean process, no log commit). 03:06 Claude marked #105 ready (time from GitHub).
+- 08:57 The owner merged #105 (time from GitHub).
+
+### Pull request: round 3's row
+
+- Work start, 08:57: branch `feat/dry-run-row-3`, worktree `../voc-demo-row3`, from main at `bbbf29d`.
+- The hashes, from `uv run --native-tls --locked python scripts/june_hash.py --dry-run` on a clean `main` at `bbbf29d`: dry run list `92c133d48483da34a499692d47e0aa8eedf31cbe687435a72c6870a9dd24fc94`, frozen code `634c46d3d006c201b98b7a5772fc3d38d8b2eb15621e55703a6e5439c8c866b6` over 110 files. The code hash is the one Claude printed at `88920e5`, since the fix round after it changed no frozen file.
+- 08:59 The gate refused the first red commit: the new worktree had no local names deny list, which is git-ignored. Claude copied the main checkout's file in, without reading it, and committed again.
+- Red commit `85f1206` at 08:59 (git's commit time): only `tests/test_dry_run.py`, one new test that round 3's row names the list and code hashes printed on `bbbf29d`, through the gate.
+- Parallel run: while the red commit's gate ran, the owner did round 3's clean-up, guided by Claude: Job A's trigger paused, the robot's **Can Manage Run** on Job B, round 2's zip and CSV deleted, `voc_june`'s four tables and views dropped. Claude made round 3's zip with `scripts/make_dry_run.py --round 3` in a folder outside the repo: `syn_june_dry_run_r3.zip`, 3380 bytes, the pin's SHA-256 `10f16e95…cb773`.
+- The row's date, 2026-11-09 22:24, is in UTC, as J1 says. It was 09:24 local. Round 2's row stays above it.
