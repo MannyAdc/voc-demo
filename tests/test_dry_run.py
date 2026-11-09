@@ -650,7 +650,7 @@ def test_J1_the_steps_count_six_green_ticks_and_warn_about_the_one_time_boxes():
 
 def test_J1_the_run_log_s_first_row_is_round_1_s():
     """Round 1's row stays as the record of the dry run's first round. Its list and code are no longer the
-    checkout's, so Job A refuses it until round 2's row is added after it."""
+    checkout's, so Job A refuses it until the current round's row is added after it."""
     from voc.frozen import code_hash, dry_run_list_hash, read_runs
     # Changed in the round 2 pull request, as the docstring planned: the code changed, so round 1's row is a record
     # now, and round 2's row comes in a pull request of its own.
@@ -664,7 +664,7 @@ def test_J1_the_run_log_s_first_row_is_round_1_s():
     if f"round {ROUND}" in entries[-1].reason:
         checked_target(REPO)
     else:
-        with pytest.raises(JobAError):
+        with pytest.raises(JobAError, match="names a June list other than|not the frozen code"):
             checked_target(REPO)
 
 
