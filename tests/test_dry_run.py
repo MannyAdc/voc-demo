@@ -668,6 +668,19 @@ def test_J1_the_run_log_s_first_row_is_round_1_s():
             checked_target(REPO)
 
 
+def test_J1_the_run_log_s_last_row_is_this_round_s():
+    """The run log's last row is the current round's: synthetic, naming the dry run's list and the checkout's frozen
+    code, so Job A takes it with the dry run's pin (owner decision of 9 November, after round 1)."""
+    from voc.frozen import code_hash, dry_run_list_hash, read_runs
+    from voc.job_a import checked_target, pin_for
+    last = read_runs(REPO / "runs" / "JUNE_RUNS.md")[-1]
+    assert last.kind == "synthetic" and f"round {ROUND}" in last.reason
+    assert last.list_hash == dry_run_list_hash(REPO) and last.code_hash == code_hash(REPO)
+    run_target = checked_target(REPO)
+    assert run_target.kind == "synthetic"
+    pin_for(REPO, run_target.kind)  # refuses a pin whose round is not the list's
+
+
 # The dry run's round 2 (owner decisions of 9 November, after round 1 stopped at the repair history check)
 # Review of #102, minor 6: the tests below read the round from the pin, so a new round rewrites no test.
 
