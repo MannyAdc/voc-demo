@@ -119,7 +119,7 @@ def _log(tmp_path, rows):
 def test_J1_the_committed_june_run_log_has_its_header():
     # Changed in the dry run's row pull request: the log now holds the dry run's row, which
     # tests/test_dry_run.py checks.
-    read_runs(REPO / "runs" / "JUNE_RUNS.md")
+    read_runs(REPO / "runs" / "JUNE_RUNS.md")  # raises on a malformed row, so the call itself is a check
     text = (REPO / "runs" / "JUNE_RUNS.md").read_text(encoding="utf-8")
     assert "| Date | Kind | June list hash | Code hash | Reason |" in text and "only grows" in text
 

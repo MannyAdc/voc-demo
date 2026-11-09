@@ -649,7 +649,11 @@ def test_J1_the_steps_count_six_green_ticks_and_warn_about_the_one_time_boxes():
 
 
 def test_J1_the_run_log_s_last_row_is_the_dry_run_s_on_the_frozen_code():
-    """The last row is synthetic, names the dry run's list and this checkout's frozen code, and Job A takes it."""
+    """The last row is synthetic, names the dry run's list and this checkout's frozen code, and Job A takes it.
+
+    It pins round 1's one row and today's code hash on purpose, as a tripwire: any later change to a frozen file
+    fails it in CI before the dry run. The next row, a round 2 or the real June row, or the next frozen change
+    after the dry run retires it, in that pull request, marked and logged (review of #101)."""
     from voc.frozen import code_hash, dry_run_list_hash, read_runs
     from voc.job_a import checked_target, pin_for
 

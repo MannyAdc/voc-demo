@@ -2315,3 +2315,10 @@ Times are local, from the chat's message times. The owner did each step, one at 
 - This pull request changes no frozen file: only `runs/`, `tests/`, `docs/TEST_LIST.md` and this log. So the code hash stays the one the row names, and the test checks it against the checkout.
 - Red commit `fbe0402` at 11:30 (git's commit time): only `tests/test_dry_run.py`, through the gate. The full suite passed with the row in place.
 - In the green commit, the test that expected an empty run log checks its header only, marked in the test.
+- Green commit `b00c26d` at 12:01 (git's commit time), through the gate. Draft pull request #101 opened at 12:12.
+- A fresh reviewer agent read the diff, the spec and CLAUDE.md. It derived both hashes again itself, from the list file and its manifest and with `scripts/june_hash.py --dry-run` in the clean checkout, and both match the row. No serious finding, 3 minor, 3 nits.
+- 12:15 Its findings posted on #101.
+- Correction to the line above about the red commit `fbe0402` (nit 4 of that review): the full suite ran on the green tree, locally, before the green commit `b00c26d`, not on the red commit. The line is kept as written.
+- 12:17 Owner decision ("go"): fix minor 1 and nits 4 and 5 with no further review, since they are a docstring, a comment and this log. Minors 2 and 3 are risks for the dry run, told to the owner before the upload. Nit 6 needs no change.
+- Claude's choice: this fix is one commit with no failing-test commit first, since it changes no behaviour: a test's docstring, a test's comment and this log.
+- For the dry run (minor 3): nothing is merged to `main` from the upload until Job B ends, including the build log entry for this pull request's merge, which waits until after Job B.
