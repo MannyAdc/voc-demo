@@ -135,7 +135,10 @@ class Caller:
     """Calls one backend and model with fixed settings, through the recordings and the ledger."""
 
     def __init__(self, backend_name, model, settings, backend=None, mode="live", root=None, ledger=None,
-                 repeat=None):
+                 repeat=None, recordings=None, config=None):
+        """`recordings` and `config` are for Job B in the cloud (spec 004, 6b part 3a): its recordings folder in
+        the volume, and the budget config already read from the frozen checkout, so no git check runs. The laptop
+        gives neither, and keeps the home folder's recordings and the committed config check."""
         if mode not in MODES:
             raise ValueError(f"mode must be one of {', '.join(MODES)}")
         if repeat is not None and (not isinstance(repeat, int) or isinstance(repeat, bool) or repeat < 1):
@@ -148,9 +151,14 @@ class Caller:
         self.mode = mode
         self.root = Path.cwd() if root is None else Path(root)
         self.ledger = ledger
+        self.recordings = None if recordings is None else Path(recordings)
+        self.config = config
+
+    def _folder(self):
+        return recordings_dir() if self.recordings is None else self.recordings
 
     def _path(self, key):
-        return recordings_dir() / f"{key}.json"
+        return self._folder() / f"{key}.json"
 
     def _load(self, key, material):
         path = self._path(key)
@@ -168,7 +176,7 @@ class Caller:
         record = {"key": key, "key_material": material, "text": answer.text,
                   "usage": {"input_tokens": answer.input_tokens, "output_tokens": answer.output_tokens},
                   "live_cost_tokens": cost}
-        recordings_dir().mkdir(parents=True, exist_ok=True)
+        self._folder().mkdir(parents=True, exist_ok=True)
         atomic_write(self._path(key), json.dumps(record, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
 
     def call(self, prompt):
@@ -186,8 +194,9 @@ class Caller:
     def _live(self, prompt, key, material):
         if self.backend is None:
             raise ModelError("live mode needs a backend")
-        require_clean_config(self.root)
-        margin = load_config(self.root)["input_margin_tokens"]
+        if self.config is None:
+            require_clean_config(self.root)
+        margin = (load_config(self.root) if self.config is None else self.config)["input_margin_tokens"]
         output_limit = self.settings.get("max_tokens")
         if not isinstance(output_limit, int) or isinstance(output_limit, bool) or output_limit <= 0:
             raise ModelError("the settings need a whole number max_tokens, so the worst case can be reserved")

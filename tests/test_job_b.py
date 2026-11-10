@@ -1015,3 +1015,17 @@ def test_J11_job_b_refuses_a_marker_that_carries_a_pip_option(tmp_path):
     (tmp_path / "cloud" / "job_b" / "requirements.txt").write_text("h11==0.16.0 ; --index-url x\n", encoding="utf-8")
     with pytest.raises(job_b.JobBError, match="^Job B's requirements file has a line that is not a pinned package$"):
         job_b.checked_packages(tmp_path)
+
+
+# The second review of #109, nit 4 (owner decision: fixed in 6b, part 3a): pip reads any token starting with "-" as
+# an option, and a legal marker never holds one.
+
+
+@pytest.mark.parametrize("line", ["h11==0.16.0 ; -i x", "h11==0.16.0 ; python_version > '3' -r x"])
+def test_J11_job_b_refuses_a_marker_that_holds_a_token_starting_with_a_dash(tmp_path, line):
+    from voc import job_b
+
+    (tmp_path / "cloud" / "job_b").mkdir(parents=True)
+    (tmp_path / "cloud" / "job_b" / "requirements.txt").write_text(line + "\n", encoding="utf-8")
+    with pytest.raises(job_b.JobBError, match="^Job B's requirements file has a line that is not a pinned package$"):
+        job_b.checked_packages(tmp_path)
