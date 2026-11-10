@@ -965,3 +965,35 @@ def test_J11_a_refused_refit_stops_job_b_before_any_marker(monkeypatch):
     with pytest.raises(job_b.JobBError, match="^the refit TF-IDF \\+ LR gives 1 of 370"):
         _run(job_b, files=files)
     assert not files.files
+
+
+# The second review of #108, nits 4 and 5, fixed in pull request 6b, part 2 (owner decision, option A)
+
+
+def test_J11_job_b_refuses_a_requirements_file_that_is_not_utf_8(tmp_path):
+    from voc import job_b
+
+    (tmp_path / "cloud" / "job_b").mkdir(parents=True)
+    (tmp_path / "cloud" / "job_b" / "requirements.txt").write_bytes(b"h11==0.16.0 \xff\n")
+    with pytest.raises(job_b.JobBError, match="^Job B's requirements file cannot be read$"):
+        job_b.checked_packages(tmp_path)
+
+
+@pytest.mark.parametrize("line", ["h11==0.16.0 junk", "h11==0.16.0 \ junk", "h11==0.16.0 --hash"])
+def test_J11_job_b_refuses_text_after_a_pin_that_is_not_a_marker_or_a_continuation(tmp_path, line):
+    from voc import job_b
+
+    (tmp_path / "cloud" / "job_b").mkdir(parents=True)
+    (tmp_path / "cloud" / "job_b" / "requirements.txt").write_text(line + "\n", encoding="utf-8")
+    with pytest.raises(job_b.JobBError, match="^Job B's requirements file has a line that is not a pinned package$"):
+        job_b.checked_packages(tmp_path)
+
+
+@pytest.mark.parametrize("line", ["h11==0.16.0 \\", "h11==0.16.0 ; sys_platform != 'emscripten' \\", "h11==0.16.0"])
+def test_J11_job_b_takes_a_pin_with_a_marker_or_a_continuation(tmp_path, monkeypatch, line):
+    from voc import job_b
+
+    (tmp_path / "cloud" / "job_b").mkdir(parents=True)
+    (tmp_path / "cloud" / "job_b" / "requirements.txt").write_text(line + "\n", encoding="utf-8")
+    monkeypatch.setattr(job_b, "_installed_version", lambda name: "0.16.0")
+    job_b.checked_packages(tmp_path)
