@@ -3,13 +3,14 @@ the read-only reader account, and the check of that account (pull request 6b, pa
 
 The reader `voc-results-reader` is a service principal with three grants only: USE CATALOG on the catalog, USE
 SCHEMA on the results schema and READ VOLUME on `voc_results`, which holds no complaint data (J13). Its client ID and
-secret live only in the owner's git-ignored `.env`, as `VOC_READER_CLIENT_ID` and `VOC_READER_CLIENT_SECRET`, and
-only this module reads them. It never signs in with a default profile or the environment's `DATABRICKS_TOKEN`. It
+secret live in the owner's git-ignored `.env`, or the environment, which wins as the project's loader has it, as
+`VOC_READER_CLIENT_ID` and `VOC_READER_CLIENT_SECRET`, and only this module reads them. It never signs in with a default profile or the environment's `DATABRICKS_TOKEN`. It
 calls Databricks' token endpoint and Files API over plain HTTPS, with no SDK.
 
 The copy reads exactly `v1_june.csv` and `v1_june.json` from `june-<Job B run ID>`, refuses a folder holding anything
 else, checks them again with `june_results.check`, and writes them to `results/june/`, never over files already
-there. The reader check proves the account can list the results volume and is refused on the raw volume.
+there. The reader check proves the account can list the results volume and is refused on the raw volume and on the
+secret scope. Only a real refusal, HTTP 403 or 404, counts. Any other answer fails the check (review of #114).
 
 B21 and J5: nothing here prints a secret or a file's content. Every refusal holds fixed text and HTTP statuses only.
 """
@@ -26,6 +27,8 @@ RAW = "/Volumes/workspace/default/voc_raw"
 # The token's scope. The reader's rights come from its grants, which allow reading one volume and nothing else.
 SCOPE = "all-apis"
 OUT = Path("results") / "june"
+SECRET_SCOPE = "voc-june"
+REFUSED = (403, 404)
 
 
 class CopyError(ValueError):
@@ -63,8 +66,11 @@ class Reader:
 
     def get(self, api, path):
         """The status and body of one Files API read."""
-        url = f"https://{self.host}/api/2.0/fs/{api}{urllib.parse.quote(path)}"
-        return self._request(url, headers=self._bearer())
+        return self.read(f"/api/2.0/fs/{api}{urllib.parse.quote(path)}")
+
+    def read(self, path_and_query):
+        """The status and body of one GET on the workspace's API."""
+        return self._request(f"https://{self.host}{path_and_query}", headers=self._bearer())
 
     def names(self, folder):
         """The names in a folder, or None when the reader is refused or it is not there."""
@@ -72,10 +78,15 @@ class Reader:
         if status != 200:
             return None
         try:
-            contents = json.loads(body).get("contents") or []
-        except (ValueError, AttributeError):
-            raise CopyError("the Files API's folder listing could not be read") from None
-        return sorted(item.get("name") or item.get("path", "").rsplit("/", 1)[-1] for item in contents)
+            listing = json.loads(body)
+        except ValueError:
+            listing = None
+        contents = listing.get("contents") or [] if isinstance(listing, dict) else None
+        if not isinstance(contents, list) or not all(isinstance(item, dict) for item in contents):
+            raise CopyError("the Files API's folder listing could not be read")  # review of #114, nit 9
+        if listing.get("next_page_token"):  # review of #114, nit 8: two files fit one page
+            raise CopyError("the results folder's listing has more than one page")
+        return sorted(str(item.get("name") or item.get("path", "")).rsplit("/", 1)[-1] for item in contents)
 
 
 def reader_from(env):
@@ -116,10 +127,21 @@ def copy(root, run_id, reader):
     return list(june_results.FILES)
 
 
+def _refusal(status):
+    """yes for a real refusal, no for an answer, and 'could not check' for anything else (review of #114, serious 1)."""
+    if status in REFUSED:
+        return "yes"
+    if status == 200:
+        return "no"
+    return f"could not check (HTTP {status})"
+
+
 def check_reader(reader):
-    """J13: the reader can list the results volume and is refused on the raw volume. Lines of yes, no and a verdict."""
-    readable = reader.names(RESULTS) is not None
-    refused = reader.names(RAW) is None
-    return [f"results volume readable | {'yes' if readable else 'no'}",
-            f"raw volume refused | {'yes' if refused else 'no'}",
-            f"verdict | {'PASS' if readable and refused else 'FAIL'}"]
+    """J13: the reader can list the results volume, and is refused on the raw volume and on the secret scope, where
+    it lists only names. Lines of yes, no and a verdict. Only a real refusal counts, so a failure never passes."""
+    readable = reader.read(f"/api/2.0/fs/directories{urllib.parse.quote(RESULTS)}")[0] == 200
+    raw = _refusal(reader.read(f"/api/2.0/fs/directories{urllib.parse.quote(RAW)}")[0])
+    scope = _refusal(reader.read(f"/api/2.0/secrets/list?{urllib.parse.urlencode({'scope': SECRET_SCOPE})}")[0])
+    passed = readable and raw == "yes" and scope == "yes"
+    return [f"results volume readable | {'yes' if readable else 'no'}", f"raw volume refused | {raw}",
+            f"secret scope refused | {scope}", f"verdict | {'PASS' if passed else 'FAIL'}"]

@@ -148,8 +148,10 @@ def test_J13_the_reader_check_passes_when_results_are_readable_and_raw_data_is_n
     from voc import june_copy
 
     http = FakeHTTP(folders={june_copy.RESULTS: ["june-900002"], june_copy.RAW: None})
+    # Changed in the fix round of #114: the check also needs the secret scope refused. The fake answers 404 for it,
+    # a real refusal, so the verdict passes.
     assert june_copy.check_reader(_reader(http)) == ["results volume readable | yes", "raw volume refused | yes",
-                                                     "verdict | PASS"]
+                                                     "secret scope refused | yes", "verdict | PASS"]
 
 
 def test_J13_the_reader_check_fails_when_raw_data_is_readable():

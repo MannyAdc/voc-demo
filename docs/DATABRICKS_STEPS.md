@@ -151,7 +151,17 @@ files into the repo. It lives until the owner removes it after the June run.
 
 1. In Databricks, your initial or name at the top right, **Settings**, **Identity and access**, next to **Service
    principals** **Manage**, then **Add service principal**, **Add new**. Name it `voc-results-reader`. Click
-   **Add**. Leave every entitlement as it is, and never add it to a group.
+   **Add**. Never add it to a group. Databricks puts every new principal in the workspace's own users group
+   (`_workspace_users_workspace_` followed by a number) by itself, so check what that group holds:
+   - In **Catalog**, `workspace`, the **Permissions** tab: the group may hold **USE CATALOG**, Databricks' default.
+     It only shows that the catalog exists, so leave it.
+   - `default`, the **Permissions** tab: on 10 November the group held **USE SCHEMA** and five **CREATE** rights
+     there. Tick each of the group's rows, click **Revoke** and confirm, so the list says **No permissions granted
+     yet**. The owner's own jobs are not affected, since the owner owns the catalog and the jobs run as the owner.
+   - The volume `voc_raw`, the **Permissions** tab, with **Inherited** set to all three levels: it should say no
+     permission matches. On 10 November it did, so nobody but the owner can read it.
+   - `voc_cfpb` and `voc_june`, the **Permissions** tab: no right for the group. If one is there, stop and tell
+     Claude.
 2. In the left menu, **Catalog**, click `workspace`, the **Permissions** tab, **Grant**. Principal
    `voc-results-reader`, privilege **USE CATALOG** only. Click **Grant**.
 3. In **Catalog**, click `workspace`, then `voc_results`, the **Permissions** tab, **Grant**. Principal
@@ -159,13 +169,19 @@ files into the repo. It lives until the owner removes it after the June run.
 4. In `voc_results`, click the volume `voc_results`, the **Permissions** tab, **Grant**. Principal
    `voc-results-reader`, privilege **READ VOLUME** only. Click **Grant**. Grant nothing on `default` or `voc_raw`.
 5. Back in **Settings**, **Identity and access**, **Service principals**, `voc-results-reader`, the **Secrets** tab,
-   **Generate secret**. **Lifetime:** 30 days. **Scope:** all APIs. The reader's real rights stay its three grants of
-   items 2 to 4. Click **Generate**. A box shows the **Client ID** and the **Secret**.
+   **Generate secret**. **Lifetime:** 30 days. **Scope:** all APIs, which the copy script asks for. This scope is not
+   yet tried live: if the check of item 7 says the sign-in was refused, tell Claude. The reader's real rights stay its
+   three grants of items 2 to 4. Click **Generate**. A box shows the **Client ID** and the **Secret**.
 6. On the laptop, open `.env` in the repo's folder in Notepad and add two lines, `VOC_READER_CLIENT_ID=` followed by
    the Client ID, and `VOC_READER_CLIENT_SECRET=` followed by the Secret. Check that `VOC_DATABRICKS_HOST=` with the
    workspace's bare host is there too. Save, close Notepad, close the Databricks box and clear the clipboard.
 7. Tell Claude. Claude runs `uv run --native-tls --locked python scripts/copy_june_results.py --check-reader`,
-   which prints only yes or no: the results volume readable, the raw volume refused, and a verdict.
+   which prints only yes or no: the results volume readable, the raw volume refused, the secret scope `voc-june`
+   refused, and a verdict. Only a real refusal counts, so a failure never passes.
+8. When it passes, back in **Settings**, **Identity and access**, **Service principals**, `voc-results-reader`, the
+   **Configurations** tab: untick **Workspace access** and save. Tell Claude, who runs the check again. If it still
+   passes, the reader keeps no workspace access, so it cannot make or run notebooks or jobs. If it fails, tick the
+   box again and tell Claude (the robot's rule of J13, applied to the reader).
 
 ## Step 2: GitHub, Databricks and Azure
 
