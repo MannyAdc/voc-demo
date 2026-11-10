@@ -710,6 +710,15 @@ Written on 10 November 2026.
 - the notebook reads the key and the workspace ID from the secret scope `voc-june`, and prints nothing (J11)
 - from the review of #110: Job B refuses a run whose worst case passes what is left under the June cap, counting what is reserved, a reused ledger with other trial settings is refused, and a June ledger refusal is a budget refusal (J12)
 
+## Pull request 6b, part 4: Job B's results files ([spec 004](../specs/004-june-test-and-baselines/spec.md), J11, B19), `tests/test_june_results.py`, `tests/test_job_b.py`, `tests/test_june_api.py`
+
+Written on 10 November 2026.
+
+- the CSV's columns are the development results' columns, and the reasons are the fixed list (B19)
+- a valid pair of files passes, and a file is refused for other columns, a label or reason outside the lists, a complaint outside the June list or given twice, another split, the CFPB header row or the size limit, with no value from the file in the refusal (J5, J11)
+- `build` writes June rows in complaint ID order with the refit's labels and exact confidences, and the summary with the run's settings, tokens and the figures, and no text (J11)
+- from the review of #111: an overrun is refused before any marker, a stop after some calls leaves no open reservation and keeps the earlier answers recorded, and an empty workspace ID is refused (J11, J12)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

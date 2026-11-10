@@ -119,4 +119,6 @@ def make_backend(name, env=None, model=DEFAULT_MODEL, fixtures=None, client_fact
         raise BackendError(f"unknown LLM_BACKEND {name!r}, allowed values are {', '.join(ALLOWED)}")
     if name == "mock":
         return _mock(fixtures or {})
+    if workspace is not None and not workspace.strip():
+        raise BackendError("the cloud workspace's ID is empty")  # review of #111, nit 6
     return _api(env or {}, model, client_factory, workspace)

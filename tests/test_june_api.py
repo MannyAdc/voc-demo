@@ -153,3 +153,15 @@ def test_B21_a_stop_is_a_model_error_so_every_handler_of_one_still_catches_it():
     from voc.replay import StopRun
 
     assert issubclass(StopRun, PermanentModelError) and issubclass(StopRun, ModelError)
+
+
+# The review of #111, nit 6 (owner decision: fixed in 6b, part 4).
+
+
+@pytest.mark.parametrize("workspace", ["", "   "])
+def test_J11_an_empty_workspace_id_is_refused_when_the_backend_is_made(workspace):
+    from voc.backends import BackendError
+
+    with pytest.raises(BackendError, match="^the cloud workspace's ID is empty$"):
+        make_backend("api", env={"ANTHROPIC_API_KEY": _fake_key()}, model="claude-haiku-5-5",
+                     client_factory=RawClient(), workspace=workspace)

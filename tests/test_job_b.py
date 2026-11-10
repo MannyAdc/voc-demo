@@ -1126,3 +1126,41 @@ def test_J12_job_b_refuses_a_run_whose_worst_case_passes_what_is_left_under_the_
                                         "worst case of [0-9]+$"):
         _api_run(monkeypatch, tmp_path, _api_backend(), files=files)
     assert not files.files
+
+
+# The review of #111 (owner decision: fixed in 6b, part 4): an overrun is refused before any marker, and a stop
+# after some calls leaves the June ledger with no open reservation and the earlier answers recorded (J12).
+
+
+def test_J12_job_b_refuses_a_june_ledger_holding_an_overrun_before_any_marker(monkeypatch, tmp_path):
+    from voc import june_ledger
+
+    path = tmp_path / "ledger_june" / "ledger.json"
+    june_ledger.open_ledger(REPO, path)
+    state = json.loads(path.read_text(encoding="utf-8"))
+    state["overrun"] = {"type": "overrun", "reserved": 10, "real": 20}
+    path.write_text(json.dumps(state), encoding="utf-8")
+    files = FakeFiles()
+    with pytest.raises(Exception, match="^the June ledger holds an overrun, so Job B refuses before it marks "
+                                        "anything$"):
+        _api_run(monkeypatch, tmp_path, _api_backend(), files=files)
+    assert not files.files
+
+
+def test_J12_a_stop_after_some_calls_leaves_no_open_reservation_and_keeps_the_answers(monkeypatch, tmp_path):
+    from voc.replay import StopRun
+
+    good, calls = _api_backend(), []
+
+    def backend(prompt, settings):
+        calls.append(prompt)
+        if len(calls) > 1:  # the sample has two rows: the first is answered, the second stops
+            raise StopRun("the workspace's spend limit was reached (HTTP 400), so the run stops", reason="spend_limit")
+        return good(prompt, settings)
+
+    value, files = _api_run(monkeypatch, tmp_path, backend)
+    assert value["stopped"] is True and value["stop_reason"] == "spend_limit" and len(calls) == 2
+    state = json.loads((tmp_path / "ledger_june" / "ledger.json").read_text(encoding="utf-8"))
+    assert state["open"] == {} and state["reserved"] == 0 and state["calls"] == 2 and state["used"] > 150
+    assert len(list((tmp_path / "recordings_dry").glob("*.json"))) == 1
+    assert not any(k.endswith("DRY_RUN.txt") for k in files.files)
