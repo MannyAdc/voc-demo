@@ -744,6 +744,17 @@ def test_J8_each_round_has_its_own_synthetic_ids_apart_from_the_round_before():
     assert len(new_ids) == len(old_ids) == 12
 
 
+def test_J8_frozen_code_changed_after_a_round_s_row_needs_the_next_round():
+    """Round 4's pull request: after the last synthetic row, the frozen code changed (the pull requests of 6b), and a
+    round's list has one first row, so a dry run of that code needs the next round, with new IDs. Once that round's
+    row names the code, or after a real row, this asks nothing."""
+    from voc.frozen import code_hash, read_runs
+    last = read_runs(REPO / "runs" / "JUNE_RUNS.md")[-1]
+    named = re.search(r"\bround ([0-9]+)\b", last.reason)
+    if last.kind == "synthetic" and named and last.code_hash != code_hash(REPO):
+        assert ROUND == int(named.group(1)) + 1
+
+
 def test_J13_the_steps_give_the_robot_s_secret_the_jobs_scope_with_read_and_write():
     """Round 1: the secret made with `jobs:read` was refused (HTTP 403). The run-now of Job B needs write."""
     text = DATABRICKS_STEPS.read_text(encoding="utf-8")
