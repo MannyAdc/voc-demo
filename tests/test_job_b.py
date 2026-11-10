@@ -864,3 +864,69 @@ def test_J11_job_b_refuses_packages_other_than_the_locked_ones(monkeypatch):
     installed.pop("anthropic")
     with pytest.raises(job_b.JobBError, match="^Job B's packages are not the locked versions: anthropic$"):
         job_b.checked_packages(REPO)
+
+
+# The review of #108 (owner decision: fix minors 3 and 4 and nits 6, 7 and 9)
+
+
+def _hashes(name):
+    text = REQUIREMENTS.read_text(encoding="utf-8")
+    start = text.index("\n" + name + "==") + 1
+    end = text.find("\n# via", start)
+    block = text[start:] if end < 0 else text[start:end]
+    following = re.search(r"\n[A-Za-z0-9]", block)
+    block = block[:following.start()] if following else block
+    return set(re.findall(r"--hash=sha256:([0-9a-f]{64})", block))
+
+
+def test_J11_job_b_s_requirements_hold_the_whole_locked_closure_for_arm_linux():
+    """Minor 3: with --no-deps, a dependency missing from the file would quietly use the workspace's own version.
+    The closure of the cloud group, walked in uv.lock with each marker read for Python 3.12 on ARM Linux."""
+    from packaging.markers import Marker
+
+    environment = {"sys_platform": "linux", "platform_system": "Linux", "platform_machine": "aarch64",
+                   "python_version": "3.12", "python_full_version": "3.12.3", "implementation_name": "cpython",
+                   "platform_python_implementation": "CPython", "os_name": "posix"}
+    locked, wanted, todo = _locked(), set(), ["anthropic", "scikit-learn"]
+    while todo:
+        name = todo.pop()
+        if name in wanted:
+            continue
+        wanted.add(name)
+        for dep in locked[name].get("dependencies", []):
+            if "marker" not in dep or Marker(dep["marker"]).evaluate(environment):
+                todo.append(dep["name"])
+    assert set(_required()) == wanted
+
+
+def test_J11_every_package_in_job_b_s_requirements_shares_a_hash_with_uv_lock():
+    """Nit 7: the file's hashes come from PyPI, so each package must share at least one with uv.lock's record of that
+    version, its source archive's at least, which both hold."""
+    locked = _locked()
+    for name in _required():
+        entry = locked[name]
+        lock_hashes = {d["hash"].split(":", 1)[1] for d in entry.get("wheels", []) + [entry.get("sdist", {})]
+                       if d.get("hash")}
+        assert _hashes(name) & lock_hashes, name
+
+
+def test_J11_job_b_refuses_a_requirements_file_it_cannot_read(tmp_path):
+    from voc import job_b
+
+    with pytest.raises(job_b.JobBError, match="^Job B's requirements file cannot be read$"):
+        job_b.checked_packages(tmp_path)
+
+
+def test_J11_job_b_refuses_a_requirements_line_that_is_not_a_pinned_package(tmp_path):
+    from voc import job_b
+
+    (tmp_path / "cloud" / "job_b").mkdir(parents=True)
+    (tmp_path / "cloud" / "job_b" / "requirements.txt").write_text("--index-url https://example.invalid\n",
+                                                                   encoding="utf-8")
+    with pytest.raises(job_b.JobBError, match="^Job B's requirements file has a line that is not a pinned package$"):
+        job_b.checked_packages(tmp_path)
+
+
+def test_J11_the_requirements_header_gives_the_exact_commands():
+    text = REQUIREMENTS.read_text(encoding="utf-8")
+    assert "uv export --frozen --only-group cloud --no-emit-project --no-hashes" in text and "<" not in text

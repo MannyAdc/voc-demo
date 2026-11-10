@@ -86,14 +86,26 @@ def _installed_version(name):
         return None
 
 
+PIN = re.compile(r"([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s;\\]+)(?:\s.*)?")
+
+
 def checked_packages(root):
-    """Every package of Job B's requirements file is installed at its pinned version (pull request 6b)."""
+    """Every package of Job B's requirements file is installed at its pinned version (pull request 6b). Review of
+    #108, minor 4: a missing file, or a line at column 0 that is not a pinned package, is refused too."""
+    try:
+        lines = (Path(root) / REQUIREMENTS).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        lines = None
+    if lines is None:
+        raise JobBError("Job B's requirements file cannot be read")
     wrong = []
-    for line in (Path(root) / REQUIREMENTS).read_text(encoding="utf-8").splitlines():
+    for line in lines:
         if line and not line[0].isspace() and not line.startswith("#"):
-            name, _, rest = line.partition("==")
-            if _installed_version(name.strip()) != rest.split()[0]:
-                wrong.append(name.strip())
+            pin = PIN.fullmatch(line)
+            if pin is None:
+                raise JobBError("Job B's requirements file has a line that is not a pinned package")
+            if _installed_version(pin.group(1)) != pin.group(2):
+                wrong.append(pin.group(1))
     if wrong:
         raise JobBError("Job B's packages are not the locked versions: " + ", ".join(sorted(wrong)))
 

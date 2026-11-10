@@ -2,9 +2,12 @@
 # --only-binary before it imports the repo's code, then Job B checks every version against this file.
 # Databricks' serverless Python is 3.12 on ARM (the probes of 10 November), and uv.lock holds builds for Python
 # 3.13 and later only, so this file is compiled for that platform from pyproject.toml's `cloud` group, with every
-# version held to uv.lock's (a test checks them):
+# version held to uv.lock's (a test checks them). Made with these commands (review of #108, nit 6):
+#    uv export --frozen --only-group cloud --no-emit-project --no-hashes --format requirements-txt
+#        | grep -v '^ *#' | sed 's/ *;.*//' > constraints.txt
+#    printf 'anthropic==1.13.0\nscikit-learn==1.9.1\n' > cloud.in
 #    uv pip compile --python-version 3.12 --python-platform aarch64-manylinux_2_17 --generate-hashes
-#        -c <uv.lock's versions> <the cloud group>
+#        --no-header -c constraints.txt cloud.in
 annotated-types==0.8.0 \
     --hash=sha256:13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7 \
     --hash=sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0
