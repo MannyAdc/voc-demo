@@ -730,6 +730,17 @@ Written on 10 November 2026.
 - results that fail their check stop the run with no results file (J1, J11)
 - from the second review of #112: `build` needs the June ledger's charge, the summary holds only its keys and short texts in values and keys, rows given in any order are sorted by ID number then ID and scored with their recorded Products, and number columns take plain numbers only (J3, J11)
 
+## Pull request 6b, part 6: the copy of the results and the reader check ([spec 004](../specs/004-june-test-and-baselines/spec.md), J11, J13), `tests/test_june_copy.py`, `tests/test_job_b.py`, `tests/test_june_results.py`
+
+Written on 10 November 2026.
+
+- the reader signs in with its own client and basic auth, and comes from its own variables, never a default token (J13)
+- the copy brings exactly the two files, checks them and writes them, refuses a folder holding anything else, never writes files that fail their check, and never overwrites results already in the repo (J11)
+- an HTTP refusal gives its status only and never the secret (J5)
+- the reader check passes when the results are readable and the raw data is not, and fails otherwise (J13)
+- the script takes one run ID or `--check-reader` and names no default token or SDK (J11, J14)
+- from the review of #113: a real `build` passes the real `check`, `build` refuses a ledger charge that is not a whole number, any failure after labelling stops the run with `error`, a failed second upload leaves no results file, and a real sample row with a synthetic ID is refused (J1, J3, J11)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

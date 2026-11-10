@@ -143,6 +143,30 @@ On 9 November the form had no test button. The dry run's Job A run is the destin
 
 The two job IDs then go into `config/june_cloud.toml`, in a pull request of their own.
 
+### Step 1.9: the reader `voc-results-reader` (spec 004, J13, pull request 6b part 6)
+
+The reader is a second service principal. It can read the results volume `voc_results` and nothing else, and it
+is in no job and never in `admins`. Claude's copy script signs in as it, from the laptop, to bring the two results
+files into the repo. It lives until the owner removes it after the June run.
+
+1. In Databricks, your initial or name at the top right, **Settings**, **Identity and access**, next to **Service
+   principals** **Manage**, then **Add service principal**, **Add new**. Name it `voc-results-reader`. Click
+   **Add**. Leave every entitlement as it is, and never add it to a group.
+2. In the left menu, **Catalog**, click `workspace`, the **Permissions** tab, **Grant**. Principal
+   `voc-results-reader`, privilege **USE CATALOG** only. Click **Grant**.
+3. In **Catalog**, click `workspace`, then `voc_results`, the **Permissions** tab, **Grant**. Principal
+   `voc-results-reader`, privilege **USE SCHEMA** only. Click **Grant**.
+4. In `voc_results`, click the volume `voc_results`, the **Permissions** tab, **Grant**. Principal
+   `voc-results-reader`, privilege **READ VOLUME** only. Click **Grant**. Grant nothing on `default` or `voc_raw`.
+5. Back in **Settings**, **Identity and access**, **Service principals**, `voc-results-reader`, the **Secrets** tab,
+   **Generate secret**. **Lifetime:** 30 days. **Scope:** all APIs. The reader's real rights stay its three grants of
+   items 2 to 4. Click **Generate**. A box shows the **Client ID** and the **Secret**.
+6. On the laptop, open `.env` in the repo's folder in Notepad and add two lines, `VOC_READER_CLIENT_ID=` followed by
+   the Client ID, and `VOC_READER_CLIENT_SECRET=` followed by the Secret. Check that `VOC_DATABRICKS_HOST=` with the
+   workspace's bare host is there too. Save, close Notepad, close the Databricks box and clear the clipboard.
+7. Tell Claude. Claude runs `uv run --native-tls --locked python scripts/copy_june_results.py --check-reader`,
+   which prints only yes or no: the results volume readable, the raw volume refused, and a verdict.
+
 ## Step 2: GitHub, Databricks and Azure
 
 ### Step 2.1: the GitHub environment `june-figures`

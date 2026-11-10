@@ -2590,3 +2590,19 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - Red commit `17b2bc2` at 20:44 (git's commit time): only tests, through the gate. Second red commit `016eaf7` at 21:08: only tests, the second review of #112's items, through the gate.
 - AI mistakes, caught by the green change's test run: the red tests ran a real row with Job A's synthetic exit value, which the approval check rightly refused, and a dry run test still asserted that a real row's list is refused. In the green commit the helper gives Job A's exit value for the row's kind, and the dry run test checks that a real row reads the June list and still never the mock answers, each with a comment.
 - 21:09 Green change written, before its gate. One earlier test changes by design, with a comment: a real first row is no longer refused.
+- Green commit `ba39ff6` at 21:31 (git's commit time), through the gate. 21:42 Claude opened draft #113.
+- 21:46 The fresh reviewer's findings on #113 were posted as a comment. Nothing serious. Five minor and four nits. AI mistake, caught by the reviewer: no test ran a real `build` through the real `check`, the likeliest failure after the money is spent.
+- 21:47 The owner merged #112 (time from GitHub).
+- Owner decision ("go ahead", exact time not recorded): fix all nine in pull request 6b part 6. Claude had told the owner the fix for item 2 was temporary names and a rename, then found the Files API has no rename, and told the owner the fix is to delete the first file if the second cannot be written.
+- 21:48 CI green on `ba39ff6`. `scripts/merge_verdict.py 113`: PASS on the base, CI, conflicts (on a second run) and the red commit. PENDING on the review findings and the build log, which Claude checked. Verdict: MERGE, posted as a comment on #113. 21:48 Claude marked #113 ready.
+- The owner asked whether the reader account was needed or a way round it would do. Claude had offered a manual download as a simpler option. Owner decision: build the reader as designed, no way round it. Claude agreed it is the stronger design, and explained the owner makes it in the Databricks page from any computer, and puts its secret in `.env` on the laptop.
+
+### Pull request 6b, part 6: the copy of the results and the reader check
+
+- Work start, 21:43: branch `feat/june-copy`, worktree `../voc-demo-6b7`, from #113's branch at `ba39ff6`.
+- The reader `voc-results-reader` was designed on 5 November but never made, and the steps did not cover it. Step 1.9 of `docs/DATABRICKS_STEPS.md` now does, at click level.
+- `src/voc/june_copy.py` and `scripts/copy_june_results.py`: the reader's sign-in and the Files API over plain HTTPS, reusing the approval workflow's request helper, so Claude never runs the Databricks SDK. The copy and the reader check. The scope `all-apis` is not yet tried live, and `--check-reader` will show whether it works.
+- Red commit `7e9a596` at 21:46 (git's commit time): only tests, through the gate. Second red commit `4e6167a` at 22:05: only tests, the review of #113's items, through the gate. Of the second set, the two behaviour fixes failed first, and the test of a real `build` through the real `check` passed at once, so that failure after the spend does not happen with the code as it was.
+- One earlier test changes by design, with a comment: the Databricks steps now run to step 1.9, and the test checks the reader's grants are named.
+- The read guard blocked one of Claude's commands, since its text named the `.env` file. Claude listed the loader's functions without naming it.
+- 22:05 Green change written, before its gate, with the review of #113's fixes.

@@ -238,7 +238,7 @@ def test_J16_job_b_reads_exactly_its_three_parameters():
 # later row of either kind is still refused, before any outside call.
 @pytest.mark.parametrize("kind,entry_kind", [("synthetic", "resume"), ("synthetic", "second"),
                                               ("real", "reproduction")])
-def test_J11_job_b_refuses_a_real_or_later_row_until_6b(monkeypatch, kind, entry_kind):
+def test_J11_job_b_refuses_a_later_row_of_either_kind(monkeypatch, kind, entry_kind):  # renamed, #113 nit 6
     job_b = _patched(monkeypatch, kind=kind, entry_kind=entry_kind)
     jobs = FakeJobs()
     with pytest.raises(job_b.JobBError, match="only a first row of the run log in this build"):
