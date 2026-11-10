@@ -110,40 +110,19 @@ def test_J5_a_refusal_holds_no_value_from_the_file():
 
 
 def test_J11_build_writes_june_rows_with_the_refit_labels_and_the_figures(monkeypatch):
-    """The rows come out in complaint ID order, split `june`, with TF-IDF's label and its exact confidence."""
-    from voc import june_results, june_score, pipeline
-    from voc.decision import Decision
-    from voc.pipeline import Outcome
-
-    version = pipeline.load_prompt_version(REPO, "v1")
-    rows = [("SYN-2", "Debt collection", "a synthetic text two"), ("SYN-1", "Mortgage", "a synthetic text one")]
-    outcomes = [Outcome(Decision("SYN-2", reason="unparseable"), False, "live", "b" * 64, 100, 120, 30, 150),
-                Outcome(Decision("SYN-1", label="Mortgage", proposed_label="Mortgage", quote_start=2, quote_end=9),
-                        False, "live", "a" * 64, 100, 120, 30, 150)]
-
-    class Model:
-        pass
-
-    monkeypatch.setattr(june_results, "predict_tfidf",
-                        lambda model, texts: [("Mortgage", 0.25 + len(t) / 1000) for t in texts])
-    seen = {}
-
-    def scored(root, items, cost_per_1000):
-        seen["items"] = items
-        return {"complaints": len(items), "primary": {"verdict": "inconclusive"}}
-
-    monkeypatch.setattr(june_score, "score_june_sample", scored)
-    csv_text, summary = june_results.build(REPO, rows, outcomes, Model(), version)
+    """The rows come out in complaint ID order, split `june`, with TF-IDF's label and its exact confidence. Changed in
+    the green commit of the review of #112: `build` takes the run's IDs and hashes, and the real June scorer runs on a
+    small synthetic pool, so the summary's figures are computed, not stood in."""
+    csv_text, summary = _scored_build(monkeypatch)
     parsed = list(csv.DictReader(io.StringIO(csv_text)))
-    assert [r["complaint_id"] for r in parsed] == ["SYN-1", "SYN-2"]
+    assert [r["complaint_id"] for r in parsed] == ["SYN-1", "SYN-2", "SYN-3", "SYN-4"]
     assert {r["split"] for r in parsed} == {"june"} and tuple(parsed[0]) == COLUMNS
-    assert parsed[0]["tfidf_confidence"] == repr(0.25 + len("a synthetic text one") / 1000)
+    assert parsed[0]["tfidf_confidence"] == repr(0.95)
     assert parsed[1]["decision"] == "quarantined" and parsed[1]["reason"] == "unparseable"
-    assert {i.complaint_id: i.product for i in seen["items"]} == {"SYN-1": "Mortgage", "SYN-2": "Debt collection"}
-    assert summary["set"] == "june" and summary["prompt_version"] == "v1" and summary["complaints"] == 2
-    assert summary["model"] == version.settings["model"] and summary["input_tokens"] == 240
-    assert summary["primary"] == {"verdict": "inconclusive"}
-    assert "a synthetic text" not in csv_text + json.dumps(summary)
+    assert summary["set"] == "june" and summary["prompt_version"] == "v1" and summary["complaints"] == 4
+    assert summary["model"] == "claude-haiku-5-5" and summary["input_tokens"] == 480
+    assert summary["primary"]["verdict"] in ("beats", "does_not_beat", "inconclusive")
+    assert not any(text in csv_text + json.dumps(summary) for _, _, text in _rows4())
 
 
 # The review of #112 (serious 1 and 2, minor 4, nits 6 and 7)
