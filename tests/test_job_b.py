@@ -134,6 +134,10 @@ class FakeFiles:
             raise type("AlreadyExists", (Exception,), {})("exists")
         self.files[path] = contents.read()
 
+    def delete(self, path):
+        # Pull request 6b part 6: a half pair of results files is deleted (review of #113, item 2).
+        self.files.pop(path, None)
+
 
 def _patched(monkeypatch, kind="synthetic", entry_kind=None, rows=ROWS, answers=None):
     """The target row, its entry, its pin, the jobs' IDs, the dry run's list and its mock answers, as pull request
@@ -234,7 +238,7 @@ def test_J16_job_b_reads_exactly_its_three_parameters():
 # later row of either kind is still refused, before any outside call.
 @pytest.mark.parametrize("kind,entry_kind", [("synthetic", "resume"), ("synthetic", "second"),
                                               ("real", "reproduction")])
-def test_J11_job_b_refuses_a_real_or_later_row_until_6b(monkeypatch, kind, entry_kind):
+def test_J11_job_b_refuses_a_later_row_of_either_kind(monkeypatch, kind, entry_kind):  # renamed, #113 nit 6
     job_b = _patched(monkeypatch, kind=kind, entry_kind=entry_kind)
     jobs = FakeJobs()
     with pytest.raises(job_b.JobBError, match="only a first row of the run log in this build"):
@@ -1273,3 +1277,46 @@ def test_J11_results_that_fail_their_check_stop_the_run_with_no_file_written(mon
     value, files = _real(monkeypatch, tmp_path, built=[], checked=refused)
     assert value["stopped"] is True and value["stop_reason"] == "error" and value["results_folder"] is None
     assert not any(k.endswith((".csv", ".json")) and "/june-" in k for k in files.files)
+
+
+# The review of #113 (owner decision: fixed in 6b, part 6)
+
+
+def test_J11_any_failure_after_labelling_stops_the_run_with_its_reason(monkeypatch, tmp_path):
+    """Item 1: an error of any kind while the results are built gives the exit value `error`, never a crash."""
+    from voc import june_results
+
+    def broken(*args, **kwargs):
+        raise TypeError("SYNHOSTILE")
+
+    monkeypatch.setattr(june_results, "build", broken)
+    value, files = _real(monkeypatch, tmp_path)
+    assert value["stopped"] is True and value["stop_reason"] == "error" and value["results_folder"] is None
+    assert not any("/june-" in k for k in files.files)
+
+
+def test_J1_a_failed_second_upload_leaves_no_results_file(monkeypatch, tmp_path):
+    """Item 2: if the summary cannot be written, the CSV already written is deleted, so no half pair is left."""
+    from voc import job_b
+
+    files = FakeFiles()
+    upload = files.upload
+
+    def failing(path, contents, overwrite=None):
+        if path.endswith("v1_june.json"):
+            raise OSError("the upload failed")
+        return upload(path, contents, overwrite)
+
+    files.upload = failing
+    value, files = _real(monkeypatch, tmp_path, files=files, built=[])
+    assert value["stopped"] is True and value["stop_reason"] == "error"
+    assert not any(k.startswith(job_b.RESULTS_VOLUME) for k in files.files)
+
+
+def test_J11_a_real_sample_row_with_a_synthetic_id_is_refused(monkeypatch):
+    """Item 8: the sample-row branch of the rows check, for a real row."""
+    from voc import job_b
+
+    listed = {"3141592": "a" * 64}
+    with pytest.raises(job_b.JobBError, match="^the sample holds an ID that is not a CFPB complaint ID$"):
+        job_b.checked_rows(listed, [("SYN-7", "Mortgage", "A synthetic text.")], "real")

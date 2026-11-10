@@ -143,6 +143,49 @@ On 9 November the form had no test button. The dry run's Job A run is the destin
 
 The two job IDs then go into `config/june_cloud.toml`, in a pull request of their own.
 
+### Step 1.9: the reader `voc-results-reader` (spec 004, J13, pull request 6b part 6)
+
+The reader is a second service principal. It can read the results volume `voc_results` and nothing else, and it
+is in no job and never in `admins`. Claude's copy script signs in as it, from the laptop, to bring the two results
+files into the repo. It lives until the owner removes it after the June run.
+
+1. In Databricks, your initial or name at the top right, **Settings**, **Identity and access**, next to **Service
+   principals** **Manage**, then **Add service principal**, **Add new**. Name it `voc-results-reader`. Click
+   **Add**. Never add it to a group. Databricks puts every new principal in the workspace's own users group
+   (`_workspace_users_workspace_` followed by a number) by itself, so check what that group holds:
+   - In **Catalog**, `workspace`, the **Permissions** tab: the group may hold **USE CATALOG**, Databricks' default.
+     It only shows that the catalog exists, so leave it.
+   - `default`, the **Permissions** tab: on 10 November the group held **USE SCHEMA** and five **CREATE** rights
+     there. Tick each of the group's rows, click **Revoke** and confirm, so the list says **No permissions granted
+     yet**. The owner's own jobs are not affected, since the owner owns the catalog and the jobs run as the owner.
+   - The volume `voc_raw`, the **Permissions** tab, with **Inherited** set to all three levels: it should say no
+     permission matches. On 10 November it said no permission matches, so only the owner, who owns it, and the
+     workspace's admins can read it.
+   - `voc_cfpb` and `voc_june`, the **Permissions** tab: no right for the group. If one is there, stop and tell
+     Claude.
+2. In the left menu, **Catalog**, click `workspace`, the **Permissions** tab, **Grant**. Principal
+   `voc-results-reader`, privilege **USE CATALOG** only. Click **Grant**.
+3. In **Catalog**, click `workspace`, then `voc_results`, the **Permissions** tab, **Grant**. Principal
+   `voc-results-reader`, privilege **USE SCHEMA** only. Click **Grant**.
+4. In `voc_results`, click the volume `voc_results`, the **Permissions** tab, **Grant**. Principal
+   `voc-results-reader`, privilege **READ VOLUME** only. Click **Grant**. Grant nothing on `default` or `voc_raw`.
+5. Back in **Settings**, **Identity and access**, **Service principals**, `voc-results-reader`, the **Secrets** tab,
+   **Generate secret**. **Lifetime:** 30 days. **Scope:** **Other APIs**, then **Add scope**, type `file`, tick
+   **files**, and set its access to **Read**. No other scope, and never `all-apis`, which Databricks itself calls not
+   recommended. The copy script asks for `files:read`. If the check of item 7 says the sign-in was refused, tell
+   Claude. The reader's real rights stay its three grants of items 2 to 4. Click **Generate**. A box shows the
+   **Client ID** and the **Secret**.
+6. On the laptop, open `.env` in the repo's folder in Notepad and add two lines, `VOC_READER_CLIENT_ID=` followed by
+   the Client ID, and `VOC_READER_CLIENT_SECRET=` followed by the Secret. Check that `VOC_DATABRICKS_HOST=` with the
+   workspace's bare host is there too. Save, close Notepad, close the Databricks box and clear the clipboard.
+7. Tell Claude. Claude runs `uv run --native-tls --locked python scripts/copy_june_results.py --check-reader`,
+   which prints only yes or no: the results volume readable, the raw volume refused, the secret scope `voc-june`
+   refused, and a verdict. Only a real refusal counts, so a failure never passes.
+8. When it passes, back in **Settings**, **Identity and access**, **Service principals**, `voc-results-reader`, the
+   **Configurations** tab: untick **Workspace access** and save. Tell Claude, who runs the check again. If it still
+   passes, the reader keeps no workspace access, so it cannot make or run notebooks or jobs. If it fails, tick the
+   box again and tell Claude (the robot's rule of J13, applied to the reader).
+
 ## Step 2: GitHub, Databricks and Azure
 
 ### Step 2.1: the GitHub environment `june-figures`

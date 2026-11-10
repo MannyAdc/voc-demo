@@ -551,7 +551,11 @@ def test_J1_the_databricks_steps_1_go_click_by_click_with_no_azure_host_or_guid(
     """Owner decision, 9 November: every step names its clicks in order, for a reader new to Databricks."""
     text = DATABRICKS_STEPS.read_text(encoding="utf-8")
     steps = re.findall(r"^### Step (1\.[0-9]+): ", text, flags=re.M)
-    assert steps == [f"1.{n}" for n in range(1, 9)]
+    # Changed in 6b part 6: step 1.9 makes the reader, with its three read grants and nothing on the raw volume.
+    assert steps == [f"1.{n}" for n in range(1, 10)]
+    for words in ("`voc-results-reader`", "**USE CATALOG**", "**USE SCHEMA**", "**READ VOLUME**",
+                  "Grant nothing on `default`", "--check-reader"):
+        assert words in text, words
     for words in ("Copy raw file", "just left of the grey **Run now** button", "**Can View**", "**Can Manage Run**",
                   "**Paused**", "`voc_results`", "`voc-receiver`", "**On success**", "Clear all"):
         assert words in text, words

@@ -1,30 +1,32 @@
-"""Spec 004, J11 and J16: Job B's logic, as the dry run of pull request 6a. Its one task, `job_b`, runs in Databricks
-as the owner (`cloud/job_b.yml`). The notebook in `cloud/job_b/` stays thin and calls `run`.
+"""Spec 004, J11 and J16: Job B's logic. Its one task, `job_b`, runs in Databricks as the owner (`cloud/job_b.yml`).
+The notebook in `cloud/job_b/` stays thin and calls `run`.
 
-The dry run takes only a synthetic first row of the run log, labels the synthetic sample with the mock backend's
-committed answers (`cloud/job_b/dry_run_answers.json`, pull request 9a), and
-writes no results file. Its results folder holds a note, `DRY_RUN.txt`, so the folder exists on the object store and
-explains itself (owner decision, 8 November). The real labelling, its ledger, its start marker, the TF-IDF refit, the
-scoring and the results files come in pull request 6b.
+Job B takes a first row of the run log, synthetic or real (6b part 5). With a backend from the notebook it labels
+through the API, the June ledger and the volume's recordings (6b part 3b). A synthetic run writes a note,
+`DRY_RUN.txt`, and no results file (owner decision, 8 November). A real run writes its start marker before its
+first model call, and after a finished run its two results files, checked (6b parts 4 and 5). With no backend, as
+in the laptop's tests, a synthetic run serves the mock backend's committed answers (pull request 9a).
 
 Every check runs before the first marker is written, in this order:
 0. its packages: every version the notebook installed is the one in `cloud/job_b/requirements.txt` (pull
    request 6b)
 1. its parameters, exactly the two run IDs and its own run ID, each a whole number (J16 item 1)
-2. the run log's last row, through Job A's checks, and only a synthetic first row until pull request 6b
+2. the run log's last row, through Job A's checks, and only a first row, synthetic or real
 3. its own run: Job B's job, running, with exactly the two run IDs, and the commit it runs
 4. the GitHub run, read from GitHub's public API with no credential: the approval workflow's dispatch on `main`, from
    the commit Job B runs, with the exact name for the Job A run, first attempt, approved for `june-run` by the owner
    and never rejected (J11, J16 item 7)
 5. Job A's run again, as the approval workflow checks it (J16 item 5)
-6. the sample: the dry run's list, whose bytes hash to the row's list hash, with only `SYN-` IDs, checked before
-   any SQL runs, then exactly its rows from the June tables, each with its content hash
+6. the sample: the row's list, the dry run's or the June list, whose bytes hash to the row's list hash, with only
+   IDs of its kind, checked before any SQL runs, then exactly its rows from the June tables, each with its content
+   hash
 7. Job A's figures, computed again from the rows: the same counts, and no more tokens or cost than approved
 8. the refit of TF-IDF + LR from July's training rows, which must give every committed July development label
    (`voc.june_refit`, pull request 6b)
 9. when it calls the API, room in the June ledger for the whole run's worst case (J12)
-Then it marks the GitHub run, and the Job A run for its row, as used. A marker already there is refused, and an
-upload never overwrites. Then it labels, writes the note and returns the contract's exit value (J16 item 8).
+Then it marks the GitHub run, and the Job A run for its row, as used, and for a real row writes the row's start
+marker. A marker already there is refused, and an upload never overwrites. Then it labels, writes the note or the
+results files and returns the contract's exit value (J16 item 8).
 
 B21 and J5: nothing here prints. Every refusal holds fixed text, IDs and counts only, and carries no earlier exception.
 """
@@ -395,6 +397,13 @@ class VolumeStore:
             raise JobBError(f"the volume could not be read: {failure}")
         return found
 
+    def delete(self, path):
+        """Best effort: deletes one file, so a half pair of results files is not left (review of #113, item 2)."""
+        try:
+            self.files.delete(path)
+        except Exception:  # noqa: BLE001, the run already reports its stop, and the owner deletes by hand if need be
+            pass
+
     def create(self, path, data):
         failure = None
         try:
@@ -548,10 +557,9 @@ def _api_outcomes(root, rows, backend, run_target):
 
 
 def _results_written(root, store, rows, outcomes, model, run_info, spent, job_b_run_id):
-    """A finished real run's two results files, built, checked and written (J11, 6b part 5). False when they fail
-    their check or cannot be scored, so the run reports a stop and writes no results file (J1)."""
+    """A finished real run's two results files, built, checked and written (J11, 6b part 5). False when anything
+    fails, so the run reports a stop and leaves no results file (J1, review of #113, items 1 and 2)."""
     from voc import june_results, pipeline
-    from voc.june_score import JuneScoreError
 
     version = pipeline.load_prompt_version(root, "v1")
     try:
@@ -561,13 +569,21 @@ def _results_written(root, store, rows, outcomes, model, run_info, spent, job_b_
         json_text = json.dumps(summary, indent=2, sort_keys=True) + "\n"
         june_results.check(root, csv_text, json_text)
         failed = False
-    except (june_results.JuneResultsError, JuneScoreError):
+    except Exception:  # noqa: BLE001, any failure after the spend gives the exit value `error`, never a crash
         failed = True
     if failed:
         return False
     folder = f"{RESULTS_VOLUME}/june-{job_b_run_id}"
-    store.create(f"{folder}/{june_results.FILES[0]}", csv_text.encode("utf-8"))
-    store.create(f"{folder}/{june_results.FILES[1]}", json_text.encode("utf-8"))
+    first, second = (f"{folder}/{name}" for name in june_results.FILES)
+    try:
+        store.create(first, csv_text.encode("utf-8"))
+    except JobBError:
+        return False
+    try:
+        store.create(second, json_text.encode("utf-8"))
+    except JobBError:
+        store.delete(first)  # the Files API has no rename, so the first file goes again
+        return False
     return True
 
 
