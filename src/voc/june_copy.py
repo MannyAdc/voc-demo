@@ -10,7 +10,7 @@ calls Databricks' token endpoint and Files API over plain HTTPS, with no SDK.
 The copy reads exactly `v1_june.csv` and `v1_june.json` from `june-<Job B run ID>`, refuses a folder holding anything
 else, checks them again with `june_results.check`, and writes them to `results/june/`, never over files already
 there. The reader check proves the account can list the results volume and is refused on the raw volume and on the
-secret scope. Only a real refusal, HTTP 403 or 404, counts. Any other answer fails the check (review of #114).
+secret scope. Only a real refusal, HTTP 403, counts. Any other answer fails the check (reviews of #114).
 
 B21 and J5: nothing here prints a secret or a file's content. Every refusal holds fixed text and HTTP statuses only.
 """
@@ -30,7 +30,9 @@ RAW = "/Volumes/workspace/default/voc_raw"
 SCOPE = "files:read"
 OUT = Path("results") / "june"
 SECRET_SCOPE = "voc-june"
-REFUSED = (403, 404)
+# Only 403 counts as a refusal. A 404 also means "not there", so a typo in a path would look like a refusal
+# (second review of #114, minor 1). A false FAIL is the safe side.
+REFUSED = (403,)
 
 
 class CopyError(ValueError):

@@ -159,7 +159,8 @@ files into the repo. It lives until the owner removes it after the June run.
      there. Tick each of the group's rows, click **Revoke** and confirm, so the list says **No permissions granted
      yet**. The owner's own jobs are not affected, since the owner owns the catalog and the jobs run as the owner.
    - The volume `voc_raw`, the **Permissions** tab, with **Inherited** set to all three levels: it should say no
-     permission matches. On 10 November it did, so nobody but the owner can read it.
+     permission matches. On 10 November it said no permission matches, so only the owner, who owns it, and the
+     workspace's admins can read it.
    - `voc_cfpb` and `voc_june`, the **Permissions** tab: no right for the group. If one is there, stop and tell
      Claude.
 2. In the left menu, **Catalog**, click `workspace`, the **Permissions** tab, **Grant**. Principal

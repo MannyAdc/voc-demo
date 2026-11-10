@@ -149,8 +149,9 @@ def test_J13_the_reader_check_passes_when_results_are_readable_and_raw_data_is_n
     from voc import june_copy
 
     http = FakeHTTP(folders={june_copy.RESULTS: ["june-900002"], june_copy.RAW: None})
-    # Changed in the fix round of #114: the check also needs the secret scope refused. The fake answers 404 for it,
-    # a real refusal, so the verdict passes.
+    # Changed in the fix rounds of #114: the check also needs the secret scope refused, with a 403, since a 404 is no
+    # longer proof of a refusal.
+    http.statuses = {"/api/2.0/secrets/list": 403}
     assert june_copy.check_reader(_reader(http)) == ["results volume readable | yes", "raw volume refused | yes",
                                                      "secret scope refused | yes", "verdict | PASS"]
 
@@ -180,7 +181,8 @@ def _check(raw=None, scope=403, results=("june-900002",), extra=None):
     return june_copy.check_reader(_reader(http))
 
 
-@pytest.mark.parametrize("raw", [403, 404])
+# Changed in the second fix round of #114: only 403 counts (test_J13_a_404_is_not_proof_of_a_refusal).
+@pytest.mark.parametrize("raw", [403])
 def test_J13_only_a_real_refusal_counts_as_refused(raw):
     lines = _check(raw=raw)
     assert "raw volume refused | yes" in lines and "secret scope refused | yes" in lines
