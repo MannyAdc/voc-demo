@@ -1396,6 +1396,38 @@ def test_J11_a_clean_up_failure_never_fails_the_run_and_the_note_says_what_is_le
     assert "SYNHOSTILE" not in note + capsys.readouterr().out
 
 
+class UnreadableAfterDelete(FakeFiles):
+    """A volume whose read fails with an error that is not NotFound for a file the clean-up has just deleted."""
+
+    def __init__(self, existing=()):
+        super().__init__(existing)
+        self.deleted = set()
+
+    def delete(self, path):
+        super().delete(path)
+        self.deleted.add(path)
+
+    def get_metadata(self, path):
+        if path in self.deleted:
+            raise type("PermissionDenied", (Exception,), {})("SYNHOSTILE")
+        return super().get_metadata(path)
+
+
+def test_J11_a_volume_read_error_in_the_clean_up_never_fails_the_run(monkeypatch, tmp_path, capsys):
+    # Review of #116, item 1: the check after a delete can raise JobBError, which must not fail a finished run.
+    from voc import job_b
+    from voc.job_a import INCOMING, JUNE_FOLDER
+
+    files = UnreadableAfterDelete(existing=(f"{INCOMING}/syn_june_dry_run_r4.zip",
+                                            f"{JUNE_FOLDER}/syn_june_dry_run_r4.csv"))
+    value, files, _ = _clean_run(monkeypatch, tmp_path, files=files)
+    assert value["stopped"] is False and value["results_folder"] == "june-900002"
+    note = next(v for k, v in files.files.items() if k.endswith(job_b.DRY_RUN_FILE)).decode("utf-8")
+    assert note.endswith("Clean-up incomplete: 0 files deleted, 4 of 4 June tables and views dropped. Finish it by "
+                         "hand, as in docs/DRY_RUN_STEPS.md.\n")
+    assert "SYNHOSTILE" not in note + capsys.readouterr().out
+
+
 def test_J11_a_stopped_synthetic_run_cleans_up_nothing(monkeypatch, tmp_path):
     from voc.job_a import INCOMING
     from voc.replay import StopRun
