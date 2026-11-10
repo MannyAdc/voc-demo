@@ -73,7 +73,8 @@ def test_J13_the_reader_signs_in_with_its_own_client_and_basic_auth(monkeypatch)
     method, url, headers, data = http.calls[0]
     assert (method, url) == ("POST", f"https://{HOST}/oidc/v1/token")
     assert headers["Authorization"].startswith("Basic ") and b"grant_type=client_credentials" in data
-    assert f"scope={june_copy.SCOPE}".encode() in data
+    # Changed with the scope files:read: the form encodes its colon, so the test compares the encoded form.
+    assert __import__("urllib.parse").parse.urlencode({"scope": june_copy.SCOPE}).encode() in data
     assert http.calls[1][2]["Authorization"] == "Bearer " + "tok" + "en"
 
 
@@ -252,3 +253,11 @@ def test_J11_a_listing_item_that_is_not_an_object_is_refused(tmp_path):
 
     with pytest.raises(june_copy.CopyError, match="^the Files API's folder listing could not be read$"):
         june_copy.copy(tmp_path, 900002, _reader(odd))
+
+
+def test_J13_the_reader_asks_for_the_files_scope_read_only():
+    """Owner's check of the secret's form, 10 November: Databricks calls all-apis not recommended. The reader's token
+    reads files only."""
+    from voc import june_copy
+
+    assert june_copy.SCOPE == "files:read"

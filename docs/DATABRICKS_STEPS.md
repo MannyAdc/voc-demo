@@ -169,9 +169,11 @@ files into the repo. It lives until the owner removes it after the June run.
 4. In `voc_results`, click the volume `voc_results`, the **Permissions** tab, **Grant**. Principal
    `voc-results-reader`, privilege **READ VOLUME** only. Click **Grant**. Grant nothing on `default` or `voc_raw`.
 5. Back in **Settings**, **Identity and access**, **Service principals**, `voc-results-reader`, the **Secrets** tab,
-   **Generate secret**. **Lifetime:** 30 days. **Scope:** all APIs, which the copy script asks for. This scope is not
-   yet tried live: if the check of item 7 says the sign-in was refused, tell Claude. The reader's real rights stay its
-   three grants of items 2 to 4. Click **Generate**. A box shows the **Client ID** and the **Secret**.
+   **Generate secret**. **Lifetime:** 30 days. **Scope:** **Other APIs**, then **Add scope**, type `file`, tick
+   **files**, and set its access to **Read**. No other scope, and never `all-apis`, which Databricks itself calls not
+   recommended. The copy script asks for `files:read`. If the check of item 7 says the sign-in was refused, tell
+   Claude. The reader's real rights stay its three grants of items 2 to 4. Click **Generate**. A box shows the
+   **Client ID** and the **Secret**.
 6. On the laptop, open `.env` in the repo's folder in Notepad and add two lines, `VOC_READER_CLIENT_ID=` followed by
    the Client ID, and `VOC_READER_CLIENT_SECRET=` followed by the Secret. Check that `VOC_DATABRICKS_HOST=` with the
    workspace's bare host is there too. Save, close Notepad, close the Databricks box and clear the clipboard.

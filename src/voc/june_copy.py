@@ -24,8 +24,10 @@ from voc.approval import HOST, _request
 
 RESULTS = "/Volumes/workspace/voc_results/voc_results"
 RAW = "/Volumes/workspace/default/voc_raw"
-# The token's scope. The reader's rights come from its grants, which allow reading one volume and nothing else.
-SCOPE = "all-apis"
+# The token's scope: the Files API, read only (owner's check of the secret's form, 10 November). Databricks calls
+# all-apis "not recommended", since a leaked credential would be unrestricted. The secret is made with the files
+# scope at Read, which Databricks names files:read, as it named the robot's jobs scope at Read jobs:read.
+SCOPE = "files:read"
 OUT = Path("results") / "june"
 SECRET_SCOPE = "voc-june"
 REFUSED = (403, 404)
