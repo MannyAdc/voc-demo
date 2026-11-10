@@ -152,6 +152,8 @@ def _patched(monkeypatch, kind="synthetic", entry_kind=None, rows=ROWS, answers=
     monkeypatch.setattr(approval, "cloud_settings", lambda root: {"job_a_job_id": JOB_A, "job_b_job_id": JOB_B})
     monkeypatch.setattr(job_b, "listed_for", lambda root, t: _list_bytes(rows))
     monkeypatch.setattr(job_b, "mock_answers", lambda root, t: _answers(rows) if answers is None else answers)
+    # Pull request 6b, part 2: the refit reads the July export in the volume, so these tests stand it in.
+    monkeypatch.setattr(job_b, "refit_check", lambda root: "MODEL", raising=False)
     return job_b
 
 
@@ -930,3 +932,36 @@ def test_J11_job_b_refuses_a_requirements_line_that_is_not_a_pinned_package(tmp_
 def test_J11_the_requirements_header_gives_the_exact_commands():
     text = REQUIREMENTS.read_text(encoding="utf-8")
     assert "uv export --frozen --only-group cloud --no-emit-project --no-hashes" in text and "<" not in text
+# Pull request 6b, part 2: the refit is one of Job B's checks, so it runs before any marker (J7, J11).
+
+
+def test_J11_job_b_refits_and_checks_july_before_it_marks_anything(monkeypatch):
+    job_b = _patched(monkeypatch)
+    order = []
+    monkeypatch.setattr(job_b, "refit_check", lambda root: order.append(("refit", root)) or "MODEL")
+    files = FakeFiles()
+    upload = files.upload
+    files.upload = lambda path, contents, overwrite=None: order.append(("write", path)) or upload(path, contents,
+                                                                                                  overwrite)
+    _run(job_b, files=files)
+    assert order[0] == ("refit", REPO) and all(kind == "write" for kind, _ in order[1:])
+
+
+def test_J11_a_refused_refit_stops_job_b_before_any_marker(monkeypatch):
+    from voc import june_refit
+    from voc import job_b as module
+
+    real = module.refit_check
+    job_b = _patched(monkeypatch)
+
+    def refused(root, export, work):
+        raise june_refit.RefitError("the refit TF-IDF + LR gives 1 of 370 July development labels other than the "
+                                    "committed ones")
+
+    # The refusal comes from the refit itself, so Job B's own check gives it as its refusal.
+    monkeypatch.setattr(job_b, "refit_check", real)
+    monkeypatch.setattr(june_refit, "refit", refused)
+    files = FakeFiles()
+    with pytest.raises(job_b.JobBError, match="^the refit TF-IDF \\+ LR gives 1 of 370"):
+        _run(job_b, files=files)
+    assert not files.files

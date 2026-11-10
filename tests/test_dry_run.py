@@ -335,6 +335,8 @@ class Files:
 
 def test_J11_job_b_runs_the_dry_run_end_to_end_on_the_committed_files(monkeypatch, capsys):
     from voc import approval, job_b
+    # Pull request 6b, part 2: the refit reads the July export in the volume, so this test stands it in.
+    monkeypatch.setattr(job_b, "refit_check", lambda root: "MODEL", raising=False)
     from voc.frozen import Entry
     from voc.job_a import exit_value, figures, pin_for
 
@@ -460,6 +462,8 @@ def test_J8_unpack_refuses_a_synthetic_csv_with_an_id_that_is_not_synthetic(tmp_
 def test_J11_the_dry_run_note_gives_the_accepted_and_quarantined_counts(monkeypatch):
     """Minor 1: the split of 7 and 1 is seen in the cloud, as counts only."""
     from voc import approval, job_b
+    # Pull request 6b, part 2: the refit reads the July export in the volume, so this test stands it in.
+    monkeypatch.setattr(job_b, "refit_check", lambda root: "MODEL", raising=False)
     from voc.frozen import Entry
     from voc.job_a import exit_value, figures, pin_for
 
@@ -478,9 +482,11 @@ def test_J11_the_dry_run_note_gives_the_accepted_and_quarantined_counts(monkeypa
     assert not any(cid in note for cid, _, _ in rows) and MARKER not in note
 
 
-def test_J11_job_b_runs_the_dry_run_on_a_checkout_with_its_real_run_log_row(tmp_path):
+def test_J11_job_b_runs_the_dry_run_on_a_checkout_with_its_real_run_log_row(tmp_path, monkeypatch):
     """Nit 11: no patched target or settings. A checkout with the dry run's row, the jobs' IDs and its code hash."""
     from voc import job_b
+    # Pull request 6b, part 2: the refit reads the July export in the volume, so this test stands it in.
+    monkeypatch.setattr(job_b, "refit_check", lambda root: "MODEL", raising=False)
     from voc.job_a import checked_target, exit_value, figures, pin_for
 
     root = _dry_root(tmp_path, with_files=True)
