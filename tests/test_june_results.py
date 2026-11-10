@@ -35,8 +35,16 @@ def _row(cid="SYN-1", **change):
     return row
 
 
-def _summary():
-    return json.dumps({"set": "june", "complaints": 1, "primary": {"verdict": "inconclusive"}})
+def _summary(drop=None, **change):
+    """A summary with every key the spec asks for. Changed in the red commit of the review of #112."""
+    keys = set(json.loads((REPO / "results" / "eval" / "v1_test.json").read_text(encoding="utf-8")))
+    keys |= {"primary", "secondary", "full_coverage", "cost_per_extra_correct_usd", "shares", "weights",
+             "accepted", "quarantined", "entry_list_sha256", "entry_code_sha256", "job_a_run_id",
+             "job_b_run_id", "github_run_id", "run_seconds", "input_tokens", "output_tokens",
+             "calls_without_usage", "charged_without_answer_tokens", "cost_per_1000_usd"}
+    summary = {key: 1 for key in keys if key != drop}
+    summary.update({"set": "june", "note": "fixed text", **change})
+    return json.dumps(summary)
 
 
 def test_B19_the_columns_are_the_development_results_columns():
@@ -136,3 +144,118 @@ def test_J11_build_writes_june_rows_with_the_refit_labels_and_the_figures(monkey
     assert summary["model"] == version.settings["model"] and summary["input_tokens"] == 240
     assert summary["primary"] == {"verdict": "inconclusive"}
     assert "a synthetic text" not in csv_text + json.dumps(summary)
+
+
+# The review of #112 (serious 1 and 2, minor 4, nits 6 and 7)
+
+RUN = {"entry_list_sha256": "c" * 64, "entry_code_sha256": "d" * 64, "job_a_run_id": 900001, "job_b_run_id": 900002,
+       "github_run_id": 600001}
+
+
+def _rows4():
+    return [("SYN-1", "Mortgage", "text one"), ("SYN-2", "Debt collection", "text two"),
+            ("SYN-3", "Mortgage", "text three"), ("SYN-4", "Debt collection", "text four")]
+
+
+def _outcomes4(costs=None):
+    from voc.decision import Decision
+    from voc.pipeline import Outcome
+
+    made = []
+    for i, (cid, product, _) in enumerate(_rows4()):
+        source, tin, tout, charged = (costs or {}).get(cid, ("live", 120, 30, 150))
+        decision = (Decision(cid, label=product, proposed_label=product, quote_start=1, quote_end=6) if i % 2 == 0
+                    else Decision(cid, reason="unparseable"))
+        made.append(Outcome(decision, False, source, f"{i:064x}", 100, tin, tout, charged))
+    return made
+
+
+def _scored_build(monkeypatch, outcomes=None, ledger_tokens=None, rows=None):
+    """The real June scorer on a pool of the four synthetic complaints, so every figure is computed."""
+    from voc import june_results, june_score, pipeline
+
+    version = pipeline.load_prompt_version(REPO, "v1")
+    pool = {"Mortgage": {"pool": 20, "sample": 2}, "Debt collection": {"pool": 20, "sample": 2}}
+    monkeypatch.setattr(june_score, "score_june_sample",
+                        lambda root, items, cost: june_score.score_june(items, pool, june_score.load_claims(root), cost))
+    monkeypatch.setattr(june_results, "predict_tfidf",
+                        lambda model, texts: [("Mortgage" if "one" in t or "three" in t else "Debt collection", 0.95)
+                                              for t in texts])
+    return june_results.build(REPO, rows or _rows4(), _outcomes4() if outcomes is None else outcomes, object(),
+                              version, RUN, ledger_tokens=ledger_tokens, run_seconds=12.5)
+
+
+def test_J11_the_summary_holds_every_key_of_july_s_summary_the_hybrid_s_and_the_run_s(monkeypatch):
+    from voc import june_results
+
+    _, summary = _scored_build(monkeypatch)
+    july = set(json.loads((REPO / "results" / "eval" / "v1_test.json").read_text(encoding="utf-8")))
+    assert july <= set(summary) and june_results.REQUIRED_KEYS <= set(summary)
+    assert {k: summary[k] for k in RUN} == RUN and summary["run_seconds"] == 12.5
+    assert summary["verdict"] == summary["primary"]["verdict"] and "note" in summary["confusion"]
+    assert set(summary["llm"]) == {"reweighted_accuracy", "precision", "coverage", "quarantine_rate", "macro_f1",
+                                   "cost_per_1000_usd", "seconds_per_1000_complaints", "no_time_per_1000_because"}
+    assert summary["tfidf"]["settings_sha256"] == __import__("hashlib").sha256(
+        (REPO / "config" / "tfidf.toml").read_bytes()).hexdigest()
+
+
+def test_J3_the_cost_is_never_too_low(monkeypatch):
+    """A reply with no usage is costed as output tokens from what was charged, as costs.run_cost does, a replayed
+    answer is kept out of this run's own cost, and a call that the ledger charged with no answer is costed as output
+    tokens too."""
+    from decimal import Decimal
+
+    from voc.costs import call_cost, load_prices
+
+    costs = {"SYN-2": ("live", None, None, 500), "SYN-3": ("replay", 120, 30, 150)}
+    _, summary = _scored_build(monkeypatch, outcomes=_outcomes4(costs), ledger_tokens=150 + 500 + 150 + 800)
+    prices, model = load_prices(REPO / "config" / "prices.toml"), "claude-haiku-5-5"
+    live = 3 * call_cost(prices, model, 120, 30) + call_cost(prices, model, 0, 500) + call_cost(prices, model, 0, 800)
+    own = live - call_cost(prices, model, 120, 30)
+    assert Decimal(summary["live_cost_usd"]) == live and Decimal(summary["replay_cost_usd"]) == own
+    assert summary["calls_without_usage"] == 1 and summary["charged_without_answer_tokens"] == 800
+
+
+def test_J11_build_refuses_outcomes_that_are_not_the_sample_s_once_each(monkeypatch):
+    from voc import june_results
+
+    outcomes = _outcomes4()
+    with pytest.raises(june_results.JuneResultsError, match="^the outcomes must be the sample's complaints, once each$"):
+        _scored_build(monkeypatch, outcomes=outcomes + outcomes[:1])
+    with pytest.raises(june_results.JuneResultsError, match="^the outcomes must be the sample's complaints, once each$"):
+        _scored_build(monkeypatch, outcomes=outcomes[:3])
+
+
+def test_J11_rows_sort_by_id_number_then_id(monkeypatch):
+    csv_text, _ = _scored_build(monkeypatch)
+    ids = [r["complaint_id"] for r in csv.DictReader(io.StringIO(csv_text))]
+    assert ids == ["SYN-1", "SYN-2", "SYN-3", "SYN-4"]
+
+
+@pytest.mark.parametrize("change, words", [
+    ({"drop": "job_b_run_id"}, "lacks a required key"),
+    ({"note": "x" * 600}, "text value longer than"),
+])
+def test_J11_a_summary_that_breaks_a_rule_is_refused(change, words):
+    from voc import june_results
+
+    with pytest.raises(june_results.JuneResultsError, match=words):
+        june_results.check(REPO, _csv([_row()]), _summary(**change), listed={"SYN-1"})
+
+
+def test_J11_a_csv_missing_a_listed_complaint_is_refused():
+    from voc import june_results
+
+    with pytest.raises(june_results.JuneResultsError, match="^v1_june.csv lacks 1 complaint of the June list$"):
+        june_results.check(REPO, _csv([_row()]), _summary(), listed={"SYN-1", "SYN-2"})
+
+
+@pytest.mark.parametrize("change", [{"decision": "maybe"}, {"quote_start": "ten"}, {"quote_end": "-1"},
+                                    {"tfidf_confidence": "high"}, {"tfidf_confidence": "1.5"},
+                                    {"recording_key": "SYNHOSTILE"}, {"prompt_version": "v2"}])
+def test_J11_a_csv_value_outside_its_column_s_form_is_refused(change):
+    from voc import june_results
+
+    with pytest.raises(june_results.JuneResultsError) as caught:
+        june_results.check(REPO, _csv([_row(**change)]), _summary(), listed={"SYN-1"})
+    assert "SYNHOSTILE" not in str(caught.value)
