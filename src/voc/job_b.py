@@ -556,6 +556,54 @@ def _api_outcomes(root, rows, backend, run_target):
     return outcomes, stopped, reason, spent
 
 
+# After a finished synthetic run, its own clean-up (6b part 7, owner decision of 10 November). Only these exact
+# objects and the round's two files, named by the dry run's pin, are ever removed. Never after a real run.
+JUNE_OBJECTS = (("VIEW", "curated_complaints"), ("TABLE", "landed_complaints"), ("TABLE", "stg_complaints"),
+                ("TABLE", "test_list"))
+DRY_NAME = re.compile(r"syn_june_dry_run_r[0-9]{1,3}\.(zip|csv)")
+
+
+def _dry_run_names(root):
+    """The dry run's zip and CSV, as its pin names them."""
+    from voc.job_a import pin_for
+
+    pin = pin_for(root, "synthetic")
+    return pin["zip_file_name"], pin["file_name"]
+
+
+def cleaned_up(root, store, run_sql, names=None):
+    """Deletes the round's zip in `incoming` and its CSV in `june`, then drops the June tables and views. Returns
+    the files deleted, the objects dropped and the objects there are. It never raises: a step that fails is left
+    for the owner, as the note says. A name that is not a dry run round's is never deleted."""
+    from voc.job_a import INCOMING, JUNE_FOLDER
+
+    try:
+        zip_name, csv_name = _dry_run_names(root) if names is None else names
+    except Exception:  # noqa: BLE001, nothing is deleted when the names cannot be read
+        zip_name = csv_name = ""
+    deleted = 0
+    if (DRY_NAME.fullmatch(zip_name or "") and zip_name.endswith(".zip") and DRY_NAME.fullmatch(csv_name or "")
+            and csv_name.endswith(".csv")):
+        for path in (f"{INCOMING}/{zip_name}", f"{JUNE_FOLDER}/{csv_name}"):
+            store.delete(path)
+            deleted += not store.exists(path)
+    dropped = 0
+    for kind, name in JUNE_OBJECTS:
+        try:
+            run_sql(f"DROP {kind} IF EXISTS workspace.voc_june.{name}")
+            dropped += 1
+        except Exception:  # noqa: BLE001, Spark's error could quote a row, so it is never kept
+            pass
+    return deleted, dropped, len(JUNE_OBJECTS)
+
+
+def _clean_up_note(deleted, dropped, total):
+    if deleted == 2 and dropped == total:
+        return f"Cleaned up: 2 files deleted, {total} June tables and views dropped.\n"
+    return (f"Clean-up incomplete: {deleted} files deleted, {dropped} of {total} June tables and views dropped. "
+            "Finish it by hand, as in docs/DRY_RUN_STEPS.md.\n")
+
+
 def _results_written(root, store, rows, outcomes, model, run_info, spent, job_b_run_id):
     """A finished real run's two results files, built, checked and written (J11, 6b part 5). False when anything
     fails, so the run reports a stop and leaves no results file (J1, review of #113, items 1 and 2)."""
@@ -652,6 +700,8 @@ def run(root, values, databricks, github, store, run_sql, sleep=time.sleep, back
         # Review of #99: the split is seen in the cloud, as counts only.
         accepted = sum(o.decision.label is not None for o in outcomes)
         counts = f"Labelled: {len(outcomes)}. Accepted: {accepted}. Quarantined: {len(outcomes) - accepted}.\n"
+        # 6b part 7: with a backend, as in the cloud, the finished synthetic run cleans up after itself.
+        cleaned = _clean_up_note(*cleaned_up(root, store, run_sql)) if backend is not None else ""
         store.create(f"{RESULTS_VOLUME}/june-{job_b_run_id}/{DRY_RUN_FILE}",
-                     (note + counts).encode("utf-8"))
+                     (note + counts + cleaned).encode("utf-8"))
     return exit_value(run_target, complaints, len(outcomes), stopped, job_b_run_id, reason)

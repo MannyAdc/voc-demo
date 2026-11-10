@@ -1381,7 +1381,8 @@ def test_J11_the_note_says_what_was_cleaned_up(monkeypatch, tmp_path):
 
     _, files, _ = _clean_run(monkeypatch, tmp_path)
     note = next(v for k, v in files.files.items() if k.endswith(job_b.DRY_RUN_FILE)).decode("utf-8")
-    assert note.endswith("Cleaned up: 2 files deleted, 4 June tables and views dropped.\\n")
+    # Changed in the green commit: the red test wrote a backslash and n where the note has a line break.
+    assert note.endswith("Cleaned up: 2 files deleted, 4 June tables and views dropped.\n")
 
 
 def test_J11_a_clean_up_failure_never_fails_the_run_and_the_note_says_what_is_left(monkeypatch, tmp_path, capsys):
@@ -1391,7 +1392,7 @@ def test_J11_a_clean_up_failure_never_fails_the_run_and_the_note_says_what_is_le
     assert value["stopped"] is False and value["results_folder"] == "june-900002"
     note = next(v for k, v in files.files.items() if k.endswith(job_b.DRY_RUN_FILE)).decode("utf-8")
     assert note.endswith("Clean-up incomplete: 2 files deleted, 3 of 4 June tables and views dropped. Finish it by "
-                         "hand, as in docs/DRY_RUN_STEPS.md.\\n")
+                         "hand, as in docs/DRY_RUN_STEPS.md.\n")  # the line break fixed in the green commit
     assert "SYNHOSTILE" not in note + capsys.readouterr().out
 
 

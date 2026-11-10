@@ -741,6 +741,15 @@ Written on 10 November 2026.
 - the script takes one run ID or `--check-reader` and names no default token or SDK (J11, J14)
 - from the review of #113: a real `build` passes the real `check`, `build` refuses a ledger charge that is not a whole number, any failure after labelling stops the run with `error`, a failed second upload leaves no results file, and a real sample row with a synthetic ID is refused (J1, J3, J11)
 
+## Pull request 6b, part 7: the dry run's clean-up ([spec 004](../specs/004-june-test-and-baselines/spec.md), J11), `tests/test_job_b.py`
+
+Written on 11 November 2026.
+
+- a finished synthetic run deletes its two files and nothing else, drops exactly the four June objects, and says so in its note (J11)
+- a clean-up failure never fails the run, and the note says what is left, with no text from the error (J5, J11)
+- a stopped synthetic run and a real run clean up nothing (J11)
+- names that are not a dry run round's are never deleted, and the names come from the dry run's pin (J11)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

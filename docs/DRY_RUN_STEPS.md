@@ -75,6 +75,11 @@ If a step fails, tell Claude the step and its fixed text or status. Refusals hol
 
 ## The clean-up, required (owner decision, 8 November)
 
+From round 4, Job B does steps 13 and 14 itself after a finished synthetic run, and its note `DRY_RUN.txt` ends
+with `Cleaned up: 2 files deleted, 4 June tables and views dropped.` (6b part 7, owner decision of 10 November).
+Do them by hand only when the note says `Clean-up incomplete`, or when the run stopped, which cleans up nothing.
+Step 12, the trigger, stays the owner's.
+
 13. Delete the dry run's zip from the volume's `incoming` folder and its CSV from the volume's `june` folder.
 14. Drop every table and view in the `voc_june` schema, so the June staging table holds no synthetic row tagged
     as June beside the real ones. The real run builds them again.
