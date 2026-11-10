@@ -182,9 +182,11 @@ files into the repo. It lives until the owner removes it after the June run.
    which prints only yes or no: the results volume readable, the raw volume refused, the secret scope `voc-june`
    refused, and a verdict. Only a real refusal counts, so a failure never passes.
 8. When it passes, back in **Settings**, **Identity and access**, **Service principals**, `voc-results-reader`, the
-   **Configurations** tab: untick **Workspace access** and save. Tell Claude, who runs the check again. If it still
-   passes, the reader keeps no workspace access, so it cannot make or run notebooks or jobs. If it fails, tick the
-   box again and tell Claude (the robot's rule of J13, applied to the reader).
+   **Configurations** tab, under **Entitlements**: keep **Databricks SQL access** ticked, untick **Workspace access**
+   and **Consumer access**, leave **Admin access** unticked, and click **Update**. Run the check of item 7 again. It
+   passed so on 11 November. With none of the four ticked, the results volume was not readable, and Databricks SQL
+   access alone was enough. With no workspace access the reader cannot make or run notebooks or jobs (the robot's
+   rule of J13, applied to the reader).
 
 ## Step 2: GitHub, Databricks and Azure
 
