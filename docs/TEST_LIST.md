@@ -697,6 +697,19 @@ Written on 10 November 2026.
 - the laptop's caller still checks the committed config, and the June caller never uses the home folder (J11)
 - from the second review of #109: a marker holding a token that starts with "-" is refused (J11)
 
+## Pull request 6b, part 3b: Job B's real labelling through the API ([spec 004](../specs/004-june-test-and-baselines/spec.md), J11, J12, J16), `tests/test_june_api.py`, `tests/test_job_b.py`, `tests/test_june_ledger.py`
+
+Written on 10 November 2026.
+
+- an answer from the cloud workspace is taken, and one for another workspace, or with no workspace header, stops the run (J11)
+- a 400 usage limits answer stops the run with no retry, the reason `spend_limit` and none of the API's text, and another 400 is refused without counting as the spend limit (J12)
+- the caller passes a stop up at once and records nothing, and the labeller stops the whole run on the first stop (J12)
+- without a workspace, the laptop's backend is unchanged (J11)
+- with a backend from the notebook, Job B labels the synthetic sample through the June caller, its recordings apart from June's, and the note says so (J11, owner decision of 10 November)
+- a spend limit stop and a June ledger cap stop give the contract's reasons and write no note (J12, J16)
+- the notebook reads the key and the workspace ID from the secret scope `voc-june`, and prints nothing (J11)
+- from the review of #110: Job B refuses a run whose worst case passes what is left under the June cap, counting what is reserved, a reused ledger with other trial settings is refused, and a June ledger refusal is a budget refusal (J12)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

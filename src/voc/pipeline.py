@@ -26,7 +26,7 @@ from voc.budget import CapReached
 from voc.data import Row, SampleMismatch, _manifest, quick_check_ids, read_splits, verify_ids
 from voc.decision import NOT_RUN_BUDGET, CallOutcome, Decision, before_call, decide
 from voc.prompt import build_prompt
-from voc.replay import ModelError, recording_key
+from voc.replay import ModelError, StopRun, recording_key
 
 SETS = ("dev", "quick")
 # This many complaints in a row with a model error stop the run, so a broken setup cannot spend the cap.
@@ -39,10 +39,11 @@ RESULT_FIELDS = ("complaint_id", "split", "prompt_version", "proposed_label", "q
 class RunStopped(Exception):
     """The run stopped early. The message is ours. It carries the outcomes so far, so they are still written."""
 
-    def __init__(self, message, outcomes, not_tried):
+    def __init__(self, message, outcomes, not_tried, reason="error"):
         super().__init__(message)
         self.outcomes = outcomes
         self.not_tried = not_tried
+        self.reason = reason  # one of spec 004's stop reasons, for Job B's exit value
 
 
 @dataclass(frozen=True)
@@ -122,6 +123,11 @@ def label_complaints(complaints, version, labels, call, backend_name, repeat=Non
             budget_stopped = True
             outcomes.append(Outcome(Decision(cid, reason=NOT_RUN_BUDGET), cut, recording_key=key, prompt_bytes=size))
             continue
+        except StopRun as err:
+            # Spec 004, J12: a spend limit refusal or another workspace stops the whole run at once.
+            outcomes.append(Outcome(decide(cid, text, CallOutcome("failed"), names), cut, recording_key=key,
+                                    prompt_bytes=size, error=str(err)))
+            raise RunStopped(f"stopped: {err}", outcomes, len(ordered) - len(outcomes), err.reason) from None
         except ModelError as err:
             outcomes.append(Outcome(decide(cid, text, CallOutcome("failed"), names), cut, recording_key=key,
                                     prompt_bytes=size, error=str(err)))

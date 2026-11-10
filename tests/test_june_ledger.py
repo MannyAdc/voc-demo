@@ -175,7 +175,7 @@ def test_J11_the_laptop_caller_still_checks_the_committed_config(tmp_path, monke
     assert checked == [tmp_path]
 
 
-def test_J11_the_dry_run_leaves_the_laptop_s_shared_folder_alone(tmp_path, no_git, monkeypatch):
+def test_J11_the_june_caller_leaves_the_laptop_s_shared_folder_alone(tmp_path, no_git, monkeypatch):
     """The June caller never writes to the home folder's recordings."""
     from voc import june_ledger, replay
 
@@ -184,3 +184,27 @@ def test_J11_the_dry_run_leaves_the_laptop_s_shared_folder_alone(tmp_path, no_gi
                                                                        "thinking": "adaptive"},
                             ledger_path=tmp_path / "ledger.json", recordings=tmp_path / "recordings").call(PROMPT)
     shutil.rmtree(tmp_path / "recordings")
+
+
+# The review of #110 (owner decision: fixed in 6b, part 3b): a reused ledger must keep the frozen config's trial
+# cap settings, and a June ledger refusal is a budget refusal.
+
+
+@pytest.mark.parametrize("field, value", [("margin_confirmed", False), ("trial_cap", 1)])
+def test_J12_a_reused_june_ledger_with_other_trial_settings_is_refused(tmp_path, no_git, field, value):
+    from voc import june_ledger
+
+    root, path = _root(tmp_path), tmp_path / "volume" / "ledger_june" / "ledger.json"
+    june_ledger.open_ledger(root, path)
+    state = json.loads(path.read_text(encoding="utf-8"))
+    state[field] = value
+    path.write_text(json.dumps(state), encoding="utf-8")
+    with pytest.raises(june_ledger.JuneLedgerError, match="^the June ledger's settings are not the frozen config's$"):
+        june_ledger.open_ledger(root, path)
+
+
+def test_J12_a_june_ledger_refusal_is_a_budget_refusal():
+    from voc import june_ledger
+    from voc.budget import BudgetError
+
+    assert issubclass(june_ledger.JuneLedgerError, BudgetError)
