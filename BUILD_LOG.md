@@ -2554,3 +2554,18 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - Red commit `ca334c0` at 18:13 (git's commit time): only tests, through the gate.
 - Second red commit `032ce42` at 18:37 (git's commit time): only tests, the review of #110's fixes, so they come red first, through the gate.
 - 18:38 Green change written, before its gate. Two 6a tests change by design, each with a comment: the notebook now reads the key and the workspace ID from the secret scope, and only there. The earlier red test of the ledger cap stop stands in the per-call refusal, since the whole-run check now refuses a nearly full ledger first.
+- Green commit `45274b8` at 19:04 (git's commit time), through the gate. It also renamed `test_J11_the_dry_run_leaves...` to `test_J11_the_june_caller_leaves...` (review of #110, nit 9), which the entry above leaves out (review of #111, nit 7). 19:16 Claude opened draft #111.
+- 19:13 The owner merged #110 (time from GitHub).
+- 19:21 The fresh reviewer's findings on #111 were posted as a comment. Nothing serious. Four minor and three nits. Correction (review of #111, nit 5): a 400 usage limits answer now also stops a laptop run at once, with `spend_limit`, where before it stopped after failures in a row, so "the laptop's backend is unchanged" holds only for answers that are not that refusal.
+- Owner decision ("go with your recommended fix", exact time not recorded): fix findings 1, 2, 3, 4, 6 and 7 in pull request 6b part 4, and finding 5 in the log only.
+- 19:22 CI green on `45274b8`. `scripts/merge_verdict.py 111`: PASS on the base, CI, conflicts and the red commit. PENDING on the review findings and the build log, which Claude checked. Verdict: MERGE, posted as a comment on #111. 19:22 Claude marked #111 ready.
+- The owner put the API key and the workspace's ID into the secret scope `voc-june`, with the notebook `voc-june-secret-setup` that Claude wrote: the key `voc-june-job-b`, made inside the Console workspace `voc-june-cloud`, and the ID went into two input boxes, never into code. The notebook printed only yes, no and the two secrets' names, and removed the boxes. No value reached this chat.
+
+### Pull request 6b, part 4: Job B's results files
+
+- Work start, 19:22: branch `feat/job-b-results`, worktree `../voc-demo-6b5`, from #111's branch at `45274b8`.
+- `src/voc/june_results.py`: `build` makes the two files for a finished real run, and `check` refuses a pair that breaks a rule of B19 or J11. Job B writes them in part 5, which accepts a real row. The laptop's results writer names any set but test and injection `dev`, so `build` writes `june` itself. The reasons are kept as a copy, since the module that holds them loads the web framework, which Job B's packages do not hold, and a test checks the two lists are equal.
+- AI mistake, caught by running the tests before the red commit: a test of a stop after some calls assumed three rows, but the sample has two. Claude fixed the test. It then passed on the code as it was, as the coverage the review of #111 asked for.
+- Red commit `38e91f1` at 19:26 (git's commit time): only tests, through the gate.
+- AI mistake, caught by the green change's test run: the test CSV helper forced B19's columns, so the case of a file with other columns crashed in the helper before the check ran. In the green commit the helper takes its columns from the rows, with a comment.
+- 19:28 Green change written, before its gate.

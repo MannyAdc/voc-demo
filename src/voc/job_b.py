@@ -448,6 +448,8 @@ def checked_june_ledger(root, worst_case):
         state, failure = None, str(err)
     if failure is not None:
         raise JobBError(failure)
+    if state["overrun"] is not None:  # review of #111, minor 3: before the markers, so no approval is spent
+        raise JobBError("the June ledger holds an overrun, so Job B refuses before it marks anything")
     left = effective_cap(state) - state["used"] - state["reserved"]
     if worst_case > left:
         raise JobBError(f"the June ledger has {left} tokens left under its cap, less than the run's worst case of "

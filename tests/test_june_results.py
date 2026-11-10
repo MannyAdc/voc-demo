@@ -20,7 +20,8 @@ COLUMNS = ("complaint_id", "split", "prompt_version", "proposed_label", "quote_s
 
 def _csv(rows):
     out = io.StringIO()
-    writer = csv.DictWriter(out, fieldnames=COLUMNS, lineterminator="\n")
+    # Changed in the green commit: the columns come from the rows, so a file with other columns can be made.
+    writer = csv.DictWriter(out, fieldnames=list(rows[0]), lineterminator="\n")
     writer.writeheader()
     writer.writerows(rows)
     return out.getvalue()
