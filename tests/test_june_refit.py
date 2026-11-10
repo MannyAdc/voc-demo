@@ -176,3 +176,19 @@ def test_J1_the_hash_of_a_content_row_is_the_lists_own():
     # A guard for the fixture: the lists hash each row's text with its Product, as the refit's check reads them.
     row = _rows(1, 1)[0]
     assert len(content_hash(row.narrative, row.product)) == 64
+
+
+# The review of #109, nit 4 (owner decision: fix): a committed file the refit cannot read is refused with fixed text.
+
+
+@pytest.mark.parametrize("name", ["config/data_files.toml", "config/labels.toml", "config/tfidf.toml",
+                                  "splits/manifest.json", "results/eval/v1_dev.csv"])
+def test_J5_a_committed_file_the_refit_cannot_read_is_refused_with_its_type_only(tmp_path, name):
+    from voc import june_refit
+
+    root, export, _ = _july(tmp_path)
+    (root / name).unlink()
+    with pytest.raises(june_refit.RefitError) as caught:
+        june_refit.refit(root, export, tmp_path / "work")
+    assert str(caught.value) == "the refit's committed files could not be read: FileNotFoundError"
+    assert caught.value.__cause__ is None and caught.value.__context__ is None

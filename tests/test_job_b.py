@@ -1003,3 +1003,15 @@ def test_J11_job_b_takes_a_pin_with_a_marker_or_a_continuation(tmp_path, monkeyp
     (tmp_path / "cloud" / "job_b" / "requirements.txt").write_text(line + "\n", encoding="utf-8")
     monkeypatch.setattr(job_b, "_installed_version", lambda name: "0.16.0")
     job_b.checked_packages(tmp_path)
+
+
+# The review of #109, nit 5 (owner decision: fix): a marker may not carry a pip option.
+
+
+def test_J11_job_b_refuses_a_marker_that_carries_a_pip_option(tmp_path):
+    from voc import job_b
+
+    (tmp_path / "cloud" / "job_b").mkdir(parents=True)
+    (tmp_path / "cloud" / "job_b" / "requirements.txt").write_text("h11==0.16.0 ; --index-url x\n", encoding="utf-8")
+    with pytest.raises(job_b.JobBError, match="^Job B's requirements file has a line that is not a pinned package$"):
+        job_b.checked_packages(tmp_path)
