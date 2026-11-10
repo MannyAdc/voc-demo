@@ -2625,6 +2625,15 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - AI mistake, caught by the owner: to save gate time Claude proposed folding round 4's files into part 7's pull request, against CLAUDE.md's one small change per pull request, and named the quality cost only when the owner asked. The owner called it quite disturbing: the repo is read through its history, so quality comes first. Claude withdrew it for two pull requests built in parallel, and saved the rule in its memory. The owner asked that the correction not stay in Claude's memory only, so it is logged here, and Claude offered a rule in CLAUDE.md, in a pull request of its own.
 - Owner decision ("Okay"): fix the second review's items in #114 with no further review, a 404 no longer counts as a refusal, red first. 00:07 Fix written: only 403 counts, the spec says what the check reads and what the scope's refusal proves, `LIMITS.md` says the grants reach only the results volume and that a live check follows, step 1.9's wording, and these log lines.
 - Red commit `872e16a` at 23:49 (git's commit time): only `tests/test_june_copy.py`, a 404 is not proof of a refusal, through the gate.
+- Fix round commit `dbffd85` at 00:07 (git's commit time), through the gate.
+- 00:22 CI green on `dbffd85`. `scripts/merge_verdict.py 114`: PASS on the base, CI, conflicts and the red commit. PENDING on the review findings and the build log, which Claude checked. Verdict: MERGE, posted as a comment on #114. 00:23 Claude marked #114 ready. 00:34 The owner merged #114 (time from GitHub).
+
+### Pull request: no quality shortcuts, in CLAUDE.md
+
+- Owner decision ("add the rule to Claude.md", exact time not recorded): the correction of 10 November, that a time saving never lowers quality or breaks a rule, goes into CLAUDE.md, so it binds every agent and person working here, not only Claude's own memory.
+- Work start, 00:36: branch `docs/no-quality-shortcuts`, worktree `../voc-demo-rule`, from main at `fa7f562`. One rule under Branches, commits and pull requests, beside one small change per pull request, the rule the shortcut would have broken. Docs only, so no red commit, as for the log pull requests. 00:36 Change written.
+- 00:49 The fresh reviewer's findings on #115 were posted as a comment. Nothing serious. Two minor and three nits, all wording: "no skipped review" could clash with the stopping rule, "keep both" had no clear referent, and three terms were vague.
+- Owner decision ("yes apply for 115", exact time not recorded): take the reviewer's wording. 00:59 The rule now reads "breaks a rule in this file", "no pull request with more than one change", "no skipped test, gate or review that this file requires" and "keep quality and the rules". Wording only, so no further review.
 
 ### The reader, checked live
 
