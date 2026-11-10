@@ -744,15 +744,15 @@ def test_J8_each_round_has_its_own_synthetic_ids_apart_from_the_round_before():
     assert len(new_ids) == len(old_ids) == 12
 
 
-def test_J8_frozen_code_changed_after_a_round_s_row_needs_the_next_round():
-    """Round 4's pull request: after the last synthetic row, the frozen code changed (the pull requests of 6b), and a
-    round's list has one first row, so a dry run of that code needs the next round, with new IDs. Once that round's
-    row names the code, or after a real row, this asks nothing."""
+def test_J8_the_code_of_6b_is_dry_run_in_round_4_or_later():
+    """Round 4's pull request: round 3's row names the frozen code before the pull requests of 6b, which changed it.
+    A round's list has one first row, so that code is dry run in round 4 or a later round, with new IDs.
+    Changed in the review of #119, minor 1: the first version asked for the next round whenever the frozen code
+    changed after a synthetic row, which went against the pull requests of 6b sharing one round at their end."""
     from voc.frozen import code_hash, read_runs
-    last = read_runs(REPO / "runs" / "JUNE_RUNS.md")[-1]
-    named = re.search(r"\bround ([0-9]+)\b", last.reason)
-    if last.kind == "synthetic" and named and last.code_hash != code_hash(REPO):
-        assert ROUND == int(named.group(1)) + 1
+    rows = [e for e in read_runs(REPO / "runs" / "JUNE_RUNS.md") if "the dry run, round 3," in e.reason]
+    assert len(rows) == 1 and rows[0].code_hash != code_hash(REPO)
+    assert ROUND >= 4
 
 
 def test_J13_the_steps_give_the_robot_s_secret_the_jobs_scope_with_read_and_write():

@@ -754,7 +754,7 @@ Written on 11 November 2026.
 
 Written on 11 November 2026, after the pull requests of 6b changed the frozen code. The other dry run tests read the round from the pin, so they cover round 4's CSV, list, pin and steps with no change.
 
-- when the frozen code changed after the last synthetic row, the pin names the next round, so its CSV has new IDs (J1, J8)
+- round 3's row names the frozen code before the pull requests of 6b, so the pin names round 4 or a later round, with new IDs (J1, J8). Changed in the review of #119: the first version asked for the next round after any frozen change, against 6b's one shared round
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 

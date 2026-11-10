@@ -3,10 +3,10 @@
 Spec 004, plan item 9, owner decisions of 6 and 8 November. The dry run runs the whole cloud chain once on synthetic
 data: the upload, Job A in Databricks, Databricks' webhook to the Azure receiver, the approval workflow on GitHub,
 the owner's approval, Job B, and the result message back to the receiver. Rounds 1 to 3 used the mock backend and
-called no model. From round 4, Job B labels the 8 synthetic complaints through the API, with the cloud workspace's
-key and the June ledger, so they are proven in the cloud before June (owner decision, 10 November, option A). The
-setup before it is in `docs/DATABRICKS_STEPS.md`, click by click. This page keeps the run's order, what each step
-checks, and the clean-up.
+called no model. From round 4, Job B labels the 8 synthetic complaints through the API, with the key of the Claude
+Console workspace `voc-june-cloud` and the June ledger, so they are proven in the cloud before June (owner decision,
+10 November, option A). The setup before it is in `docs/DATABRICKS_STEPS.md`, click by click. This page keeps the
+run's order, what each step checks, and the clean-up.
 
 ## Before the dry run, in this order
 
@@ -41,8 +41,16 @@ refit, the June ledger, the API, the results files and the clean-up. So round 4 
   `https://github.com/MannyAdc/voc-demo/blob/main/cloud/job_b.yml` and click **Copy raw file**. In Databricks, in
   the left menu, click **Jobs & Pipelines**, then `voc-june-job-b`. Click the **⋮** just left of the grey
   **Run now** button, then the **YAML** item. Click inside the editor, press Ctrl+A, then Ctrl+V. Click **Save**.
-  Check: the name is still `voc-june-job-b`, **Schedules & Triggers** shows no trigger, and **Run as** shows your own
-  account.
+  Check: open the **⋮** and the **YAML** item again, find the line `timeout_seconds: 10800`, and close the editor
+  without saving. The name is still `voc-june-job-b`, **Schedules & Triggers** shows no trigger, **Run as** shows
+  your own account, and on the right side the **Job ID** is still `111509808656471`, as `job_b_job_id` in
+  `config/june_cloud.toml`.
+- **The money side.** Round 4's 8 calls go through the June ledger in the volume, the same ledger as the real run,
+  with its cap of 40,000,000 tokens (`june_cap_tokens` in `config/budget.toml`). They should use about 13,000
+  tokens, from the laptop's expected use of about 3,000,000 tokens for 1,909 complaints. The hard stop is the $5
+  monthly spend limit of the Claude Console workspace `voc-june-cloud`. A call that uses more than its reservation
+  would block the June ledger until the owner decides how to clear it (spec 004, Known limits). `DRY_RUN.txt` holds
+  no token count, so step 10 checks the cost in the Console.
 - **The robot can start Job B.** On the same page, on the right side, scroll to **Permissions**:
   `voc-june-runner` shows **Can Manage Run**. If it shows anything else, click **Edit permissions** just below the
   list, choose **Can Manage Run** next to it, and click **Save**. Never **Can Manage** or **Is Owner**. In round 2
@@ -77,7 +85,14 @@ refit, the June ledger, the API, the results files and the clean-up. So round 4 
     model and checks it, and labels the 8 complaints through the API and the June ledger. Its results folder holds
     only `DRY_RUN.txt`. The note says Job B labelled with the API, then gives `Labelled: 8.` with the accepted and
     quarantined counts. The model decides those, so any split of the 8 is fine. Rounds 1 to 3, with the mock
-    answers, showed `Accepted: 7. Quarantined: 1.` The note's last line is the clean-up's, below.
+    answers, showed `Accepted: 7. Quarantined: 1.` The note's last line is the clean-up's, below. Then, in the
+    Claude Console, open the workspace `voc-june-cloud` and its usage or cost page, and tell Claude the cost it
+    shows. If the page has another name, tell Claude what you see.
+    A stop that only the API can cause ends the labelling early: 3 complaints in a row failing, as with a bad key
+    or a network fault (`error`, the likeliest in a first API round), an answer from another workspace, the spend
+    limit, or the ledger's cap. Then the results folder has no `DRY_RUN.txt`, Job B's run page in Databricks shows
+    the notebook's exit value with `"stopped": true` and its `stop_reason`, and Job B cleans up nothing, so steps
+    13 and 14 are done by hand. Tell Claude the `stop_reason`.
 11. The workflow posts the result message. In the receiver's storage account, the `juneevents` table holds a
     `result` row for the workflow's run with `result_state` `SUCCESS`, and `june-events-poison` is empty.
 12. Pause Job A's trigger again.
