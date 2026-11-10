@@ -175,7 +175,7 @@ def test_J11_the_laptop_caller_still_checks_the_committed_config(tmp_path, monke
     assert checked == [tmp_path]
 
 
-def test_J11_the_dry_run_leaves_the_laptop_s_shared_folder_alone(tmp_path, no_git, monkeypatch):
+def test_J11_the_june_caller_leaves_the_laptop_s_shared_folder_alone(tmp_path, no_git, monkeypatch):
     """The June caller never writes to the home folder's recordings."""
     from voc import june_ledger, replay
 

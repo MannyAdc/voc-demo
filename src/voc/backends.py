@@ -12,7 +12,7 @@ estimate and the recording key both see it.
 """
 import os
 
-from voc.replay import Answer, ModelError, PermanentModelError, SDK_MAX_RETRIES, _stop_name
+from voc.replay import Answer, ModelError, PermanentModelError, SDK_MAX_RETRIES, StopRun, _stop_name
 
 ALLOWED = ("api", "mock")
 DEFAULT_MODEL = "claude-haiku-5-5"
@@ -37,11 +37,21 @@ def run_settings(effort="low", thinking="adaptive", max_tokens=2048, model=DEFAU
             "api_version": API_VERSION}
 
 
+def _spend_limit(err, status):
+    """Spec 004, J12: the API's 400 for a workspace's spend limit. Its message is only searched, never kept."""
+    body = getattr(err, "body", None)
+    error = body.get("error") if isinstance(body, dict) else None
+    message = error.get("message") if isinstance(error, dict) else None
+    return status == 400 and isinstance(message, str) and "usage limits" in message
+
+
 def _failure(err):
     """Our own message for an SDK error: its type and HTTP status only, never its text (B21)."""
     name = type(err).__name__
     status = getattr(err, "status_code", None)
     status = status if isinstance(status, int) and not isinstance(status, bool) else None
+    if _spend_limit(err, status):
+        return StopRun("the workspace's spend limit was reached (HTTP 400), so the run stops", reason="spend_limit")
     names = {cls.__name__ for cls in type(err).__mro__}
     retry = bool(names & RETRY_ERRORS) or status in RETRY_STATUSES or (status is not None and status >= 500)
     if retry:
@@ -63,7 +73,7 @@ def _mock(fixtures):
     return backend
 
 
-def _api(env, model, client_factory):
+def _api(env, model, client_factory, workspace=None):
     for name in REFUSED_VARIABLES:
         if os.environ.get(name):
             raise BackendError(f"{name} is set, so the api backend refuses to run. Unset it first.")
@@ -74,19 +84,24 @@ def _api(env, model, client_factory):
                             default_headers={"anthropic-version": API_VERSION})
 
     def backend(prompt, settings):
-        failure = None
+        failure, seen = None, None
+        request = {"model": model, "max_tokens": settings["max_tokens"],
+                   "messages": [{"role": "user", "content": prompt}],
+                   "output_config": {"effort": settings["effort"]}, "thinking": {"type": settings["thinking"]}}
         try:
-            response = client.messages.create(
-                model=model,
-                max_tokens=settings["max_tokens"],
-                messages=[{"role": "user", "content": prompt}],
-                output_config={"effort": settings["effort"]},
-                thinking={"type": settings["thinking"]},
-            )
+            if workspace is None:
+                response = client.messages.create(**request)
+            else:
+                # Spec 004, J11: every answer must come from the cloud workspace, read from its header.
+                raw = client.messages.with_raw_response.create(**request)
+                seen = raw.headers.get("anthropic-workspace-id")
+                response = raw.parse()
         except Exception as err:  # the SDK error holds the request, and so the key: keep only its type
             failure = _failure(err)
         if failure:
             raise failure
+        if workspace is not None and seen != workspace:
+            raise StopRun("the API answered for another workspace, so the run stops")
         usage = response.usage
         cached = (getattr(usage, "cache_read_input_tokens", 0) or 0) + (getattr(usage, "cache_creation_input_tokens", 0) or 0)
         text = "".join(block.text for block in response.content if getattr(block, "type", None) == "text")
@@ -97,9 +112,11 @@ def _api(env, model, client_factory):
     return backend
 
 
-def make_backend(name, env=None, model=DEFAULT_MODEL, fixtures=None, client_factory=_anthropic_client):
+def make_backend(name, env=None, model=DEFAULT_MODEL, fixtures=None, client_factory=_anthropic_client,
+                 workspace=None):
+    """`workspace` is for Job B in the cloud (spec 004, J11): every answer's workspace header must name it."""
     if name not in ALLOWED:
         raise BackendError(f"unknown LLM_BACKEND {name!r}, allowed values are {', '.join(ALLOWED)}")
     if name == "mock":
         return _mock(fixtures or {})
-    return _api(env or {}, model, client_factory)
+    return _api(env or {}, model, client_factory, workspace)

@@ -2540,3 +2540,17 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - `src/voc/june_ledger.py`: the June ledger in the raw volume, made with the frozen June cap and no git, reused by a later run, and refused if its cap or project is not the June ledger's. The laptop's caller gains an optional recordings folder and an already-read config, for Job B. With neither, the laptop's path is unchanged.
 - The second review of #109's items: J2 says what is loaded and selected, J11's first sentence names the development rows, the refit's docstrings are exact and wrapped, a marker holding a token that starts with "-" is refused (red first), and the owner's "Go on" sits where it happened.
 - 17:37 Green change written.
+- Correction (review of #110, nit 8): in #110 the line "Claude told the owner of the new order in the chat ... agreed ('Go on')" under 14:01 was removed and its content folded into the later owner decision entry. That was a rewrite of an old entry, which CLAUDE.md does not allow. It should have been this correction instead. The entry "17:37 Green change written" in #110 marks when Claude finished writing the change, before the gate. Git's commit time for it is 17:55.
+- Green commit `253a67b` at 17:55 (git's commit time), through the gate. 18:06 Claude opened draft #110, after one GitHub timeout.
+- 18:12 The fresh reviewer's findings on #110 were posted as a comment. Nothing serious. Three minor and six nits.
+- Owner decision ("go", exact time not recorded): Claude's recommendation. Fix findings 1, 3, 4, 5, 6, 8 and 9 in pull request 6b part 3b, write finding 2 in Known limits with no tools now, and leave finding 7, which errs on the strict side.
+- 18:14 CI green on `253a67b`. `scripts/merge_verdict.py 110`: PASS on the base, CI, conflicts and the red commit. PENDING on the review findings and the build log, which Claude checked. Verdict: MERGE, posted as a comment on #110. 18:14 Claude marked #110 ready.
+
+### Pull request 6b, part 3b: Job B's real labelling through the API
+
+- Work start, 18:07: branch `feat/job-b-api`, worktree `../voc-demo-6b4`, from #110's branch at `253a67b`.
+- Claude searched how to put a key into a Databricks secret scope: a scope of the kind needed is made only through the API, and a notebook cannot prompt with `input()`, so the owner will paste the key into a notebook widget, never into code, and delete the notebook after.
+- The design: a new `StopRun` error, which the caller passes up at once and the labeller turns into a stop of the whole run, with the contract's reason. The API backend raises it on a 400 usage limits answer and on an answer whose `anthropic-workspace-id` header is not the cloud workspace's, checked on every call before anything is recorded. With a backend from the notebook, Job B labels through the June caller, the synthetic sample too (owner decision, option A), its recordings in `recordings_dry`, apart from June's. A June ledger cap stop gives `ledger_cap`.
+- Red commit `ca334c0` at 18:13 (git's commit time): only tests, through the gate.
+- Second red commit `032ce42` at 18:37 (git's commit time): only tests, the review of #110's fixes, so they come red first, through the gate.
+- 18:38 Green change written, before its gate. Two 6a tests change by design, each with a comment: the notebook now reads the key and the workspace ID from the secret scope, and only there. The earlier red test of the ledger cap stop stands in the per-call refusal, since the whole-run check now refuses a nearly full ledger first.

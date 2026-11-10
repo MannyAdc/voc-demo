@@ -261,9 +261,13 @@ def test_J11_job_b_never_makes_the_api_backend_or_reads_a_key(monkeypatch):
     job_b = _patched(monkeypatch)
     value, _, _ = _run(job_b)
     assert made == ["mock"] and value["stopped"] is False
-    for path in (REPO / "src" / "voc" / "job_b.py", NOTEBOOK):
+    # Changed in 6b, part 3b: the notebook reads the key from the secret scope and gives it to the backend, by
+    # design. Job B's own module still names neither, and neither file imports the SDK or reads LLM_BACKEND.
+    words = {REPO / "src" / "voc" / "job_b.py": ("secrets", "ANTHROPIC_API_KEY", "import anthropic", "LLM_BACKEND"),
+             NOTEBOOK: ("import anthropic", "LLM_BACKEND")}
+    for path, forbidden in words.items():
         text = path.read_text(encoding="utf-8")
-        for word in ("secrets", "ANTHROPIC_API_KEY", "import anthropic", "LLM_BACKEND"):
+        for word in forbidden:
             assert word not in text, (path.name, word)
 
 
@@ -641,7 +645,11 @@ def test_J11_the_notebook_runs_job_b_s_logic_and_names_no_secret():
     for name in ("job_a_run_id", "github_run_id", "job_b_run_id"):
         assert f'dbutils.widgets.get("{name}")' in text
     assert "WorkspaceClient()" in text and "print(" not in text
-    assert not re.search(r"dbutils\.secrets|\bsecrets\b", text)
+    # Changed in 6b, part 3b: the notebook reads the key and the workspace ID from the secret scope, and only there
+    # (test_J11_the_notebook_reads_the_key_and_workspace_from_the_secret_scope_and_prints_nothing).
+    assert set(re.findall(r"dbutils\.secrets\.\w+\(SECRET_SCOPE, \"([\w-]+)\"\)", text)) == {
+        "anthropic-api-key", "anthropic-workspace-id"}
+    assert len(re.findall(r"dbutils\.secrets", text)) == 2
 
 
 # The review of #98 (owner decision: fix every finding, with one fresh review of the fix round)
@@ -1078,13 +1086,14 @@ def test_J12_a_spend_limit_stop_gives_its_reason_and_writes_no_note(monkeypatch,
 
 
 def test_J12_the_june_ledger_s_cap_stops_the_run_with_its_reason(monkeypatch, tmp_path):
-    from voc import june_ledger
+    from voc import budget
 
-    path = tmp_path / "ledger_june" / "ledger.json"
-    june_ledger.open_ledger(REPO, path)
-    state = json.loads(path.read_text(encoding="utf-8"))
-    state["used"] = state["cap"] - 10
-    path.write_text(json.dumps(state), encoding="utf-8")
+    # Changed in the green commit: the whole-run check now refuses a nearly full ledger before any marker, so the
+    # per-call refusal is stood in, as another run's spending in between would cause it.
+    def full(self, tokens):
+        raise budget.CapReached("the reservation would pass the cap")
+
+    monkeypatch.setattr(budget.Ledger, "reserve", full)
     value, files = _api_run(monkeypatch, tmp_path, _api_backend())
     assert value["stopped"] is True and value["stop_reason"] == "ledger_cap"
     assert not any(k.endswith("DRY_RUN.txt") for k in files.files)

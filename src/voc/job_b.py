@@ -22,6 +22,7 @@ Every check runs before the first marker is written, in this order:
 7. Job A's figures, computed again from the rows: the same counts, and no more tokens or cost than approved
 8. the refit of TF-IDF + LR from July's training rows, which must give every committed July development label
    (`voc.june_refit`, pull request 6b)
+9. when it calls the API, room in the June ledger for the whole run's worst case (J12)
 Then it marks the GitHub run, and the Job A run for its row, as used. A marker already there is refused, and an
 upload never overwrites. Then it labels, writes the note and returns the contract's exit value (J16 item 8).
 
@@ -48,6 +49,11 @@ DRY_RUN_FILE = "DRY_RUN.txt"
 DRY_RUN_NOTE = ("This folder is a synthetic dry run of spec 004's Job B (pull request 6a). Job B labelled the "
                 "synthetic sample with the mock backend and wrote no results file. The results files arrive in pull "
                 "request 6b.\n")
+DRY_RUN_NOTE_API = ("This folder is a synthetic dry run of spec 004's Job B (pull request 6b, part 3b). Job B "
+                    "labelled the synthetic sample with the API, through the June ledger, and wrote no results "
+                    "file.\n")
+# The Databricks secret scope that holds the cloud workspace's API key and its ID (J12). The notebook reads them.
+SECRET_SCOPE = "voc-june"
 PARAMETERS = ("job_a_run_id", "github_run_id", "job_b_run_id")
 JOB_PARAMETERS = ("job_a_run_id", "github_run_id")
 GITHUB_RUNS = "https://api.github.com/repos/MannyAdc/voc-demo/actions/runs"
@@ -427,6 +433,27 @@ def marked_used(store, run_target, job_a_run_id, github_run_id, job_b_run_id):
                                         "code_sha256": run_target.code_hash}))
 
 
+# 9. Room in the June ledger (J12, review of #110, minor 1)
+
+
+def checked_june_ledger(root, worst_case):
+    """The June ledger has room for the whole run's worst case, counting what is used and what is still reserved,
+    for instance by a run that crashed. Checked before any marker, only when Job B calls the API."""
+    from voc import june_ledger
+    from voc.budget import BudgetError, effective_cap
+
+    try:
+        state, failure = june_ledger.open_ledger(root, june_ledger.LEDGER).state(), None
+    except BudgetError as err:
+        state, failure = None, str(err)
+    if failure is not None:
+        raise JobBError(failure)
+    left = effective_cap(state) - state["used"] - state["reserved"]
+    if worst_case > left:
+        raise JobBError(f"the June ledger has {left} tokens left under its cap, less than the run's worst case of "
+                        f"{worst_case}")
+
+
 # 8. The refit (J7, pull request 6b)
 
 
@@ -480,17 +507,40 @@ def _outcomes(root, rows, answers):
     return outcomes, stopped
 
 
-def exit_value(run_target, complaints, count, stopped, job_b_run_id):
+def _api_outcomes(root, rows, backend, run_target):
+    """The decisions from the API, through the June ledger and the volume's recordings, whether the run stopped,
+    and its stop reason (6b, part 3b). The synthetic sample's recordings are kept apart from June's."""
+    from voc import june_ledger, pipeline
+    from voc.labels import load_labels
+    from voc.pipeline import NOT_RUN_BUDGET, Complaint, RunStopped
+
+    version = pipeline.load_prompt_version(root, "v1")
+    labels = load_labels(root / "config" / "labels.toml")
+    recordings = june_ledger.RECORDINGS_DRY if run_target.kind == "synthetic" else june_ledger.RECORDINGS
+    caller = june_ledger.june_caller(root, backend, dict(version.settings), ledger_path=june_ledger.LEDGER,
+                                     recordings=recordings)
+    complaints = [Complaint(cid, narrative) for cid, _, narrative in rows]
+    try:
+        outcomes, stopped, reason = pipeline.label_complaints(complaints, version, labels, caller.call, "api"), False, None
+    except RunStopped as stop:
+        outcomes, stopped, reason = stop.outcomes, True, stop.reason
+    if not stopped and any(o.decision.reason == NOT_RUN_BUDGET for o in outcomes):
+        stopped, reason = True, "ledger_cap"
+    return outcomes, stopped, reason
+
+
+def exit_value(run_target, complaints, count, stopped, job_b_run_id, stop_reason=None):
     """J16 item 8: a finished run names `june-<Job B run ID>`, and a stopped one no folder and its reason."""
     value = {"contract": CONTRACT, "kind": run_target.kind, "entry_kind": run_target.entry_kind,
              "complaints": complaints, "labelled": count, "stopped": stopped,
-             "stop_reason": "error" if stopped else None,
+             "stop_reason": (stop_reason or "error") if stopped else None,
              "results_folder": None if stopped else f"june-{job_b_run_id}"}
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
-def run(root, values, databricks, github, store, run_sql, sleep=time.sleep):
-    """Job B's dry run, end to end. Returns the exit value as compact JSON."""
+def run(root, values, databricks, github, store, run_sql, sleep=time.sleep, backend=None):
+    """Job B's dry run, end to end. Returns the exit value as compact JSON. With a `backend` from the notebook it
+    labels through the API and the June ledger (6b, part 3b). With none, it serves the mock answers."""
     from pathlib import Path
 
     from voc.job_a import JobAError, figures
@@ -516,13 +566,19 @@ def run(root, values, databricks, github, store, run_sql, sleep=time.sleep):
         raise JobBError(failure)
     checked_figures(computed, approved)
     refit_check(root)
-    answers = mock_answers(root, run_target)
+    if backend is not None:
+        checked_june_ledger(root, computed["worst_case_tokens"])
+    answers = mock_answers(root, run_target) if backend is None else None
     marked_used(store, run_target, job_a_run_id, github_run_id, job_b_run_id)
-    outcomes, stopped = _outcomes(root, rows, answers)
+    if backend is None:
+        (outcomes, stopped), reason, note = _outcomes(root, rows, answers), None, DRY_RUN_NOTE
+    else:
+        outcomes, stopped, reason = _api_outcomes(root, rows, backend, run_target)
+        note = DRY_RUN_NOTE_API
     if not stopped:
         # Review of #99: the split is seen in the cloud, as counts only.
         accepted = sum(o.decision.label is not None for o in outcomes)
         counts = f"Labelled: {len(outcomes)}. Accepted: {accepted}. Quarantined: {len(outcomes) - accepted}.\n"
         store.create(f"{RESULTS_VOLUME}/june-{job_b_run_id}/{DRY_RUN_FILE}",
-                     (DRY_RUN_NOTE + counts).encode("utf-8"))
-    return exit_value(run_target, complaints, len(outcomes), stopped, job_b_run_id)
+                     (note + counts).encode("utf-8"))
+    return exit_value(run_target, complaints, len(outcomes), stopped, job_b_run_id, reason)

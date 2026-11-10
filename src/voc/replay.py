@@ -52,6 +52,15 @@ class PermanentModelError(ModelError):
     """A failure a retry cannot fix, such as a refused key or an answer with no text. It is never retried."""
 
 
+class StopRun(PermanentModelError):
+    """Stops the whole run at once, with one of the contract's stop reasons (spec 004, J12, 6b part 3b): a spend
+    limit refusal, or an answer from another workspace. The message is ours, never the API's text."""
+
+    def __init__(self, message, reason="error"):
+        super().__init__(message)
+        self.reason = reason
+
+
 class RecordingMissing(Exception):
     """Replay mode found no recording for this call. The message is ours."""
 
@@ -209,6 +218,8 @@ class Caller:
                 answer = self.backend(prompt, dict(self.settings))
             except Exception as err:  # our own ModelError message, or the type only, never another message
                 ledger.settle(rid, None)
+                if isinstance(err, StopRun):
+                    raise StopRun(str(err), err.reason) from None
                 failure = str(err) if isinstance(err, ModelError) else type(err).__name__
                 if isinstance(err, PermanentModelError):
                     raise ModelError(f"the model call failed, not retried: {failure}") from None
