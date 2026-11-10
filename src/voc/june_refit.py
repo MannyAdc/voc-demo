@@ -2,9 +2,10 @@
 labels June (pull request 6b, part 2).
 
 It runs the laptop's own path inside Databricks, so the refit is the laptop's: the pinned July export in the volume
-is checked against its pin, loaded whole by B16's loader into a DuckDB file in a temporary folder, and only the
-training and development rows are selected, by their IDs, each checked against its list's content hash (J2: no test
-row is read). TF-IDF + LR is fitted on the training rows with the frozen settings, and must give every committed
+is checked against its pin, loaded whole by B16's loader into a DuckDB file in a temporary folder, as on the laptop,
+and only the training and development rows are selected, by their IDs, each checked against its list's content hash.
+The test rows are loaded into that file with the rest, but no test row is ever selected, labelled or scored, and
+the file is deleted with its folder (J2, review of #109, minor 1). TF-IDF + LR is fitted on the training rows with the frozen settings, and must give every committed
 development label in `results/eval/v1_dev.csv` before Job B goes on.
 
 B21 and J5: nothing here prints. Every refusal holds fixed text, IDs and counts only, and carries no earlier
@@ -39,6 +40,20 @@ def _step(what, function, *args):
     raise RefitError(message)
 
 
+def _inputs(root):
+    """The committed files the refit reads: the pin, the labels, the lists, the settings and the development labels.
+    Review of #109, nit 4: any failure to read them is refused with its type only."""
+    try:
+        pin = load_pins(root / "config" / "data_files.toml")[MONTH]
+        labels = [label.name for label in load_labels(root / "config" / "labels.toml")]
+        lists = read_splits(root / "splits")
+        settings = load_tfidf_config(root / "config" / "tfidf.toml")
+        return (pin, labels, lists, settings, _committed(root)), None
+    except Exception as err:  # noqa: BLE001, read by its type only, outside the except block
+        failure = type(err).__name__
+    raise RefitError(f"the refit's committed files could not be read: {failure}")
+
+
 def _committed(root):
     with open(Path(root) / DEV_RESULTS, encoding="utf-8", newline="") as f:
         return {row["complaint_id"]: row["tfidf_label"] for row in csv.DictReader(f)}
@@ -47,23 +62,19 @@ def _committed(root):
 def refit(root, export_path, work_dir):
     """The refit model, once it gives every committed July development label. `work_dir` holds the DuckDB file."""
     root = Path(root)
-    pin = load_pins(root / "config" / "data_files.toml")[MONTH]
+    (pin, labels, lists, settings, committed), _ = _inputs(root)
     _step("the July export could not be checked", verify, export_path, pin)
-    labels = [label.name for label in load_labels(root / "config" / "labels.toml")]
     db_path = Path(work_dir) / "july.duckdb"
     _step("the July export could not be loaded", load_month, db_path, export_path, MONTH, labels)
     splits = root / "splits"
-    lists = read_splits(splits)
     train = _step("the July training rows could not be read", _rows, db_path, splits, MONTH, "train",
                   set(lists["train"]))
     dev = _step("the July development rows could not be read", _rows, db_path, splits, MONTH, "dev",
                 set(lists["dev"]))
-    settings = load_tfidf_config(root / "config" / "tfidf.toml")
     model = _step("TF-IDF + LR could not be fitted", fit_tfidf,
                   [(r.complaint_id, "train", r.narrative, r.product) for r in train], settings)
     predicted = _step("TF-IDF + LR could not label the development rows", predict_tfidf, model,
                       [r.narrative for r in dev])
-    committed = _committed(root)
     if set(committed) != {r.complaint_id for r in dev}:
         raise RefitError("the committed July development labels are not the development list's")
     wrong = sum(committed[r.complaint_id] != label for r, (label, _) in zip(dev, predicted))

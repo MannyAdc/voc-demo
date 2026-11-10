@@ -88,8 +88,9 @@ def _installed_version(name):
         return None
 
 
-# A pin, then at most a marker and a line continuation (second review of #108, nit 5).
-PIN = re.compile(r"([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s;\\]+)(?:\s*;[^\\]*)?(?:\s*\\)?")
+# A pin, then at most a marker and a line continuation (second review of #108, nit 5). A marker may not carry a
+# pip option (review of #109, nit 5).
+PIN = re.compile(r"([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s;\\]+)(?:\s*;(?:(?!--)[^\\])*)?(?:\s*\\)?")
 
 
 def checked_packages(root):
