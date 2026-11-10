@@ -303,3 +303,25 @@ def test_J11_number_columns_take_plain_numbers_only(change):
 
     with pytest.raises(june_results.JuneResultsError, match="outside its form"):
         june_results.check(REPO, _csv([_row(**change)]), _summary(), listed={"SYN-1"})
+
+
+# The review of #113 (owner decision: fixed in 6b, part 6)
+
+
+def test_J11_a_real_build_passes_the_real_check(monkeypatch):
+    """Item 4: the likeliest failure after the money is spent, `build` failing its own check, is tested here with
+    the real June scorer and the real check, on a small synthetic pool."""
+    from voc import june_results
+
+    csv_text, summary = _scored_build(monkeypatch)
+    june_results.check(REPO, csv_text, json.dumps(summary, indent=2, sort_keys=True) + "\n",
+                       listed={cid for cid, _, _ in _rows4()})
+
+
+@pytest.mark.parametrize("charge", [None, True, -1, "600"])
+def test_J3_build_refuses_a_ledger_charge_that_is_not_a_whole_number(monkeypatch, charge):
+    """Item 7."""
+    from voc import june_results
+
+    with pytest.raises(june_results.JuneResultsError, match="^the June ledger's charge in this run is needed"):
+        _scored_build(monkeypatch, ledger_tokens=charge)
