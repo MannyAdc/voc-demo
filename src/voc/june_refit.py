@@ -5,8 +5,9 @@ It runs the laptop's own path inside Databricks, so the refit is the laptop's: t
 is checked against its pin, loaded whole by B16's loader into a DuckDB file in a temporary folder, as on the laptop,
 and only the training and development rows are selected, by their IDs, each checked against its list's content hash.
 The test rows are loaded into that file with the rest, but no test row is ever selected, labelled or scored, and
-the file is deleted with its folder (J2, review of #109, minor 1). TF-IDF + LR is fitted on the training rows with the frozen settings, and must give every committed
-development label in `results/eval/v1_dev.csv` before Job B goes on.
+the file is deleted with its folder (J2, review of #109, minor 1). TF-IDF + LR is fitted on the training rows
+with the frozen settings, and must give every committed development label in `results/eval/v1_dev.csv` before
+Job B goes on.
 
 B21 and J5: nothing here prints. Every refusal holds fixed text, IDs and counts only, and carries no earlier
 exception. An error from DuckDB or scikit-learn is given by its type only, since its text could quote a row.
@@ -41,8 +42,9 @@ def _step(what, function, *args):
 
 
 def _inputs(root):
-    """The committed files the refit reads: the pin, the labels, the lists, the settings and the development labels.
-    Review of #109, nit 4: any failure to read them is refused with its type only."""
+    """The committed files the refit reads first: the pin, the labels, the lists, the settings and the development
+    labels. Review of #109, nit 4: any failure to read them is refused with its type only. The lists' content
+    hashes are read later, inside `_rows`, behind `_step`'s fixed text (second review of #109, nit 3)."""
     try:
         pin = load_pins(root / "config" / "data_files.toml")[MONTH]
         labels = [label.name for label in load_labels(root / "config" / "labels.toml")]

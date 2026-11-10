@@ -685,6 +685,18 @@ Written on 10 November 2026.
 - Job B refits before it marks anything, and a refused refit stops it before any marker (J11)
 - from the second review of #108: a requirements file that is not UTF-8, or text after a pin that is not a marker or a continuation, is refused, and a pin with a marker or a continuation is taken (J11)
 
+## Pull request 6b, part 3a: Job B's ledger and recordings in the volume ([spec 004](../specs/004-june-test-and-baselines/spec.md), J1, J11, J12), `tests/test_june_ledger.py`, `tests/test_job_b.py`
+
+Written on 10 November 2026.
+
+- the June ledger is made with the frozen June cap and no git, and a later run reuses it and keeps what was used (J1, J12)
+- a June ledger with another cap, or made for another project, is refused, and so is a config with no whole June cap (J12)
+- the ledger and recordings live in the raw volume (J11)
+- a live call is recorded in the volume and charged to the June ledger, and a resumed run replays it and pays nothing (J1)
+- a call past the June cap is refused before anything is sent (J12)
+- the laptop's caller still checks the committed config, and the June caller never uses the home folder (J11)
+- from the second review of #109: a marker holding a token that starts with "-" is refused (J11)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

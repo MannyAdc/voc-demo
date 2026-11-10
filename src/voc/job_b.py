@@ -88,9 +88,11 @@ def _installed_version(name):
         return None
 
 
-# A pin, then at most a marker and a line continuation (second review of #108, nit 5). A marker may not carry a
-# pip option (review of #109, nit 5).
-PIN = re.compile(r"([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s;\\]+)(?:\s*;(?:(?!--)[^\\])*)?(?:\s*\\)?")
+# A pin, then at most a marker and a line continuation (second review of #108, nit 5).
+PIN = re.compile(r"([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s;\\]+)(\s*;[^\\]*)?(?:\s*\\)?")
+# A marker may not hold a token that starts with "-", which pip would read as an option. A legal marker never
+# does (review of #109, nit 5, and its second review, nit 4).
+OPTION = re.compile(r"(?:^|[\s;])-")
 
 
 def checked_packages(root):
@@ -106,7 +108,7 @@ def checked_packages(root):
     for line in lines:
         if line and not line[0].isspace() and not line.startswith("#"):
             pin = PIN.fullmatch(line)
-            if pin is None:
+            if pin is None or (pin.group(3) is not None and OPTION.search(pin.group(3))):
                 raise JobBError("Job B's requirements file has a line that is not a pinned package")
             if _installed_version(pin.group(1)) != pin.group(2):
                 wrong.append(pin.group(1))

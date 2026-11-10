@@ -2512,7 +2512,6 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 ### Pull request 6b, part 2: Job B's refit of TF-IDF + LR
 
 - Work start, 14:01: worktree `../voc-demo-6b2`, from #108's branch at `eb5114b`, first as `feat/job-b-start-marker`. Claude moved the refit ahead of the start marker, since a real row and its marker make sense only once real labelling exists, and the refit can run in the synthetic round. The branch, never pushed under that name, was renamed `feat/job-b-refit`.
-- Claude told the owner of the new order in the chat. The owner did not object, and on 10 November, after Claude asked again, agreed ("Go on").
 - Between 14:01 and 14:32: the refit runs B16's loader on the pinned July export in the volume, as the spec says, so the training rows are the laptop's byte for byte. Job B's packages gain duckdb 1.5.6, compiled as before for Python 3.12 on ARM.
 - Between 14:01 and 14:32, AI mistakes, caught by the tests before any commit: the refit passed label objects where the loader takes label names, a refusal test stood in Job B's check itself and so skipped its conversion, and the red tests missed two dry run tests that call Job B and needed the refit stood in. All three were fixed before the red commit.
 - Between 14:18 and 14:32 Claude brought the branch up to #108's fix round, before the red commit, keeping both sides' new tests at the end of `tests/test_job_b.py`.
@@ -2524,6 +2523,20 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - The owner ran probe 3 in the workspace, in its own folder in the raw volume, deleted at the end: a lock file, an atomic replace and a create that fails if the file exists all work there. A ledger write took 0.267 seconds (median, 0.422 at most), a recording 0.101, against 0.0044 on local disk. So the ledger and recordings can stay in the volume, with about 30 minutes added to June's run.
 - 15:35 The fresh reviewer's findings on #109 were posted as a comment. Nothing serious. Three minor and three nits.
 - The owner asked what DuckDB means for running without the laptop. Claude's answer: DuckDB runs inside Job B in Databricks, as a library. The one laptop step after the run is the copy script, which Claude runs to bring the results files into the repo, by the owner's decision of 5 November.
-- Owner decision ("Go on", exact time not recorded): accept minor 1, with J11 and the module saying exactly what is loaded and selected. Probe 4 for minors 2 and 3. Fix nits 4, 5 and 6. A red commit holds the fix round's tests, and a second review follows, since the fix changes code.
+- Owner decision ("Go on", exact time not recorded): agree to the refit coming ahead of the start marker, which Claude had told the owner of in the chat at 14:01 with no objection then. Accept minor 1, with J11 and the module saying exactly what is loaded and selected. Probe 4 for minors 2 and 3. Fix nits 4, 5 and 6. A red commit holds the fix round's tests, and a second review follows, since the fix changes code.
 - Fix round's red commit `94979a4` at 15:46 (git's commit time): only tests, through the gate.
 - 16:05 Fix round written: the committed files' reads behind a fixed-text refusal, no pip option in a marker, the wording of minor 1, and this log's order, times and missing entries.
+- The owner ran probe 4 in the workspace: the July export in the raw volume has the pinned name, size and SHA-256, DuckDB 1.5.6 loaded 672,036 rows and 16 columns in 0.9 seconds after a 0.9 second hash, the process peaked at 720 MB on a machine of 15,642 MB, and the probe's DuckDB file was deleted. So #109's minors 2 and 3 need no code.
+- Fix round commit `e6ec763` at 16:05 (git's commit time), through the gate. 16:16 The fresh review of the fix round was posted on #109. Nothing serious. One minor and five nits.
+- Owner decisions ("Go as you recommend", exact time not recorded): fix the second review's six items in pull request 6b part 3a, and round 4 sends its synthetic complaints to the real API, so the key, the workspace check, the ledger and the recordings are proven in the cloud before June (option A).
+- 16:25 CI green on `e6ec763`. `scripts/merge_verdict.py 109`: PASS on the base, CI, conflicts and the red commit. PENDING on the review findings and the build log, which Claude checked. Verdict: MERGE, posted as a comment on #109. 16:25 Claude marked #109 ready. 16:33 The owner merged #109 (time from GitHub).
+- The owner made the Claude Console workspace `voc-june-cloud` with a monthly spend limit of $5 and no key, as the owner's screenshots showed. The organisation's limit is $20.
+
+### Pull request 6b, part 3a: Job B's ledger and recordings in the volume
+
+- Work start, 17:26: branch `feat/job-b-ledger`, worktree `../voc-demo-6b3`, from main at `27cf9fb`.
+- AI mistake, caught by the owner: Claude wrote that it was starting this pull request and then ended its turn without starting it, so nothing ran until the owner asked.
+- Red commit `82dbad5` at 17:36 (git's commit time): only tests, through the gate.
+- `src/voc/june_ledger.py`: the June ledger in the raw volume, made with the frozen June cap and no git, reused by a later run, and refused if its cap or project is not the June ledger's. The laptop's caller gains an optional recordings folder and an already-read config, for Job B. With neither, the laptop's path is unchanged.
+- The second review of #109's items: J2 says what is loaded and selected, J11's first sentence names the development rows, the refit's docstrings are exact and wrapped, a marker holding a token that starts with "-" is refused (red first), and the owner's "Go on" sits where it happened.
+- 17:37 Green change written.
