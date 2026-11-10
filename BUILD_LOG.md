@@ -2477,6 +2477,13 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - The owner approved `june-run` (the approvals list names the owner). The `run` job ran from 10:44:18 to 10:45:30 and succeeded (times from GitHub).
 - Job B's run 924726639587219 ended green on its own page, as the owner's screenshot showed. Its folder `june-924726639587219` in the results volume holds one file, `DRY_RUN.txt`, 246 bytes, ending `Labelled: 8. Accepted: 7. Quarantined: 1.`, the figures the dry run expects. So round 3 passed every link: the upload, Job A, the webhook, the receiver, the approval workflow, the owner's approval, Job B with the mock backend, and the result message. The receiver's `result` row was not checked.
 - Before 10:58 the owner paused Job A's trigger again (exact time not recorded).
-- Wrap-up, guided by Claude, before 11:30: the owner deleted the receiver's two Application Insights settings, `APPLICATIONINSIGHTS_CONNECTION_STRING` and `APPINSIGHTS_INSTRUMENTATIONKEY`, then deleted `voc-receiver-insights`, which a search no longer finds. No Log Analytics workspace was deleted. The owner deleted round 3's zip from `incoming` and its CSV from `june`, and dropped `voc_june`'s four tables and views, which shows Tables 0. The results folder `june-924726639587219` stays, as the dry run's record (step 15).
+- Wrap-up, guided by Claude, before 11:30: the owner deleted the receiver's two Application Insights settings, `APPLICATIONINSIGHTS_CONNECTION_STRING` and `APPINSIGHTS_INSTRUMENTATIONKEY`, then deleted `voc-receiver-insights`, which a search no longer finds. No Log Analytics workspace was deleted. The owner deleted round 3's zip from `incoming` and its CSV from `june`, and dropped `voc_june`'s four tables and views. `voc_june` now shows Tables 0. The results folder `june-924726639587219` stays, as the dry run's record (step 15).
 - AI mistake, caught by the owner's question: the receiver steps named only the connection string, but the app's settings also held `APPINSIGHTS_INSTRUMENTATIONKEY`, the older link to the same logbook. The steps now name both.
 - The dry run ends here. The owner decides whether to run June (the spec's stop point).
+
+### Pull request: round 3's log
+
+- Work start, 10:58: branch `docs/dry-run-round-3-log`, worktree `../voc-demo-log3`, from main at `d43aaf3`.
+- Commit `8103f72` at 11:31 (git's commit time), docs and log only, through the gate. 11:43 Claude opened draft #107.
+- 11:45 The fresh reviewer's findings on #107 were posted as a comment. Nothing serious. Two minor and two nits, all wording.
+- 11:50 Owner decision: Claude's recommendation. Fix all four, with no second review, since the fixes change only wording. The spec says Job B's `RUNNING` state follows from its passed checks, as nobody looked at it. The steps say the "Before round 3" list is a record. The log and the receiver steps say plainly what they mean.

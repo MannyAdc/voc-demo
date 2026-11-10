@@ -25,7 +25,7 @@ runs (review of #99).
 
 Round 1 ran on 9 November and stopped at the approval workflow's check of Job A's run. Round 2 ran on 10 November
 and stopped at Job B's check of its own run, which looked for its commit on the run, where Databricks does not keep
-it. Round 3's pull request fixed that check, and round 3 passed every step on 10 November. Before it:
+it. Round 3's pull request fixed that check, and round 3 passed every step on 10 November. These steps were done before round 3, and stay here as its record:
 
 - **Round 3's row is merged.** After round 3's pull request is merged, Claude opens a pull request with round 3's
   row in `runs/JUNE_RUNS.md` (step 4). Upload nothing before it is merged: until then the last row is round 2's,
