@@ -1035,14 +1035,14 @@ def test_J11_job_b_refuses_a_marker_that_holds_a_token_starting_with_a_dash(tmp_
 # sample too (owner decision of 10 November, option A), and a stop gives the contract's reason (J11, J12, J16 item 8).
 
 
-def _api_run(monkeypatch, tmp_path, backend, rows=ROWS):
+def _api_run(monkeypatch, tmp_path, backend, rows=ROWS, files=None):
     from voc import june_ledger
 
     job_b = _patched(monkeypatch, rows=rows)
     monkeypatch.setattr(june_ledger, "LEDGER", str(tmp_path / "ledger_june" / "ledger.json"))
     monkeypatch.setattr(june_ledger, "RECORDINGS", str(tmp_path / "recordings_june"))
     monkeypatch.setattr(june_ledger, "RECORDINGS_DRY", str(tmp_path / "recordings_dry"))
-    files = FakeFiles()
+    files = FakeFiles() if files is None else files
     value = job_b.run(REPO, _values(), FakeJobs(), FakeGitHub(), job_b.VolumeStore(files), lambda sql: list(rows),
                       sleep=lambda s: None, backend=backend)
     return json.loads(value), files
@@ -1098,3 +1098,22 @@ def test_J11_the_notebook_reads_the_key_and_workspace_from_the_secret_scope_and_
     assert 'dbutils.secrets.get(SECRET_SCOPE, "anthropic-api-key")' in text
     assert 'dbutils.secrets.get(SECRET_SCOPE, "anthropic-workspace-id")' in text
     assert "backend=backend" in text and "print(" not in text
+
+
+# The review of #110, minor 1 (owner decision: fixed in 6b, part 3b): before any marker, the June ledger must have
+# room for the whole run's worst case, counting what is used and what is still reserved (J12).
+
+
+def test_J12_job_b_refuses_a_run_whose_worst_case_passes_what_is_left_under_the_june_cap(monkeypatch, tmp_path):
+    from voc import june_ledger
+
+    path = tmp_path / "ledger_june" / "ledger.json"
+    june_ledger.open_ledger(REPO, path)
+    state = json.loads(path.read_text(encoding="utf-8"))
+    state["used"], state["reserved"], state["open"] = state["cap"] - 1000, 500, {"crash": 500}
+    path.write_text(json.dumps(state), encoding="utf-8")
+    files = FakeFiles()
+    with pytest.raises(Exception, match="^the June ledger has 500 tokens left under its cap, less than the run's "
+                                        "worst case of [0-9]+$"):
+        _api_run(monkeypatch, tmp_path, _api_backend(), files=files)
+    assert not files.files
