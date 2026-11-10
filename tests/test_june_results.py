@@ -238,3 +238,67 @@ def test_J11_a_csv_value_outside_its_column_s_form_is_refused(change):
     with pytest.raises(june_results.JuneResultsError) as caught:
         june_results.check(REPO, _csv([_row(**change)]), _summary(), listed={"SYN-1"})
     assert "SYNHOSTILE" not in str(caught.value)
+
+
+# The second review of #112 (owner decision: fixed in 6b, part 5)
+
+
+def test_J3_build_needs_the_june_ledger_s_charge(monkeypatch):
+    """Item 1: with no ledger charge given, the cost would quietly leave out calls charged with no answer."""
+    from voc import june_results, pipeline
+
+    with pytest.raises(TypeError):
+        june_results.build(REPO, _rows4(), _outcomes4(), object(), pipeline.load_prompt_version(REPO, "v1"), RUN,
+                           run_seconds=1.0)
+
+
+@pytest.mark.parametrize("change, words", [
+    ({"extra_key": 1}, "outside the summary's keys"),
+    ({"note": "x" * 260}, "text value longer than 250"),
+    ({"per_category": {"k" * 120: 1}}, "key longer than 100"),
+])
+def test_J11_the_summary_holds_only_its_keys_and_short_texts(change, words):
+    """Item 3: only the summary's own keys at the top, and no long text in a value or a key at any depth."""
+    from voc import june_results
+
+    with pytest.raises(june_results.JuneResultsError, match=words):
+        june_results.check(REPO, _csv([_row()]), _summary(**change), listed={"SYN-1"})
+
+
+def test_J11_build_sorts_rows_given_in_any_order_and_scores_the_recorded_products(monkeypatch):
+    """Item 4: rows and outcomes given in reverse come out in ID number order, then ID, and the scorer gets each
+    complaint's recorded Product."""
+    from voc import june_score
+
+    seen = {}
+    real = june_score.score_june
+
+    def spy(items, pool, claims, cost):
+        seen["items"] = list(items)
+        return real(items, pool, claims, cost)
+
+    monkeypatch.setattr(june_score, "score_june", spy)
+    rows, outcomes = list(reversed(_rows4())), list(reversed(_outcomes4()))
+    csv_text, _ = _scored_build(monkeypatch, outcomes=outcomes, rows=rows)
+    assert [r["complaint_id"] for r in csv.DictReader(io.StringIO(csv_text))] == ["SYN-1", "SYN-2", "SYN-3", "SYN-4"]
+    assert {i.complaint_id: i.product for i in seen["items"]} == {cid: product for cid, product, _ in _rows4()}
+
+
+def test_J11_rows_with_the_same_id_number_sort_by_id():
+    from voc import june_results
+
+    class O:
+        def __init__(self, cid):
+            self.decision = type("D", (), {"complaint_id": cid})()
+
+    rows = [("SYN-1", "Mortgage", "a"), ("SYN-01", "Mortgage", "b")]
+    assert june_results._ordered(rows, [O("SYN-1"), O("SYN-01")]) == ["SYN-01", "SYN-1"]
+
+
+@pytest.mark.parametrize("change", [{"tfidf_confidence": " 0.5"}, {"quote_start": "\u00b2"}, {"quote_end": "1 "}])
+def test_J11_number_columns_take_plain_numbers_only(change):
+    """Item 5: a number with spaces round it, or a digit that is not 0 to 9, is refused."""
+    from voc import june_results
+
+    with pytest.raises(june_results.JuneResultsError, match="outside its form"):
+        june_results.check(REPO, _csv([_row(**change)]), _summary(), listed={"SYN-1"})
