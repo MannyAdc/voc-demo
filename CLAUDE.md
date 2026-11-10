@@ -22,7 +22,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - `main` only changes through pull requests (except the first commit).
 - Branch names: `<type>/<short-name>`, for example `feat/quote-check`, `fix/ledger-restart`, `docs/readme-stack`.
 - One small change per pull request. Aim for minutes to about an hour from branch to merge.
-- A time saving never lowers quality or breaks a rule here: no mixed pull requests, and no skipped test, gate or review. Check every speed-up against this file before offering it. Offer only savings that keep both, such as running independent work in parallel or probing a live system before building on it.
+- A time saving never lowers quality or breaks a rule in this file: no pull request with more than one change, and no skipped test, gate or review that this file requires. Check every speed-up against this file before offering it. Offer only savings that keep quality and the rules, such as running independent work in parallel or probing a live system before building on it.
 - Commit messages are plain English in the imperative: "Add quote check for redaction marks".
 - Tests first. In each pull request, commit the failing tests in a commit that changes only test files. Then commit the code that makes them pass.
 - Never rewrite, squash, amend pushed commits, or backdate history.
