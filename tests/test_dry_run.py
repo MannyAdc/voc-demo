@@ -256,11 +256,13 @@ def test_J11_job_b_reads_the_committed_dry_run_list_bound_to_the_row():
 
 
 def test_J11_job_b_s_list_and_answers_refuse_a_real_row():
+    from voc.job_a import list_file
     from voc.job_b import JobBError, listed_for, mock_answers
 
-    for seam in (listed_for, mock_answers):
-        with pytest.raises(JobBError, match="synthetic row only"):
-            seam(REPO, _target(kind="real", list_hash="a" * 64))
+    # Changed in 6b part 5: a real row reads the June list now, and still never the mock answers.
+    assert listed_for(REPO, _target(kind="real", list_hash="a" * 64)) == list_file(REPO, "real").read_bytes()
+    with pytest.raises(JobBError, match="synthetic row only"):
+        mock_answers(REPO, _target(kind="real", list_hash="a" * 64))
 
 
 def test_J11_the_mock_answers_cover_every_dry_run_prompt_with_one_quarantine():

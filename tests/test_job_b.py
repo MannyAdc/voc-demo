@@ -230,12 +230,14 @@ def test_J16_job_b_reads_exactly_its_three_parameters():
 # Synthetic only (J11, owner decision, 6 November)
 
 
-@pytest.mark.parametrize("kind,entry_kind", [("real", "real"), ("synthetic", "resume"), ("synthetic", "second"),
+# Changed in 6b part 5: a real first row is taken now (test_J11_a_real_first_row_is_labelled_scored_...), and a
+# later row of either kind is still refused, before any outside call.
+@pytest.mark.parametrize("kind,entry_kind", [("synthetic", "resume"), ("synthetic", "second"),
                                               ("real", "reproduction")])
 def test_J11_job_b_refuses_a_real_or_later_row_until_6b(monkeypatch, kind, entry_kind):
     job_b = _patched(monkeypatch, kind=kind, entry_kind=entry_kind)
     jobs = FakeJobs()
-    with pytest.raises(job_b.JobBError, match="synthetic first row until pull request 6b"):
+    with pytest.raises(job_b.JobBError, match="only a first row of the run log in this build"):
         _run(job_b, jobs=jobs)
     assert jobs.calls == []
 
@@ -1043,15 +1045,18 @@ def test_J11_job_b_refuses_a_marker_that_holds_a_token_starting_with_a_dash(tmp_
 # sample too (owner decision of 10 November, option A), and a stop gives the contract's reason (J11, J12, J16 item 8).
 
 
-def _api_run(monkeypatch, tmp_path, backend, rows=ROWS, files=None):
+def _api_run(monkeypatch, tmp_path, backend, rows=ROWS, files=None, kind="synthetic"):
     from voc import june_ledger
 
-    job_b = _patched(monkeypatch, rows=rows)
+    job_b = _patched(monkeypatch, kind=kind, rows=rows)
     monkeypatch.setattr(june_ledger, "LEDGER", str(tmp_path / "ledger_june" / "ledger.json"))
     monkeypatch.setattr(june_ledger, "RECORDINGS", str(tmp_path / "recordings_june"))
     monkeypatch.setattr(june_ledger, "RECORDINGS_DRY", str(tmp_path / "recordings_dry"))
     files = FakeFiles() if files is None else files
-    value = job_b.run(REPO, _values(), FakeJobs(), FakeGitHub(), job_b.VolumeStore(files), lambda sql: list(rows),
+    # Changed in the green commit of 6b part 5: Job A's exit value names the row's kind and the rows' list, as Job A
+    # gives it for a real row too (the red tests left the synthetic default, which the approval check refuses).
+    jobs = FakeJobs(job_a_exit=_approved(rows, kind=kind))
+    value = job_b.run(REPO, _values(), jobs, FakeGitHub(), job_b.VolumeStore(files), lambda sql: list(rows),
                       sleep=lambda s: None, backend=backend)
     return json.loads(value), files
 
@@ -1164,3 +1169,107 @@ def test_J12_a_stop_after_some_calls_leaves_no_open_reservation_and_keeps_the_an
     assert state["open"] == {} and state["reserved"] == 0 and state["calls"] == 2 and state["used"] > 150
     assert len(list((tmp_path / "recordings_dry").glob("*.json"))) == 1
     assert not any(k.endswith("DRY_RUN.txt") for k in files.files)
+
+
+# Pull request 6b, part 5: a real first row is labelled, scored and written, once (J1, J11).
+
+REAL_ROWS = [("3141592", "Mortgage", "My mortgage servicer lost my payment."),
+             ("2718281", "Credit card", "The card company charged a fee twice.")]
+
+
+def _real(monkeypatch, tmp_path, backend=None, files=None, built=None, checked=None):
+    from voc import june_results
+
+    def build(root, rows, outcomes, model, version, run_info, ledger_tokens=None, run_seconds=None):
+        built.append({"ids": sorted(cid for cid, _, _ in rows), "model": model, "run_info": run_info,
+                      "ledger_tokens": ledger_tokens})
+        return "complaint_id\n", {"set": "june"}
+
+    if built is not None:
+        monkeypatch.setattr(june_results, "build", build)
+    monkeypatch.setattr(june_results, "check", checked or (lambda root, csv_text, json_text, listed=None: None))
+    return _api_run(monkeypatch, tmp_path, backend or _api_backend(REAL_ROWS), rows=REAL_ROWS, files=files,
+                    kind="real")
+
+
+def test_J11_a_real_first_row_is_labelled_scored_and_its_two_files_written(monkeypatch, tmp_path):
+    from voc import job_b
+
+    built, files = [], FakeFiles()
+    value, files = _real(monkeypatch, tmp_path, files=files, built=built)
+    assert value["stopped"] is False and value["kind"] == "real" and value["results_folder"] == "june-900002"
+    folder = job_b.RESULTS_VOLUME + "/june-900002/"
+    assert files.files[folder + "v1_june.csv"] == b"complaint_id\n"
+    assert json.loads(files.files[folder + "v1_june.json"]) == {"set": "june"}
+    assert not any(k.endswith("DRY_RUN.txt") for k in files.files)
+    assert built[0]["ids"] == ["2718281", "3141592"] and built[0]["model"] == "MODEL"
+    assert built[0]["run_info"]["job_b_run_id"] == 900002 and built[0]["ledger_tokens"] == 300
+    assert len(list((tmp_path / "recordings_june").glob("*.json"))) == 2
+    assert not (tmp_path / "recordings_dry").exists()
+
+
+def test_J1_a_real_run_writes_its_start_marker_before_its_first_model_call(monkeypatch, tmp_path):
+    from voc import job_b
+
+    order, files = [], FakeFiles()
+    upload = files.upload
+    files.upload = lambda path, contents, overwrite=None: order.append(path) or upload(path, contents, overwrite)
+    good = _api_backend(REAL_ROWS)
+
+    def backend(prompt, settings):
+        order.append("call")
+        return good(prompt, settings)
+
+    _real(monkeypatch, tmp_path, backend=backend, files=files, built=[])
+    marker = next(i for i, item in enumerate(order) if item.startswith(job_b.START_FOLDER))
+    assert marker < order.index("call")
+    assert order[marker] == f"{job_b.START_FOLDER}/row1-{_list_hash(REAL_ROWS)}.json"
+
+
+def test_J1_a_real_row_already_started_is_refused_before_anything_is_written(monkeypatch, tmp_path):
+    from voc import job_b
+
+    files = FakeFiles()
+    files.files[f"{job_b.START_FOLDER}/row1-{_list_hash(REAL_ROWS)}.json"] = b"{}"
+    with pytest.raises(job_b.JobBError, match="^run log row 1 has already been started$"):
+        _real(monkeypatch, tmp_path, files=files, built=[])
+    assert list(files.files) == [f"{job_b.START_FOLDER}/row1-{_list_hash(REAL_ROWS)}.json"]
+
+
+def test_J11_a_synthetic_run_writes_no_start_marker(monkeypatch, tmp_path):
+    from voc import job_b
+
+    _, files = _api_run(monkeypatch, tmp_path, _api_backend())
+    assert not any(k.startswith(job_b.START_FOLDER) for k in files.files)
+
+
+def test_J11_a_real_row_is_never_labelled_with_the_mock_answers(monkeypatch):
+    job_b = _patched(monkeypatch, kind="real", rows=REAL_ROWS)
+    with pytest.raises(job_b.JobBError, match="^a real run labels through the API only$"):
+        _run(job_b, jobs=FakeJobs(job_a_exit=_approved(REAL_ROWS)), rows=REAL_ROWS)
+
+
+@pytest.mark.parametrize("entry_kind", ["resume", "reproduction", "second"])
+def test_J11_a_later_row_is_refused_in_this_build(monkeypatch, entry_kind):
+    job_b = _patched(monkeypatch, kind="real", entry_kind=entry_kind, rows=REAL_ROWS)
+    jobs = FakeJobs()
+    with pytest.raises(job_b.JobBError, match="^Job B runs only a first row of the run log in this build$"):
+        _run(job_b, jobs=jobs, rows=REAL_ROWS)
+    assert jobs.calls == []
+
+
+def test_J11_a_real_list_or_sample_holding_a_synthetic_id_is_refused(monkeypatch, tmp_path):
+    rows = REAL_ROWS + [("SYN-7", "Mortgage", "A synthetic text.")]
+    with pytest.raises(Exception, match="not a CFPB complaint ID"):
+        _api_run(monkeypatch, tmp_path, _api_backend(rows), rows=rows, kind="real")
+
+
+def test_J11_results_that_fail_their_check_stop_the_run_with_no_file_written(monkeypatch, tmp_path):
+    from voc import june_results
+
+    def refused(root, csv_text, json_text, listed=None):
+        raise june_results.JuneResultsError("v1_june.json lacks a required key")
+
+    value, files = _real(monkeypatch, tmp_path, built=[], checked=refused)
+    assert value["stopped"] is True and value["stop_reason"] == "error" and value["results_folder"] is None
+    assert not any(k.endswith((".csv", ".json")) and "/june-" in k for k in files.files)

@@ -719,6 +719,17 @@ Written on 10 November 2026.
 - `build` writes June rows in complaint ID order with the refit's labels and exact confidences, and the summary with the run's settings, tokens and the figures, and no text (J11)
 - from the review of #111: an overrun is refused before any marker, a stop after some calls leaves no open reservation and keeps the earlier answers recorded, and an empty workspace ID is refused (J11, J12)
 
+## Pull request 6b, part 5: a real first row ([spec 004](../specs/004-june-test-and-baselines/spec.md), J1, J11), `tests/test_job_b.py`, `tests/test_june_results.py`
+
+Written on 10 November 2026.
+
+- a real first row is labelled through the API, scored and its two files written, with its recordings in June's folder (J11)
+- a real run writes its start marker before its first model call, a row already started is refused before anything is written, and a synthetic run writes none (J1)
+- a real row is never labelled with the mock answers, and a later row is refused in this build (J11)
+- a real list or sample holding a synthetic ID is refused (J11)
+- results that fail their check stop the run with no results file (J1, J11)
+- from the second review of #112: `build` needs the June ledger's charge, the summary holds only its keys and short texts in values and keys, rows given in any order are sorted by ID number then ID and scored with their recorded Products, and number columns take plain numbers only (J3, J11)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
