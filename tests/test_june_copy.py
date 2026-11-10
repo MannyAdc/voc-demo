@@ -261,3 +261,12 @@ def test_J13_the_reader_asks_for_the_files_scope_read_only():
     from voc import june_copy
 
     assert june_copy.SCOPE == "files:read"
+
+
+# The second review of #114, minor 1: a 404 also means "not there", so a typo in a path would look like a refusal.
+
+
+@pytest.mark.parametrize("raw, scope", [(404, 403), (403, 404)])
+def test_J13_a_404_is_not_proof_of_a_refusal(raw, scope):
+    lines = _check(raw=raw, scope=scope)
+    assert lines[-1] == "verdict | FAIL"
