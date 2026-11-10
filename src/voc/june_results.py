@@ -23,7 +23,7 @@ from pathlib import Path
 from voc import june_score, metrics, pipeline
 from voc.baselines import predict_tfidf
 from voc.costs import call_cost, load_prices, run_cost
-from voc.evaluate import COVERAGE_POINTS, _per_category, _quote_lengths
+from voc.evaluate import COVERAGE_POINTS, _cost_per_1000, _per_category, _quote_lengths
 from voc.labels import load_labels
 from voc.repo_checks import CFPB_HEADER, SIZE_LIMIT
 
@@ -43,26 +43,32 @@ REQUIRED_KEYS = frozenset({
     "quarantined", "entry_list_sha256", "entry_code_sha256", "job_a_run_id", "job_b_run_id", "github_run_id",
     "run_seconds", "input_tokens", "output_tokens", "calls_without_usage", "charged_without_answer_tokens",
     "cost_per_1000_usd"})
-TEXT_LIMIT = 500  # review of #112, minor 4: no text value in the summary is longer, so no complaint fits
+# Review of #112, minor 4, and its second review, item 3: no text in the summary, a value or a key at any depth, is
+# longer. The longest fixed text it carries is 180 characters and the longest Product name about 55.
+TEXT_LIMIT = 250
+KEY_LIMIT = 100
 NOTE = ("the June run: the LLM, TF-IDF + LR refit from July's training rows, and the hybrid, on the frozen June "
         "sample. The top-level verdict, difference and interval are the primary claim's (J7)")
 FIGURES_ARE = "the June claim's verdict, from the single June run (J1, J7)"
 CONFUSION_NOTE = ("[recorded, predicted, count]. The LLM matrix has a 'quarantined' column. The TF-IDF and "
                   "hybrid matrices cover every complaint")
 _KEY = re.compile(r"[0-9a-f]{64}")
+_DIGITS = re.compile(r"[0-9]+")
+_NUMBER = re.compile(r"[0-9]+(\.[0-9]+)?(e-[0-9]+)?")
 FORMS = {"prompt_version": lambda v: v == PROMPT_VERSION,
          "decision": lambda v: v in ("accepted", "quarantined"),
-         "quote_start": lambda v: v == "" or v.isdigit(), "quote_end": lambda v: v == "" or v.isdigit(),
+         # Second review of #112, item 5: plain digits 0 to 9 only.
+         "quote_start": lambda v: v == "" or bool(_DIGITS.fullmatch(v)),
+         "quote_end": lambda v: v == "" or bool(_DIGITS.fullmatch(v)),
          "tfidf_confidence": lambda v: _probability(v),
          "recording_key": lambda v: v == "" or bool(_KEY.fullmatch(v))}
 
 
 def _probability(value):
-    try:
-        number = float(value)
-    except ValueError:
+    """A plain number from 0 to 1, as Python writes a float, with no spaces (second review of #112, item 5)."""
+    if not _NUMBER.fullmatch(value):
         return False
-    return 0.0 <= number <= 1.0
+    return 0.0 <= float(value) <= 1.0
 
 
 class JuneResultsError(ValueError):
@@ -93,7 +99,7 @@ def _cost(root, model_name, outcomes, ledger_tokens):
     answered = [o for o in outcomes if o.source in ("live", "replay")]
     summary = run_cost(prices, model_name, answered)
     charged = sum(o.live_cost_tokens for o in answered if o.source == "live")
-    extra = max(0, ledger_tokens - charged) if ledger_tokens is not None else 0
+    extra = max(0, ledger_tokens - charged)
     extra_cost = call_cost(prices, model_name, 0, extra)
     return {"input_tokens": summary["input_tokens"], "output_tokens": summary["output_tokens"] + extra,
             "calls_without_usage": summary["calls_without_usage"], "charged_without_answer_tokens": extra,
@@ -101,13 +107,16 @@ def _cost(root, model_name, outcomes, ledger_tokens):
             "replay_cost_usd": summary["own_cost_usd"] + extra_cost}
 
 
-def build(root, rows, outcomes, model, version, run_info, ledger_tokens=None, run_seconds=None):
+def build(root, rows, outcomes, model, version, run_info, *, ledger_tokens, run_seconds=None):
     """The two files' contents for a finished real run: the CSV text and the summary. `rows` are the sample's
     (complaint ID, recorded Product, text), `outcomes` the labeller's, `model` the refit TF-IDF + LR, `run_info` the
     run entry's two hashes and the three run IDs, `ledger_tokens` what the June ledger charged in this run, and
     `run_seconds` the labelling's time. The summary has the keys of July's test summary, built by the same functions,
     and the hybrid's figures (review of #112, serious 1)."""
     root = Path(root)
+    if not isinstance(ledger_tokens, int) or isinstance(ledger_tokens, bool) or ledger_tokens < 0:
+        # Second review of #112, item 1: with no charge, the calls charged with no answer would cost nothing.
+        raise JuneResultsError("the June ledger's charge in this run is needed for the cost")
     by_id = {cid: (product, text) for cid, product, text in rows}
     ordered = _ordered(rows, outcomes)
     started = time.monotonic()
@@ -131,7 +140,8 @@ def build(root, rows, outcomes, model, version, run_info, ledger_tokens=None, ru
     model_name = version.settings["model"]
     cost = _cost(root, model_name, outcomes, ledger_tokens)
     n = len(items)
-    cost_per_1000 = str((cost["live_cost_usd"] * 1000 / n).quantize(Decimal("0.0001"))) if cost["live_cost_usd"] else None
+    cost_per_1000 = _cost_per_1000(cost["live_cost_usd"], n)  # second review of #112, item 6
+    curve, llm_point = metrics.precision_coverage(items, COVERAGE_POINTS)
     figures = june_score.score_june_sample(root, items, cost_per_1000)
     claims = june_score.load_claims(root)
     second = figures["secondary"]
@@ -158,8 +168,7 @@ def build(root, rows, outcomes, model, version, run_info, ledger_tokens=None, ru
         "per_category": _per_category(items, labels),
         "confusion": confusion,
         "who_was_right": metrics.who_was_right(items),
-        "precision_coverage": {"tfidf": [list(point) for point in metrics.precision_coverage(items, COVERAGE_POINTS)[0]],
-                               "llm": list(metrics.precision_coverage(items, COVERAGE_POINTS)[1])},
+        "precision_coverage": {"tfidf": [list(point) for point in curve], "llm": list(llm_point)},
         "review_queue": metrics.review_queue(items),
         "quote_length": _quote_lengths(written),
         "live_cost_usd": str(cost["live_cost_usd"]), "replay_cost_usd": str(cost["replay_cost_usd"]),
@@ -174,11 +183,12 @@ def build(root, rows, outcomes, model, version, run_info, ledger_tokens=None, ru
 
 
 def _texts(value):
-    """Every text value in a summary, at any depth."""
+    """Every text value in a summary, at any depth, each with whether it is a key."""
     if isinstance(value, str):
-        yield value
+        yield value, False
     elif isinstance(value, dict):
-        for item in value.values():
+        for key, item in value.items():
+            yield str(key), True
             yield from _texts(item)
     elif isinstance(value, list):
         for item in value:
@@ -230,5 +240,10 @@ def check(root, csv_text, json_text, listed=None):
         raise JuneResultsError("v1_june.json is not the June run's summary")
     if not REQUIRED_KEYS <= set(summary):
         raise JuneResultsError("v1_june.json lacks a required key")
-    if any(len(text) > TEXT_LIMIT for text in _texts(summary)):
-        raise JuneResultsError(f"v1_june.json holds a text value longer than {TEXT_LIMIT} characters")
+    if set(summary) - REQUIRED_KEYS:  # second review of #112, item 3
+        raise JuneResultsError("v1_june.json has a key outside the summary's keys")
+    for text, is_key in _texts(summary):
+        if is_key and len(text) > KEY_LIMIT:
+            raise JuneResultsError(f"v1_june.json holds a key longer than {KEY_LIMIT} characters")
+        if not is_key and len(text) > TEXT_LIMIT:
+            raise JuneResultsError(f"v1_june.json holds a text value longer than {TEXT_LIMIT} characters")

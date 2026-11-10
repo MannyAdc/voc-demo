@@ -230,12 +230,14 @@ def test_J16_job_b_reads_exactly_its_three_parameters():
 # Synthetic only (J11, owner decision, 6 November)
 
 
-@pytest.mark.parametrize("kind,entry_kind", [("real", "real"), ("synthetic", "resume"), ("synthetic", "second"),
+# Changed in 6b part 5: a real first row is taken now (test_J11_a_real_first_row_is_labelled_scored_...), and a
+# later row of either kind is still refused, before any outside call.
+@pytest.mark.parametrize("kind,entry_kind", [("synthetic", "resume"), ("synthetic", "second"),
                                               ("real", "reproduction")])
 def test_J11_job_b_refuses_a_real_or_later_row_until_6b(monkeypatch, kind, entry_kind):
     job_b = _patched(monkeypatch, kind=kind, entry_kind=entry_kind)
     jobs = FakeJobs()
-    with pytest.raises(job_b.JobBError, match="synthetic first row until pull request 6b"):
+    with pytest.raises(job_b.JobBError, match="only a first row of the run log in this build"):
         _run(job_b, jobs=jobs)
     assert jobs.calls == []
 
@@ -1051,7 +1053,10 @@ def _api_run(monkeypatch, tmp_path, backend, rows=ROWS, files=None, kind="synthe
     monkeypatch.setattr(june_ledger, "RECORDINGS", str(tmp_path / "recordings_june"))
     monkeypatch.setattr(june_ledger, "RECORDINGS_DRY", str(tmp_path / "recordings_dry"))
     files = FakeFiles() if files is None else files
-    value = job_b.run(REPO, _values(), FakeJobs(), FakeGitHub(), job_b.VolumeStore(files), lambda sql: list(rows),
+    # Changed in the green commit of 6b part 5: Job A's exit value names the row's kind and the rows' list, as Job A
+    # gives it for a real row too (the red tests left the synthetic default, which the approval check refuses).
+    jobs = FakeJobs(job_a_exit=_approved(rows, kind=kind))
+    value = job_b.run(REPO, _values(), jobs, FakeGitHub(), job_b.VolumeStore(files), lambda sql: list(rows),
                       sleep=lambda s: None, backend=backend)
     return json.loads(value), files
 

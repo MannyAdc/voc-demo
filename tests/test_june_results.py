@@ -149,7 +149,8 @@ def _outcomes4(costs=None):
     return made
 
 
-def _scored_build(monkeypatch, outcomes=None, ledger_tokens=None, rows=None):
+def _scored_build(monkeypatch, outcomes=None, ledger_tokens=600, rows=None):
+    # Changed in 6b part 5: `build` needs the June ledger's charge, here the four default outcomes' live charges.
     """The real June scorer on a pool of the four synthetic complaints, so every figure is computed."""
     from voc import june_results, june_score, pipeline
 

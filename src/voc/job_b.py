@@ -65,6 +65,10 @@ GITHUB_WAITS = (20, 60)
 COMMIT = re.compile(r"[0-9a-f]{40}")
 HASH = re.compile(r"[0-9a-f]{64}")
 SYNTHETIC_ID = re.compile(r"SYN-[0-9]{1,19}")
+# A CFPB complaint ID, as J16 checks IDs (6b part 5).
+REAL_ID = re.compile(r"[1-9][0-9]{0,18}")
+# The start markers of real runs: one for each run log row, written before the first model call (J1, 6b part 5).
+START_FOLDER = VOLUME + "/job_b_started"
 
 
 class JobBError(ValueError):
@@ -137,8 +141,10 @@ def parameters(values):
 
 def checked_target(root):
     (run_target, entry), _ = _checked(approval._target_and_entry, root)
-    if run_target.kind != "synthetic" or run_target.entry_kind != "synthetic":
-        raise JobBError("Job B runs only a synthetic first row until pull request 6b")
+    # 6b part 5: a real first row too. A later row, a resume, a reproduction or a second run, is refused, since
+    # Job A runs only a first row (Known limits).
+    if (run_target.kind, run_target.entry_kind) not in (("synthetic", "synthetic"), ("real", "real")):
+        raise JobBError("Job B runs only a first row of the run log in this build")
     return run_target, entry
 
 
@@ -265,9 +271,7 @@ def listed_for(root, run_target):
     be the run log row's list hash (review of #98), which `checked_list` checks."""
     from voc.job_a import list_file
 
-    if run_target.kind != "synthetic":
-        raise JobBError("Job B reads the dry run's list for a synthetic row only")
-    return list_file(root, "synthetic").read_bytes()
+    return list_file(root, run_target.kind).read_bytes()  # the June list for a real row (6b part 5)
 
 
 ANSWERS = Path("cloud") / "job_b" / "dry_run_answers.json"
@@ -290,52 +294,61 @@ def mock_answers(root, run_target):
 def checked_list(data, run_target):
     """The dry run's list, bound to its row: its bytes hash to the row's list hash. Every ID synthetic and every
     hash a SHA-256, checked before any SQL runs (review of #98). Returns complaint ID to content hash."""
+    name, pattern, kind_word = _list_words(run_target.kind)
     if not isinstance(data, bytes) or hashlib.sha256(data).hexdigest() != run_target.list_hash:
-        raise JobBError("the dry run's list does not match the run log row's list hash")
+        raise JobBError(f"{name} does not match the run log row's list hash")
     try:
         text = data.decode("utf-8")
     except UnicodeDecodeError:
         text = None
     if text is None:
-        raise JobBError("the dry run's list is not UTF-8")
+        raise JobBError(f"{name} is not UTF-8")
     records = list(csv.reader(io.StringIO(text)))
     if (len(records) < 2 or records[0] != ["complaint_id", "content_hash"]
             or not all(len(r) == 2 for r in records[1:])):
-        raise JobBError("the dry run's list is not a list of complaint IDs and content hashes")
+        raise JobBError(f"{name} is not a list of complaint IDs and content hashes")
     listed = {}
     for cid, digest in records[1:]:
-        if not SYNTHETIC_ID.fullmatch(cid):
-            raise JobBError("the dry run's list holds an ID that is not synthetic")
+        if not pattern.fullmatch(cid):
+            raise JobBError(f"{name} holds an ID that is not {kind_word}")
         if not HASH.fullmatch(digest):
-            raise JobBError("the dry run's list holds a content hash that is not a SHA-256")
+            raise JobBError(f"{name} holds a content hash that is not a SHA-256")
         listed[cid] = digest
     if len(listed) != len(records) - 1:
-        raise JobBError("the dry run's list repeats a complaint ID")
+        raise JobBError(f"{name} repeats a complaint ID")
     return listed
 
 
-def checked_rows(listed, rows):
+def _list_words(kind):
+    """The list's name in refusals, its ID pattern and the word for a wrong ID, by the row's kind."""
+    if kind == "real":
+        return "the June list", REAL_ID, "a CFPB complaint ID"
+    return "the dry run's list", SYNTHETIC_ID, "synthetic"
+
+
+def checked_rows(listed, rows, kind="synthetic"):
     """`rows` are (complaint_id, product, narrative). Refused unless they are exactly the listed sample, every ID
-    synthetic, each row with its content hash. Returns the count."""
+    of the row's kind, synthetic or a CFPB complaint ID, each row with its content hash. Returns the count."""
     from voc.data import content_hash
 
-    if not all(isinstance(cid, str) and SYNTHETIC_ID.fullmatch(cid) for cid in listed):
-        raise JobBError("the dry run's list holds an ID that is not synthetic")
+    name, pattern, kind_word = _list_words(kind)
+    if not all(isinstance(cid, str) and pattern.fullmatch(cid) for cid in listed):
+        raise JobBError(f"{name} holds an ID that is not {kind_word}")
     given = {}
     for cid, product, narrative in rows:
-        if not isinstance(cid, str) or not SYNTHETIC_ID.fullmatch(cid):
-            raise JobBError("the sample holds an ID that is not synthetic")
+        if not isinstance(cid, str) or not pattern.fullmatch(cid):
+            raise JobBError(f"the sample holds an ID that is not {kind_word}")
         given[cid] = (product, narrative)
     if len(given) != len(rows):
         raise JobBError("the sample's rows repeat a complaint ID")
     extra, missing = set(given) - set(listed), set(listed) - set(given)
     if extra:
-        raise JobBError(f"{len(extra)} sample rows are not in the dry run's list")
+        raise JobBError(f"{len(extra)} sample rows are not in {name}")
     if missing:
-        raise JobBError(f"{len(missing)} complaints of the dry run's list are missing from the June tables")
+        raise JobBError(f"{len(missing)} complaints of {name} are missing from the June tables")
     changed = sum(content_hash(narrative, product) != listed[cid] for cid, (product, narrative) in given.items())
     if changed:
-        raise JobBError(f"{changed} sample rows do not match their content hash in the dry run's list")
+        raise JobBError(f"{changed} sample rows do not match their content hash in {name}")
     return len(rows)
 
 
@@ -522,13 +535,40 @@ def _api_outcomes(root, rows, backend, run_target):
     caller = june_ledger.june_caller(root, backend, dict(version.settings), ledger_path=june_ledger.LEDGER,
                                      recordings=recordings)
     complaints = [Complaint(cid, narrative) for cid, _, narrative in rows]
+    before, started = caller.ledger.state()["used"], time.monotonic()
     try:
         outcomes, stopped, reason = pipeline.label_complaints(complaints, version, labels, caller.call, "api"), False, None
     except RunStopped as stop:
         outcomes, stopped, reason = stop.outcomes, True, stop.reason
     if not stopped and any(o.decision.reason == NOT_RUN_BUDGET for o in outcomes):
         stopped, reason = True, "ledger_cap"
-    return outcomes, stopped, reason
+    spent = {"ledger_tokens": caller.ledger.state()["used"] - before,
+             "run_seconds": round(time.monotonic() - started, 3)}
+    return outcomes, stopped, reason, spent
+
+
+def _results_written(root, store, rows, outcomes, model, run_info, spent, job_b_run_id):
+    """A finished real run's two results files, built, checked and written (J11, 6b part 5). False when they fail
+    their check or cannot be scored, so the run reports a stop and writes no results file (J1)."""
+    from voc import june_results, pipeline
+    from voc.june_score import JuneScoreError
+
+    version = pipeline.load_prompt_version(root, "v1")
+    try:
+        csv_text, summary = june_results.build(root, rows, outcomes, model, version, run_info,
+                                               ledger_tokens=spent["ledger_tokens"],
+                                               run_seconds=spent["run_seconds"])
+        json_text = json.dumps(summary, indent=2, sort_keys=True) + "\n"
+        june_results.check(root, csv_text, json_text)
+        failed = False
+    except (june_results.JuneResultsError, JuneScoreError):
+        failed = True
+    if failed:
+        return False
+    folder = f"{RESULTS_VOLUME}/june-{job_b_run_id}"
+    store.create(f"{folder}/{june_results.FILES[0]}", csv_text.encode("utf-8"))
+    store.create(f"{folder}/{june_results.FILES[1]}", json_text.encode("utf-8"))
+    return True
 
 
 def exit_value(run_target, complaints, count, stopped, job_b_run_id, stop_reason=None):
@@ -551,6 +591,8 @@ def run(root, values, databricks, github, store, run_sql, sleep=time.sleep, back
     checked_packages(root)
     job_a_run_id, github_run_id, job_b_run_id = parameters(values)
     run_target, _ = checked_target(root)
+    if run_target.kind == "real" and backend is None:
+        raise JobBError("a real run labels through the API only")
     settings, _ = _checked(approval.cloud_settings, root)
     commit = checked_own_run(databricks.get("/api/2.2/jobs/runs/get", {"run_id": job_b_run_id}), job_b_run_id,
                              settings["job_b_job_id"], job_a_run_id, github_run_id)
@@ -559,7 +601,7 @@ def run(root, values, databricks, github, store, run_sql, sleep=time.sleep, back
     (_, _, approved, _), _ = _checked(approval._checked_job_a, root, job_a_run_id, databricks)
     listed = checked_list(listed_for(root, run_target), run_target)
     rows = _spark_rows(run_sql, listed)[0]
-    complaints = checked_rows(listed, rows)
+    complaints = checked_rows(listed, rows, run_target.kind)
     try:
         computed, failure = figures(root, rows, 0), None
     except JobAError as err:
@@ -567,16 +609,29 @@ def run(root, values, databricks, github, store, run_sql, sleep=time.sleep, back
     if failure is not None:
         raise JobBError(failure)
     checked_figures(computed, approved)
-    refit_check(root)
+    model = refit_check(root)
     if backend is not None:
         checked_june_ledger(root, computed["worst_case_tokens"])
     answers = mock_answers(root, run_target) if backend is None else None
+    start = f"{START_FOLDER}/row{run_target.row}-{run_target.list_hash}.json"
+    if run_target.kind == "real" and store.exists(start):
+        raise JobBError(f"run log row {run_target.row} has already been started")
     marked_used(store, run_target, job_a_run_id, github_run_id, job_b_run_id)
+    if run_target.kind == "real":  # J1: before the first model call, and only once for the row
+        store.create(start, _compact({"row": run_target.row, "job_a_run_id": job_a_run_id,
+                                      "github_run_id": github_run_id, "job_b_run_id": job_b_run_id}))
     if backend is None:
         (outcomes, stopped), reason, note = _outcomes(root, rows, answers), None, DRY_RUN_NOTE
     else:
-        outcomes, stopped, reason = _api_outcomes(root, rows, backend, run_target)
+        outcomes, stopped, reason, spent = _api_outcomes(root, rows, backend, run_target)
         note = DRY_RUN_NOTE_API
+    if run_target.kind == "real":
+        run_info = {"entry_list_sha256": run_target.list_hash, "entry_code_sha256": run_target.code_hash,
+                    "job_a_run_id": job_a_run_id, "job_b_run_id": job_b_run_id, "github_run_id": github_run_id}
+        if not stopped and not _results_written(root, store, rows, outcomes, model, run_info, spent,
+                                                job_b_run_id):
+            stopped, reason = True, "error"
+        return exit_value(run_target, complaints, len(outcomes), stopped, job_b_run_id, reason)
     if not stopped:
         # Review of #99: the split is seen in the cloud, as counts only.
         accepted = sum(o.decision.label is not None for o in outcomes)
