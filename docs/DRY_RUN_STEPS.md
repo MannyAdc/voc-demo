@@ -1,10 +1,12 @@
 # The dry run: the owner's steps
 
 Spec 004, plan item 9, owner decisions of 6 and 8 November. The dry run runs the whole cloud chain once on synthetic
-data with the mock backend: the upload, Job A in Databricks, Databricks' webhook to the Azure receiver, the approval
-workflow on GitHub, the owner's approval, Job B, and the result message back to the receiver. It holds no API key
-and calls no model. The setup before it is in `docs/DATABRICKS_STEPS.md`, click by click. This page keeps the run's
-order, what each step checks, and the clean-up.
+data: the upload, Job A in Databricks, Databricks' webhook to the Azure receiver, the approval workflow on GitHub,
+the owner's approval, Job B, and the result message back to the receiver. Rounds 1 to 3 used the mock backend and
+called no model. From round 4, Job B labels the 8 synthetic complaints through the API, with the cloud workspace's
+key and the June ledger, so they are proven in the cloud before June (owner decision, 10 November, option A). The
+setup before it is in `docs/DATABRICKS_STEPS.md`, click by click. This page keeps the run's order, what each step
+checks, and the clean-up.
 
 ## Before the dry run, in this order
 
@@ -21,41 +23,48 @@ to `main` from the upload until Job B ends: Job A runs `main` from the upload, t
 from `main` when the receiver starts it, and Job B refuses a GitHub run made from another commit than the one it
 runs (review of #99).
 
-## Before round 3, in this order
+## Before round 4, in this order
 
 Round 1 ran on 9 November and stopped at the approval workflow's check of Job A's run. Round 2 ran on 10 November
-and stopped at Job B's check of its own run, which looked for its commit on the run, where Databricks does not keep
-it. Round 3's pull request fixed that check, and round 3 passed every step on 10 November. These steps were done before round 3, and stay here as its record:
+and stopped at Job B's check of its own run. Round 3's pull request fixed that check, and round 3 passed every step
+on 10 November, with the mock backend. The pull requests of 6b then changed the frozen code: Job B's packages, the
+refit, the June ledger, the API, the results files and the clean-up. So round 4 runs that code once, with new
+`SYN-94` IDs, before the real run.
 
-- **Round 3's row is merged.** After round 3's pull request is merged, Claude opens a pull request with round 3's
-  row in `runs/JUNE_RUNS.md` (step 4). Upload nothing before it is merged: until then the last row is round 2's,
+- **Round 4's row is merged.** After round 4's pull request is merged, Claude opens a pull request with round 4's
+  row in `runs/JUNE_RUNS.md` (step 4). Upload nothing before it is merged: until then the last row is round 3's,
   and Job A refuses it, since its code is no longer the code on `main`.
 - **Any other open pull request is merged first, or waits.** Every pull request the owner means to merge before
-  round 3 is merged before the upload. Anything else waits until Job B ends (review of #103).
-- **Job A's trigger stays paused.** It was paused again after 01:17 on 10 November. To check: in Databricks, in the left
-  menu, click **Jobs & Pipelines**, then Job A, `voc-june-job-a`. On the right side, **Schedules & Triggers** says
+  round 4 is merged before the upload. Anything else waits until Job B ends (review of #103).
+- **Job B's settings match its file.** Since round 3, `cloud/job_b.yml` stops Job B after three hours, not one
+  (owner decision, 10 November). In your browser, open
+  `https://github.com/MannyAdc/voc-demo/blob/main/cloud/job_b.yml` and click **Copy raw file**. In Databricks, in
+  the left menu, click **Jobs & Pipelines**, then `voc-june-job-b`. Click the **⋮** just left of the grey
+  **Run now** button, then the **YAML** item. Click inside the editor, press Ctrl+A, then Ctrl+V. Click **Save**.
+  Check: the name is still `voc-june-job-b`, **Schedules & Triggers** shows no trigger, and **Run as** shows your own
+  account.
+- **The robot can start Job B.** On the same page, on the right side, scroll to **Permissions**:
+  `voc-june-runner` shows **Can Manage Run**. If it shows anything else, click **Edit permissions** just below the
+  list, choose **Can Manage Run** next to it, and click **Save**. Never **Can Manage** or **Is Owner**. In round 2
+  it showed **Can View**, and Databricks refused to start Job B (HTTP 403).
+- **Job A's trigger stays paused.** The owner paused it again after round 3, before 10:58 on 10 November. To check:
+  in **Jobs & Pipelines**, click Job A, `voc-june-job-a`. On the right side, **Schedules & Triggers** says
   **Paused**. Leave it so until step 6.
-- **The robot can start Job B.** In **Jobs & Pipelines**, click `voc-june-job-b`. On the right side, scroll to
-  **Permissions** (as on Job A's page, seen on 10 November): `voc-june-runner` shows **Can Manage Run**. If it shows anything
-  else, click **Edit permissions** just below the list, choose **Can Manage Run** next to it, and click **Save**. Never **Can Manage** or **Is Owner**. In round 2 it showed **Can View**, and
-  Databricks refused to start Job B (HTTP 403).
-- **Delete round 2's zip.** In the left menu, click **Catalog**, then `workspace`, then `default`, then `voc_raw`,
-  then the folder `incoming`. On the row of `syn_june_dry_run_r2.zip`, click the ⋮ at the right end of the row,
-  then **Delete**, and confirm. The folder `incoming` itself stays. If the menu has no **Delete**, stop and tell
-  Claude.
-- **Delete round 2's CSV.** The same way, in the folder `june` of `voc_raw`, delete `syn_june_dry_run_r2.csv`, and
-  nothing else. Open no other file in `voc_raw`, since it holds real complaint text.
-- **Drop every table and view in the `voc_june` schema** (a schema is a folder that holds tables and volumes). In
-  **Catalog**, click `workspace`, then `voc_june`. For each item it lists: click the item, click the ⋮ at the top
-  right of its page, then **Delete**, and confirm. If the menu has no **Delete**, stop and tell Claude. Check:
-  `voc_june` lists nothing. The schema itself stays. Job A's next run builds the tables again.
-- **Application Insights stays on** until round 3 ends (owner decision, 9 November, until the dry run ends). Step
-  16 removes it.
+- **Round 3's files and tables are gone.** The owner deleted round 3's zip and CSV and dropped `voc_june`'s four
+  objects after round 3, on 10 November. To check: in the left menu, click **Catalog**, then `workspace`, then
+  `default`, then `voc_raw`, then the folder `incoming`, which lists nothing. In the folder `june` of `voc_raw`,
+  `syn_june_dry_run_r3.csv` is not listed. Open no file in `voc_raw`, since it holds real complaint text. Then click
+  `workspace`, then `voc_june`, which lists nothing. If round 3's zip or CSV is still there, delete it: on its row,
+  click the ⋮ at the right end, then **Delete**, and confirm. If `voc_june` lists anything, drop every table and
+  view in the `voc_june` schema: click the item, click the ⋮ at the top right of its page, then **Delete**, and
+  confirm. If a menu has no **Delete**, stop and tell Claude.
+- **Application Insights is off.** The owner removed it after round 3, on 10 November. Round 4 needs it only for a
+  diagnosis (step 16).
 
 ## The run
 
 5. On the laptop, in the repo's folder:
-   `uv run --native-tls --locked python scripts/make_dry_run.py --round 3 <a folder outside the repo>`. It prints
+   `uv run --native-tls --locked python scripts/make_dry_run.py --round 4 <a folder outside the repo>`. It prints
    the zip's name, size and SHA-256, which must be the pin's in `config/june_dry_run.toml`.
 6. In Databricks, check that the volume's `incoming` folder is empty, then unpause Job A's trigger.
 7. Upload the zip to the volume's `incoming` folder. Job A starts on its own.
@@ -64,9 +73,11 @@ it. Round 3's pull request fixed that check, and round 3 passed every step on 10
    minutes of Job A ending green, the webhook did not get through. Tell Claude. The way on is J8's fallback: the owner
    starts `June approval` by hand on `main` with Job A's run ID.
 9. The workflow's first job prints the figures: 8 complaints. Approve `june-run` on GitHub.
-10. The workflow starts Job B. Job B checks the approval and Job A's run again, marks both used, and labels the 8
-    complaints with the mock answers. Its results folder holds only `DRY_RUN.txt`, which ends with the counts:
-    `Labelled: 8. Accepted: 7. Quarantined: 1.`
+10. The workflow starts Job B. Job B checks the approval and Job A's run again, marks both used, refits the July
+    model and checks it, and labels the 8 complaints through the API and the June ledger. Its results folder holds
+    only `DRY_RUN.txt`. The note says Job B labelled with the API, then gives `Labelled: 8.` with the accepted and
+    quarantined counts. The model decides those, so any split of the 8 is fine. Rounds 1 to 3, with the mock
+    answers, showed `Accepted: 7. Quarantined: 1.` The note's last line is the clean-up's, below.
 11. The workflow posts the result message. In the receiver's storage account, the `juneevents` table holds a
     `result` row for the workflow's run with `result_state` `SUCCESS`, and `june-events-poison` is empty.
 12. Pause Job A's trigger again.

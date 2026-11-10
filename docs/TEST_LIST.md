@@ -750,6 +750,12 @@ Written on 11 November 2026.
 - a stopped synthetic run and a real run clean up nothing (J11)
 - names that are not a dry run round's are never deleted, and the names come from the dry run's pin (J11)
 
+## The dry run's round 4 ([spec 004](../specs/004-june-test-and-baselines/spec.md), J1, J8), `tests/test_dry_run.py`
+
+Written on 11 November 2026, after the pull requests of 6b changed the frozen code. The other dry run tests read the round from the pin, so they cover round 4's CSV, list, pin and steps with no change.
+
+- when the frozen code changed after the last synthetic row, the pin names the next round, so its CSV has new IDs (J1, J8)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
