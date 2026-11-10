@@ -1320,3 +1320,150 @@ def test_J11_a_real_sample_row_with_a_synthetic_id_is_refused(monkeypatch):
     listed = {"3141592": "a" * 64}
     with pytest.raises(job_b.JobBError, match="^the sample holds an ID that is not a CFPB complaint ID$"):
         job_b.checked_rows(listed, [("SYN-7", "Mortgage", "A synthetic text.")], "real")
+
+
+# Pull request 6b, part 7: after a finished synthetic run, Job B cleans up that round's files and the June tables
+# (owner decision of 10 November). Only exact names, never a real run, and it never fails the run.
+
+
+class SQLLog:
+    """Spark as Job B's SQL runner sees it: the sample's rows for the read, and a log of every other statement."""
+
+    def __init__(self, rows=ROWS, broken=()):
+        self.rows, self.statements, self.broken = rows, [], broken
+
+    def __call__(self, sql):
+        if sql.lstrip().lower().startswith("select"):
+            return list(self.rows)
+        self.statements.append(sql)
+        if any(name in sql for name in self.broken):
+            raise RuntimeError("SYNHOSTILE")
+        return []
+
+
+def _clean_run(monkeypatch, tmp_path, sql=None, backend=None, files=None):
+    from voc import job_b, june_ledger
+    from voc.job_a import INCOMING, JUNE_FOLDER
+
+    job_b = _patched(monkeypatch)
+    monkeypatch.setattr(job_b, "_dry_run_names", lambda root: ("syn_june_dry_run_r4.zip", "syn_june_dry_run_r4.csv"))
+    monkeypatch.setattr(june_ledger, "LEDGER", str(tmp_path / "ledger_june" / "ledger.json"))
+    monkeypatch.setattr(june_ledger, "RECORDINGS_DRY", str(tmp_path / "recordings_dry"))
+    files = files or FakeFiles(existing=(f"{INCOMING}/syn_june_dry_run_r4.zip",
+                                         f"{JUNE_FOLDER}/syn_june_dry_run_r4.csv",
+                                         f"{JUNE_FOLDER}/other.csv", "/Volumes/workspace/default/voc_raw/july.csv"))
+    sql = sql or SQLLog()
+    value = json.loads(job_b.run(REPO, _values(), FakeJobs(), FakeGitHub(), job_b.VolumeStore(files), sql,
+                                 sleep=lambda s: None, backend=backend or _api_backend()))
+    return value, files, sql
+
+
+def test_J11_a_finished_synthetic_run_deletes_its_two_files_and_nothing_else(monkeypatch, tmp_path):
+    from voc.job_a import INCOMING, JUNE_FOLDER
+
+    value, files, _ = _clean_run(monkeypatch, tmp_path)
+    assert value["stopped"] is False
+    assert f"{INCOMING}/syn_june_dry_run_r4.zip" not in files.files
+    assert f"{JUNE_FOLDER}/syn_june_dry_run_r4.csv" not in files.files
+    assert f"{JUNE_FOLDER}/other.csv" in files.files and "/Volumes/workspace/default/voc_raw/july.csv" in files.files
+
+
+def test_J11_a_finished_synthetic_run_drops_exactly_the_four_june_objects(monkeypatch, tmp_path):
+    _, _, sql = _clean_run(monkeypatch, tmp_path)
+    assert sql.statements == ["DROP VIEW IF EXISTS workspace.voc_june.curated_complaints",
+                              "DROP TABLE IF EXISTS workspace.voc_june.landed_complaints",
+                              "DROP TABLE IF EXISTS workspace.voc_june.stg_complaints",
+                              "DROP TABLE IF EXISTS workspace.voc_june.test_list"]
+
+
+def test_J11_the_note_says_what_was_cleaned_up(monkeypatch, tmp_path):
+    from voc import job_b
+
+    _, files, _ = _clean_run(monkeypatch, tmp_path)
+    note = next(v for k, v in files.files.items() if k.endswith(job_b.DRY_RUN_FILE)).decode("utf-8")
+    # Changed in the green commit: the red test wrote a backslash and n where the note has a line break.
+    assert note.endswith("Cleaned up: 2 files deleted, 4 June tables and views dropped.\n")
+
+
+def test_J11_a_clean_up_failure_never_fails_the_run_and_the_note_says_what_is_left(monkeypatch, tmp_path, capsys):
+    from voc import job_b
+
+    value, files, _ = _clean_run(monkeypatch, tmp_path, sql=SQLLog(broken=("stg_complaints",)))
+    assert value["stopped"] is False and value["results_folder"] == "june-900002"
+    note = next(v for k, v in files.files.items() if k.endswith(job_b.DRY_RUN_FILE)).decode("utf-8")
+    assert note.endswith("Clean-up incomplete: 2 files deleted, 3 of 4 June tables and views dropped. Finish it by "
+                         "hand, as in docs/DRY_RUN_STEPS.md.\n")  # the line break fixed in the green commit
+    assert "SYNHOSTILE" not in note + capsys.readouterr().out
+
+
+class UnreadableAfterDelete(FakeFiles):
+    """A volume whose read fails with an error that is not NotFound for a file the clean-up has just deleted."""
+
+    def __init__(self, existing=()):
+        super().__init__(existing)
+        self.deleted = set()
+
+    def delete(self, path):
+        super().delete(path)
+        self.deleted.add(path)
+
+    def get_metadata(self, path):
+        if path in self.deleted:
+            raise type("PermissionDenied", (Exception,), {})("SYNHOSTILE")
+        return super().get_metadata(path)
+
+
+def test_J11_a_volume_read_error_in_the_clean_up_never_fails_the_run(monkeypatch, tmp_path, capsys):
+    # Review of #116, item 1: the check after a delete can raise JobBError, which must not fail a finished run.
+    from voc import job_b
+    from voc.job_a import INCOMING, JUNE_FOLDER
+
+    files = UnreadableAfterDelete(existing=(f"{INCOMING}/syn_june_dry_run_r4.zip",
+                                            f"{JUNE_FOLDER}/syn_june_dry_run_r4.csv"))
+    value, files, _ = _clean_run(monkeypatch, tmp_path, files=files)
+    assert value["stopped"] is False and value["results_folder"] == "june-900002"
+    note = next(v for k, v in files.files.items() if k.endswith(job_b.DRY_RUN_FILE)).decode("utf-8")
+    assert note.endswith("Clean-up incomplete: 0 files deleted, 4 of 4 June tables and views dropped. Finish it by "
+                         "hand, as in docs/DRY_RUN_STEPS.md.\n")
+    assert "SYNHOSTILE" not in note + capsys.readouterr().out
+
+
+def test_J11_a_stopped_synthetic_run_cleans_up_nothing(monkeypatch, tmp_path):
+    from voc.job_a import INCOMING
+    from voc.replay import StopRun
+
+    def refused(prompt, settings):
+        raise StopRun("the workspace's spend limit was reached (HTTP 400), so the run stops", reason="spend_limit")
+
+    value, files, sql = _clean_run(monkeypatch, tmp_path, backend=refused)
+    assert value["stopped"] is True and sql.statements == []
+    assert f"{INCOMING}/syn_june_dry_run_r4.zip" in files.files
+
+
+def test_J11_a_real_run_cleans_up_nothing(monkeypatch, tmp_path):
+    from voc import job_b
+
+    called = []
+    monkeypatch.setattr(job_b, "cleaned_up", lambda *args, **kwargs: called.append(1) or (0, 0, 0))
+    value, _ = _real(monkeypatch, tmp_path, built=[])
+    assert value["stopped"] is False and called == []
+
+
+@pytest.mark.parametrize("names", [("syn_june_dry_run_r4.zip", "../voc_raw/july.csv"),
+                                   ("june.zip", "syn_june_dry_run_r4.csv"),
+                                   ("syn_june_dry_run_r4.zip", "syn_june_dry_run_r4.zip")])
+def test_J11_names_that_are_not_a_dry_run_round_s_are_never_deleted(monkeypatch, tmp_path, names):
+    from voc import job_b
+    from voc.job_a import INCOMING, JUNE_FOLDER
+
+    files = FakeFiles(existing=(f"{INCOMING}/{names[0]}", f"{JUNE_FOLDER}/{names[1]}"))
+    deleted, _, _ = job_b.cleaned_up(REPO, job_b.VolumeStore(files), SQLLog(), names=names)
+    assert deleted == 0 and len(files.files) == 2
+
+
+def test_J11_the_dry_run_s_names_come_from_its_pin():
+    from voc import job_b
+    from voc.job_a import pin_for
+
+    pin = pin_for(REPO, "synthetic")
+    assert job_b._dry_run_names(REPO) == (pin["zip_file_name"], pin["file_name"])
