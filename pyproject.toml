@@ -48,6 +48,8 @@ databricks = [
 # this group with hashes for Databricks' Python, and Job B installs it before it imports the repo's code (6b).
 cloud = [
     "anthropic==1.13.0",
+    # B16's loader, for the refit from the pinned July export (6b, part 2).
+    "duckdb==1.5.6",
     "scikit-learn==1.9.1",
 ]
 dev = [

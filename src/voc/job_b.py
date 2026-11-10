@@ -20,6 +20,8 @@ Every check runs before the first marker is written, in this order:
 6. the sample: the dry run's list, whose bytes hash to the row's list hash, with only `SYN-` IDs, checked before
    any SQL runs, then exactly its rows from the June tables, each with its content hash
 7. Job A's figures, computed again from the rows: the same counts, and no more tokens or cost than approved
+8. the refit of TF-IDF + LR from July's training rows, which must give every committed July development label
+   (`voc.june_refit`, pull request 6b)
 Then it marks the GitHub run, and the Job A run for its row, as used. A marker already there is refused, and an
 upload never overwrites. Then it labels, writes the note and returns the contract's exit value (J16 item 8).
 
@@ -86,7 +88,9 @@ def _installed_version(name):
         return None
 
 
-PIN = re.compile(r"([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s;\\]+)(?:\s.*)?")
+# A pin, then at most a marker and a line continuation (second review of #108, nit 5). A marker may not carry a
+# pip option (review of #109, nit 5).
+PIN = re.compile(r"([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s;\\]+)(?:\s*;(?:(?!--)[^\\])*)?(?:\s*\\)?")
 
 
 def checked_packages(root):
@@ -94,7 +98,7 @@ def checked_packages(root):
     #108, minor 4: a missing file, or a line at column 0 that is not a pinned package, is refused too."""
     try:
         lines = (Path(root) / REQUIREMENTS).read_text(encoding="utf-8").splitlines()
-    except OSError:
+    except (OSError, UnicodeDecodeError):  # second review of #108, nit 4
         lines = None
     if lines is None:
         raise JobBError("Job B's requirements file cannot be read")
@@ -421,6 +425,31 @@ def marked_used(store, run_target, job_a_run_id, github_run_id, job_b_run_id):
                                         "code_sha256": run_target.code_hash}))
 
 
+# 8. The refit (J7, pull request 6b)
+
+
+def july_export(root):
+    """The pinned July export, in the raw volume where the owner uploaded it (T021b)."""
+    from voc.datafile import load_pins
+
+    return f"{VOLUME}/{load_pins(Path(root) / 'config' / 'data_files.toml')['july_2026']['file_name']}"
+
+
+def refit_check(root):
+    """The refit model, once it gives every committed July development label. Its DuckDB file lives in a
+    temporary folder inside Databricks, and goes with it (J4)."""
+    import tempfile
+
+    from voc import june_refit
+
+    with tempfile.TemporaryDirectory() as work:
+        try:
+            return june_refit.refit(root, july_export(root), work)
+        except june_refit.RefitError as err:
+            message = str(err)
+    raise JobBError(message)
+
+
 # The labelling and the exit value
 
 
@@ -484,6 +513,7 @@ def run(root, values, databricks, github, store, run_sql, sleep=time.sleep):
     if failure is not None:
         raise JobBError(failure)
     checked_figures(computed, approved)
+    refit_check(root)
     answers = mock_answers(root, run_target)
     marked_used(store, run_target, job_a_run_id, github_run_id, job_b_run_id)
     outcomes, stopped = _outcomes(root, rows, answers)

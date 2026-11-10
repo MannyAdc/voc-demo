@@ -152,6 +152,8 @@ def _patched(monkeypatch, kind="synthetic", entry_kind=None, rows=ROWS, answers=
     monkeypatch.setattr(approval, "cloud_settings", lambda root: {"job_a_job_id": JOB_A, "job_b_job_id": JOB_B})
     monkeypatch.setattr(job_b, "listed_for", lambda root, t: _list_bytes(rows))
     monkeypatch.setattr(job_b, "mock_answers", lambda root, t: _answers(rows) if answers is None else answers)
+    # Pull request 6b, part 2: the refit reads the July export in the volume, so these tests stand it in.
+    monkeypatch.setattr(job_b, "refit_check", lambda root: "MODEL", raising=False)
     return job_b
 
 
@@ -838,7 +840,8 @@ def test_J11_the_cloud_group_pins_what_the_project_pins():
 
     project = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))
     cloud = project["dependency-groups"]["cloud"]
-    assert set(cloud) == {"anthropic==1.13.0", "scikit-learn==1.9.1"}
+    # Changed in 6b, part 2: duckdb, for B16's loader in the refit.
+    assert set(cloud) == {"anthropic==1.13.0", "duckdb==1.5.6", "scikit-learn==1.9.1"}
     assert set(cloud) <= set(project["project"]["dependencies"])
 
 
@@ -872,8 +875,7 @@ def test_J11_job_b_refuses_packages_other_than_the_locked_ones(monkeypatch):
 def _hashes(name):
     text = REQUIREMENTS.read_text(encoding="utf-8")
     start = text.index("\n" + name + "==") + 1
-    end = text.find("\n# via", start)
-    block = text[start:] if end < 0 else text[start:end]
+    block = text[start:]  # second review of #108, nit 3: the via lines are indented, so the next pin ends it
     following = re.search(r"\n[A-Za-z0-9]", block)
     block = block[:following.start()] if following else block
     return set(re.findall(r"--hash=sha256:([0-9a-f]{64})", block))
@@ -881,13 +883,19 @@ def _hashes(name):
 
 def test_J11_job_b_s_requirements_hold_the_whole_locked_closure_for_arm_linux():
     """Minor 3: with --no-deps, a dependency missing from the file would quietly use the workspace's own version.
-    The closure of the cloud group, walked in uv.lock with each marker read for Python 3.12 on ARM Linux."""
+    The closure of the cloud group, walked in uv.lock with each marker read for Python 3.12 on ARM Linux. uv.lock
+    records Python 3.13 and later only, so a dependency needed only below 3.13 is not in it, but the exact equality
+    below still fails if the compiled file holds one (second review of #108, minor 2)."""
     from packaging.markers import Marker
 
     environment = {"sys_platform": "linux", "platform_system": "Linux", "platform_machine": "aarch64",
                    "python_version": "3.12", "python_full_version": "3.12.3", "implementation_name": "cpython",
                    "platform_python_implementation": "CPython", "os_name": "posix"}
-    locked, wanted, todo = _locked(), set(), ["anthropic", "scikit-learn"]
+    import tomllib
+
+    group = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))["dependency-groups"]["cloud"]
+    # Changed in 6b, part 2: the walk starts from the whole cloud group, which now holds duckdb too.
+    locked, wanted, todo = _locked(), set(), [pin.split("==")[0] for pin in group]
     while todo:
         name = todo.pop()
         if name in wanted:
@@ -930,3 +938,80 @@ def test_J11_job_b_refuses_a_requirements_line_that_is_not_a_pinned_package(tmp_
 def test_J11_the_requirements_header_gives_the_exact_commands():
     text = REQUIREMENTS.read_text(encoding="utf-8")
     assert "uv export --frozen --only-group cloud --no-emit-project --no-hashes" in text and "<" not in text
+# Pull request 6b, part 2: the refit is one of Job B's checks, so it runs before any marker (J7, J11).
+
+
+def test_J11_job_b_refits_and_checks_july_before_it_marks_anything(monkeypatch):
+    job_b = _patched(monkeypatch)
+    order = []
+    monkeypatch.setattr(job_b, "refit_check", lambda root: order.append(("refit", root)) or "MODEL")
+    files = FakeFiles()
+    upload = files.upload
+    files.upload = lambda path, contents, overwrite=None: order.append(("write", path)) or upload(path, contents,
+                                                                                                  overwrite)
+    _run(job_b, files=files)
+    assert order[0] == ("refit", REPO) and all(kind == "write" for kind, _ in order[1:])
+
+
+def test_J11_a_refused_refit_stops_job_b_before_any_marker(monkeypatch):
+    from voc import june_refit
+    from voc import job_b as module
+
+    real = module.refit_check
+    job_b = _patched(monkeypatch)
+
+    def refused(root, export, work):
+        raise june_refit.RefitError("the refit TF-IDF + LR gives 1 of 370 July development labels other than the "
+                                    "committed ones")
+
+    # The refusal comes from the refit itself, so Job B's own check gives it as its refusal.
+    monkeypatch.setattr(job_b, "refit_check", real)
+    monkeypatch.setattr(june_refit, "refit", refused)
+    files = FakeFiles()
+    with pytest.raises(job_b.JobBError, match="^the refit TF-IDF \\+ LR gives 1 of 370"):
+        _run(job_b, files=files)
+    assert not files.files
+
+
+# The second review of #108, nits 4 and 5, fixed in pull request 6b, part 2 (owner decision, option A)
+
+
+def test_J11_job_b_refuses_a_requirements_file_that_is_not_utf_8(tmp_path):
+    from voc import job_b
+
+    (tmp_path / "cloud" / "job_b").mkdir(parents=True)
+    (tmp_path / "cloud" / "job_b" / "requirements.txt").write_bytes(b"h11==0.16.0 \xff\n")
+    with pytest.raises(job_b.JobBError, match="^Job B's requirements file cannot be read$"):
+        job_b.checked_packages(tmp_path)
+
+
+@pytest.mark.parametrize("line", ["h11==0.16.0 junk", "h11==0.16.0 \\ junk", "h11==0.16.0 --hash"])
+def test_J11_job_b_refuses_text_after_a_pin_that_is_not_a_marker_or_a_continuation(tmp_path, line):
+    from voc import job_b
+
+    (tmp_path / "cloud" / "job_b").mkdir(parents=True)
+    (tmp_path / "cloud" / "job_b" / "requirements.txt").write_text(line + "\n", encoding="utf-8")
+    with pytest.raises(job_b.JobBError, match="^Job B's requirements file has a line that is not a pinned package$"):
+        job_b.checked_packages(tmp_path)
+
+
+@pytest.mark.parametrize("line", ["h11==0.16.0 \\", "h11==0.16.0 ; sys_platform != 'emscripten' \\", "h11==0.16.0"])
+def test_J11_job_b_takes_a_pin_with_a_marker_or_a_continuation(tmp_path, monkeypatch, line):
+    from voc import job_b
+
+    (tmp_path / "cloud" / "job_b").mkdir(parents=True)
+    (tmp_path / "cloud" / "job_b" / "requirements.txt").write_text(line + "\n", encoding="utf-8")
+    monkeypatch.setattr(job_b, "_installed_version", lambda name: "0.16.0")
+    job_b.checked_packages(tmp_path)
+
+
+# The review of #109, nit 5 (owner decision: fix): a marker may not carry a pip option.
+
+
+def test_J11_job_b_refuses_a_marker_that_carries_a_pip_option(tmp_path):
+    from voc import job_b
+
+    (tmp_path / "cloud" / "job_b").mkdir(parents=True)
+    (tmp_path / "cloud" / "job_b" / "requirements.txt").write_text("h11==0.16.0 ; --index-url x\n", encoding="utf-8")
+    with pytest.raises(job_b.JobBError, match="^Job B's requirements file has a line that is not a pinned package$"):
+        job_b.checked_packages(tmp_path)

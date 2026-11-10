@@ -672,6 +672,19 @@ Written on 10 November 2026, after the probes in the workspace.
 - Job B refuses packages other than the locked ones, naming each, before any other check (J11)
 - in the green commit: between a change to the frozen code and its round's row, Job A refuses the checkout, and the dry run's checkout copies the requirements file (J1)
 
+## Pull request 6b, part 2: Job B's refit of TF-IDF + LR ([spec 004](../specs/004-june-test-and-baselines/spec.md), J7, J11), `tests/test_june_refit.py`, `tests/test_job_b.py`
+
+Written on 10 November 2026.
+
+- the refit reproduces the committed development labels, and refuses with the count when one differs (J7)
+- committed labels that are not the development list's are refused (J7)
+- an export that is not the pinned one is refused, and a training row whose text is not its list's is refused (J11)
+- the refit reads only training and development rows, never a test row (J2, J11)
+- a loader failure is refused with its type only (J5)
+- the refit uses the frozen settings and the committed development labels, the July pin's file in the raw volume, and the laptop's duckdb (J7, J11)
+- Job B refits before it marks anything, and a refused refit stops it before any marker (J11)
+- from the second review of #108: a requirements file that is not UTF-8, or text after a pin that is not a marker or a continuation, is refused, and a pin with a marker or a continuation is taken (J11)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
