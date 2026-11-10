@@ -180,6 +180,9 @@ def _dry_root(tmp_path, kind="synthetic", dry_ids=None, with_files=False):
         shutil.copyfile(REPO / "results" / "eval" / "v1_test.json", root / "results" / "eval" / "v1_test.json")
         (root / "cloud" / "job_b").mkdir(parents=True)
         shutil.copyfile(ANSWERS, root / "cloud" / "job_b" / "dry_run_answers.json")
+        # Changed in pull request 6b, part 1: Job B checks its installed packages against this file first.
+        shutil.copyfile(REPO / "cloud" / "job_b" / "requirements.txt",
+                        root / "cloud" / "job_b" / "requirements.txt")
         (root / "config" / "june_cloud.toml").write_text("job_a_job_id = 800001\njob_b_job_id = 800002\n",
                                                          encoding="utf-8")
     listed = hashlib.sha256((root / "splits" / "june_dry" / "june_dry.csv").read_bytes()).hexdigest()
@@ -662,7 +665,8 @@ def test_J1_the_run_log_s_first_row_is_round_1_s():
     assert row.list_hash == "0cc696205a81ce55bfe505f3ff83e2bf1e1e770ecad0167d63cf9fa027f89cbf"
     assert row.code_hash != code_hash(REPO) and row.list_hash != dry_run_list_hash(REPO)
     # Review of #102, nit 7: Job A takes the checkout only once its last row is this round's.
-    if f"round {ROUND}" in entries[-1].reason:
+    # Changed in pull request 6b, part 1: and only while that row names the checkout's frozen code.
+    if f"round {ROUND}" in entries[-1].reason and entries[-1].code_hash == code_hash(REPO):
         checked_target(REPO)
     else:
         with pytest.raises(JobAError, match="names a June list other than|not the frozen code"):
@@ -680,8 +684,11 @@ def test_J1_the_run_log_s_last_row_is_this_round_s():
     last = entries[-1]
     # Changed in round 3's pull request: between a round's code pull request and its row pull request, the last row is
     # the round before's, and Job A refuses the checkout until this round's row is added.
-    if not re.search(rf"\bround {ROUND}\b", last.reason):
-        assert re.search(rf"\bround {ROUND - 1}\b", last.reason)
+    # Changed in pull request 6b, part 1: the same holds after any change to the frozen code before its round's row,
+    # so the pull requests of 6b share one dry run round at their end. Job A still refuses the checkout meanwhile.
+    this_round = re.search(rf"\bround {ROUND}\b", last.reason)
+    if not this_round or last.code_hash != code_hash(REPO):
+        assert this_round or re.search(rf"\bround {ROUND - 1}\b", last.reason)
         with pytest.raises(JobAError, match="names a June list other than|not the frozen code"):
             checked_target(REPO)
         return

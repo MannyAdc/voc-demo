@@ -44,6 +44,12 @@ public = [
 databricks = [
     "dbt-databricks==1.13.0",
 ]
+# Spec 004, J11: Job B's packages in the cloud, pinned as above. `cloud/job_b/requirements.txt` is compiled from
+# this group with hashes for Databricks' Python, and Job B installs it before it imports the repo's code (6b).
+cloud = [
+    "anthropic==1.13.0",
+    "scikit-learn==1.9.1",
+]
 dev = [
     "pytest>=9.1.1",
 ]

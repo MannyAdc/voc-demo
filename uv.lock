@@ -2135,6 +2135,10 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+cloud = [
+    { name = "anthropic" },
+    { name = "scikit-learn" },
+]
 databricks = [
     { name = "dbt-databricks" },
 ]
@@ -2162,6 +2166,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+cloud = [
+    { name = "anthropic", specifier = "==1.13.0" },
+    { name = "scikit-learn", specifier = "==1.9.1" },
+]
 databricks = [{ name = "dbt-databricks", specifier = "==1.13.0" }]
 dev = [{ name = "pytest", specifier = ">=9.1.1" }]
 public = [

@@ -8,6 +8,8 @@ explains itself (owner decision, 8 November). The real labelling, its ledger, it
 scoring and the results files come in pull request 6b.
 
 Every check runs before the first marker is written, in this order:
+0. its packages: every version the notebook installed is the one in `cloud/job_b/requirements.txt` (pull
+   request 6b)
 1. its parameters, exactly the two run IDs and its own run ID, each a whole number (J16 item 1)
 2. the run log's last row, through Job A's checks, and only a synthetic first row until pull request 6b
 3. its own run: Job B's job, running, with exactly the two run IDs, and the commit it runs
@@ -68,6 +70,44 @@ def _checked(function, *args):
     except approval.ApprovalError as err:
         message = str(err)
     raise JobBError(message)
+
+
+# 0. Its packages
+
+REQUIREMENTS = Path("cloud") / "job_b" / "requirements.txt"
+
+
+def _installed_version(name):
+    from importlib import metadata
+
+    try:
+        return metadata.version(name)
+    except metadata.PackageNotFoundError:
+        return None
+
+
+PIN = re.compile(r"([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s;\\]+)(?:\s.*)?")
+
+
+def checked_packages(root):
+    """Every package of Job B's requirements file is installed at its pinned version (pull request 6b). Review of
+    #108, minor 4: a missing file, or a line at column 0 that is not a pinned package, is refused too."""
+    try:
+        lines = (Path(root) / REQUIREMENTS).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        lines = None
+    if lines is None:
+        raise JobBError("Job B's requirements file cannot be read")
+    wrong = []
+    for line in lines:
+        if line and not line[0].isspace() and not line.startswith("#"):
+            pin = PIN.fullmatch(line)
+            if pin is None:
+                raise JobBError("Job B's requirements file has a line that is not a pinned package")
+            if _installed_version(pin.group(1)) != pin.group(2):
+                wrong.append(pin.group(1))
+    if wrong:
+        raise JobBError("Job B's packages are not the locked versions: " + ", ".join(sorted(wrong)))
 
 
 # 1. The parameters
@@ -425,6 +465,7 @@ def run(root, values, databricks, github, store, run_sql, sleep=time.sleep):
     from voc.job_a import JobAError, figures
 
     root = Path(root)
+    checked_packages(root)
     job_a_run_id, github_run_id, job_b_run_id = parameters(values)
     run_target, _ = checked_target(root)
     settings, _ = _checked(approval.cloud_settings, root)
