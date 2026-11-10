@@ -175,16 +175,20 @@ files into the repo. It lives until the owner removes it after the June run.
    recommended. The copy script asks for `files:read`. If the check of item 7 says the sign-in was refused, tell
    Claude. The reader's real rights stay its three grants of items 2 to 4. Click **Generate**. A box shows the
    **Client ID** and the **Secret**.
-6. On the laptop, open `.env` in the repo's folder in Notepad and add two lines, `VOC_READER_CLIENT_ID=` followed by
-   the Client ID, and `VOC_READER_CLIENT_SECRET=` followed by the Secret. Check that `VOC_DATABRICKS_HOST=` with the
-   workspace's bare host is there too. Save, close Notepad, close the Databricks box and clear the clipboard.
-7. Tell Claude. Claude runs `uv run --native-tls --locked python scripts/copy_june_results.py --check-reader`,
-   which prints only yes or no: the results volume readable, the raw volume refused, the secret scope `voc-june`
-   refused, and a verdict. Only a real refusal counts, so a failure never passes.
+6. On the laptop, open `.env` in the repo's folder in Notepad and add three lines, `VOC_READER_CLIENT_ID=` followed
+   by the Client ID, `VOC_READER_CLIENT_SECRET=` followed by the Secret, and `VOC_DATABRICKS_HOST=` followed by the
+   workspace's bare host, with no `https://`. The laptop had no Databricks line before, so all three are new. Save,
+   close Notepad, close the Databricks box and clear the clipboard.
+7. In the owner's own terminal, in the repo's folder, run
+   `uv run --native-tls --locked python scripts/copy_june_results.py --check-reader`, and paste its output to
+   Claude. It prints only yes or no: the results volume readable, the raw volume refused, the secret scope
+   `voc-june` refused, and a verdict. Only a real refusal counts, so a failure never passes.
 8. When it passes, back in **Settings**, **Identity and access**, **Service principals**, `voc-results-reader`, the
-   **Configurations** tab: untick **Workspace access** and save. Tell Claude, who runs the check again. If it still
-   passes, the reader keeps no workspace access, so it cannot make or run notebooks or jobs. If it fails, tick the
-   box again and tell Claude (the robot's rule of J13, applied to the reader).
+   **Configurations** tab, under **Entitlements**: keep **Databricks SQL access** ticked, untick **Workspace access**
+   and **Consumer access**, leave **Admin access** unticked, and click **Update**. Run the check of item 7 again.
+   On 11 November it passed with these settings. With none of the four ticked, the results volume was not
+   readable. Consumer access alone was not tried. With no workspace access the reader cannot make or run notebooks
+   or jobs (the robot's rule of J13, applied to the reader).
 
 ## Step 2: GitHub, Databricks and Azure
 
