@@ -785,3 +785,79 @@ def test_J16_labelled_counts_every_complaint_with_a_decision():
     spec = (REPO / "specs" / "004-june-test-and-baselines" / "spec.md").read_text(encoding="utf-8")
     item = next(line for line in spec.splitlines() if "**8. Job B's exit value**" in line)
     assert "not run for the budget" in item
+
+
+# Pull request 6b, part 1: Job B's packages and its time limit (owner decisions, 10 November). Databricks' serverless
+# Python is 3.12 with older scikit-learn, numpy and scipy, and no anthropic (the probe of 10 November), so Job B
+# installs the laptop's locked versions, checked by their hashes, before it imports any code of the repo.
+
+REQUIREMENTS = REPO / "cloud" / "job_b" / "requirements.txt"
+
+
+def _locked():
+    import tomllib
+
+    lock = tomllib.loads((REPO / "uv.lock").read_text(encoding="utf-8"))
+    return {p["name"]: p for p in lock["package"]}
+
+
+def _required():
+    pins = {}
+    for line in REQUIREMENTS.read_text(encoding="utf-8").splitlines():
+        if line and not line[0].isspace() and not line.startswith("#"):
+            name, _, rest = line.partition("==")
+            pins[name.strip()] = rest.split()[0].rstrip("\\").strip()
+    return pins
+
+
+def test_J11_job_b_stops_after_three_hours():
+    """The laptop labelled 1,909 complaints in 3,847 seconds, so June's 2,073 take about 70 minutes, over the old
+    hour. The time limit changes no token use (owner decision, 10 November)."""
+    job = yaml.safe_load(JOB.read_text(encoding="utf-8"))["resources"]["jobs"]["voc_june_job_b"]
+    assert job["timeout_seconds"] == 10800
+
+
+def test_J11_job_b_s_requirements_pin_every_package_at_its_locked_version_with_hashes():
+    locked, pins = _locked(), _required()
+    assert {"anthropic", "scikit-learn", "numpy", "scipy", "joblib", "threadpoolctl", "httpx"} <= set(pins)
+    for name, version in pins.items():
+        assert locked[name]["version"] == version, name
+    text = REQUIREMENTS.read_text(encoding="utf-8")
+    assert "--only-group cloud" in text and "--no-hashes" not in text
+    for name in pins:
+        start = text.index("\n" + name + "==")
+        block = text[start:text.find("\n", text.find("--hash", start)) + 1]
+        assert "--hash=sha256:" in block, name
+
+
+def test_J11_the_cloud_group_pins_what_the_project_pins():
+    import tomllib
+
+    project = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))
+    cloud = project["dependency-groups"]["cloud"]
+    assert set(cloud) == {"anthropic==1.13.0", "scikit-learn==1.9.1"}
+    assert set(cloud) <= set(project["project"]["dependencies"])
+
+
+def test_J11_the_notebook_installs_the_locked_packages_before_it_imports_the_repo_s_code():
+    text = NOTEBOOK.read_text(encoding="utf-8")
+    install = text.index("--require-hashes")
+    assert "cloud/job_b/requirements.txt" in text or '"requirements.txt"' in text
+    assert install < text.index("dbutils.library.restartPython()") < text.index("from voc.job_b import")
+    assert "--no-deps" in text and "# COMMAND ----------" in text
+
+
+def test_J11_job_b_refuses_packages_other_than_the_locked_ones(monkeypatch):
+    from voc import job_b
+
+    pins = _required()
+    installed = dict(pins)
+    monkeypatch.setattr(job_b, "_installed_version", lambda name: installed.get(name))
+    job_b.checked_packages(REPO)
+    installed["scikit-learn"] = "1.7.2"
+    with pytest.raises(job_b.JobBError, match="^Job B's packages are not the locked versions: scikit-learn$"):
+        job_b.checked_packages(REPO)
+    installed["scikit-learn"] = pins["scikit-learn"]
+    installed.pop("anthropic")
+    with pytest.raises(job_b.JobBError, match="^Job B's packages are not the locked versions: anthropic$"):
+        job_b.checked_packages(REPO)
