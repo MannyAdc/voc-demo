@@ -26,8 +26,13 @@ class FakeHTTP:
         self.token_status = token_status
         self.calls = []
 
+    statuses = {}
+
     def __call__(self, url, data=None, headers=None, method="GET"):
         self.calls.append((method, url, dict(headers or {}), data))
+        for part, status in self.statuses.items():
+            if part in url:
+                return status, b""
         if url == f"https://{HOST}/oidc/v1/token":
             return self.token_status, json.dumps({"access_token": "tok" + "en", "expires_in": 3600}).encode()
         for path, names in self.folders.items():
@@ -158,3 +163,90 @@ def test_J11_the_script_takes_one_run_id_and_prints_only_names_and_counts():
     text = (REPO / "scripts" / "copy_june_results.py").read_text(encoding="utf-8")
     assert "june_copy" in text and "--check-reader" in text and "print(" in text
     assert "DATABRICKS_TOKEN" not in text and "databricks.sdk" not in text
+
+
+# The review of #114 (serious 1, minors 2 and 6, nits 8 and 9)
+
+
+def _check(raw=None, scope=403, results=("june-900002",), extra=None):
+    from voc import june_copy
+
+    http = FakeHTTP(folders={june_copy.RESULTS: list(results) if results is not None else None})
+    http.statuses = {"/api/2.0/fs/directories" + june_copy.RAW: raw if raw is not None else 403,
+                     "/api/2.0/secrets/list": scope, **(extra or {})}
+    return june_copy.check_reader(_reader(http))
+
+
+@pytest.mark.parametrize("raw", [403, 404])
+def test_J13_only_a_real_refusal_counts_as_refused(raw):
+    lines = _check(raw=raw)
+    assert "raw volume refused | yes" in lines and "secret scope refused | yes" in lines
+    assert lines[-1] == "verdict | PASS"
+
+
+@pytest.mark.parametrize("raw", [0, 401, 429, 500, 302, 200])
+def test_J13_a_raw_volume_answer_that_is_not_a_refusal_fails_the_check(raw):
+    """Serious 1: a network failure, a sign-in refusal, rate limiting, a server error or a redirect is not a
+    refusal, so the check can never pass on one."""
+    lines = _check(raw=raw)
+    assert lines[-1] == "verdict | FAIL"
+    assert "raw volume refused | yes" not in lines
+
+
+@pytest.mark.parametrize("scope", [200, 0, 500])
+def test_J13_the_reader_must_be_refused_on_the_secret_scope(scope):
+    """Minor 2: the reader has no right on the secret scope that holds the API key."""
+    lines = _check(scope=scope)
+    assert lines[-1] == "verdict | FAIL"
+
+
+def test_J13_the_secret_scope_check_lists_only_the_scope_s_names():
+    from voc import june_copy
+
+    http = FakeHTTP(folders={june_copy.RESULTS: ["june-900002"]})
+    http.statuses = {"/api/2.0/fs/directories" + june_copy.RAW: 403, "/api/2.0/secrets/list": 403}
+    june_copy.check_reader(_reader(http))
+    urls = [url for _, url, _, _ in http.calls]
+    assert f"https://{HOST}/api/2.0/secrets/list?scope=voc-june" in urls
+    assert not any("/secrets/get" in url for url in urls)
+
+
+def test_J13_a_results_volume_that_cannot_be_listed_fails_the_check():
+    assert _check(results=None)[-1] == "verdict | FAIL"
+
+
+def test_J11_a_listing_with_more_pages_is_refused(tmp_path):
+    """Nit 8: the results folder holds two files, so a second page means something else is there."""
+    from voc import june_copy
+
+    http = _http()
+    folder = _folder()
+    body = json.dumps({"contents": [{"name": "v1_june.csv"}, {"name": "v1_june.json"}], "next_page_token": "x"})
+    http.statuses = {}
+    original = http.__call__
+
+    def paged(url, data=None, headers=None, method="GET"):
+        if url.endswith("/api/2.0/fs/directories" + folder):
+            http.calls.append((method, url, dict(headers or {}), data))
+            return 200, body.encode()
+        return original(url, data, headers, method)
+
+    with pytest.raises(june_copy.CopyError, match="^the results folder's listing has more than one page$"):
+        june_copy.copy(tmp_path, 900002, _reader(paged))
+
+
+def test_J11_a_listing_item_that_is_not_an_object_is_refused(tmp_path):
+    """Nit 9."""
+    from voc import june_copy
+
+    folder = _folder()
+
+    def odd(url, data=None, headers=None, method="GET"):
+        if url.endswith("/oidc/v1/token"):
+            return 200, json.dumps({"access_token": "tok" + "en"}).encode()
+        if url.endswith("/api/2.0/fs/directories" + folder):
+            return 200, json.dumps({"contents": ["v1_june.csv"]}).encode()
+        return 404, b""
+
+    with pytest.raises(june_copy.CopyError, match="^the Files API's folder listing could not be read$"):
+        june_copy.copy(tmp_path, 900002, _reader(odd))
