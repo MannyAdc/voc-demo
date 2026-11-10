@@ -1029,3 +1029,72 @@ def test_J11_job_b_refuses_a_marker_that_holds_a_token_starting_with_a_dash(tmp_
     (tmp_path / "cloud" / "job_b" / "requirements.txt").write_text(line + "\n", encoding="utf-8")
     with pytest.raises(job_b.JobBError, match="^Job B's requirements file has a line that is not a pinned package$"):
         job_b.checked_packages(tmp_path)
+
+
+# Pull request 6b, part 3b: with a backend from the notebook, Job B labels through the June caller, the synthetic
+# sample too (owner decision of 10 November, option A), and a stop gives the contract's reason (J11, J12, J16 item 8).
+
+
+def _api_run(monkeypatch, tmp_path, backend, rows=ROWS):
+    from voc import june_ledger
+
+    job_b = _patched(monkeypatch, rows=rows)
+    monkeypatch.setattr(june_ledger, "LEDGER", str(tmp_path / "ledger_june" / "ledger.json"))
+    monkeypatch.setattr(june_ledger, "RECORDINGS", str(tmp_path / "recordings_june"))
+    monkeypatch.setattr(june_ledger, "RECORDINGS_DRY", str(tmp_path / "recordings_dry"))
+    files = FakeFiles()
+    value = job_b.run(REPO, _values(), FakeJobs(), FakeGitHub(), job_b.VolumeStore(files), lambda sql: list(rows),
+                      sleep=lambda s: None, backend=backend)
+    return json.loads(value), files
+
+
+def _api_backend(rows=ROWS):
+    from voc.replay import Answer
+
+    texts = {item["prompt"]: item["text"] for item in _answers(rows)}
+    return lambda prompt, settings: Answer(texts[prompt], 120, 30, "end_turn")
+
+
+def test_J11_with_a_backend_job_b_labels_the_synthetic_sample_through_the_june_caller(monkeypatch, tmp_path):
+    value, files = _api_run(monkeypatch, tmp_path, _api_backend())
+    assert value["stopped"] is False and value["labelled"] == len(ROWS)
+    assert len(list((tmp_path / "recordings_dry").glob("*.json"))) == len(ROWS)
+    assert not (tmp_path / "recordings_june").exists()
+    state = json.loads((tmp_path / "ledger_june" / "ledger.json").read_text(encoding="utf-8"))
+    assert state["used"] == 150 * len(ROWS) and state["calls"] == len(ROWS)
+    note = next(v for k, v in files.files.items() if k.endswith("DRY_RUN.txt")).decode("utf-8")
+    assert "with the API" in note and "mock backend" not in note
+
+
+def test_J12_a_spend_limit_stop_gives_its_reason_and_writes_no_note(monkeypatch, tmp_path):
+    from voc.replay import StopRun
+
+    def refused(prompt, settings):
+        raise StopRun("the workspace's spend limit was reached (HTTP 400), so the run stops", reason="spend_limit")
+
+    value, files = _api_run(monkeypatch, tmp_path, refused)
+    assert value["stopped"] is True and value["stop_reason"] == "spend_limit" and value["results_folder"] is None
+    assert not any(k.endswith("DRY_RUN.txt") for k in files.files)
+
+
+def test_J12_the_june_ledger_s_cap_stops_the_run_with_its_reason(monkeypatch, tmp_path):
+    from voc import june_ledger
+
+    path = tmp_path / "ledger_june" / "ledger.json"
+    june_ledger.open_ledger(REPO, path)
+    state = json.loads(path.read_text(encoding="utf-8"))
+    state["used"] = state["cap"] - 10
+    path.write_text(json.dumps(state), encoding="utf-8")
+    value, files = _api_run(monkeypatch, tmp_path, _api_backend())
+    assert value["stopped"] is True and value["stop_reason"] == "ledger_cap"
+    assert not any(k.endswith("DRY_RUN.txt") for k in files.files)
+
+
+def test_J11_the_notebook_reads_the_key_and_workspace_from_the_secret_scope_and_prints_nothing():
+    from voc import job_b
+
+    text = NOTEBOOK.read_text(encoding="utf-8")
+    assert job_b.SECRET_SCOPE == "voc-june"
+    assert 'dbutils.secrets.get(SECRET_SCOPE, "anthropic-api-key")' in text
+    assert 'dbutils.secrets.get(SECRET_SCOPE, "anthropic-workspace-id")' in text
+    assert "backend=backend" in text and "print(" not in text
