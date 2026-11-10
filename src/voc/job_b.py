@@ -586,7 +586,10 @@ def cleaned_up(root, store, run_sql, names=None):
             and csv_name.endswith(".csv")):
         for path in (f"{INCOMING}/{zip_name}", f"{JUNE_FOLDER}/{csv_name}"):
             store.delete(path)
-            deleted += not store.exists(path)
+            try:
+                deleted += not store.exists(path)
+            except JobBError:  # a failed read counts as not deleted, and the note sends the owner to finish by hand
+                pass
     dropped = 0
     for kind, name in JUNE_OBJECTS:
         try:

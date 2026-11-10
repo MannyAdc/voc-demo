@@ -1457,8 +1457,7 @@ def test_J11_names_that_are_not_a_dry_run_round_s_are_never_deleted(monkeypatch,
     from voc.job_a import INCOMING, JUNE_FOLDER
 
     files = FakeFiles(existing=(f"{INCOMING}/{names[0]}", f"{JUNE_FOLDER}/{names[1]}"))
-    deleted, dropped, total = job_b.cleaned_up(REPO, job_b.VolumeStore(files), SQLLog(),
-                                                      names=names)
+    deleted, _, _ = job_b.cleaned_up(REPO, job_b.VolumeStore(files), SQLLog(), names=names)
     assert deleted == 0 and len(files.files) == 2
 
 
