@@ -1,4 +1,24 @@
 # Databricks notebook source
+# Spec 004, J11: Job B's packages first. Databricks' serverless Python has older scikit-learn, numpy and scipy, and
+# no anthropic, so this cell installs the locked versions, checked by their hashes, and restarts Python before any
+# code of the repo is imported (pull request 6b). It prints nothing, and refuses with fixed text.
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+root = Path(os.getcwd()).resolve()
+while not (root / "pyproject.toml").exists() and root != root.parent:
+    root = root.parent
+installed = subprocess.run([sys.executable, "-m", "pip", "install", "--require-hashes", "--no-deps",
+                            "--only-binary=:all:", "-q", "-r", str(root / "cloud" / "job_b" / "requirements.txt")],
+                           capture_output=True)
+if installed.returncode != 0:
+    raise RuntimeError("Job B could not install its locked packages")
+dbutils.library.restartPython()  # noqa: F821, the notebook's own global
+
+# COMMAND ----------
+
 # Spec 004, J11 and J16: Job B's one task, as the dry run of pull request 6a. It reads its two run IDs and its own
 # run ID, makes every check of src/voc/job_b.py before it marks anything used, labels the synthetic sample with the
 # mock backend, writes the dry run's note, and returns the contract's exit value. It prints nothing else (J5).

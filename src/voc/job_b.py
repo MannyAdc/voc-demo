@@ -8,6 +8,8 @@ explains itself (owner decision, 8 November). The real labelling, its ledger, it
 scoring and the results files come in pull request 6b.
 
 Every check runs before the first marker is written, in this order:
+0. its packages: every version the notebook installed is the one in `cloud/job_b/requirements.txt` (pull
+   request 6b)
 1. its parameters, exactly the two run IDs and its own run ID, each a whole number (J16 item 1)
 2. the run log's last row, through Job A's checks, and only a synthetic first row until pull request 6b
 3. its own run: Job B's job, running, with exactly the two run IDs, and the commit it runs
@@ -68,6 +70,32 @@ def _checked(function, *args):
     except approval.ApprovalError as err:
         message = str(err)
     raise JobBError(message)
+
+
+# 0. Its packages
+
+REQUIREMENTS = Path("cloud") / "job_b" / "requirements.txt"
+
+
+def _installed_version(name):
+    from importlib import metadata
+
+    try:
+        return metadata.version(name)
+    except metadata.PackageNotFoundError:
+        return None
+
+
+def checked_packages(root):
+    """Every package of Job B's requirements file is installed at its pinned version (pull request 6b)."""
+    wrong = []
+    for line in (Path(root) / REQUIREMENTS).read_text(encoding="utf-8").splitlines():
+        if line and not line[0].isspace() and not line.startswith("#"):
+            name, _, rest = line.partition("==")
+            if _installed_version(name.strip()) != rest.split()[0]:
+                wrong.append(name.strip())
+    if wrong:
+        raise JobBError("Job B's packages are not the locked versions: " + ", ".join(sorted(wrong)))
 
 
 # 1. The parameters
@@ -425,6 +453,7 @@ def run(root, values, databricks, github, store, run_sql, sleep=time.sleep):
     from voc.job_a import JobAError, figures
 
     root = Path(root)
+    checked_packages(root)
     job_a_run_id, github_run_id, job_b_run_id = parameters(values)
     run_target, _ = checked_target(root)
     settings, _ = _checked(approval.cloud_settings, root)

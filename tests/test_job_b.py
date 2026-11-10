@@ -819,11 +819,14 @@ def test_J11_job_b_stops_after_three_hours():
 
 def test_J11_job_b_s_requirements_pin_every_package_at_its_locked_version_with_hashes():
     locked, pins = _locked(), _required()
-    assert {"anthropic", "scikit-learn", "numpy", "scipy", "joblib", "threadpoolctl", "httpx"} <= set(pins)
+    # Changed in the green commit: anthropic 1.13.0 uses httpx2, not httpx (red test's wrong fact).
+    assert {"anthropic", "scikit-learn", "numpy", "scipy", "joblib", "threadpoolctl", "httpx2"} <= set(pins)
     for name, version in pins.items():
         assert locked[name]["version"] == version, name
     text = REQUIREMENTS.read_text(encoding="utf-8")
-    assert "--only-group cloud" in text and "--no-hashes" not in text
+    # Changed in the green commit: uv.lock has no Python 3.12 builds, so the file is compiled for Databricks'
+    # platform, with the versions above still held to uv.lock's (the probes of 10 November).
+    assert "--python-version 3.12 --python-platform aarch64-manylinux_2_17 --generate-hashes" in text
     for name in pins:
         start = text.index("\n" + name + "==")
         block = text[start:text.find("\n", text.find("--hash", start)) + 1]

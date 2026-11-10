@@ -661,6 +661,17 @@ Written on 10 November 2026, after round 2 stopped at Job B's check of its own r
 - in the fix round of #105: after a retry, the approval workflow reads Job B's exit value from its latest attempt, in either order, and sends none when the attempts cannot be ordered (J16, serious 1)
 - in round 3's row pull request: the run log holds one row for round 3, synthetic, naming the list and code hashes printed on `main` after #105 merged (J1)
 
+## Pull request 6b, part 1: Job B's packages and time limit ([spec 004](../specs/004-june-test-and-baselines/spec.md), J11), `tests/test_job_b.py`, `tests/test_dry_run.py`
+
+Written on 10 November 2026, after the probes in the workspace.
+
+- Job B stops after three hours (J11)
+- Job B's requirements pin every package at uv.lock's version, with hashes, compiled for Python 3.12 on ARM (J11)
+- the `cloud` group pins what the project pins (J11)
+- the notebook installs the locked packages with `--require-hashes` and restarts Python before it imports the repo's code (J11)
+- Job B refuses packages other than the locked ones, naming each, before any other check (J11)
+- in the green commit: between a change to the frozen code and its round's row, Job A refuses the checkout, and the dry run's checkout copies the requirements file (J1)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
