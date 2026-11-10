@@ -257,7 +257,8 @@ The receiver runs without it (J9). To find a fault:
 
    The receiver logs event names, IDs and statuses only. Azure's own lines can name the app, so hide it in what
    you share.
-3. Afterwards, on the app, **Environment variables**: delete `APPLICATIONINSIGHTS_CONNECTION_STRING`, and
+3. Afterwards, on the app, **Environment variables**: delete `APPLICATIONINSIGHTS_CONNECTION_STRING` and
+   `APPINSIGHTS_INSTRUMENTATIONKEY` with the bin icon at the right end of each row (seen on 10 November), and
    `APPLICATIONINSIGHTS_AUTHENTICATION_STRING` if it is there, then **Apply** and **Confirm**. Then open
    `voc-receiver-insights` and **Delete** it.
 4. The portal may put the logbook's Log Analytics workspace in a shared default group, as on 7 November. Leave that
