@@ -2703,3 +2703,12 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - Claude started the second review on the fix of 09:34 before its commit, so a finding would not cost a second gate run. 09:37 Its findings were posted as a comment on #119. Nothing serious. One minor: step 10's list of stops left out the likeliest in a first API round, 3 complaints failing in a row (a bad key or a network fault), which stops with `error`. Claude checked: `FAILED_IN_A_ROW = 3` in `src/voc/pipeline.py`, and `RunStopped`'s default reason is `error`. Three nits: the test finds round 3's row by its text, a reflowed line left "The" alone, and the Console page's name is not checked.
 - Owner decision ("ok", 09:42): Claude's recommendation. Fix the minor and the stray "The". Skip the row lookup nit, since the round 3 row test uses the same lookup, chosen in the review of #106, and the page name nit, since the step says to tell Claude what the page is called. No third review, by the stopping rule.
 - 09:43 Fix written: step 10 names the 3 failures in a row first, with `error`, and the first paragraph is reflowed.
+- 09:58 Claude's merge verdict on #119 was MERGE, posted as a comment, and Claude marked #119 ready. 10:21 The owner merged #119 (time from GitHub).
+
+### Pull request: round 4's row
+
+- Work start, 10:25: branch `feat/dry-run-row-4`, worktree `../voc-demo-row4`, from main at `3121cbe`.
+- The hashes, from `uv run --native-tls --locked python scripts/june_hash.py --dry-run` on a clean `main` at `3121cbe`: dry run list `9d83ce9483a0bbc9f124724af11764296433ba41d1f41627628b2b003f3a3d06`, the list of #119, and frozen code `1d89976747d3d57fb070d6cdb9d2a530c2c2a7e45aef2712f526c30ec700b291` over 115 files.
+- Red commit `1f0d22c` at 10:26 (git's commit time): only `tests/test_dry_run.py`, one new test that round 4's row names the list and code hashes printed on `3121cbe`, through the gate.
+- The row's date, 2026-11-10 23:25, is in UTC, as J1 says, the time the hashes were printed. It was 10:25 local. Round 3's row stays above it.
+- 10:46 Change written, before its gate.
