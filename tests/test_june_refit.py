@@ -415,3 +415,82 @@ def test_J7_the_committed_pin_holds_counts_positions_and_a_hash_only():
     assert 0 <= positions[0] and positions[-1] < pin["terms_tied"]
     assert pin["terms_above"] + len(positions) == pin["max_features"]
     assert len(pin["vocabulary_sha256"]) == 64 and int(pin["vocabulary_sha256"], 16) >= 0
+
+
+# The review of #124 (owner decision of 12 November: fix all): a malformed pin is refused with its own message, and the
+# laptop's writer puts the old pin back when the refit check with the new one fails.
+
+
+@pytest.mark.parametrize("change", [
+    {"kept_tied_positions": [-1]}, {"kept_tied_positions": [999]}, {"kept_tied_positions": [1, 0]},
+    {"kept_tied_positions": [0, 0]}, {"kept_tied_positions": [0.0]}, {"kept_tied_positions": ["0"]},
+    {"kept_tied_positions": [True]}, {"extra": 1}, {"month": "june_2026"},
+    {"vocabulary_sha256": None},
+])
+def test_J7_a_malformed_vocabulary_pin_is_refused_with_its_own_message(tmp_path, change):
+    from voc import june_refit
+
+    root, export, _ = _july(tmp_path)
+    path = root / "config" / "june_refit_vocabulary.json"
+    _write_pin(root, {**json.loads(path.read_text(encoding="utf-8")), **change})
+    with pytest.raises(june_refit.RefitError, match=r"^the vocabulary pin is not well formed: its keys, month, "
+                                                    r"positions or counts$"):
+        june_refit.refit(root, export, tmp_path / "work")
+
+
+def test_J7_a_pin_whose_counts_do_not_make_max_features_is_refused(tmp_path):
+    """Where the tie is cut, the terms above the cut and the tied terms kept make `max_features` exactly."""
+    from voc import june_refit
+
+    limit, _, _, _ = _split_tie()
+    root, export, _ = _july(tmp_path, max_features=limit)
+    path = root / "config" / "june_refit_vocabulary.json"
+    pin = json.loads(path.read_text(encoding="utf-8"))
+    _write_pin(root, {**pin, "terms_above": pin["terms_above"] + 1})
+    with pytest.raises(june_refit.RefitError, match=r"^the vocabulary pin is not well formed"):
+        june_refit.refit(root, export, tmp_path / "work")
+
+
+def test_J7_a_pin_missing_a_key_is_refused_with_its_own_message(tmp_path):
+    from voc import june_refit
+
+    root, export, _ = _july(tmp_path)
+    path = root / "config" / "june_refit_vocabulary.json"
+    pin = json.loads(path.read_text(encoding="utf-8"))
+    del pin["count_at_cut"]
+    _write_pin(root, pin)
+    with pytest.raises(june_refit.RefitError, match=r"^the vocabulary pin is not well formed"):
+        june_refit.refit(root, export, tmp_path / "work")
+
+
+def test_J7_the_laptop_s_writer_puts_the_old_pin_back_when_the_refit_check_fails(tmp_path):
+    from voc import june_refit
+
+    labels = {r.complaint_id: r.product for r in _rows(101, 4)}
+    labels["SYN-101"] = "Debt collection" if labels["SYN-101"] == "Mortgage" else "Mortgage"
+    root, export, _ = _july(tmp_path, dev_labels=labels)
+    path = root / "config" / "june_refit_vocabulary.json"
+    old = b'{"old": "pin"}\n'
+    path.write_bytes(old)
+    with pytest.raises(june_refit.RefitError, match="other than the committed ones"):
+        june_refit.write_and_check_vocabulary_pin(root, export, tmp_path / "work")
+    assert path.read_bytes() == old
+
+
+def test_J7_the_laptop_s_writer_removes_a_new_pin_when_there_was_none_and_the_check_fails(tmp_path):
+    from voc import june_refit
+
+    labels = {r.complaint_id: r.product for r in _rows(101, 4)}
+    labels["SYN-101"] = "Debt collection" if labels["SYN-101"] == "Mortgage" else "Mortgage"
+    root, export, _ = _july(tmp_path, dev_labels=labels)
+    path = root / "config" / "june_refit_vocabulary.json"
+    path.unlink()
+    with pytest.raises(june_refit.RefitError):
+        june_refit.write_and_check_vocabulary_pin(root, export, tmp_path / "work")
+    assert not path.exists()
+
+
+def test_J7_the_laptop_s_script_uses_the_writer_that_checks():
+    text = (REPO / "scripts" / "june_refit_vocabulary.py").read_text(encoding="utf-8")
+    assert "write_and_check_vocabulary_pin(" in text and "write_vocabulary_pin(" not in text.replace(
+        "write_and_check_vocabulary_pin(", "")
