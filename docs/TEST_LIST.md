@@ -774,6 +774,18 @@ Written on 12 November 2026, after #121 made June's refit run to a strict stoppi
 - the run's steps wait for the trigger's fresh look, with 0 files in total, before the upload, since round 4's zip went up before it and started no run (J8)
 - in round 5's row pull request: the run log holds one row for round 5, synthetic, naming the list and code hashes printed on `main` after #122 merged (J1)
 
+## The refit's pinned vocabulary ([spec 004](../specs/004-june-test-and-baselines/spec.md), J5, J7), `tests/test_june_refit.py`
+
+Written on 12 November 2026, after rounds 4 and 5 of the dry run. The fixture works out its own vocabulary pin, so the tests do not check the code against itself.
+
+- the refit takes the pinned vocabulary, not the sort's pick of tied terms (J7)
+- a vocabulary whose hash is not the pin's, term counts that are not the pin's, and a pin for other settings are refused (J7)
+- the pin names the tied terms scikit-learn keeps on the machine that writes it, and the laptop's writer writes it from the July training rows (J7)
+- the committed pin holds counts, positions and a hash only, never a term (J7, B19)
+- an unreadable pin is refused with its type only (J5)
+- from the review of #124: a pin that is not well formed is refused with its own message, for its positions, keys, month, hash or counts, and the laptop's writer puts the old pin back, or removes a new one, when the refit check with the new pin fails (J7)
+- from the second review of #124: each rule on the pin's positions is checked on its own, on a fixture whose tie is cut (J7)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
