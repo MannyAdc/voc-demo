@@ -62,10 +62,11 @@ class TfidfModel:
     settings: dict
 
 
-def fit_tfidf(rows, config, tol=None):
+def fit_tfidf(rows, config, tol=None, vocabulary=None):
     """Fit on (complaint_id, split, text, label) rows. Every row must be from the training split. `tol` is the
-    solver's stopping point. With none, scikit-learn's default is kept, as in the July evaluation. Only June's refit
-    passes one (spec 004, J7)."""
+    solver's stopping point. With none, scikit-learn's default is kept, as in the July evaluation. `vocabulary` is a
+    fixed list of terms. With none, TF-IDF picks its own, as in the July evaluation. Only June's refit passes them
+    (spec 004, J7)."""
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.linear_model import LogisticRegression
 
@@ -74,7 +75,8 @@ def fit_tfidf(rows, config, tol=None):
     labels = [label for _, _, _, label in rows]
     vectorizer = TfidfVectorizer(ngram_range=(1, config["ngram_max"]), min_df=config["min_df"],
                                  max_features=config["max_features"], sublinear_tf=config["sublinear_tf"],
-                                 lowercase=config["lowercase"], token_pattern=config["token_pattern"])
+                                 lowercase=config["lowercase"], token_pattern=config["token_pattern"],
+                                 **({} if vocabulary is None else {"vocabulary": vocabulary}))
     class_weight = None if config["class_weight"] == "none" else config["class_weight"]
     classifier = LogisticRegression(C=config["C"], max_iter=config["max_iter"], solver=config["solver"],
                                     class_weight=class_weight, random_state=config["seed"],
