@@ -9,10 +9,23 @@ the file is deleted with its folder (J2, review of #109, minor 1). TF-IDF + LR i
 with the frozen settings, and must give every committed development label in `results/eval/v1_dev.csv` before
 Job B goes on.
 
+One setting is June's own: the solver's stopping point. Logistic regression is fitted step by step. Each step
+makes the model a little less wrong on the training rows, and the solver (L-BFGS) stops once the error is almost
+flat, when its steepest slope left is below `tol` (scikit-learn passes `tol` to scipy as `gtol`). It also stops,
+with no warning, once a step barely lowers the error (scipy's `ftol`, which scikit-learn fixes). At
+scikit-learn's default, 1e-4, the laptop's solver stops after 87 steps, short of the settled answer. Databricks
+runs on ARM chips and the laptop on x86, and their floating point sums can differ in the last digits, so the two
+can stop at slightly different points. In round 4 of the dry run (11 November), one of the 370 development
+labels came out different in Databricks. Run to the strict stopping point of 1e-8, the laptop's refit takes 291
+steps and gives the same 370 labels, so the check stays exact (owner decision, 12 November). A refit that has not
+settled is refused: one whose solver used all of `max_iter`, or warned that it stopped early (review of #121).
+Round 5 checks that this refusal does not stop a good refit on ARM (second review of #121).
+
 B21 and J5: nothing here prints. Every refusal holds fixed text, IDs and counts only, and carries no earlier
 exception. An error from DuckDB or scikit-learn is given by its type only, since its text could quote a row.
 """
 import csv
+import warnings
 from pathlib import Path
 
 from voc.baselines import fit_tfidf, load_tfidf_config, predict_tfidf
@@ -24,6 +37,7 @@ from voc.load import load_month
 
 MONTH = "july_2026"
 DEV_RESULTS = Path("results") / "eval" / "v1_dev.csv"
+REFIT_TOL = 1e-8  # the strict stopping point, June's refit only (J7, owner decision of 12 November)
 
 
 class RefitError(ValueError):
@@ -73,8 +87,16 @@ def refit(root, export_path, work_dir):
                   set(lists["train"]))
     dev = _step("the July development rows could not be read", _rows, db_path, splits, MONTH, "dev",
                 set(lists["dev"]))
-    model = _step("TF-IDF + LR could not be fitted", fit_tfidf,
-                  [(r.complaint_id, "train", r.narrative, r.product) for r in train], settings)
+    with warnings.catch_warnings(record=True) as warned:  # recorded, so nothing prints (B21)
+        warnings.simplefilter("always")
+        model = _step("TF-IDF + LR could not be fitted", fit_tfidf,
+                      [(r.complaint_id, "train", r.narrative, r.product) for r in train], settings, REFIT_TOL)
+    if max(model.classifier.n_iter_) >= settings["max_iter"]:
+        raise RefitError(f"the refit TF-IDF + LR did not settle within its {settings['max_iter']} solver steps")
+    from sklearn.exceptions import ConvergenceWarning
+
+    if any(issubclass(w.category, ConvergenceWarning) for w in warned):
+        raise RefitError("the refit TF-IDF + LR did not settle: its solver stopped early")
     predicted = _step("TF-IDF + LR could not label the development rows", predict_tfidf, model,
                       [r.narrative for r in dev])
     if set(committed) != {r.complaint_id for r in dev}:
