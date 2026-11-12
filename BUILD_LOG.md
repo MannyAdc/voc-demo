@@ -2782,3 +2782,7 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - Red commit `adf1fc8` at 18:52 (git's commit time): only `tests/test_dry_run.py`, one new test that round 5's row names the list and code hashes printed on `015b07a`, through the gate.
 - The row's date, 2026-11-12 07:51, is in UTC, as J1 says, the time the hashes were printed. It was 18:51 local. Round 4's row stays above it.
 - 19:11 Change written, before its gate.
+- Green commit `651434e` at 19:11 (git's commit time), through the gate. 19:24 Branch pushed and draft pull request #123 opened (time from GitHub).
+- 19:26 The fresh reviewer's findings on #123 were posted as a comment. Nothing serious. The reviewer ran `scripts/june_hash.py --dry-run` in a clean temporary worktree at `015b07a` and got the row's hashes. Two nits: the new test sits below a comment that says the tests below read the round from the pin, and "the list of #122" is a bit vague.
+- Owner decision ("ok", 19:40): move the test beside round 4's row test. Skip nit 2, since round 4's line says "the list of #119" the same way. No second review, by the stopping rule.
+- 19:40 Fix written, before its gate.
