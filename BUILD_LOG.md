@@ -2773,3 +2773,12 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - Owner decision ("ok", 18:31): fix the minor and nits 2 and 3. Skip nit 4, since it follows round 4's lasting test, and the round check is the one that matters. No second review, by the stopping rule: wording and one test line, no code change.
 - The fix: step 10 says Job B refits and checks the model, then marks both runs used. Both paragraphs say steps 13 and 14 by hand. The trigger wait test checks that the wait comes before step 7.
 - 18:32 Fix written, before its gate.
+- 18:50 Claude's merge verdict on #122 was MERGE, posted as a comment, and Claude marked #122 ready. 18:51 The owner merged #122 (time from GitHub).
+
+### Pull request: round 5's row
+
+- Work start, 18:52: branch `feat/dry-run-row-5`, worktree `../voc-demo-row5`, from main at `015b07a`.
+- The hashes, from `uv run --native-tls --locked python scripts/june_hash.py --dry-run` on a clean `main` at `015b07a`, at 18:51: dry run list `973898f58fd9d38c566f0cd2ee20161646f0c227c6e76436ce8af9e7f0cbff3a`, the list of #122, and frozen code `d8dd57560fc172b80f5c372ee653986d0892b7dd83f047fad27d44d50d9f1d15` over 115 files.
+- Red commit `adf1fc8` at 18:52 (git's commit time): only `tests/test_dry_run.py`, one new test that round 5's row names the list and code hashes printed on `015b07a`, through the gate.
+- The row's date, 2026-11-12 07:51, is in UTC, as J1 says, the time the hashes were printed. It was 18:51 local. Round 4's row stays above it.
+- 19:11 Change written, before its gate.
