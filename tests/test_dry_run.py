@@ -746,6 +746,19 @@ def test_J1_round_4_s_row_names_the_code_merged_in_119():
 # Review of #102, minor 6: the tests below read the round from the pin, so a new round rewrites no test.
 
 
+def test_J1_round_5_s_row_names_the_code_merged_in_122():
+    """Round 5's row names the dry run's list and the frozen code that `scripts/june_hash.py --dry-run` printed on
+    `main` at `015b07a`, after #122 merged, with the refit's strict stopping point of #121. The run log only grows,
+    so this stays true in later rounds."""
+    from voc.frozen import read_runs
+    rows = [e for e in read_runs(REPO / "runs" / "JUNE_RUNS.md") if "the dry run, round 5," in e.reason]
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.kind == "synthetic" and "#122" in row.reason
+    assert row.list_hash == "973898f58fd9d38c566f0cd2ee20161646f0c227c6e76436ce8af9e7f0cbff3a"
+    assert row.code_hash == "d8dd57560fc172b80f5c372ee653986d0892b7dd83f047fad27d44d50d9f1d15"
+
+
 def test_J8_each_round_has_its_own_synthetic_ids_apart_from_the_round_before():
     """A list has one first row, and the June staging table never changes a row it has built, so a round after a code
     fix gets new IDs. The round before's CSV stays, as its record."""
