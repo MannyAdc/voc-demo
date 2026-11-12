@@ -672,7 +672,8 @@ def test_J16_the_result_post_is_retried_on_a_server_error_and_a_refusal_fails_th
     approval = _patched(monkeypatch)
     receiver = FakeReceiver(statuses=[500, 503, 202])
     lines = approval.run_job(REPO, _env(), FakeDatabricks(), FakeGitHub(), receiver, sleep=lambda s: None)
-    assert len(receiver.posts) == 3 and lines[-1] == "result message: HTTP 202"
+    # Changed for the owner decision of 12 November: the post's line is now followed by the run job's last line.
+    assert len(receiver.posts) == 3 and lines[-2:] == ["result message: HTTP 202", approval.FINISHED]
     for statuses in ([400], [500, 500, 500]):
         with pytest.raises(approval.ApprovalError, match="result message"):
             approval.run_job(REPO, _env(), FakeDatabricks(), FakeGitHub(), FakeReceiver(statuses=statuses),

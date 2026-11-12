@@ -2826,3 +2826,14 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - The fix: the position cases run on the fixture whose tie is cut, two kept positions, each list breaking one rule only. The key, month and hash cases stay on the default fixture, with two more hash cases. The "removes a new pin" test matches the refusal. The refusal names the hash. Known limits says "The vocabulary is the most likely cause".
 - Claude checked the new tests catch each rule: with the order and repeat check removed, the range check removed, or the whole number check removed, in turn, on a working copy that was then put back, the position test failed each time.
 - 22:48 Fix written, before its gate.
+- Green commit `f8ccef5` at 22:49 (git's commit time), through the gate. 23:05 Claude's merge verdict on #124 was MERGE, posted as a comment, and Claude marked #124 ready. 23:18 The owner merged #124 (time from GitHub).
+- AI mistake, caught by Claude before its commit: in #124's last log lines Claude first wrote `b049c49`'s commit time as 22:16. Git gives 22:29, and Claude corrected it before committing. While writing #124's verdict, Claude nearly said this was already logged, and caught that too.
+
+### Pull request: the approval workflow fails when Job B did not finish
+
+- Work start, 23:18 on 12 November: branch `feat/approval-red-on-failure`, worktree `../voc-demo-red`, from main at `b0eb824`. This is the owner's decision of 22:36 ("change"), logged in #124.
+- Red commit `74f63f6` at 00:14 (git's commit time): only `tests/test_approval.py`, through the gate. Eight new failing tests: the run job passes with `Job B finished` as its last line when Job B finished, and fails after the post when Job B ended in `FAILED`, `TIMEDOUT`, `CANCELED` or `SUCCESS_WITH_FAILURES`, when it stopped, when its exit value cannot be read, and when the follow stops with `UNKNOWN`.
+- The change: `run_job` adds a last line after the post, `FINISHED` when Job B ended in `SUCCESS` and its exit value was read and says it did not stop, else `NOT_FINISHED`. `main` returns 1 for the run job when that line is `NOT_FINISHED`. The receiver still gets the result first, so nothing about the message changes.
+- One existing test changed: the retried post test checked that the post's line is the run job's last. It now checks the last two lines, the post's and `Job B finished`, since the new line follows the post by design.
+- Spec 004, plan item 8, says the job fails after the post unless Job B finished. Round 6's steps will say what the Actions tab shows.
+- 00:40 Change written, before its gate.
