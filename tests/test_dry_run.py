@@ -742,6 +742,19 @@ def test_J1_round_4_s_row_names_the_code_merged_in_119():
     assert row.code_hash == "1d89976747d3d57fb070d6cdb9d2a530c2c2a7e45aef2712f526c30ec700b291"
 
 
+def test_J1_round_5_s_row_names_the_code_merged_in_122():
+    """Round 5's row names the dry run's list and the frozen code that `scripts/june_hash.py --dry-run` printed on
+    `main` at `015b07a`, after #122 merged, with the refit's strict stopping point of #121. The run log only grows,
+    so this stays true in later rounds."""
+    from voc.frozen import read_runs
+    rows = [e for e in read_runs(REPO / "runs" / "JUNE_RUNS.md") if "the dry run, round 5," in e.reason]
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.kind == "synthetic" and "#122" in row.reason
+    assert row.list_hash == "973898f58fd9d38c566f0cd2ee20161646f0c227c6e76436ce8af9e7f0cbff3a"
+    assert row.code_hash == "d8dd57560fc172b80f5c372ee653986d0892b7dd83f047fad27d44d50d9f1d15"
+
+
 # The dry run's round 2 (owner decisions of 9 November, after round 1 stopped at the repair history check)
 # Review of #102, minor 6: the tests below read the round from the pin, so a new round rewrites no test.
 

@@ -16,3 +16,4 @@ of the commit that merged it. Job B refuses to score unless a row names both has
 | 2026-11-09 10:45 | synthetic | 6d619f00843fa99fb098a08d7c142c7fdb415b77d3553c7858d71acde8fce412 | 0095cfc74d9b3ded993101653f8a4486d30385b604c420d9e973ba770a5c9f07 | the dry run, round 2, after the fixes of #102 |
 | 2026-11-09 22:24 | synthetic | 92c133d48483da34a499692d47e0aa8eedf31cbe687435a72c6870a9dd24fc94 | 634c46d3d006c201b98b7a5772fc3d38d8b2eb15621e55703a6e5439c8c866b6 | the dry run, round 3, after the fixes of #105 |
 | 2026-11-10 23:25 | synthetic | 9d83ce9483a0bbc9f124724af11764296433ba41d1f41627628b2b003f3a3d06 | 1d89976747d3d57fb070d6cdb9d2a530c2c2a7e45aef2712f526c30ec700b291 | the dry run, round 4, on the code of 6b, after #119 |
+| 2026-11-12 07:51 | synthetic | 973898f58fd9d38c566f0cd2ee20161646f0c227c6e76436ce8af9e7f0cbff3a | d8dd57560fc172b80f5c372ee653986d0892b7dd83f047fad27d44d50d9f1d15 | the dry run, round 5, on the refit's strict stopping point, after #122 |

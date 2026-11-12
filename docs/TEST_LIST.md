@@ -772,6 +772,7 @@ Written on 12 November 2026, after #121 made June's refit run to a strict stoppi
 
 - round 4's row names the frozen code before #121, so the pin names round 5 or a later round, with new IDs (J1, J8)
 - the run's steps wait for the trigger's fresh look, with 0 files in total, before the upload, since round 4's zip went up before it and started no run (J8)
+- in round 5's row pull request: the run log holds one row for round 5, synthetic, naming the list and code hashes printed on `main` after #122 merged (J1)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
