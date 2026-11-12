@@ -23,54 +23,58 @@ to `main` from the upload until Job B ends: Job A runs `main` from the upload, t
 from `main` when the receiver starts it, and Job B refuses a GitHub run made from another commit than the one it
 runs (review of #99).
 
-## Before round 5, in this order
+## Before round 6, in this order
 
 Round 1 ran on 9 November and stopped at the approval workflow's check of Job A's run. Round 2 ran on 10 November
-and stopped at Job B's check of its own run. Round 3 passed every step on 10 November, with the mock backend. Round
-4 ran on 11 November, with the API, on the code of 6b. Every step passed up to Job B's refit check, where the refit
-TF-IDF + LR gave 1 of the 370 July development labels other than the committed ones. Job B stopped there, before
-any model call, and marked nothing used. #121 then made June's refit run to a strict stopping point, which changed
-the frozen code (spec 004, Known limits). So round 5 runs that code once, with new `SYN-95` IDs, before the real run.
+and stopped at Job B's check of its own run. Round 3 passed every step on 10 November, with the mock backend.
+Rounds 4 and 5 ran on 11 and 12 November, with the API. Every step passed up to Job B's refit check, where the
+refit TF-IDF + LR gave 1 of the 370 July development labels other than the committed ones. Job B stopped there,
+before any model call, and marked nothing used. Round 5 showed that #121's strict stopping point was not the cause.
+The most likely cause is TF-IDF's pick among tied terms, which differs between chips, so #124 pins the laptop's
+vocabulary. #125 makes the approval workflow's run job show a red cross when Job B did not finish. Both changed
+the frozen code (spec 004, Known limits), so round 6 runs that code once, with new `SYN-96` IDs, before the real
+run.
 
-- **Round 5's row is merged.** After round 5's pull request is merged, Claude opens a pull request with round 5's
-  row in `runs/JUNE_RUNS.md` (step 4). Upload nothing before it is merged: until then the last row is round 4's,
+- **Round 6's row is merged.** After round 6's pull request is merged, Claude opens a pull request with round 6's
+  row in `runs/JUNE_RUNS.md` (step 4). Upload nothing before it is merged: until then the last row is round 5's,
   and Job A refuses it, since its code is no longer the code on `main`.
 - **Any other open pull request is merged first, or waits.** Every pull request the owner means to merge before
-  round 5 is merged before the upload. Anything else waits until Job B ends (review of #103).
+  round 6 is merged before the upload. Anything else waits until Job B ends (review of #103).
 - **Job B's settings still match its file.** `cloud/job_b.yml` has not changed since you pasted it before round 4,
   on 11 November. To check: in Databricks, in the left menu, click **Jobs & Pipelines**, then `voc-june-job-b`.
   Click the **⋮** just left of the grey **Run now** button, then the **YAML** item. Find the line
   `timeout_seconds: 10800`, and close the editor without saving. **Schedules & Triggers** shows no trigger, **Run
   as** shows your own account, and on the right side the **Job ID** is still `111509808656471`, as `job_b_job_id`
   in `config/june_cloud.toml`.
-- **The money side.** Round 5's 8 calls go through the June ledger in the volume, the same ledger as the real run,
+- **The money side.** Round 6's 8 calls go through the June ledger in the volume, the same ledger as the real run,
   with its cap of 40,000,000 tokens (`june_cap_tokens` in `config/budget.toml`). They should use about 13,000
-  tokens, from the laptop's expected use of about 3,000,000 tokens for 1,909 complaints. Round 4 stopped before
-  any call, so it used none, and the Console showed $0 for the key before it. The hard stop is the $5 monthly
-  spend limit of the Claude Console workspace `voc-june-cloud`. A call that uses more than its reservation would
-  block the June ledger until the owner decides how to clear it (spec 004, Known limits). `DRY_RUN.txt` holds no
-  token count, so step 10 checks the cost in the Console.
+  tokens, from the laptop's expected use of about 3,000,000 tokens for 1,909 complaints. Rounds 4 and 5 stopped
+  before any call, so they used none, and the Console showed $0 for the key before round 5. The hard stop is the
+  $5 monthly spend limit of the Claude Console workspace `voc-june-cloud`. A call that uses more than its
+  reservation would block the June ledger until the owner decides how to clear it (spec 004, Known limits).
+  `DRY_RUN.txt` holds no token count, so step 10 checks the cost in the Console.
 - **The robot can start Job B.** On the same page, on the right side, scroll to **Permissions**:
-  `voc-june-runner` shows **Can Manage Run**, as it did before round 4. If it shows anything else, click **Edit
-  permissions** just below the list, choose **Can Manage Run** next to it, and click **Save**. Never **Can
+  `voc-june-runner` shows **Can Manage Run**, as it did before rounds 4 and 5. If it shows anything else, click
+  **Edit permissions** just below the list, choose **Can Manage Run** next to it, and click **Save**. Never **Can
   Manage** or **Is Owner**. In round 2 it showed **Can View**, and Databricks refused to start Job B (HTTP 403).
-- **Job A's trigger stays paused.** The owner paused it after round 4 and confirmed it at 13:03 on 11 November. To
-  check: in **Jobs & Pipelines**, click Job A, `voc-june-job-a`. On the right side, **Schedules & Triggers** says
-  **Paused**. Leave it so until step 6.
-- **Round 4's files and tables are gone.** The owner deleted round 4's zip and CSV and dropped `voc_june`'s three
-  tables and one view after round 4, by 13:01 on 11 November. To check: in the left menu, click **Catalog**, then
+- **Job A's trigger stays paused.** The owner paused it after round 5 and reported the clean-up done at 21:28 on
+  12 November. To check: in **Jobs & Pipelines**, click Job A, `voc-june-job-a`. On the right side, **Schedules &
+  Triggers** says **Paused**. Leave it so until step 6.
+- **Round 5's files and tables are gone.** The owner deleted round 5's zip and CSV and dropped `voc_june`'s three
+  tables and one view after round 5, by 21:28 on 12 November. To check: in the left menu, click **Catalog**, then
   `workspace`, then `default`, then `voc_raw`, then the folder `incoming`, which lists nothing. In the folder `june`
-  of `voc_raw`, `syn_june_dry_run_r4.csv` is not listed. Open no file in `voc_raw`, since it holds real complaint
-  text. Then click `workspace`, then `voc_june`, which lists nothing. If round 4's zip or CSV is still there, delete
+  of `voc_raw`, `syn_june_dry_run_r5.csv` is not listed. Open no file in `voc_raw`, since it holds real complaint
+  text. Then click `workspace`, then `voc_june`, which lists nothing. If round 5's zip or CSV is still there, delete
   it: on its row, click the ⋮ at the right end, then **Delete**, and confirm. If `voc_june` lists anything, drop
   every table and view in the `voc_june` schema: click the item, click the ⋮ at the top right of its page, then
   **Delete**, and confirm. If a menu has no **Delete**, stop and tell Claude.
-- **Application Insights is off.** Round 4 did not turn it on. Round 5 needs it only for a diagnosis (step 16).
+- **Application Insights is off.** Rounds 4 and 5 did not turn it on. Round 6 needs it only for a diagnosis (step
+  16).
 
 ## The run
 
 5. On the laptop, in the repo's folder:
-   `uv run --native-tls --locked python scripts/make_dry_run.py --round 5 <a folder outside the repo>`. It prints
+   `uv run --native-tls --locked python scripts/make_dry_run.py --round 6 <a folder outside the repo>`. It prints
    the zip's name, size and SHA-256, which must be the pin's in `config/june_dry_run.toml`.
 6. In Databricks, check that the volume's `incoming` folder is empty, then unpause Job A's trigger.
    Then wait for the trigger's fresh look: refresh Job A's page until **Last evaluated**, under **Schedules &
@@ -95,12 +99,16 @@ the frozen code (spec 004, Known limits). So round 5 runs that code once, with n
     limit, or the ledger's cap. Then the results folder has no `DRY_RUN.txt`, Job B's run page in Databricks shows
     the notebook's exit value with `"stopped": true` and its `stop_reason`, and Job B cleans up nothing, so steps
     13 and 14 are done by hand. Tell Claude the `stop_reason`.
-    A refusal in Job B's checks ends the run before any model call, as its refit check did in round 4. Its run shows
+    A refusal in Job B's checks ends the run before any model call, as its refit check did in rounds 4 and 5. Its
+    run shows
     **Failed** with a message such as "the refit TF-IDF + LR gives 1 of 370 July development labels other
     than the committed ones" or "did not settle". Job B marks nothing used and cleans up nothing, so steps 13
     and 14 are done by hand. Tell Claude the message.
 11. The workflow posts the result message. In the receiver's storage account, the `juneevents` table holds a
-    `result` row for the workflow's run with `result_state` `SUCCESS`, and `june-events-poison` is empty.
+    `result` row for the workflow's run with `result_state` `SUCCESS`, and `june-events-poison` is empty. On
+    GitHub, the workflow's `run` job shows a green tick, and its last log line is `Job B finished`. Since #125, a
+    failed or stopped Job B shows a red cross instead, after the result is posted, with this last line:
+    "Job B did not finish, so this job fails after the result was sent". Then go by step 10 for what to do by hand.
 12. Pause Job A's trigger again.
 
 If a step fails, tell Claude the step and its fixed text or status. Refusals hold fixed text and IDs only.
@@ -128,9 +136,10 @@ The real run's last step checks that this clean-up was done.
 
 A re-run with no code change uses the same round. If Job B refused before it marked anything used, a fresh
 workflow run and a fresh approval are enough. The receiver starts the workflow only on Job A's webhook, and
-GitHub's re-run button gives a second attempt, which Job B refuses. So the owner will
-start `June approval` by hand on `main`, with the Job A run's ID (J8's fallback), and approve it again. Once Job B has marked the Job A run used, it needs a fresh Job A
-run too: empty the `incoming` folder and make a fresh upload of the same zip (review of #99). A re-run after a
-code fix is a new round: Claude adds the round's synthetic CSV with new `SYN-` IDs, and `scripts/make_dry_run.py
+GitHub's re-run button gives a second attempt, which the workflow refuses before it starts Job B, posting
+`NOT_STARTED` (review of #125). A red cross on the run job does not change that. So the owner will
+start `June approval` by hand on `main`, with the Job A run's ID (J8's fallback), and approve it again. Once
+Job B has marked the Job A run used, it needs a fresh Job A run too: empty the `incoming` folder and make
+a fresh upload of the same zip (review of #99). A re-run after a code fix is a new round: Claude adds the round's synthetic CSV with new `SYN-` IDs, and `scripts/make_dry_run.py
 --round <n> --repo` writes its list, pin and mock answers. A list has one first row, and the June staging table
 never changes a row it has built, so a new round also needs its own row and, before it, the clean-up of step 14.

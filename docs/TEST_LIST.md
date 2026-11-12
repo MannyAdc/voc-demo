@@ -794,6 +794,13 @@ Written on 13 November 2026, after the dry run's rounds 4 and 5, where the `run`
 - from the review of #125: a passing `figures` job still exits 0 through `main`, and a follow that stops with `UNKNOWN` fails the run job through `main` (J10)
 - it fails after the result is posted, with its own last line, when Job B ended in `FAILED`, `TIMEDOUT`, `CANCELED` or another end, when Job B stopped, when its exit value cannot be read, and when the follow stops with `UNKNOWN` (J10)
 
+## The dry run's round 6 ([spec 004](../specs/004-june-test-and-baselines/spec.md), J1, J8, J10), `tests/test_dry_run.py`
+
+Written on 13 November 2026, after #124 pinned the refit's vocabulary and #125 made the run job fail when Job B did not finish. The other dry run tests read the round from the pin, so they cover round 6's CSV, list, pin and steps with no change.
+
+- round 5's row names the frozen code before #124 and #125, so the pin names round 6 or a later round, with new IDs (J1, J8)
+- the steps say the run job shows a red cross when Job B did not finish, and that the workflow refuses a re-run's second attempt before it starts Job B (J10)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

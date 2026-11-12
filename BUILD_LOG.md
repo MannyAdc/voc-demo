@@ -2844,3 +2844,13 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - Owner decision ("ok", 08:16): fix the two minors and nits 3 and 4. Nit 5 goes in round 6's steps pull request, where the steps change anyway. No second review, by the stopping rule: wording and two tests, no code change.
 - The fix: the docstring, the comment and J10 say the exit value was "read, checked as the receiver checks it, and says it did not stop". J10's new sentences follow the text on the post's retries. Two new tests, both passing: a passing `figures` job exits 0 through `main`, and a follow that stops with `UNKNOWN` fails the run job through `main`.
 - 08:18 Fix written, before its gate.
+- Green commit `1dbdc51` at 08:18 (git's commit time), through the gate. 08:36 Claude's merge verdict on #125 was MERGE, posted as a comment, and Claude marked #125 ready. 08:49 The owner merged #125 (time from GitHub).
+
+### Pull request: the dry run's round 6
+
+- Work start, 08:50: branch `feat/dry-run-round-6`, worktree `../voc-demo-r6`, from main at `503cb37`. #124 and #125 changed the frozen code, so round 6 runs it once in the cloud before the real run.
+- Red commit `f702bec` at 08:51 (git's commit time): only `tests/test_dry_run.py`, through the gate. Two new failing tests: round 5's row names the code before #124 and #125, so the pin names round 6 or a later round, and the steps say the run job shows a red cross when Job B did not finish, and that the workflow refuses a re-run's second attempt before it starts Job B, posting `NOT_STARTED` (review of #125, nit 5).
+- Round 6's CSV is round 5's with `SYN-95` changed to `SYN-96`, 12 IDs. `uv run --no-sync python scripts/make_dry_run.py --round 6 --repo` wrote the pin, the list and its manifest. The mock answers came out byte for byte the same.
+- The steps: "Before round 6" replaces "Before round 5", with rounds 4 and 5's story and round 5's clean-up as checks. Step 5 says `--round 6`. Step 11 says what the run job shows, green with `Job B finished`, or a red cross with its last line after the result is posted. The re-run part says the workflow, not Job B, refuses a second attempt.
+- AI mistake, caught by the existing tests: Claude's first wrapping of the steps split three phrases the tests look for across lines. Claude wrapped them again before the commit.
+- 09:18 Change written, before its gate.
