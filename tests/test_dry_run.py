@@ -801,6 +801,27 @@ def test_J8_the_steps_wait_for_the_trigger_s_fresh_look_before_the_upload():
     assert run.index("**Last evaluated**") < run.index("\n7. Upload")
 
 
+def test_J8_the_pinned_vocabulary_and_the_red_run_job_are_dry_run_in_round_6_or_later():
+    """Round 6's pull request: round 5 stopped at Job B's refit check, and #124 (the pinned vocabulary) and #125 (the
+    run job fails when Job B did not finish) changed the frozen code. Round 5's row names the code before them, and a
+    round's list has one first row, so that code is dry run in round 6 or a later round, with new IDs."""
+    from voc.frozen import code_hash, read_runs
+    rows = [e for e in read_runs(REPO / "runs" / "JUNE_RUNS.md") if "the dry run, round 5," in e.reason]
+    assert len(rows) == 1 and rows[0].code_hash != code_hash(REPO)
+    assert ROUND >= 6
+
+
+def test_J10_the_steps_say_the_run_job_fails_when_job_b_did_not_finish_and_a_re_run_is_refused_first():
+    """Review of #125, nit 5: since #125 the approval workflow's run job shows a red cross when Job B did not finish,
+    after it posts the result. GitHub's re-run button gives a second attempt, which the workflow refuses before it
+    starts Job B, posting `NOT_STARTED`. Job B never sees it."""
+    text = (REPO / "docs" / "DRY_RUN_STEPS.md").read_text(encoding="utf-8")
+    run = text.split("## The run")[1].split("\n## ")[0]
+    assert "red cross" in run and "Job B did not finish, so this job fails after the result was sent" in run
+    rerun = text.split("## A re-run")[1]
+    assert "which Job B refuses" not in rerun and "before it starts Job B" in rerun and "`NOT_STARTED`" in rerun
+
+
 def test_J13_the_steps_give_the_robot_s_secret_the_jobs_scope_with_read_and_write():
     """Round 1: the secret made with `jobs:read` was refused (HTTP 403). The run-now of Job B needs write."""
     text = DATABRICKS_STEPS.read_text(encoding="utf-8")
