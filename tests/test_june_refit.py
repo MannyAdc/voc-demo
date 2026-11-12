@@ -196,7 +196,7 @@ def test_J5_a_committed_file_the_refit_cannot_read_is_refused_with_its_type_only
 
 # Round 4 of the dry run (11 November): in Databricks, on ARM chips, the refit gave 1 of the 370 July development labels
 # other than the committed ones. On the laptop (x86), the solver stopped after 87 steps at scikit-learn's default
-# stopping point (tol 1e-4). Run to a strict stopping point (tol 1e-8, 278 steps), it gave the same 370 labels. Owner
+# stopping point (tol 1e-4). Run to a strict stopping point (tol 1e-8, 291 steps), it gave the same 370 labels. Owner
 # decision, 12 November: June's refit runs to the strict stopping point, and the check stays exact.
 
 
@@ -227,3 +227,26 @@ def test_B11_the_laptop_s_tfidf_fit_keeps_scikit_learn_s_default_stopping_point(
     config = {**load_tfidf_config(REPO / "config" / "tfidf.toml"), "min_df": 1}
     model = fit_tfidf([(r.complaint_id, "train", r.narrative, r.product) for r in _rows(1, 12)], config)
     assert model.classifier.tol == 1e-4
+
+
+def test_J7_a_refit_whose_solver_warns_that_it_stopped_early_is_refused(tmp_path, monkeypatch):
+    """Review of #121, minor 1: lbfgs can also stop short of `tol` after a failed line search, in fewer steps than
+    `max_iter`, with a ConvergenceWarning. That refit has not settled either."""
+    import warnings
+
+    from sklearn.exceptions import ConvergenceWarning
+
+    from voc import june_refit
+
+    real = june_refit.fit_tfidf
+
+    def warns(*args):
+        model = real(*args)
+        warnings.warn("synthetic: the line search failed", ConvergenceWarning)
+        return model
+
+    root, export, _ = _july(tmp_path)
+    monkeypatch.setattr(june_refit, "fit_tfidf", warns)
+    with pytest.raises(june_refit.RefitError, match=r"^the refit TF-IDF \+ LR did not settle: its solver stopped "
+                                                    r"early$"):
+        june_refit.refit(root, export, tmp_path / "work")
