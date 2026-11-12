@@ -757,6 +757,14 @@ Written on 11 November 2026, after the pull requests of 6b changed the frozen co
 - round 3's row names the frozen code before the pull requests of 6b, so the pin names round 4 or a later round, with new IDs (J1, J8). Changed in the review of #119: the first version asked for the next round after any frozen change, against 6b's one shared round
 - in round 4's row pull request: the run log holds one row for round 4, synthetic, naming the list and code hashes printed on `main` after #119 merged (J1)
 
+## The refit's strict stopping point ([spec 004](../specs/004-june-test-and-baselines/spec.md), J7, B11), `tests/test_june_refit.py`
+
+Written on 12 November 2026, after round 4 of the dry run.
+
+- June's refit runs the solver to a `tol` of 1e-8, not scikit-learn's default (J7)
+- a refit that has not settled within its `max_iter` solver steps is refused (J7)
+- the July evaluation's fit keeps scikit-learn's default stopping point, 1e-4 (B11)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

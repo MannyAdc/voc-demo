@@ -62,8 +62,10 @@ class TfidfModel:
     settings: dict
 
 
-def fit_tfidf(rows, config):
-    """Fit on (complaint_id, split, text, label) rows. Every row must be from the training split."""
+def fit_tfidf(rows, config, tol=None):
+    """Fit on (complaint_id, split, text, label) rows. Every row must be from the training split. `tol` is the
+    solver's stopping point. With none, scikit-learn's default is kept, as in the July evaluation. Only June's refit
+    passes one (spec 004, J7)."""
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.linear_model import LogisticRegression
 
@@ -75,7 +77,8 @@ def fit_tfidf(rows, config):
                                  lowercase=config["lowercase"], token_pattern=config["token_pattern"])
     class_weight = None if config["class_weight"] == "none" else config["class_weight"]
     classifier = LogisticRegression(C=config["C"], max_iter=config["max_iter"], solver=config["solver"],
-                                    class_weight=class_weight, random_state=config["seed"])
+                                    class_weight=class_weight, random_state=config["seed"],
+                                    **({} if tol is None else {"tol": tol}))
     classifier.fit(vectorizer.fit_transform(texts), labels)
     return TfidfModel(vectorizer, classifier, dict(config))
 
