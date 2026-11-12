@@ -784,6 +784,8 @@ def test_J8_the_steps_wait_for_the_trigger_s_fresh_look_before_the_upload():
     text = (REPO / "docs" / "DRY_RUN_STEPS.md").read_text(encoding="utf-8")
     run = text.split("## The run")[1].split("\n## ")[0]
     assert "**Last evaluated**" in run and "0 files in total" in run and "Found no new files" in run
+    # Review of #122, nit 3: the wait comes before step 7's upload.
+    assert run.index("**Last evaluated**") < run.index("\n7. Upload")
 
 
 def test_J13_the_steps_give_the_robot_s_secret_the_jobs_scope_with_read_and_write():

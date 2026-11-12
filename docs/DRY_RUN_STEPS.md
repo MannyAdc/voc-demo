@@ -83,8 +83,8 @@ the frozen code (spec 004, Known limits). So round 5 runs that code once, with n
    minutes of Job A ending green, the webhook did not get through. Tell Claude. The way on is J8's fallback: the owner
    starts `June approval` by hand on `main` with Job A's run ID.
 9. The workflow's first job prints the figures: 8 complaints. Approve `june-run` on GitHub.
-10. The workflow starts Job B. Job B checks the approval and Job A's run again, marks both used, refits the July
-    model and checks it, and labels the 8 complaints through the API and the June ledger. Its results folder holds
+10. The workflow starts Job B. Job B checks the approval and Job A's run again, refits the July model and checks
+    it, marks both used, and labels the 8 complaints through the API and the June ledger. Its results folder holds
     only `DRY_RUN.txt`. The note says Job B labelled with the API, then gives `Labelled: 8.` with the accepted and
     quarantined counts. The model decides those, so any split of the 8 is fine. Rounds 1 to 3, with the mock
     answers, showed `Accepted: 7. Quarantined: 1.` The note's last line is the clean-up's, below. Then, in the
@@ -97,8 +97,8 @@ the frozen code (spec 004, Known limits). So round 5 runs that code once, with n
     13 and 14 are done by hand. Tell Claude the `stop_reason`.
     A refusal in Job B's checks ends the run before any model call, as its refit check did in round 4. Its run shows
     **Failed** with a message such as "the refit TF-IDF + LR gives 1 of 370 July development labels other
-    than the committed ones" or "did not settle". Job B marks nothing used and cleans up nothing, so steps 12
-    to 14 are done by hand. Tell Claude the message.
+    than the committed ones" or "did not settle". Job B marks nothing used and cleans up nothing, so steps 13
+    and 14 are done by hand. Tell Claude the message.
 11. The workflow posts the result message. In the receiver's storage account, the `juneevents` table holds a
     `result` row for the workflow's run with `result_state` `SUCCESS`, and `june-events-poison` is empty.
 12. Pause Job A's trigger again.
