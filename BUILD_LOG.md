@@ -2757,3 +2757,19 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - Owner decision ("go as you recommend", 17:12): minor 1 is logged only, by the check above. Fix minor 2, nits 3 and 4. Skip nit 5, since the module imports scikit-learn only when it is needed, as `baselines.py` does. No third review, by the stopping rule.
 - The fix: Known limits and the docstring name the second stopping rule and say round 5 checks the refusal on ARM, with what happens if it refuses. The test asserts that no ConvergenceWarning escapes. It passes already, since the refit records the fit's warnings.
 - 17:13 Fix written, before its gate.
+- 17:27 Claude's merge verdict on #121 was MERGE, posted as a comment, and Claude marked #121 ready. 17:30 The owner merged #121 (time from GitHub).
+
+### Pull request: the dry run's round 5
+
+- Work start, 17:31: branch `feat/dry-run-round-5`, worktree `../voc-demo-r5`, from main at `4d43ee6`. #121 changed the frozen code, so round 5 runs it once in the cloud before the real run, as #121 planned.
+- Red commit `68f6ccb` at 17:33 (git's commit time): only `tests/test_dry_run.py`, through the gate. Two new failing tests: round 4's row names the code before #121, so the pin names round 5 or a later round, and the run's steps wait for the trigger's fresh look before the upload.
+- AI mistake, caught by the first test run: a heredoc turned an escaped line break in the new test into a real one, so the file did not parse. Claude fixed it with the Edit tool before the commit. This trap is logged before.
+- Round 5's CSV is round 4's with `SYN-94` changed to `SYN-95`, 12 IDs. `uv run --no-sync python scripts/make_dry_run.py --round 5 --repo` wrote the pin, the list and its manifest. The mock answers came out byte for byte the same.
+- The steps: "Before round 5" replaces "Before round 4". It says why round 5 runs, turns the paste of Job B's YAML into a check, since `cloud/job_b.yml` has not changed since round 4, and turns round 4's clean-up into checks. Step 5 says `--round 5`. Step 6 waits for the trigger's fresh look, with 0 files in total, before the upload. Step 10 says what a refusal in Job B's checks looks like and what to do by hand.
+- 17:53 Change written, before its gate.
+- Green commit `9746d96` at 17:53 (git's commit time), through the gate. 18:07 Branch pushed and draft pull request #122 opened (time from GitHub).
+- 18:09 The fresh reviewer's findings on #122 were posted as a comment. Nothing serious. The reviewer rebuilt round 5's zip in a temporary folder outside the repo and got the pin's, and found round 5's CSV to be round 4's with only its IDs changed. One minor: step 10's first sentence says Job B marks both runs used before the refit, but `refit_check` runs before `marked_used` in `src/voc/job_b.py` (Claude checked). The sentence dates from round 4's pull request. Three nits: step 10 says "steps 13 and 14" in one paragraph and "steps 12 to 14" in the other, the trigger wait test does not check that the wait comes before the upload, and the round 5 test's code hash check passes after any later change.
+- AI mistake, caught by the reviewer: Claude wrote step 10's order wrong in round 4's pull request, and did not see it when adding a paragraph to the same step that gives the right order.
+- Owner decision ("ok", 18:31): fix the minor and nits 2 and 3. Skip nit 4, since it follows round 4's lasting test, and the round check is the one that matters. No second review, by the stopping rule: wording and one test line, no code change.
+- The fix: step 10 says Job B refits and checks the model, then marks both runs used. Both paragraphs say steps 13 and 14 by hand. The trigger wait test checks that the wait comes before step 7.
+- 18:32 Fix written, before its gate.

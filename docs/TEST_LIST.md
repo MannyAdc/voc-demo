@@ -766,6 +766,13 @@ Written on 12 November 2026, after round 4 of the dry run.
 - from the review of #121: a refit whose solver warned that it stopped early, in fewer steps, is refused too (J7)
 - the July evaluation's fit keeps scikit-learn's default stopping point, 1e-4 (B11)
 
+## The dry run's round 5 ([spec 004](../specs/004-june-test-and-baselines/spec.md), J1, J8), `tests/test_dry_run.py`
+
+Written on 12 November 2026, after #121 made June's refit run to a strict stopping point. The other dry run tests read the round from the pin, so they cover round 5's CSV, list, pin and steps with no change.
+
+- round 4's row names the frozen code before #121, so the pin names round 5 or a later round, with new IDs (J1, J8)
+- the run's steps wait for the trigger's fresh look, with 0 files in total, before the upload, since round 4's zip went up before it and started no run (J8)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

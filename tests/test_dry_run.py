@@ -768,6 +768,26 @@ def test_J8_the_code_of_6b_is_dry_run_in_round_4_or_later():
     assert ROUND >= 4
 
 
+def test_J8_the_refit_s_strict_stopping_point_is_dry_run_in_round_5_or_later():
+    """Round 5's pull request: round 4 stopped at Job B's refit check, and #121 changed the frozen code so the refit
+    runs to a strict stopping point. Round 4's row names the code before #121, and a round's list has one first row,
+    so that code is dry run in round 5 or a later round, with new IDs."""
+    from voc.frozen import code_hash, read_runs
+    rows = [e for e in read_runs(REPO / "runs" / "JUNE_RUNS.md") if "the dry run, round 4," in e.reason]
+    assert len(rows) == 1 and rows[0].code_hash != code_hash(REPO)
+    assert ROUND >= 5
+
+
+def test_J8_the_steps_wait_for_the_trigger_s_fresh_look_before_the_upload():
+    """Round 4: the zip landed before the trigger's first look after the unpause, so the trigger counted it as already
+    there ("Found no new files and 1 file in total") and started no run. The steps now wait for a fresh look."""
+    text = (REPO / "docs" / "DRY_RUN_STEPS.md").read_text(encoding="utf-8")
+    run = text.split("## The run")[1].split("\n## ")[0]
+    assert "**Last evaluated**" in run and "0 files in total" in run and "Found no new files" in run
+    # Review of #122, nit 3: the wait comes before step 7's upload.
+    assert run.index("**Last evaluated**") < run.index("\n7. Upload")
+
+
 def test_J13_the_steps_give_the_robot_s_secret_the_jobs_scope_with_read_and_write():
     """Round 1: the secret made with `jobs:read` was refused (HTTP 403). The run-now of Job B needs write."""
     text = DATABRICKS_STEPS.read_text(encoding="utf-8")
