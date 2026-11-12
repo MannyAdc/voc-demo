@@ -786,6 +786,14 @@ Written on 12 November 2026, after rounds 4 and 5 of the dry run. The fixture wo
 - from the review of #124: a pin that is not well formed is refused with its own message, for its positions, keys, month, hash or counts, and the laptop's writer puts the old pin back, or removes a new one, when the refit check with the new pin fails (J7)
 - from the second review of #124: each rule on the pin's positions is checked on its own, on a fixture whose tie is cut (J7)
 
+## The approval workflow fails when Job B did not finish ([spec 004](../specs/004-june-test-and-baselines/spec.md), J10), `tests/test_approval.py`
+
+Written on 13 November 2026, after the dry run's rounds 4 and 5, where the `run` job ended green after a failed Job B.
+
+- the run job passes, with `Job B finished` as its last line, when Job B ended in `SUCCESS` and its exit value, read and checked, says it did not stop (J10)
+- from the review of #125: a passing `figures` job still exits 0 through `main`, and a follow that stops with `UNKNOWN` fails the run job through `main` (J10)
+- it fails after the result is posted, with its own last line, when Job B ended in `FAILED`, `TIMEDOUT`, `CANCELED` or another end, when Job B stopped, when its exit value cannot be read, and when the follow stops with `UNKNOWN` (J10)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

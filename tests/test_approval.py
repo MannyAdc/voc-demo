@@ -672,7 +672,8 @@ def test_J16_the_result_post_is_retried_on_a_server_error_and_a_refusal_fails_th
     approval = _patched(monkeypatch)
     receiver = FakeReceiver(statuses=[500, 503, 202])
     lines = approval.run_job(REPO, _env(), FakeDatabricks(), FakeGitHub(), receiver, sleep=lambda s: None)
-    assert len(receiver.posts) == 3 and lines[-1] == "result message: HTTP 202"
+    # Changed for the owner decision of 12 November: the post's line is now followed by the run job's last line.
+    assert len(receiver.posts) == 3 and lines[-2:] == ["result message: HTTP 202", approval.FINISHED]
     for statuses in ([400], [500, 500, 500]):
         with pytest.raises(approval.ApprovalError, match="result message"):
             approval.run_job(REPO, _env(), FakeDatabricks(), FakeGitHub(), FakeReceiver(statuses=statuses),
@@ -1080,3 +1081,88 @@ def test_J16_any_repair_history_but_one_original_item_is_refused(history):
     run = {**_run(), "repair_history": history}
     with pytest.raises(_approval().ApprovalError, match="repaired, or its repair history"):
         _approval().checked_run(run, 900001, JOB_A)
+
+
+# The dry run's rounds 4 and 5 (11 and 12 November): Job B failed, and the approval workflow's `run` job still ended
+# green, since it only failed when the result post failed. Owner decision, 12 November ("change"): the job fails after
+# the result is posted when Job B did not finish, so the Actions tab shows a failed Job B as failed.
+
+
+def _main_run(monkeypatch, follow=None, job_b_output=None):
+    approval = _patched(monkeypatch)
+    receiver = FakeReceiver()
+    databricks = FakeDatabricks(follow=follow, job_b_output=job_b_output)
+    monkeypatch.setattr(approval, "_clients", lambda env: (databricks, FakeGitHub()))
+    monkeypatch.setattr(approval, "Receiver", lambda url: receiver)
+    code = approval.main(["run"], env={**_env(), "VOC_RECEIVER_URL": "https://receiver.example.invalid"})
+    return code, receiver
+
+
+def _job_b_output(value):
+    return {"notebook_output": {"result": json.dumps(value), "truncated": False}}
+
+
+def test_J10_the_run_job_passes_when_job_b_finished(monkeypatch, capsys):
+    code, receiver = _main_run(monkeypatch)
+    out = capsys.readouterr().out
+    assert code == 0 and len(receiver.posts) == 1
+    assert out.splitlines()[-1] == "Job B finished"
+
+
+@pytest.mark.parametrize("state", ["FAILED", "TIMEDOUT", "CANCELED", "SUCCESS_WITH_FAILURES"])
+def test_J10_the_run_job_fails_after_the_post_when_job_b_did_not_end_in_success(monkeypatch, capsys, state):
+    code, receiver = _main_run(monkeypatch, follow=[_ended(state)])
+    out = capsys.readouterr().out
+    assert code == 1 and len(receiver.posts) == 1
+    assert out.splitlines()[-1] == "Job B did not finish, so this job fails after the result was sent"
+
+
+def test_J10_the_run_job_fails_after_the_post_when_job_b_stopped(monkeypatch, capsys):
+    code, receiver = _main_run(monkeypatch, job_b_output=_job_b_output(_fixture("job_b_exit_stopped.json")))
+    out = capsys.readouterr().out
+    assert code == 1 and len(receiver.posts) == 1
+    assert json.loads(receiver.posts[0][0])["job_b_exit"]["stopped"] is True
+    assert out.splitlines()[-1] == "Job B did not finish, so this job fails after the result was sent"
+
+
+def test_J10_the_run_job_fails_after_the_post_when_job_b_s_exit_value_cannot_be_read(monkeypatch, capsys):
+    code, receiver = _main_run(monkeypatch, job_b_output={"notebook_output": {"result": "not json",
+                                                                             "truncated": False}})
+    out = capsys.readouterr().out
+    assert code == 1 and len(receiver.posts) == 1
+    assert json.loads(receiver.posts[0][0])["job_b_exit"] is None
+    assert out.splitlines()[-1] == "Job B did not finish, so this job fails after the result was sent"
+
+
+def test_J10_the_run_job_fails_after_the_post_when_it_stopped_following(monkeypatch, capsys):
+    approval = _patched(monkeypatch)
+    receiver = FakeReceiver()
+    running = {"state": {"life_cycle_state": "RUNNING"}, "tasks": [{"task_key": "job_b", "run_id": 900003}]}
+    lines = approval.run_job(REPO, _env(), FakeDatabricks(follow=[running]), FakeGitHub(), receiver,
+                             sleep=lambda s: None, polls=2)
+    assert len(receiver.posts) == 1 and json.loads(receiver.posts[0][0])["result_state"] == "UNKNOWN"
+    assert lines[-1] == approval.NOT_FINISHED
+
+
+def test_J10_a_passing_figures_job_still_exits_0_through_main(monkeypatch, tmp_path, capsys):
+    """Review of #125, minor 2: the new exit code is the run job's only."""
+    approval = _patched(monkeypatch)
+    monkeypatch.setattr(approval, "_clients", lambda env: (FakeDatabricks(), FakeGitHub()))
+    env = {**_env(), "GITHUB_STEP_SUMMARY": str(tmp_path / "summary.md")}
+    assert approval.main(["figures"], env=env) == 0
+    assert capsys.readouterr().out.splitlines()[0] == "Job A run: 900001"
+
+
+def test_J10_a_follow_that_stops_with_unknown_fails_the_run_job_through_main(monkeypatch, capsys):
+    """Review of #125, minor 2: the follow's `UNKNOWN` case through `main`, the path the workflow runs."""
+    approval = _patched(monkeypatch)
+    real = approval.run_job
+    monkeypatch.setattr(approval, "run_job", lambda root, env, databricks, github, receiver: real(
+        root, env, databricks, github, receiver, sleep=lambda s: None, polls=2))
+    running = {"state": {"life_cycle_state": "RUNNING"}, "tasks": [{"task_key": "job_b", "run_id": 900003}]}
+    receiver = FakeReceiver()
+    monkeypatch.setattr(approval, "_clients", lambda env: (FakeDatabricks(follow=[running]), FakeGitHub()))
+    monkeypatch.setattr(approval, "Receiver", lambda url: receiver)
+    code = approval.main(["run"], env={**_env(), "VOC_RECEIVER_URL": "https://receiver.example.invalid"})
+    assert code == 1 and json.loads(receiver.posts[0][0])["result_state"] == "UNKNOWN"
+    assert capsys.readouterr().out.splitlines()[-1] == approval.NOT_FINISHED

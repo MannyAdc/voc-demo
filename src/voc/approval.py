@@ -10,6 +10,10 @@ frozen with the code (J1).
   is sent it posts `NOT_STARTED`, and after it, where the start's reply is lost or odd, `UNKNOWN`. The follow
   renews the robot's token, outlasts failed looks, and ends at 340 minutes with `UNKNOWN`. The message is checked
   as the receiver checks it, tried again on a server error, and anything but 202 fails the job (review of #95).
+  After the post, the job fails too unless Job B finished: it ended in `SUCCESS` and its exit value was read,
+  checked as the receiver checks it, and says it did not stop. So the Actions tab shows a failed or stopped Job B
+  as failed, and the receiver still gets the result first (owner decision, 12 November, after the dry run's
+  rounds 4 and 5).
 
 Both ask Databricks for a token with the `jobs` scope only (J10, J13). Nothing here prints `error`, `error_trace`,
 `logs`, `state_message` or any other field it does not read (J5, J16). Refusals hold fixed text, IDs and counts.
@@ -66,6 +70,11 @@ DEFAULT_TOKEN_LIFE = 3600
 # The receiver accepts six result states (receiver/receiver_core.py). These four are Databricks' own, kept as
 # they are. Any other end is a failure, and NOT_STARTED and UNKNOWN are the workflow's.
 KEPT_STATES = ("SUCCESS", "FAILED", "TIMEDOUT", "CANCELED")
+# The run job's last line. After the result is posted, the job fails unless Job B finished: it ended in SUCCESS and
+# its exit value was read, checked as the receiver checks it, and says it did not stop (owner decision, 12 November,
+# after the dry run's rounds 4 and 5).
+FINISHED = "Job B finished"
+NOT_FINISHED = "Job B did not finish, so this job fails after the result was sent"
 
 
 class ApprovalError(ValueError):
@@ -554,6 +563,8 @@ def run_job(root, env, databricks, github, receiver, sleep=time.sleep, polls=Non
     lines.append(f"result: {state}")
     lines.append(_post_result(receiver, env, result_body(github_run_id, attempt, job_a_run_id, job_b_run_id, state,
                                                          value), sleep))
+    finished = state == "SUCCESS" and isinstance(value, dict) and value.get("stopped") is False
+    lines.append(FINISHED if finished else NOT_FINISHED)
     return lines
 
 
@@ -610,7 +621,7 @@ def main(argv=None, env=None):
         return 1
     for line in lines:
         print(line)
-    return 0
+    return 1 if argv == ["run"] and lines[-1] == NOT_FINISHED else 0
 
 
 if __name__ == "__main__":
