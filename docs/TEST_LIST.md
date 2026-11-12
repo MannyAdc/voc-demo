@@ -790,7 +790,8 @@ Written on 12 November 2026, after rounds 4 and 5 of the dry run. The fixture wo
 
 Written on 13 November 2026, after the dry run's rounds 4 and 5, where the `run` job ended green after a failed Job B.
 
-- the run job passes, with `Job B finished` as its last line, when Job B ended in `SUCCESS` and its exit value says it did not stop (J10)
+- the run job passes, with `Job B finished` as its last line, when Job B ended in `SUCCESS` and its exit value, read and checked, says it did not stop (J10)
+- from the review of #125: a passing `figures` job still exits 0 through `main`, and a follow that stops with `UNKNOWN` fails the run job through `main` (J10)
 - it fails after the result is posted, with its own last line, when Job B ended in `FAILED`, `TIMEDOUT`, `CANCELED` or another end, when Job B stopped, when its exit value cannot be read, and when the follow stops with `UNKNOWN` (J10)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned

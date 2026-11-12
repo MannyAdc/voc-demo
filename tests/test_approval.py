@@ -1142,3 +1142,27 @@ def test_J10_the_run_job_fails_after_the_post_when_it_stopped_following(monkeypa
                              sleep=lambda s: None, polls=2)
     assert len(receiver.posts) == 1 and json.loads(receiver.posts[0][0])["result_state"] == "UNKNOWN"
     assert lines[-1] == approval.NOT_FINISHED
+
+
+def test_J10_a_passing_figures_job_still_exits_0_through_main(monkeypatch, tmp_path, capsys):
+    """Review of #125, minor 2: the new exit code is the run job's only."""
+    approval = _patched(monkeypatch)
+    monkeypatch.setattr(approval, "_clients", lambda env: (FakeDatabricks(), FakeGitHub()))
+    env = {**_env(), "GITHUB_STEP_SUMMARY": str(tmp_path / "summary.md")}
+    assert approval.main(["figures"], env=env) == 0
+    assert capsys.readouterr().out.splitlines()[0] == "Job A run: 900001"
+
+
+def test_J10_a_follow_that_stops_with_unknown_fails_the_run_job_through_main(monkeypatch, capsys):
+    """Review of #125, minor 2: the follow's `UNKNOWN` case through `main`, the path the workflow runs."""
+    approval = _patched(monkeypatch)
+    real = approval.run_job
+    monkeypatch.setattr(approval, "run_job", lambda root, env, databricks, github, receiver: real(
+        root, env, databricks, github, receiver, sleep=lambda s: None, polls=2))
+    running = {"state": {"life_cycle_state": "RUNNING"}, "tasks": [{"task_key": "job_b", "run_id": 900003}]}
+    receiver = FakeReceiver()
+    monkeypatch.setattr(approval, "_clients", lambda env: (FakeDatabricks(follow=[running]), FakeGitHub()))
+    monkeypatch.setattr(approval, "Receiver", lambda url: receiver)
+    code = approval.main(["run"], env={**_env(), "VOC_RECEIVER_URL": "https://receiver.example.invalid"})
+    assert code == 1 and json.loads(receiver.posts[0][0])["result_state"] == "UNKNOWN"
+    assert capsys.readouterr().out.splitlines()[-1] == approval.NOT_FINISHED
