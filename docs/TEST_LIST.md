@@ -763,6 +763,7 @@ Written on 12 November 2026, after round 4 of the dry run.
 
 - June's refit runs the solver to a `tol` of 1e-8, not scikit-learn's default (J7)
 - a refit that has not settled within its `max_iter` solver steps is refused (J7)
+- from the review of #121: a refit whose solver warned that it stopped early, in fewer steps, is refused too (J7)
 - the July evaluation's fit keeps scikit-learn's default stopping point, 1e-4 (B11)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
