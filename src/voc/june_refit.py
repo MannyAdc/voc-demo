@@ -105,7 +105,7 @@ def _read_pin(root):
     A file that cannot be read is refused with its type only, by `_inputs`."""
     pin = json.loads((Path(root) / VOCABULARY_PIN).read_text(encoding="utf-8"))
     if not _well_formed(pin):
-        raise RefitError("the vocabulary pin is not well formed: its keys, month, positions or counts")
+        raise RefitError("the vocabulary pin is not well formed: its keys, month, positions, counts or hash")
     return pin
 
 

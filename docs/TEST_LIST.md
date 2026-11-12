@@ -784,6 +784,7 @@ Written on 12 November 2026, after rounds 4 and 5 of the dry run. The fixture wo
 - the committed pin holds counts, positions and a hash only, never a term (J7, B19)
 - an unreadable pin is refused with its type only (J5)
 - from the review of #124: a pin that is not well formed is refused with its own message, for its positions, keys, month, hash or counts, and the laptop's writer puts the old pin back, or removes a new one, when the refit check with the new pin fails (J7)
+- from the second review of #124: each rule on the pin's positions is checked on its own, on a fixture whose tie is cut (J7)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 

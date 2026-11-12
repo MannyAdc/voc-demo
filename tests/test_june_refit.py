@@ -423,11 +423,12 @@ def test_J7_the_committed_pin_holds_counts_positions_and_a_hash_only():
 # laptop's writer puts the old pin back when the refit check with the new one fails.
 
 
+MALFORMED = r"^the vocabulary pin is not well formed: its keys, month, positions, counts or hash$"
+
+
 @pytest.mark.parametrize("change", [
-    {"kept_tied_positions": [-1]}, {"kept_tied_positions": [999]}, {"kept_tied_positions": [1, 0]},
-    {"kept_tied_positions": [0, 0]}, {"kept_tied_positions": [0.0]}, {"kept_tied_positions": ["0"]},
-    {"kept_tied_positions": [True]}, {"extra": 1}, {"month": "june_2026"},
-    {"vocabulary_sha256": None},
+    {"extra": 1}, {"month": "june_2026"}, {"vocabulary_sha256": None}, {"vocabulary_sha256": "A" * 64},
+    {"vocabulary_sha256": "0" * 63},
 ])
 def test_J7_a_malformed_vocabulary_pin_is_refused_with_its_own_message(tmp_path, change):
     from voc import june_refit
@@ -435,8 +436,27 @@ def test_J7_a_malformed_vocabulary_pin_is_refused_with_its_own_message(tmp_path,
     root, export, _ = _july(tmp_path)
     path = root / "config" / "june_refit_vocabulary.json"
     _write_pin(root, {**json.loads(path.read_text(encoding="utf-8")), **change})
-    with pytest.raises(june_refit.RefitError, match=r"^the vocabulary pin is not well formed: its keys, month, "
-                                                    r"positions or counts$"):
+    with pytest.raises(june_refit.RefitError, match=MALFORMED):
+        june_refit.refit(root, export, tmp_path / "work")
+
+
+@pytest.mark.parametrize("positions", [
+    lambda a, b, tied: [a, a], lambda a, b, tied: [b, a], lambda a, b, tied: [a, tied],
+    lambda a, b, tied: [-1, b], lambda a, b, tied: [float(a), b], lambda a, b, tied: [str(a), b],
+    lambda a, b, tied: [True, b],
+])
+def test_J7_each_rule_on_the_pin_s_positions_is_checked_on_its_own(tmp_path, positions):
+    """Second review of #124, minor 1: on a fixture whose tie is cut, two tied terms are kept, so a list of two that
+    breaks one rule, repeated, out of order, out of range, negative, or not a whole number, passes every other."""
+    from voc import june_refit
+
+    limit, other, _, _ = _split_tie()
+    root, export, _ = _july(tmp_path, max_features=limit, keep=other)
+    path = root / "config" / "june_refit_vocabulary.json"
+    pin = json.loads(path.read_text(encoding="utf-8"))
+    a, b = pin["kept_tied_positions"]
+    _write_pin(root, {**pin, "kept_tied_positions": positions(a, b, pin["terms_tied"])})
+    with pytest.raises(june_refit.RefitError, match=MALFORMED):
         june_refit.refit(root, export, tmp_path / "work")
 
 
@@ -487,7 +507,7 @@ def test_J7_the_laptop_s_writer_removes_a_new_pin_when_there_was_none_and_the_ch
     root, export, _ = _july(tmp_path, dev_labels=labels)
     path = root / "config" / "june_refit_vocabulary.json"
     path.unlink()
-    with pytest.raises(june_refit.RefitError):
+    with pytest.raises(june_refit.RefitError, match="other than the committed ones"):
         june_refit.write_and_check_vocabulary_pin(root, export, tmp_path / "work")
     assert not path.exists()
 
