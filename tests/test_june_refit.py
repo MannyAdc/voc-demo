@@ -5,6 +5,8 @@ request 6b, part 2).
 Every fixture is synthetic, with `SYN-` complaint IDs, and is built in a tmp folder. No test touches real data.
 """
 import csv
+import hashlib
+import json
 import shutil
 from pathlib import Path
 
@@ -24,13 +26,63 @@ def _rows(start, count):
     return [Row(f"SYN-{start + i}", products[i % 2], WORDS[products[i % 2]].format(i=start + i)) for i in range(count)]
 
 
-def _july(tmp_path, dev_labels=None, extra_dev=None, sha=None):
+def _config(max_features=None):
+    """The real TF-IDF settings, with `min_df` 1 for the small fixture, and `max_features` when given."""
+    from voc.baselines import load_tfidf_config
+
+    config = {**load_tfidf_config(REPO / "config" / "tfidf.toml"), "min_df": 1}
+    return {**config, "max_features": max_features} if max_features else config
+
+
+def _term_counts(texts, config):
+    from sklearn.feature_extraction.text import CountVectorizer
+
+    counter = CountVectorizer(ngram_range=(1, config["ngram_max"]), min_df=config["min_df"],
+                              lowercase=config["lowercase"], token_pattern=config["token_pattern"])
+    totals = counter.fit_transform(texts).sum(axis=0).A1
+    return dict(zip(counter.get_feature_names_out(), (int(n) for n in totals)))
+
+
+def _sklearn_vocabulary(texts, config):
+    from sklearn.feature_extraction.text import TfidfVectorizer
+
+    return set(TfidfVectorizer(ngram_range=(1, config["ngram_max"]), min_df=config["min_df"],
+                               max_features=config["max_features"], sublinear_tf=config["sublinear_tf"],
+                               lowercase=config["lowercase"], token_pattern=config["token_pattern"]
+                               ).fit(texts).vocabulary_)
+
+
+def _pin(texts, config, keep=None):
+    """The vocabulary pin, worked out here on its own: every term above the cut, and the tied terms at `keep`, by
+    default the ones scikit-learn keeps on this machine. Returns the pin and the vocabulary it names."""
+    counts = _term_counts(texts, config)
+    ordered = sorted(counts.values(), reverse=True)
+    cut = ordered[min(config["max_features"], len(ordered)) - 1]
+    above = sorted(t for t, n in counts.items() if n > cut)
+    tied = sorted(t for t, n in counts.items() if n == cut)
+    if keep is None:
+        chosen = _sklearn_vocabulary(texts, config)
+        keep = [i for i, t in enumerate(tied) if t in chosen]
+    vocabulary = sorted(above + [tied[i] for i in keep])
+    return {"note": "synthetic", "month": "july_2026", "max_features": config["max_features"], "count_at_cut": cut,
+            "terms_above": len(above), "terms_tied": len(tied), "kept_tied_positions": sorted(keep),
+            "vocabulary_sha256": hashlib.sha256("\n".join(vocabulary).encode("utf-8")).hexdigest()}, vocabulary
+
+
+def _write_pin(root, pin):
+    (root / "config" / "june_refit_vocabulary.json").write_text(json.dumps(pin, indent=1) + "\n", encoding="utf-8")
+
+
+def _july(tmp_path, dev_labels=None, extra_dev=None, sha=None, max_features=None, keep=None):
     """A checkout with the real label set, small TF-IDF settings, a pinned July export, its lists and committed
-    development labels, and the export in its own folder, as the volume holds it."""
+    development labels, and the export in its own folder, as the volume holds it. Since the review of rounds 4 and
+    5, it holds the vocabulary pin too, for the tied terms at `keep`."""
     root = tmp_path / "root"
     (root / "config").mkdir(parents=True)
     shutil.copy(REPO / "config" / "labels.toml", root / "config" / "labels.toml")
     tfidf = (REPO / "config" / "tfidf.toml").read_text(encoding="utf-8").replace("min_df = 2", "min_df = 1")
+    if max_features:
+        tfidf = tfidf.replace("max_features = 50000", f"max_features = {max_features}")
     (root / "config" / "tfidf.toml").write_text(tfidf, encoding="utf-8")
     sets = {"train": _rows(1, 12), "dev": _rows(101, 4), "test": _rows(201, 4)}
     write_splits(root / "splits", sets, removed=0, source_sha256="0" * 64, seed=1, settings={"month": "july_2026"})
@@ -54,6 +106,7 @@ def _july(tmp_path, dev_labels=None, extra_dev=None, sha=None):
         writer = csv.writer(f)
         writer.writerow(["complaint_id", "tfidf_label"])
         writer.writerows(sorted(labels.items()) + list((extra_dev or {}).items()))
+    _write_pin(root, _pin([r.narrative for r in sets["train"]], _config(max_features), keep)[0])
     return root, export, sets
 
 
@@ -182,7 +235,8 @@ def test_J1_the_hash_of_a_content_row_is_the_lists_own():
 
 
 @pytest.mark.parametrize("name", ["config/data_files.toml", "config/labels.toml", "config/tfidf.toml",
-                                  "splits/manifest.json", "results/eval/v1_dev.csv"])
+                                  "splits/manifest.json", "results/eval/v1_dev.csv",
+                                  "config/june_refit_vocabulary.json"])
 def test_J5_a_committed_file_the_refit_cannot_read_is_refused_with_its_type_only(tmp_path, name):
     from voc import june_refit
 
@@ -252,3 +306,112 @@ def test_J7_a_refit_whose_solver_warns_that_it_stopped_early_is_refused(tmp_path
                                                     r"early$"):
         june_refit.refit(root, export, tmp_path / "work")
     assert not [w for w in recwarn if issubclass(w.category, ConvergenceWarning)]
+
+
+# Rounds 4 and 5 of the dry run (11 and 12 November): in Databricks the refit gave 1 of the 370 July development labels
+# other than the committed ones, both times. TF-IDF keeps the 50,000 most frequent terms. On the laptop, 11,379 terms
+# tie at the cut, 4 uses each, and 1,917 of them fit. scikit-learn picks them with numpy's argsort, whose order of equal
+# values differs between x86 and ARM chips, and other picks change 0 to 2 labels. Owner decision, 12 November: the
+# laptop's pick is pinned in `config/june_refit_vocabulary.json`, by positions and a hash, so the refit makes the same
+# vocabulary on any chip, and the check stays exact.
+
+
+def _split_tie():
+    """The fixture's `max_features` that cuts through a tie, two tied terms kept, and the tied positions that
+    scikit-learn does not keep on this machine."""
+    texts = [r.narrative for r in _rows(1, 12)]
+    counts = _term_counts(texts, _config())
+    above = sum(n > 1 for n in counts.values())
+    config = _config(above + 2)
+    tied = sorted(t for t, n in counts.items() if n == 1)
+    chosen = _sklearn_vocabulary(texts, config)
+    other = [i for i, t in enumerate(tied) if t not in chosen][:2]
+    assert len(tied) > 2 and len(other) == 2
+    return above + 2, other, texts, config
+
+
+def test_J7_the_refit_takes_the_pinned_vocabulary_not_the_sort_s_pick_of_tied_terms(tmp_path):
+    from voc import june_refit
+
+    limit, other, texts, config = _split_tie()
+    root, export, _ = _july(tmp_path, max_features=limit, keep=other)
+    model = june_refit.refit(root, export, tmp_path / "work")
+    expected = _pin(texts, config, other)[1]
+    assert sorted(model.vectorizer.vocabulary_) == expected
+    assert set(expected) != _sklearn_vocabulary(texts, config)
+
+
+def test_J7_a_vocabulary_whose_hash_is_not_the_pin_s_is_refused(tmp_path):
+    from voc import june_refit
+
+    root, export, _ = _july(tmp_path)
+    path = root / "config" / "june_refit_vocabulary.json"
+    pin = json.loads(path.read_text(encoding="utf-8"))
+    _write_pin(root, {**pin, "vocabulary_sha256": "0" * 64})
+    with pytest.raises(june_refit.RefitError, match=r"^the refit's vocabulary is not the pinned one: its SHA-256 "
+                                                    r"differs$"):
+        june_refit.refit(root, export, tmp_path / "work")
+
+
+def test_J7_term_counts_that_are_not_the_pin_s_are_refused(tmp_path):
+    from voc import june_refit
+
+    root, export, _ = _july(tmp_path)
+    path = root / "config" / "june_refit_vocabulary.json"
+    pin = json.loads(path.read_text(encoding="utf-8"))
+    _write_pin(root, {**pin, "terms_tied": pin["terms_tied"] + 1})
+    with pytest.raises(june_refit.RefitError, match=r"^the July training rows give [0-9]+ terms above the "
+                                                    r"vocabulary's cut and [0-9]+ at it, not the pin's [0-9]+ and "
+                                                    r"[0-9]+$"):
+        june_refit.refit(root, export, tmp_path / "work")
+
+
+def test_J7_a_pin_for_other_settings_is_refused(tmp_path):
+    from voc import june_refit
+
+    root, export, _ = _july(tmp_path)
+    path = root / "config" / "june_refit_vocabulary.json"
+    pin = json.loads(path.read_text(encoding="utf-8"))
+    _write_pin(root, {**pin, "max_features": 49999})
+    with pytest.raises(june_refit.RefitError, match=r"^the vocabulary pin is for max_features 49999, not the "
+                                                    r"settings' 50000$"):
+        june_refit.refit(root, export, tmp_path / "work")
+
+
+def test_J7_the_pin_names_the_tied_terms_scikit_learn_keeps_on_this_machine():
+    from voc import june_refit
+
+    _, _, texts, config = _split_tie()
+    assert june_refit.vocabulary_pin(texts, config) == {**_pin(texts, config)[0], "note": june_refit.PIN_NOTE}
+
+
+def test_J7_the_laptop_writes_the_pin_from_the_july_training_rows_and_the_refit_takes_it(tmp_path):
+    from voc import june_refit
+
+    limit, _, texts, config = _split_tie()
+    root, export, _ = _july(tmp_path, max_features=limit)
+    path = root / "config" / "june_refit_vocabulary.json"
+    path.unlink()
+    pin = june_refit.write_vocabulary_pin(root, export, tmp_path / "work")
+    assert json.loads(path.read_text(encoding="utf-8")) == pin == {**_pin(texts, config)[0],
+                                                                   "note": june_refit.PIN_NOTE}
+    june_refit.refit(root, export, tmp_path / "work2")
+
+
+def test_J7_the_committed_pin_holds_counts_positions_and_a_hash_only():
+    """B19 and the data rules: a committed file holds IDs, labels, positions, reasons and counts, never text. The pin
+    names no term, only how many there are, the tied terms' positions in alphabetical order, and a hash."""
+    from voc import june_refit
+    from voc.baselines import load_tfidf_config
+
+    assert june_refit.VOCABULARY_PIN == Path("config") / "june_refit_vocabulary.json"
+    pin = json.loads((REPO / june_refit.VOCABULARY_PIN).read_text(encoding="utf-8"))
+    assert set(pin) == {"note", "month", "max_features", "count_at_cut", "terms_above", "terms_tied",
+                        "kept_tied_positions", "vocabulary_sha256"}
+    assert pin["note"] == june_refit.PIN_NOTE and pin["month"] == "july_2026"
+    assert pin["max_features"] == load_tfidf_config(REPO / "config" / "tfidf.toml")["max_features"]
+    positions = pin["kept_tied_positions"]
+    assert all(type(p) is int for p in positions) and positions == sorted(set(positions))
+    assert 0 <= positions[0] and positions[-1] < pin["terms_tied"]
+    assert pin["terms_above"] + len(positions) == pin["max_features"]
+    assert len(pin["vocabulary_sha256"]) == 64 and int(pin["vocabulary_sha256"], 16) >= 0
