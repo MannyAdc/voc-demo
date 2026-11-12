@@ -30,10 +30,10 @@ and stopped at Job B's check of its own run. Round 3 passed every step on 10 Nov
 Rounds 4 and 5 ran on 11 and 12 November, with the API. Every step passed up to Job B's refit check, where the
 refit TF-IDF + LR gave 1 of the 370 July development labels other than the committed ones. Job B stopped there,
 before any model call, and marked nothing used. Round 5 showed that #121's strict stopping point was not the cause.
-The most likely cause is TF-IDF's pick among tied terms, which differs between chips, so #124 pins the laptop's
-vocabulary. #125 makes the approval workflow's run job show a red cross when Job B did not finish. Both changed
-the frozen code (spec 004, Known limits), so round 6 runs that code once, with new `SYN-96` IDs, before the real
-run.
+The most likely cause is TF-IDF's pick among tied terms, which is in no fixed order and can differ between
+machines, so #124 pins the laptop's vocabulary. #125 makes the approval workflow's run job show a red cross when
+Job B did not finish. Both changed the frozen code (spec 004, Known limits), so round 6 runs that code once, with
+new `SYN-96` IDs, before the real run.
 
 - **Round 6's row is merged.** After round 6's pull request is merged, Claude opens a pull request with round 6's
   row in `runs/JUNE_RUNS.md` (step 4). Upload nothing before it is merged: until then the last row is round 5's,
@@ -99,15 +99,15 @@ run.
     limit, or the ledger's cap. Then the results folder has no `DRY_RUN.txt`, Job B's run page in Databricks shows
     the notebook's exit value with `"stopped": true` and its `stop_reason`, and Job B cleans up nothing, so steps
     13 and 14 are done by hand. Tell Claude the `stop_reason`.
-    A refusal in Job B's checks ends the run before any model call, as its refit check did in rounds 4 and 5. Its
-    run shows
-    **Failed** with a message such as "the refit TF-IDF + LR gives 1 of 370 July development labels other
+    A refusal in Job B's checks ends the run before any model call, as its refit check did in rounds 4 and 5.
+    Its run shows **Failed** with a message such as "the refit TF-IDF + LR gives 1 of 370 July development labels other
     than the committed ones" or "did not settle". Job B marks nothing used and cleans up nothing, so steps 13
     and 14 are done by hand. Tell Claude the message.
 11. The workflow posts the result message. In the receiver's storage account, the `juneevents` table holds a
-    `result` row for the workflow's run with `result_state` `SUCCESS`, and `june-events-poison` is empty. On
-    GitHub, the workflow's `run` job shows a green tick, and its last log line is `Job B finished`. Since #125, a
-    failed or stopped Job B shows a red cross instead, after the result is posted, with this last line:
+    `result` row for the workflow's run with `result_state` `SUCCESS`, and `june-events-poison` is empty. Then,
+    on GitHub, click the **Actions** tab, then the `June approval` run named for Job A's run, then the `run` job
+    on its left. It shows a green tick, and the last line of its log is `Job B finished`. Since #125, a failed or
+    stopped Job B shows a red cross there instead, after the result is posted, with this last line:
     "Job B did not finish, so this job fails after the result was sent". Then go by step 10 for what to do by hand.
 12. Pause Job A's trigger again.
 
@@ -140,6 +140,7 @@ GitHub's re-run button gives a second attempt, which the workflow refuses before
 `NOT_STARTED` (review of #125). A red cross on the run job does not change that. So the owner will
 start `June approval` by hand on `main`, with the Job A run's ID (J8's fallback), and approve it again. Once
 Job B has marked the Job A run used, it needs a fresh Job A run too: empty the `incoming` folder and make
-a fresh upload of the same zip (review of #99). A re-run after a code fix is a new round: Claude adds the round's synthetic CSV with new `SYN-` IDs, and `scripts/make_dry_run.py
---round <n> --repo` writes its list, pin and mock answers. A list has one first row, and the June staging table
-never changes a row it has built, so a new round also needs its own row and, before it, the clean-up of step 14.
+a fresh upload of the same zip (review of #99). A re-run after a code fix is a new round: Claude adds the
+round's synthetic CSV with new `SYN-` IDs, and `scripts/make_dry_run.py --round <n> --repo` writes its list,
+pin and mock answers. A list has one first row, and the June staging table never changes a row it has built,
+so a new round also needs its own row and, before it, the clean-up of step 14.
