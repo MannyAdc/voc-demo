@@ -2757,3 +2757,13 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - Owner decision ("go as you recommend", 17:12): minor 1 is logged only, by the check above. Fix minor 2, nits 3 and 4. Skip nit 5, since the module imports scikit-learn only when it is needed, as `baselines.py` does. No third review, by the stopping rule.
 - The fix: Known limits and the docstring name the second stopping rule and say round 5 checks the refusal on ARM, with what happens if it refuses. The test asserts that no ConvergenceWarning escapes. It passes already, since the refit records the fit's warnings.
 - 17:13 Fix written, before its gate.
+- 17:27 Claude's merge verdict on #121 was MERGE, posted as a comment, and Claude marked #121 ready. 17:30 The owner merged #121 (time from GitHub).
+
+### Pull request: the dry run's round 5
+
+- Work start, 17:31: branch `feat/dry-run-round-5`, worktree `../voc-demo-r5`, from main at `4d43ee6`. #121 changed the frozen code, so round 5 runs it once in the cloud before the real run, as #121 planned.
+- Red commit `68f6ccb` at 17:33 (git's commit time): only `tests/test_dry_run.py`, through the gate. Two new failing tests: round 4's row names the code before #121, so the pin names round 5 or a later round, and the run's steps wait for the trigger's fresh look before the upload.
+- AI mistake, caught by the first test run: a heredoc turned an escaped line break in the new test into a real one, so the file did not parse. Claude fixed it with the Edit tool before the commit. This trap is logged before.
+- Round 5's CSV is round 4's with `SYN-94` changed to `SYN-95`, 12 IDs. `uv run --no-sync python scripts/make_dry_run.py --round 5 --repo` wrote the pin, the list and its manifest. The mock answers came out byte for byte the same.
+- The steps: "Before round 5" replaces "Before round 4". It says why round 5 runs, turns the paste of Job B's YAML into a check, since `cloud/job_b.yml` has not changed since round 4, and turns round 4's clean-up into checks. Step 5 says `--round 5`. Step 6 waits for the trigger's fresh look, with 0 files in total, before the upload. Step 10 says what a refusal in Job B's checks looks like and what to do by hand.
+- 17:53 Change written, before its gate.
