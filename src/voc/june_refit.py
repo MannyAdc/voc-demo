@@ -11,13 +11,15 @@ Job B goes on.
 
 One setting is June's own: the solver's stopping point. Logistic regression is fitted step by step. Each step
 makes the model a little less wrong on the training rows, and the solver (L-BFGS) stops once the error is almost
-flat, when its steepest slope left is below `tol` (scikit-learn passes `tol` to scipy as `gtol`). At
+flat, when its steepest slope left is below `tol` (scikit-learn passes `tol` to scipy as `gtol`). It also stops,
+with no warning, once a step barely lowers the error (scipy's `ftol`, which scikit-learn fixes). At
 scikit-learn's default, 1e-4, the laptop's solver stops after 87 steps, short of the settled answer. Databricks
 runs on ARM chips and the laptop on x86, and their floating point sums can differ in the last digits, so the two
 can stop at slightly different points. In round 4 of the dry run (11 November), one of the 370 development
 labels came out different in Databricks. Run to the strict stopping point of 1e-8, the laptop's refit takes 291
 steps and gives the same 370 labels, so the check stays exact (owner decision, 12 November). A refit that has not
 settled is refused: one whose solver used all of `max_iter`, or warned that it stopped early (review of #121).
+Round 5 checks that this refusal does not stop a good refit on ARM (second review of #121).
 
 B21 and J5: nothing here prints. Every refusal holds fixed text, IDs and counts only, and carries no earlier
 exception. An error from DuckDB or scikit-learn is given by its type only, since its text could quote a row.

@@ -229,9 +229,10 @@ def test_B11_the_laptop_s_tfidf_fit_keeps_scikit_learn_s_default_stopping_point(
     assert model.classifier.tol == 1e-4
 
 
-def test_J7_a_refit_whose_solver_warns_that_it_stopped_early_is_refused(tmp_path, monkeypatch):
+def test_J7_a_refit_whose_solver_warns_that_it_stopped_early_is_refused(tmp_path, monkeypatch, recwarn):
     """Review of #121, minor 1: lbfgs can also stop short of `tol` after a failed line search, in fewer steps than
-    `max_iter`, with a ConvergenceWarning. That refit has not settled either."""
+    `max_iter`, with a ConvergenceWarning. That refit has not settled either. Second review of #121, nit 3: the
+    warning is recorded, so none escapes (B21)."""
     import warnings
 
     from sklearn.exceptions import ConvergenceWarning
@@ -250,3 +251,4 @@ def test_J7_a_refit_whose_solver_warns_that_it_stopped_early_is_refused(tmp_path
     with pytest.raises(june_refit.RefitError, match=r"^the refit TF-IDF \+ LR did not settle: its solver stopped "
                                                     r"early$"):
         june_refit.refit(root, export, tmp_path / "work")
+    assert not [w for w in recwarn if issubclass(w.category, ConvergenceWarning)]
