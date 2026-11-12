@@ -2860,3 +2860,12 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - Owner decision ("ok", 09:39): fix the two minors and nits 3 and 4. Skip nit 5, since it is harmless. No second review, by the stopping rule: wording only.
 - The fix: "Before round 6" says the pick among tied terms "is in no fixed order and can differ between machines". Step 11 says to click the **Actions** tab, the `June approval` run named for Job A's run, then the `run` job, and what its log's last line shows. Step 10 and the re-run part are wrapped again, with no line over 120 characters.
 - 09:40 Fix written, before its gate.
+- Green commit `d41a0f5` at 09:40 (git's commit time), through the gate. 09:56 Claude's merge verdict on #126 was MERGE, posted as a comment, and Claude marked #126 ready. 10:01 The owner merged #126 (time from GitHub).
+
+### Pull request: round 6's row
+
+- Work start, 10:02: branch `feat/dry-run-row-6`, worktree `../voc-demo-row6`, from main at `4f7ef12`.
+- The hashes, from `uv run --native-tls --locked python scripts/june_hash.py --dry-run` on a clean `main` at `4f7ef12`, at 10:01: dry run list `74d8d5618301a677728154ee8136ef5868b8dcc90b3a986b22134147e67484b7`, the list of #126, and frozen code `e6a61fe3a42497198ff7e020aa351dfef17aba2b8302d26499e5b5bea8ad55f6` over 116 files, one more than round 5's 115, the vocabulary pin of #124.
+- Red commit `10331fe` at 10:02 (git's commit time): only `tests/test_dry_run.py`, one new test that round 6's row names the list and code hashes printed on `4f7ef12`, through the gate. It sits beside round 5's row test, as the review of #123 asked.
+- The row's date, 2026-11-12 23:01, is in UTC, as J1 says, the time the hashes were printed. It was 10:01 local on 13 November. Round 5's row stays above it.
+- 10:28 Change written, before its gate.
