@@ -192,3 +192,38 @@ def test_J5_a_committed_file_the_refit_cannot_read_is_refused_with_its_type_only
         june_refit.refit(root, export, tmp_path / "work")
     assert str(caught.value) == "the refit's committed files could not be read: FileNotFoundError"
     assert caught.value.__cause__ is None and caught.value.__context__ is None
+
+
+# Round 4 of the dry run (11 November): in Databricks, on ARM chips, the refit gave 1 of the 370 July development labels
+# other than the committed ones. On the laptop (x86), the solver stopped after 87 steps at scikit-learn's default
+# stopping point (tol 1e-4). Run to a strict stopping point (tol 1e-8, 278 steps), it gave the same 370 labels. Owner
+# decision, 12 November: June's refit runs to the strict stopping point, and the check stays exact.
+
+
+def test_J7_the_refit_runs_the_solver_to_the_strict_stopping_point(tmp_path):
+    from voc import june_refit
+
+    root, export, _ = _july(tmp_path)
+    model = june_refit.refit(root, export, tmp_path / "work")
+    assert june_refit.REFIT_TOL == 1e-8
+    assert model.classifier.tol == 1e-8
+
+
+def test_J7_a_refit_that_does_not_settle_within_its_step_limit_is_refused(tmp_path):
+    from voc import june_refit
+
+    root, export, _ = _july(tmp_path)
+    path = root / "config" / "tfidf.toml"
+    path.write_text(path.read_text(encoding="utf-8").replace("max_iter = 2000", "max_iter = 1"), encoding="utf-8")
+    with pytest.raises(june_refit.RefitError, match=r"^the refit TF-IDF \+ LR did not settle within its 1 solver "
+                                                    r"steps$"):
+        june_refit.refit(root, export, tmp_path / "work")
+
+
+def test_B11_the_laptop_s_tfidf_fit_keeps_scikit_learn_s_default_stopping_point():
+    """The July evaluation's fit is unchanged: only June's refit asks for the strict stopping point."""
+    from voc.baselines import fit_tfidf, load_tfidf_config
+
+    config = {**load_tfidf_config(REPO / "config" / "tfidf.toml"), "min_df": 1}
+    model = fit_tfidf([(r.complaint_id, "train", r.narrative, r.product) for r in _rows(1, 12)], config)
+    assert model.classifier.tol == 1e-4
