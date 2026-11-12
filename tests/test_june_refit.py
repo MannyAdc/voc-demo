@@ -354,9 +354,11 @@ def test_J7_a_vocabulary_whose_hash_is_not_the_pin_s_is_refused(tmp_path):
 
 
 def test_J7_term_counts_that_are_not_the_pin_s_are_refused(tmp_path):
+    """Changed in the review of #124: on a fixture whose tie is cut, so the changed pin is still well formed."""
     from voc import june_refit
 
-    root, export, _ = _july(tmp_path)
+    limit, _, _, _ = _split_tie()
+    root, export, _ = _july(tmp_path, max_features=limit)
     path = root / "config" / "june_refit_vocabulary.json"
     pin = json.loads(path.read_text(encoding="utf-8"))
     _write_pin(root, {**pin, "terms_tied": pin["terms_tied"] + 1})
