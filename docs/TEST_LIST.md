@@ -800,6 +800,7 @@ Written on 13 November 2026, after #124 pinned the refit's vocabulary and #125 m
 
 - round 5's row names the frozen code before #124 and #125, so the pin names round 6 or a later round, with new IDs (J1, J8)
 - the steps say the run job shows a red cross when Job B did not finish, and that the workflow refuses a re-run's second attempt before it starts Job B (J10)
+- in round 6's row pull request: the run log holds one row for round 6, synthetic, naming the list and code hashes printed on `main` after #126 merged (J1)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
