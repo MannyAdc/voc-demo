@@ -972,10 +972,12 @@ def _replies(check, quiet_error="dbt failed", quiet_state="", control_error=None
         f"{host}/api/2.2/jobs/runs/get-output?run_id=11": (200, json.dumps({"notebook_output": {
             "result": json.dumps({"code_sha256": B}), "truncated": False}}).encode()),
         f"{host}/api/2.2/jobs/runs/get-output?run_id=12": (200, quiet_output_raw if quiet_output_raw is not None
-                                                          else json.dumps({"error": quiet_error, **({"dbt_output": {
-            "artifacts_link": f"{host}/a12", "artifacts_headers": {}}} if quiet_link else {})}).encode()),
+                                                          else json.dumps({
+            "error": quiet_error, "logs": "synthetic dbt log", **({"dbt_output": {
+                "artifacts_link": f"{host}/a12", "artifacts_headers": {}}} if quiet_link else {})}).encode()),
         f"{host}/api/2.2/jobs/runs/get-output?run_id=13": (200, json.dumps({
             "error": control_error if control_error is not None else f"dbt failed {marker}",
+            "logs": "synthetic dbt log",
             "dbt_output": {"artifacts_link": f"{host}/a13", "artifacts_headers": {}}}).encode()),
         f"{host}/a12": (200, quiet_artifacts),
         f"{host}/a13": (200, control_artifacts),
@@ -1657,11 +1659,12 @@ def _retried(check, quiet_error="dbt failed", quiet_artifacts=None, number=1, fi
                "state": {"result_state": "FAILED"}}]
     replies[key] = (200, json.dumps({"tasks": tasks}).encode())
     replies[f"{host}/api/2.2/jobs/runs/get-output?run_id=15"] = (200, json.dumps({
-        "error": quiet_error, "dbt_output": {"artifacts_link": f"{host}/a15", "artifacts_headers": {}}}).encode())
+        "error": quiet_error, "logs": "synthetic dbt log",
+        "dbt_output": {"artifacts_link": f"{host}/a15", "artifacts_headers": {}}}).encode())
     replies[f"{host}/a15"] = (200, quiet_artifacts if quiet_artifacts is not None else _archive(
         "tar.gz", {RUN_FILE: b"create table x as select 1"}))
     replies[f"{host}/api/2.2/jobs/runs/get-output?run_id=16"] = (200, json.dumps({
-        "error": f"dbt failed {marker}", "dbt_output": {"artifacts_link": f"{host}/a16",
+        "error": f"dbt failed {marker}", "logs": "synthetic dbt log", "dbt_output": {"artifacts_link": f"{host}/a16",
                                                          "artifacts_headers": {}}}).encode())
     replies[f"{host}/a16"] = (200, _archive("zip", {RUN_FILE: b"create table x as select 1",
                                                     "logs/dbt.log": marker.encode()}))
@@ -1717,7 +1720,7 @@ def _with_tasks(replies, tasks):
 
 
 def _output_reply(error, link=None):
-    body = {"error": error}
+    body = {"error": error, "logs": "synthetic dbt log"}
     if link:
         body["dbt_output"] = {"artifacts_link": f"{HOST}/{link}", "artifacts_headers": {}}
     return 200, json.dumps(body).encode()
@@ -1743,7 +1746,8 @@ def test_J13_the_control_fails_when_only_an_earlier_attempt_shows_the_marker(mon
     replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=16"] = _output_reply("dbt failed", "a16")
     replies[f"{HOST}/a16"] = (200, _archive("zip", {RUN_FILE: b"create table x as select 1"}))
     lines = _report(check, monkeypatch, replies)
-    assert lines[-1].startswith("verdict: FAIL") and "the control shows no leak in its output" in lines[-1]
+    # Changed for A+ (13 November): the control must show the marker in its latest attempt's dbt files.
+    assert lines[-1].startswith("verdict: FAIL") and "the control shows no leak in its dbt files" in lines[-1]
 
 
 def test_J13_a_leak_only_in_an_earlier_quiet_attempt_fails_the_check(monkeypatch):
@@ -1900,3 +1904,34 @@ def test_J13_the_clean_up_gives_each_click_and_deletes_the_table_before_its_sche
     assert clean.index("delete each table in it") < clean.index("Then delete the schema")
     # Review of #130, minor 4: the robot's long-lived secret, which starts Job B, stays.
     assert "only the secret made today" in clean and "it stays" in clean
+
+
+# A+ (owner decisions of 13 November, after gate 2's second run and the probe of run 482710595894812): Databricks'
+# output of a failed dbt task holds dbt's `error` and `logs` text, but no row text, even without the quiet flags. So
+# the control proves the check can see a leak in its dbt files, and that its output was read: it holds dbt's error and
+# logs text. The quiet run's rules are unchanged.
+
+
+def test_J13_the_control_passes_with_dbt_text_in_its_output_and_the_marker_in_its_dbt_files(monkeypatch):
+    check = _robot_check()
+    lines = _report(check, monkeypatch, _reached(check, control_error="dbt failed"))
+    assert lines[-1] == "verdict: PASS"
+
+
+def test_J13_a_control_output_without_dbt_error_and_logs_text_fails(monkeypatch):
+    check = _robot_check()
+    replies = _reached(check)
+    replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=13"] = (200, json.dumps({
+        "dbt_output": {"artifacts_link": f"{HOST}/a13", "artifacts_headers": {}}}).encode())
+    lines = _report(check, monkeypatch, replies)
+    assert lines[-1].startswith("verdict: FAIL")
+    assert "the control's output holds no dbt error and logs text, so it cannot be told it was read" in lines[-1]
+
+
+def test_J13_the_probe_behind_the_control_rule_is_committed_with_its_hash():
+    """CLAUDE.md, "Outside platforms": the probe's file goes with the pull request that relies on it."""
+    import hashlib
+
+    probe = REPO / "scripts" / "probes" / "failcheck_output_fields.py"
+    digest = hashlib.sha256(probe.read_bytes()).hexdigest()
+    assert digest == "82126bdda0b344f36b7accf2b0dbd29515b0c469996e6385abda4cd752e70514"
