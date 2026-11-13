@@ -678,7 +678,11 @@ def test_J1_the_run_log_s_first_row_is_round_1_s():
     assert row.code_hash != code_hash(REPO) and row.list_hash != dry_run_list_hash(REPO)
     # Review of #102, nit 7: Job A takes the checkout only once its last row is this round's.
     # Changed in pull request 6b, part 1: and only while that row names the checkout's frozen code.
-    if f"round {ROUND}" in entries[-1].reason and entries[-1].code_hash == code_hash(REPO):
+    # Changed in the real row's pull request (13 November): after the dry run comes the June run's real row,
+    # which Job A takes.
+    if entries[-1].kind == "real":
+        assert checked_target(REPO).kind == "real"
+    elif f"round {ROUND}" in entries[-1].reason and entries[-1].code_hash == code_hash(REPO):
         checked_target(REPO)
     else:
         with pytest.raises(JobAError, match="names a June list other than|not the frozen code"):
@@ -694,6 +698,13 @@ def test_J1_the_run_log_s_last_row_is_this_round_s():
     from voc.job_a import JobAError, checked_target, pin_for
     entries = read_runs(REPO / "runs" / "JUNE_RUNS.md")
     last = entries[-1]
+    # Changed in the real row's pull request (13 November): once the June run's real row follows the dry run, the
+    # dry run's last row is the one before it, this round's. The real row itself is tested in
+    # test_J1_the_real_row_names_the_june_list_and_the_code_of_132.
+    if last.kind == "real":
+        synthetic = [e for e in entries if e.kind == "synthetic"]
+        assert re.search(rf"\bround {ROUND}\b", synthetic[-1].reason) and synthetic[-1].date < last.date
+        return
     # Changed in round 3's pull request: between a round's code pull request and its row pull request, the last row is
     # the round before's, and Job A refuses the checkout until this round's row is added.
     # Changed in pull request 6b, part 1: the same holds after any change to the frozen code before its round's row,
