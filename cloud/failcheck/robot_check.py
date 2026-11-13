@@ -118,8 +118,9 @@ def _found(body, parsed):
 
 
 def _code_hash(base, token, listed):
-    """The failcheck code's hash, from the first `make_rows` task's exit value, or None."""
-    first = next((t for t in listed if t.get("task_key") == "make_rows"), None)
+    """The failcheck code's hash, from the exit value of `make_rows`' latest attempt, or None (review of #129)."""
+    items = sorted((t for t in listed if t.get("task_key") == "make_rows"), key=_number)
+    first = items[-1] if items else None
     if first is None:
         return None
     status, body = _call(f"{base}/api/2.2/jobs/runs/get-output?run_id={int(first.get('run_id', 0))}", token=token)
@@ -131,10 +132,15 @@ def _code_hash(base, token, listed):
     return code if status == 200 and isinstance(code, str) and re.fullmatch(r"[0-9a-f]{64}", code) else None
 
 
+def _whole_number(task):
+    """Whether a task item's attempt number is a whole number, or missing, which is the first attempt."""
+    number = task.get("attempt_number", 0)
+    return type(number) is int and number >= 0
+
+
 def _number(task):
     """A task item's attempt number. An item without one is the first attempt, as Databricks lists it."""
-    number = task.get("attempt_number", 0)
-    return number if isinstance(number, int) and not isinstance(number, bool) else -1
+    return task.get("attempt_number", 0) if _whole_number(task) else -1
 
 
 def _leaks(read):
@@ -208,11 +214,15 @@ def report(host, client_id, client_secret, run_id):
     attempts = {}
     for task in listed:
         attempts.setdefault(task.get("task_key"), []).append(task)
+    # Review of #129, minor 1: an attempt number that is not a whole number is refused, as the approval workflow
+    # refuses it, since it cannot say which attempt is the latest.
+    odd = sorted(str(key) for key, items in attempts.items() if not all(_whole_number(t) for t in items))
     twice = sorted(str(key) for key, items in attempts.items()
-                   if len({_number(t) for t in items}) < len(items))
-    if twice:
-        return lines + [_now(), "verdict: FAIL: " + " | ".join(f"the run lists the task {key} twice"
-                                                                for key in twice)]
+                   if str(key) not in odd and len({_number(t) for t in items}) < len(items))
+    if odd or twice:
+        reasons = [f"the run lists the task {key} without whole attempt numbers" for key in odd]
+        reasons += [f"the run lists the task {key} twice" for key in twice]
+        return lines + [_now(), "verdict: FAIL: " + " | ".join(reasons)]
     outside = {k: v for k, v in run.items() if k != "tasks"}
     run_places = places(outside)
     lines.append(f"run: runs/get: marker {', '.join(run_places) or 'nowhere'}")
@@ -236,7 +246,7 @@ def report(host, client_id, client_secret, run_id):
             fails.append("no code hash from make_rows")
         if make_rows[-1]["state"] != "SUCCESS":
             fails.append("make_rows did not succeed")
-        if any(a["get"] or a["output"] for a in make_rows):
+        if any(_leaks(a) for a in make_rows):  # its dbt files too (review of #129, nit 6)
             fails.append("the marker is in make_rows' output")
         if any(a["state"] != "FAILED" for a in quiet):
             fails.append("dbt did not fail")

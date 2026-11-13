@@ -810,6 +810,7 @@ Written on 13 November 2026, after gate 2's first run failed because serverless 
 - a leak in any attempt of the quiet run fails it, and every quiet attempt must reach the failing model (J5, J13)
 - the control's latest attempt is the one that must show the marker (J13)
 - two items of a task with the same attempt number are still refused (J13)
+- from the review of #129: attempt numbers that are not whole numbers are refused, the code hash comes from `make_rows`' latest attempt, `make_rows`' dbt files are checked for the marker, the control fails when only an earlier attempt holds it, and a leak only in an earlier quiet attempt, an unreadable earlier attempt, a retried `make_rows` whose latest attempt failed, or a leak in an earlier attempt of another task fails the check, while a run with one task retried and a retried `make_rows` whose latest attempt succeeded pass (J13)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 

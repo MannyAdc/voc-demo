@@ -87,8 +87,9 @@ The job also makes these, which you delete at the end:
    and the failcheck code's hash, never the secret, the token or a value it read. Paste them to Claude. The gate
    passes only when the last line is `verdict: PASS`. Databricks retries a failed task on its own, so `dbt` and
    `dbt_control` may each have run more than once. The check reads every attempt, and its lines name each one,
-   such as `dbt (attempt 1)`. It applies every rule, to every attempt of `dbt`, and to the latest attempt of
-   `dbt_control`:
+   such as `dbt (attempt 1)`. Every attempt of every task must be readable, and no attempt of `make_rows` or of any
+   other task may hold the marker. The rules below on `dbt` apply to every attempt of `dbt`, and those on the
+   control to the latest attempt of `dbt_control`. An attempt number that is not a whole number is refused:
    - both dbt runs' dbt files show they reached the failing model, so the quiet flags were really tested
    - the marker is nowhere in `dbt`'s run details, output or dbt files, and every one of them could be read
    - the marker is in no other task, `make_rows` included
