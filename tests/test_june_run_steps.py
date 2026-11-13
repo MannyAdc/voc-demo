@@ -33,7 +33,7 @@ def test_J8_the_june_run_steps_check_the_dry_run_s_clean_up_first_and_keep_main_
 def test_J1_the_june_run_steps_say_which_figures_to_check_before_approving():
     text = _text()
     for name in ("complaints", "worst_case_tokens", "tokens_left_under_cap", "expected_cost_usd"):
-        assert f"`{name}`" in text
+        assert f"`{name}: " in text
 
 
 def test_J11_the_june_run_steps_end_with_the_copy_by_claude():
