@@ -821,6 +821,14 @@ Written on 13 November 2026, after the gates' first run, where the owner's steps
 - the robot's secret is made with **Read + Write**, never **Read** alone, with every field of its box (J13)
 - the clean-up gives each click, deletes the table before its schema, and deletes only the secret made today (J13)
 
+## The failcheck's control rule, A+ ([spec 004](../specs/004-june-test-and-baselines/spec.md), J13), `tests/test_job_a.py`
+
+Written on 13 November 2026, after gate 2's second run and the probe of run 482710595894812. The test fakes gain the `logs` field the probe found.
+
+- the control passes with dbt's error and logs text in its output and the marker in its dbt files (J13)
+- a control output without dbt error and logs text fails, and so does a control whose latest attempt, or whose run details alone, hold the marker but its dbt files do not (J13)
+- the probe behind the rule is committed with its SHA-256 (CLAUDE.md, "Outside platforms")
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

@@ -164,8 +164,10 @@ def _attempt(base, token, label, task, lines, fails):
     if status != 200 or output is None:
         lines.append(f"{label}: output: could not read, HTTP {status}")
         fails.append(f"could not read {label}'s output")
-        return {"state": state, "get": in_get, "output": None, "artifacts": "none", "names": []}
+        return {"state": state, "get": in_get, "output": None, "artifacts": "none", "names": [], "text": False}
     in_output = _found(body, output)
+    # The probe of 13 November: a failed dbt task's output holds dbt's own `error` and `logs` text.
+    text = all(isinstance(output.get(k), str) and output[k] for k in ("error", "logs"))
     lines.append(f"{label}: output: marker {', '.join(in_output) or 'nowhere'}")
     artifacts, names = "none", []
     link = ((output or {}).get("dbt_output") or {}).get("artifacts_link")
@@ -181,7 +183,8 @@ def _attempt(base, token, label, task, lines, fails):
             names = read[0]
             lines.append(f"{label}: artifacts: files: {len(names)}, marker in: {', '.join(read[1]) or 'nowhere'}")
             artifacts = read[1]
-    return {"state": state, "get": in_get, "output": in_output, "artifacts": artifacts, "names": names}
+    return {"state": state, "get": in_get, "output": in_output, "artifacts": artifacts, "names": names,
+            "text": text}
 
 
 def report(host, client_id, client_secret, run_id):
@@ -268,8 +271,10 @@ def report(host, client_id, client_secret, run_id):
         latest = control[-1]
         if latest["state"] != "FAILED":
             fails.append("the control did not fail")
-        if not latest["output"]:
-            fails.append("the control shows no leak in its output, so the check cannot see one")
+        # A+ (13 November): Databricks' output of a failed dbt task holds no row text even without the quiet
+        # flags (the probe of run 482710595894812), so the control proves its output was read, not that it leaks.
+        if not latest["text"]:
+            fails.append("the control's output holds no dbt error and logs text, so it cannot be told it was read")
         if not _ran_model(latest["names"]):
             fails.append("the control's dbt files are missing or do not show it reached the failing model")
         elif isinstance(latest["artifacts"], list) and not latest["artifacts"]:

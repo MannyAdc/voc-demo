@@ -129,7 +129,9 @@ to hand and do not paste it to Claude.
    - both dbt runs' dbt files show they reached the failing model, so the quiet flags were really tested
    - the marker is nowhere in `dbt`'s run details, output or dbt files, and every one of them could be read
    - the marker is in no other task, `make_rows` included
-   - the control shows the marker in its output and in its dbt files, so the check can see a leak
+   - the control's output holds dbt's error and logs text, so it was read, and its dbt files hold the marker, so
+     the check can see a leak where dbt writes the row's text. Databricks puts no row text in a failed dbt task's
+     output, even without the quiet flags (the probe of 13 November), so the control cannot show a leak there
    - a request for an `all-apis` token is refused with HTTP 400, 401 or 403, or the token given is
      narrowed to `jobs`, so the secret holds the `jobs` scope only
    - the warehouse's query history is refused (HTTP 401 or 403)

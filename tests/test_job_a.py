@@ -1232,11 +1232,14 @@ def test_J13_the_marker_in_any_other_task_fails_and_a_repeated_task_is_refused(m
     assert lines[-1].startswith("verdict: FAIL") and "without whole attempt numbers" in lines[-1]
 
 
-def test_J13_the_control_must_show_the_marker_in_its_output_not_only_its_run_details(monkeypatch):
-    """Nit 5 of the third review: the spec says the control shows the marker in its output."""
+def test_J13_the_control_must_show_the_marker_in_its_dbt_files_not_only_its_run_details(monkeypatch):
+    """Changed for A+ (13 November): the marker in the control's run details alone shows nothing. Its dbt files,
+    where dbt writes the row's text, must hold it."""
     check = _robot_check()
-    lines = _report(check, monkeypatch, _reached(check, control_error="dbt failed", control_state=check.MARKER))
-    assert lines[-1].startswith("verdict: FAIL") and "control" in lines[-1]
+    replies = _reached(check, control_error="dbt failed", control_state=check.MARKER,
+                       control_artifacts=_archive("zip", {RUN_FILE: b"create table x as select 1"}))
+    lines = _report(check, monkeypatch, replies)
+    assert lines[-1].startswith("verdict: FAIL") and "the control shows no leak in its dbt files" in lines[-1]
 
 
 def test_J13_an_encrypted_zip_is_unread_not_a_crash(monkeypatch):
