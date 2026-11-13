@@ -47,6 +47,13 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Test names start with the rule ID: `test_B1_...`.
 - Test text is synthetic. Synthetic complaint IDs start with `SYN-`. Fake keys in tests are built while the test runs, never written as one string.
 
+## Outside platforms
+
+- Before a rule about how an outside platform behaves is frozen into code, a test or a gate, it is checked live with a read-only probe. The outside platforms are Databricks, GitHub, Azure and the Claude API.
+- A probe prints only key names, types, lengths, counts, status codes and yes or no answers, never a value it read. The owner runs it when it needs the owner's sign-in.
+- The probe's file, its SHA-256 and its printed lines go in the pull request that relies on it, the lines and the hash in `BUILD_LOG.md`.
+- A rule built on an unchecked assumption about a platform is logged as an AI mistake. This rule comes from the failcheck of 13 November, whose control rule assumed that Databricks puts dbt's text in a failed task's output.
+
 ## Hooks (in `.claude/settings.json`)
 
 - Setup, once per clone, by the owner: install gitleaks (`winget install --id Gitleaks.Gitleaks --exact --version 8.30.1` on Windows), run `uv sync`, then `git config core.hooksPath .githooks`.
