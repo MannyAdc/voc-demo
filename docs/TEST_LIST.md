@@ -813,6 +813,14 @@ Written on 13 November 2026, after gate 2's first run failed because serverless 
 - from the review of #129: attempt numbers that are not whole numbers are refused, the code hash comes from `make_rows`' latest attempt, `make_rows`' dbt files are checked for the marker, the control fails when only an earlier attempt holds it, and a leak only in an earlier quiet attempt, an unreadable earlier attempt, a retried `make_rows` whose latest attempt failed, or a leak in an earlier attempt of another task fails the check, while a run with one task retried and a retried `make_rows` whose latest attempt succeeded pass (J13)
 - from the second review of #129: a negative attempt number, and an item without one beside a numbered item, are refused, as the approval workflow refuses them, and `make_rows`' leak reason names its output or details (J13)
 
+## Every click and value in the gates' steps ([spec 004](../specs/004-june-test-and-baselines/spec.md), J8, J13), `tests/test_job_a.py`
+
+Written on 13 November 2026, after the gates' first run, where the owner's steps lacked values.
+
+- gate 1 says to set the June folder for the window first, with the folder, not the zip (J8)
+- the robot's secret is made with **Read + Write**, never **Read** alone, with every field of its box (J13)
+- the clean-up gives each click, deletes the table before its schema, and deletes only the secret made today (J13)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

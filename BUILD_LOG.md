@@ -2941,3 +2941,15 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - The fix: with several items of a task, every item must carry its own whole attempt number, as `_latest_attempt` asks, and an item alone may lack one. The variable is named `latest`. `make_rows`' reason says "output or details". The steps say `make_rows`' latest attempt must succeed, that a missing number beside others is refused, and end the sentence before the rules.
 - One existing test changed: two items of `dbt` with no attempt numbers were refused as "twice". They are now refused first for lacking whole attempt numbers, still a FAIL, so its check names the new reason.
 - 15:30 Fix written, before its gate.
+- Green commit `0da2802` at 15:30 (git's commit time), through the gate. 15:46 Claude's merge verdict on #129 was MERGE, posted as a comment, and Claude marked #129 ready. 16:06 The owner merged #129 (time from GitHub).
+- AI mistake, caught by Claude before posting: the draft of #129's verdict named its second red commit as `9c6d6a1`, an ID Claude had not read. Git gives `16dce3d`, and the posted verdict says so.
+
+### Pull request: every click and value in the gates' steps
+
+- Work start, 16:06: branch `docs/failcheck-secret-scope`, worktree `../voc-demo-fcsteps`, from main at `0e9a5d4`. The folder `../voc-demo-scope` was taken by an old worktree, of `fix/receiver-scope`, which Claude left as it was.
+- This is the steps' fix of the owner's decision A of 13:33, widened to every click and value the gates' first run lacked, after the owner's words at 13:18 and 13:36.
+- Red commit `d6305a0` at 16:08 (git's commit time): only `tests/test_job_a.py`, through the gate. Three new failing tests: gate 1 says to set the June folder for the window first, with the folder, not the zip, the robot's secret is made with **Read + Write**, never **Read** alone, with every field of its box, and the clean-up gives each click, deletes the table before its schema, and deletes only the secret made today.
+- The change: `cloud/failcheck/STEPS.md` gate 1 gives the `git` commands, the `$env:VOC_JUNE_DATA_DIR` line with the folder, and what went wrong on 13 November. Gate 2 says where to find the warehouse's ID, and gives every click of steps 1 to 5 and every field of the secret's box and the notebook's top lines. The clean-up gives every click, the table before the schema, and which secret stays.
+- AI mistake, caught by the tests: Claude's first wrapping split two phrases the tests look for across lines. Claude wrapped them again before the commit.
+- `cloud/` is frozen, so both gates run on the code after this pull request.
+- 16:29 Change written, before its gate.
