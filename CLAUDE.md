@@ -47,6 +47,15 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Test names start with the rule ID: `test_B1_...`.
 - Test text is synthetic. Synthetic complaint IDs start with `SYN-`. Fake keys in tests are built while the test runs, never written as one string.
 
+## Outside platforms
+
+- Before a rule about how an outside platform behaves goes into the frozen code (the paths of `voc.frozen.FROZEN_PATHS`), into a gate, or into a test fake shaped like the platform's reply, it is checked live with a read-only probe. The outside platforms are Databricks, GitHub, Azure and the Claude API. A rule already there is checked the next time it is changed.
+- A probe runs on synthetic data only, never on a real month's run or a place that holds real data. It prints only key names, types, lengths, counts, status codes and yes or no answers, never a field's value.
+- Who runs it: in Databricks, the owner, in a notebook with the owner's own sign-in. On GitHub, Claude, with the read calls `gh` is allowed. On Azure, the owner, in the portal, never from the laptop. For the Claude API, a call through the record and replay cache and the ledger, on synthetic text.
+- The probe's file, its SHA-256 and its printed lines go in the pull request that relies on it, the hash and the lines in `BUILD_LOG.md`. When no read-only probe is possible, the rule is named in the spec's Known limits as unchecked.
+- The fresh reviewer checks each such rule for its probe.
+- A rule Claude built on an unchecked assumption about a platform is logged as an AI mistake. This rule comes from the failcheck of 13 November, whose control rule assumed that Databricks shows dbt's text in a failed task's output.
+
 ## Hooks (in `.claude/settings.json`)
 
 - Setup, once per clone, by the owner: install gitleaks (`winget install --id Gitleaks.Gitleaks --exact --version 8.30.1` on Windows), run `uv sync`, then `git config core.hooksPath .githooks`.
