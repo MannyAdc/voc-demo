@@ -1864,3 +1864,33 @@ def test_J13_the_reason_for_a_leak_in_make_rows_names_its_output_or_details(monk
     replies[f"{HOST}/a11"] = (200, _archive("zip", {"logs/x.log": check.MARKER.encode()}))
     lines = _report(check, monkeypatch, replies)
     assert "the marker is in make_rows' output or details" in lines[-1]
+
+
+# The gates' first run, 13 November: the owner's steps lacked values the owner needed. Gate 1 stopped twice, since
+# the June data folder's variable was not set in the window and was then set to the zip, not its folder. The robot's
+# secret was nearly made with **Read**, which Databricks refuses for a `jobs` token (round 1). The clean-up named
+# places, not clicks, and the schema refused to go while its table was there. Owner decision, 13 November: every
+# click and value is in the steps.
+
+
+def _gate_steps():
+    return (REPO / "cloud" / "failcheck" / "STEPS.md").read_text(encoding="utf-8")
+
+
+def test_J8_gate_1_says_to_set_the_june_folder_for_the_window_first():
+    gate_1 = _gate_steps().split("## Gate 1")[1].split("\n## ")[0]
+    assert "$env:VOC_JUNE_DATA_DIR" in gate_1 and "the folder, not the zip" in gate_1
+
+
+def test_J13_the_robot_s_secret_is_made_with_read_and_write_never_read_alone():
+    steps = _gate_steps()
+    secret = steps.split("**Make the robot's secret.**")[1].split("\n5. ")[0]
+    assert "**Other APIs**" in secret and "**Read + Write**" in secret and "never **Read** alone" in secret
+    assert "**Lifetime:** 1" in secret and "HTTP 403" in secret
+
+
+def test_J13_the_clean_up_gives_each_click_and_deletes_the_table_before_its_schema():
+    clean = _gate_steps().split("### Clean up, the same day")[1]
+    assert "**Trash**" in clean and "**Delete job**" in clean and "**Delete directory**" in clean
+    assert clean.index("the table inside it") < clean.index("then the schema")
+    assert "only the secret made today" in clean
