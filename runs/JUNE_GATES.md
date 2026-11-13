@@ -16,3 +16,9 @@ are never changed.
 
 | Date | Gate | Result | Pin SHA-256 | Code hash | Evidence |
 |---|---|---|---|---|---|
+| 2026-11-13 02:01 | june-check | pass | 4adca715ede2ac1780bf72d3735b34fb7d88616f2aa9468ea41357f414180850 | e6a61fe3a42497198ff7e020aa351dfef17aba2b8302d26499e5b5bea8ad55f6 | verdict: PASS |
+| 2026-11-13 02:25 | failcheck | fail | 4adca715ede2ac1780bf72d3735b34fb7d88616f2aa9468ea41357f414180850 | e6a61fe3a42497198ff7e020aa351dfef17aba2b8302d26499e5b5bea8ad55f6 | verdict: FAIL: the run lists the task dbt twice, and the task dbt_control twice (its two reasons, joined by a bar in the verdict line), run 340824676096743 |
+| 2026-11-13 06:08 | june-check | pass | 4adca715ede2ac1780bf72d3735b34fb7d88616f2aa9468ea41357f414180850 | 41f7163892d0aae76a6d1c461032eacb39320788c1a661954f9eb6eba95020f8 | verdict: PASS |
+| 2026-11-13 06:26 | failcheck | fail | 4adca715ede2ac1780bf72d3735b34fb7d88616f2aa9468ea41357f414180850 | 41f7163892d0aae76a6d1c461032eacb39320788c1a661954f9eb6eba95020f8 | verdict: FAIL: the control shows no leak in its output, so the check cannot see one, run 64209205776851 |
+| 2026-11-13 09:29 | june-check | pass | 4adca715ede2ac1780bf72d3735b34fb7d88616f2aa9468ea41357f414180850 | db063ac8f671e5fa4b3944adca2b25c3c9b605f6b444157f91102ff30c0d677a | verdict: PASS |
+| 2026-11-13 09:47 | failcheck | pass | 4adca715ede2ac1780bf72d3735b34fb7d88616f2aa9468ea41357f414180850 | db063ac8f671e5fa4b3944adca2b25c3c9b605f6b444157f91102ff30c0d677a | verdict: PASS, run 269286114094038 |

@@ -99,15 +99,19 @@ def test_J1_the_list_hash_is_the_june_list_and_matches_its_manifest(tmp_path):
         list_hash(copy)
 
 
-def test_J1_the_hash_script_on_the_repo_refuses_with_no_gate_open():
-    # Changed in the third fix round of #94: the script prints the two hashes only after both gates passed, which
-    # tests/test_job_a.py tests on a checkout copy with both passes recorded. Here, with none recorded, it prints
-    # one refusal and no hash.
+def test_J1_the_hash_script_on_the_repo_refuses_no_gate_once_both_gates_are_open():
+    # Changed in the third fix round of #94: the script prints the two hashes only after both gates passed.
+    # Changed on 13 November, when both gates' passes were recorded for the code of #132: the repo no longer has
+    # "no gate open", so the script never refuses for a gate here. The refusal with no gate open is tested on a
+    # checkout copy in tests/test_job_a.py (test_J1_the_hash_script_refuses_without_both_gates). With a frozen file
+    # changed against git, it refuses for that, which is another check.
     result = subprocess.run([sys.executable, str(REPO / "scripts" / "june_hash.py")], capture_output=True,
                             text=True, cwd=REPO, env=SCRIPT_ENV)
-    lines = result.stdout.splitlines()
-    assert result.returncode == 1 and len(lines) == 1 and lines[0].startswith("refused:")
-    assert list_hash(REPO) not in result.stdout and code_hash(REPO) not in result.stdout
+    assert "gate" not in result.stdout
+    if result.returncode == 0:
+        assert result.stdout.splitlines() == [
+            f"june list sha256 {list_hash(REPO)}",
+            f"frozen code sha256 {code_hash(REPO)} over {len(frozen_files(REPO))} files"]
 
 
 def _log(tmp_path, rows):

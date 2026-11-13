@@ -829,6 +829,14 @@ Written on 13 November 2026, after gate 2's second run and the probe of run 4827
 - a control output without dbt error and logs text fails, so does one with only `error`, or with text in an earlier attempt only, and so does a control whose latest attempt's dbt files lack the marker, while only an earlier attempt's or only its run details hold it (J13)
 - the probe behind the rule is committed with its SHA-256 (CLAUDE.md, "Outside platforms")
 
+## The June gates of 13 November ([spec 004](../specs/004-june-test-and-baselines/spec.md), J1), `tests/test_job_a.py`
+
+Written on 13 November 2026, when both gates passed on the code of #132.
+
+- both gates are open for the code of #132 and the June pin (J1)
+- gate 2's two fails of 13 November stay on record (J1)
+- the hash script on the repo no longer refuses for a gate, and prints the two hashes only (J1). Changed from "refuses with no gate open", which is tested on a checkout copy
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
