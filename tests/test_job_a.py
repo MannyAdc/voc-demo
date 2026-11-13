@@ -1961,3 +1961,25 @@ def test_J13_the_control_s_text_must_be_in_its_latest_attempt(monkeypatch):
         "dbt_output": {"artifacts_link": f"{HOST}/a16", "artifacts_headers": {}}}).encode())
     lines = _report(check, monkeypatch, replies)
     assert "the control's output holds no dbt error and logs text" in lines[-1]
+
+
+# The gates of 13 November (J1): gate 1 passed on three codes, gate 2 failed on the first two and passed on the third,
+# the code of #132. A fail stays on record, and the gates are open for that code and the June pin.
+
+GATE_CODE = "db063ac8f671e5fa4b3944adca2b25c3c9b605f6b444157f91102ff30c0d677a"
+
+
+def test_J1_both_gates_are_open_for_the_code_of_132_and_the_june_pin():
+    from voc.datafile import load_pins
+    from voc.frozen import GATES, missing_gates, read_gates
+
+    pin = load_pins(REPO / "config" / "data_files.toml")["june_2026"]["sha256"]
+    assert missing_gates(read_gates(REPO / GATES), GATE_CODE, pin) == []
+
+
+def test_J1_gate_2_s_two_fails_of_13_november_stay_on_record():
+    from voc.frozen import GATES, read_gates
+
+    fails = [(g.gate, g.code_hash[:8], g.date) for g in read_gates(REPO / GATES) if g.result == "fail"]
+    assert ("failcheck", "e6a61fe3", "2026-11-13 02:25") in fails
+    assert ("failcheck", "41f71638", "2026-11-13 06:26") in fails
