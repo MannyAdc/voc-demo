@@ -1226,7 +1226,8 @@ def test_J13_the_marker_in_any_other_task_fails_and_a_repeated_task_is_refused(m
     assert lines[-1].startswith("verdict: FAIL") and "other" in lines[-1]
     again = {"task_key": "dbt", "run_id": 15, "state": {"result_state": "FAILED"}}
     lines = _report(check, monkeypatch, _reached(check, extra_tasks=(again,)))
-    assert lines[-1].startswith("verdict: FAIL") and "twice" in lines[-1]
+    # Changed in the second review of #129: two items of a task with no attempt numbers are refused for that first.
+    assert lines[-1].startswith("verdict: FAIL") and "without whole attempt numbers" in lines[-1]
 
 
 def test_J13_the_control_must_show_the_marker_in_its_output_not_only_its_run_details(monkeypatch):

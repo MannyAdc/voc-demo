@@ -120,10 +120,10 @@ def _found(body, parsed):
 def _code_hash(base, token, listed):
     """The failcheck code's hash, from the exit value of `make_rows`' latest attempt, or None (review of #129)."""
     items = sorted((t for t in listed if t.get("task_key") == "make_rows"), key=_number)
-    first = items[-1] if items else None
-    if first is None:
+    latest = items[-1] if items else None
+    if latest is None:
         return None
-    status, body = _call(f"{base}/api/2.2/jobs/runs/get-output?run_id={int(first.get('run_id', 0))}", token=token)
+    status, body = _call(f"{base}/api/2.2/jobs/runs/get-output?run_id={int(latest.get('run_id', 0))}", token=token)
     try:
         value = json.loads((((_json(body) or {}).get("notebook_output") or {}).get("result")) or "")
     except ValueError:
@@ -132,15 +132,20 @@ def _code_hash(base, token, listed):
     return code if status == 200 and isinstance(code, str) and re.fullmatch(r"[0-9a-f]{64}", code) else None
 
 
-def _whole_number(task):
-    """Whether a task item's attempt number is a whole number, or missing, which is the first attempt."""
-    number = task.get("attempt_number", 0)
+def _whole_number(task, alone):
+    """Whether a task item's attempt number is a whole number. An item alone may lack one, as the first attempt.
+    Beside others, every item must carry its own, as the approval workflow's `_latest_attempt` asks (second
+    review of #129)."""
+    if "attempt_number" not in task:
+        return alone
+    number = task["attempt_number"]
     return type(number) is int and number >= 0
 
 
 def _number(task):
     """A task item's attempt number. An item without one is the first attempt, as Databricks lists it."""
-    return task.get("attempt_number", 0) if _whole_number(task) else -1
+    number = task.get("attempt_number", 0)
+    return number if type(number) is int and number >= 0 else -1
 
 
 def _leaks(read):
@@ -216,7 +221,8 @@ def report(host, client_id, client_secret, run_id):
         attempts.setdefault(task.get("task_key"), []).append(task)
     # Review of #129, minor 1: an attempt number that is not a whole number is refused, as the approval workflow
     # refuses it, since it cannot say which attempt is the latest.
-    odd = sorted(str(key) for key, items in attempts.items() if not all(_whole_number(t) for t in items))
+    odd = sorted(str(key) for key, items in attempts.items()
+                 if not all(_whole_number(t, len(items) == 1) for t in items))
     twice = sorted(str(key) for key, items in attempts.items()
                    if str(key) not in odd and len({_number(t) for t in items}) < len(items))
     if odd or twice:
@@ -247,7 +253,7 @@ def report(host, client_id, client_secret, run_id):
         if make_rows[-1]["state"] != "SUCCESS":
             fails.append("make_rows did not succeed")
         if any(_leaks(a) for a in make_rows):  # its dbt files too (review of #129, nit 6)
-            fails.append("the marker is in make_rows' output")
+            fails.append("the marker is in make_rows' output or details")
         if any(a["state"] != "FAILED" for a in quiet):
             fails.append("dbt did not fail")
         if any(a["get"] for a in quiet):

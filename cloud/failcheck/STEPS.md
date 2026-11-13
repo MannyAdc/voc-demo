@@ -89,7 +89,8 @@ The job also makes these, which you delete at the end:
    `dbt_control` may each have run more than once. The check reads every attempt, and its lines name each one,
    such as `dbt (attempt 1)`. Every attempt of every task must be readable, and no attempt of `make_rows` or of any
    other task may hold the marker. The rules below on `dbt` apply to every attempt of `dbt`, and those on the
-   control to the latest attempt of `dbt_control`. An attempt number that is not a whole number is refused:
+   control to the latest attempt of `dbt_control`. The latest attempt of `make_rows` must have succeeded. An
+   attempt number that is not a whole number is refused, and so is a missing one beside others. The rules:
    - both dbt runs' dbt files show they reached the failing model, so the quiet flags were really tested
    - the marker is nowhere in `dbt`'s run details, output or dbt files, and every one of them could be read
    - the marker is in no other task, `make_rows` included
