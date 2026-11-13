@@ -70,17 +70,20 @@ The job also makes these, which you delete at the end:
 
 ### Steps
 
-Before step 1, find the SQL warehouse's ID: in Databricks' left menu click **SQL Warehouses**, then the
-warehouse Job A uses, and copy the ID after `/sql/warehouses/` in the address bar, or under **Connection
-details**. Keep it to hand and do not paste it to Claude.
+Before step 1, find the SQL warehouse's ID, as in step 1.4 of `docs/DATABRICKS_STEPS.md`: in Databricks' left
+menu click **SQL Warehouses** (or **Compute**, then the **SQL warehouses** tab), then **Serverless Starter
+Warehouse**. Its ID is on its page, labelled **ID**, or the text after `warehouses/` in the address bar. Keep it
+to hand and do not paste it to Claude.
 
 1. **Make the job.** On GitHub, open `cloud/failcheck.yml` on `main` and click **Copy raw file**. In Databricks,
    click **Jobs & Pipelines**, then **Create**, then **Job**. Click the **⋮** just left of **Run now**, then
    **YAML**. Click inside the editor, press Ctrl+A, then Ctrl+V. In the two places that say `the SQL warehouse's
    ID, set by the owner`, put the warehouse's ID. Click **Save**. The job's name is `voc-june-failcheck`, with three
-   tasks: `make_rows`, `dbt` and `dbt_control`.
+   tasks: `make_rows`, `dbt` and `dbt_control`. On the right side, **Run as** shows your own account, never the
+   robot.
 2. **Let the robot read it.** On the job's page, on the right side, under **Permissions**, click **Edit
-   permissions**, add `voc-june-runner` with **Can View**, and click **Save**.
+   permissions**. In the search field, type `voc-june-runner` and click it. In the permission dropdown next to it,
+   choose **Can View**. Click **Add**, then **Save**.
 3. **Run it.** Click **Run now**, and wait until all three tasks have ended. Expected:
    - `make_rows` succeeded
    - `dbt` failed
@@ -97,8 +100,10 @@ details**. Keep it to hand and do not paste it to Claude.
      refuses a `jobs` token from it (HTTP 403, round 1 of the dry run, and nearly again on 13 November). The
      robot still sees only this job, through **Can View** in step 2.
 
-   Click **Generate**. The box shows the **Client ID** and the **Secret** once. Keep it open, and do step 5 in a
-   new browser tab. Paste them only into the notebook, never into a file or a message.
+   Click **Generate**. The box shows the **Client ID** and the **Secret** once, each with a copy icon. Keep it
+   open, and do step 5 in a new browser tab. Paste them only into the notebook, never into a file or a message.
+   While the box is open, and while the notebook holds the secret, take no screenshot and share no screen, not
+   even for Claude ("Copying a secret safely" in `docs/DATABRICKS_STEPS.md`).
 5. **Make the notebook.** In a new tab, in Databricks, click **Workspace**, then **Home**, then **Create**, then
    **Notebook**. Click its name at the top, type `voc-failcheck-robot`, and press Enter. Its language is
    **Python**. On GitHub, open `cloud/failcheck/robot_check.py` on `main`, click **Copy raw file**, and paste it
@@ -109,8 +114,10 @@ details**. Keep it to hand and do not paste it to Claude.
    - `HOST = ""`: left empty, unless the cell asks for it. Then type the workspace's host name from the
      address bar, without `https://`
 
-   Close the secret's box. At the top right of the notebook click **Connect**, then **Serverless**. Run the cell
-   with its **▶** or Shift+Enter.
+   Close the secret's box. Clear the clipboard: press the Windows key and V together, then **Clear all**, or copy
+   any harmless word if that opens nothing. At the top right of the notebook click **Connect**, then
+   **Serverless**. Run the cell with its **▶** or Shift+Enter. Copy its printed lines as text, not as a
+   screenshot, since the cell above them holds the secret.
 6. **Read the lines it prints.** They hold task keys, states, places, file counts, status codes, the time in UTC
    and the failcheck code's hash, never the secret, the token or a value it read. Paste them to Claude. The gate
    passes only when the last line is `verdict: PASS`. Databricks retries a failed task on its own, so `dbt` and
@@ -145,9 +152,10 @@ details**. Keep it to hand and do not paste it to Claude.
 10. **The folder.** **Catalog**, `workspace`, `default`, `voc_raw`. On the row `failcheck`, click the **⋮** at its
     right end, then **Delete directory**. The box names `failcheck`. Confirm. Open no file in `voc_raw`.
 11. **The schema.** **Catalog**, `workspace`, then the arrow next to `voc_failcheck`, then **Tables**. First
-    delete the table inside it: click it, then the **⋮** at the top right of its page, then **Delete**, and
-    confirm. Delete it first, then the schema: click `voc_failcheck`, then the **⋮** at the top right, then
-    **Delete**, and confirm. With the table still there, Databricks refuses ("Schema ... is not empty").
+    delete each table in it: click it, then the **⋮** at the top right of its page, then **Delete**, and confirm.
+    On 13 November there was one. Then delete the schema: click `voc_failcheck`, then the **⋮** at the top
+    right, then **Delete**, and confirm. With a table still there, Databricks refuses ("Schema ... is not
+    empty").
 
 The jobs list then shows `voc-june-job-a`, `voc-june-job-b` and `voc-june-spike` only.
 

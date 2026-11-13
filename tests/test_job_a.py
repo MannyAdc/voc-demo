@@ -1869,8 +1869,8 @@ def test_J13_the_reason_for_a_leak_in_make_rows_names_its_output_or_details(monk
 # The gates' first run, 13 November: the owner's steps lacked values the owner needed. Gate 1 stopped twice, since
 # the June data folder's variable was not set in the window and was then set to the zip, not its folder. The robot's
 # secret was nearly made with **Read**, which Databricks refuses for a `jobs` token (round 1). The clean-up named
-# places, not clicks, and the schema refused to go while its table was there. Owner decision, 13 November: every
-# click and value is in the steps.
+# places, not clicks, and the schema refused to go while its table was there. After the owner's words of 13:18 and
+# 13:36, every click and value is in the steps (review of #130, minor 3: not a logged decision of its own).
 
 
 def _gate_steps():
@@ -1879,7 +1879,9 @@ def _gate_steps():
 
 def test_J8_gate_1_says_to_set_the_june_folder_for_the_window_first():
     gate_1 = _gate_steps().split("## Gate 1")[1].split("\n## ")[0]
-    assert "$env:VOC_JUNE_DATA_DIR" in gate_1 and "the folder, not the zip" in gate_1
+    from voc.cli import MONTHS
+    # Review of #130, minor 4: the variable the steps set is the one june-check reads.
+    assert f"$env:{MONTHS['june_2026']}" in gate_1 and "the folder, not the zip" in gate_1
 
 
 def test_J13_the_robot_s_secret_is_made_with_read_and_write_never_read_alone():
@@ -1887,10 +1889,14 @@ def test_J13_the_robot_s_secret_is_made_with_read_and_write_never_read_alone():
     secret = steps.split("**Make the robot's secret.**")[1].split("\n5. ")[0]
     assert "**Other APIs**" in secret and "**Read + Write**" in secret and "never **Read** alone" in secret
     assert "**Lifetime:** 1" in secret and "HTTP 403" in secret
+    # Review of #130, minor 1: no screenshot while the secret can be seen, and the clipboard cleared after.
+    notebook = steps.split("5. **Make the notebook.**")[1].split("\n6. ")[0]
+    assert "take no screenshot" in secret and "Windows key and V" in notebook
 
 
 def test_J13_the_clean_up_gives_each_click_and_deletes_the_table_before_its_schema():
     clean = _gate_steps().split("### Clean up, the same day")[1]
     assert "**Trash**" in clean and "**Delete job**" in clean and "**Delete directory**" in clean
-    assert clean.index("the table inside it") < clean.index("then the schema")
-    assert "only the secret made today" in clean
+    assert clean.index("delete each table in it") < clean.index("Then delete the schema")
+    # Review of #130, minor 4: the robot's long-lived secret, which starts Job B, stays.
+    assert "only the secret made today" in clean and "it stays" in clean
