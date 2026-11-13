@@ -666,7 +666,10 @@ def test_J1_the_steps_count_six_green_ticks_and_warn_about_the_one_time_boxes():
 
 def test_J1_the_run_log_s_first_row_is_round_1_s():
     """Round 1's row stays as the record of the dry run's first round. Its list and code are no longer the
-    checkout's, so Job A refuses it until the current round's row is added after it."""
+    checkout's. Job A takes the checkout only when its last row is the current round's on the checkout's code, or,
+    since 13 November, the June run's real row. With the real row last, a later change to the frozen code makes
+    Job A refuse, so this test errors: J1 means no code change after the real row without new gates and a new row
+    (review of #134, nit 2)."""
     from voc.frozen import code_hash, dry_run_list_hash, read_runs
     # Changed in the round 2 pull request, as the docstring planned: the code changed, so round 1's row is a record
     # now, and round 2's row comes in a pull request of its own.
@@ -690,9 +693,9 @@ def test_J1_the_run_log_s_first_row_is_round_1_s():
 
 
 def test_J1_the_run_log_s_last_row_is_this_round_s():
-    """The run log's last row is the current round's: synthetic, naming the dry run's list and the checkout's frozen
+    """The dry run's last row is the current round's: synthetic, naming the dry run's list and the checkout's frozen
     code, so Job A takes it with the dry run's pin, and Job B takes it too (plan item 9, owner decision of 8 November:
-    the row comes last)."""
+    the row comes last). Since 13 November the June run's real row follows it, and is the run log's last row."""
     from voc import job_b
     from voc.frozen import code_hash, dry_run_list_hash, read_runs
     from voc.job_a import JobAError, checked_target, pin_for
@@ -792,8 +795,10 @@ def test_J1_the_real_row_names_the_june_list_and_the_code_of_132():
     assert row.list_hash == "4ae0c333e53479527a53d67711d53c81272a07c2bbcea28fc36d020b346477d0"
     assert row.code_hash == "db063ac8f671e5fa4b3944adca2b25c3c9b605f6b444157f91102ff30c0d677a"
     assert "#133" in row.reason
-    passes = [g.date for g in read_gates(REPO / GATES) if g.result == "pass" and g.code_hash == row.code_hash]
-    assert len(passes) == 2 and all(date < row.date for date in passes)
+    # Review of #134, minor 1: a pass of each gate on the row's code, dated before the row. A later run of a gate
+    # on the same code adds a row to the gates log and does not change these.
+    before = [g for g in read_gates(REPO / GATES) if g.code_hash == row.code_hash and g.date < row.date]
+    assert {g.gate for g in before if g.result == "pass"} == {"june-check", "failcheck"}
     if read_runs(REPO / "runs" / "JUNE_RUNS.md")[-1] == row:
         assert checked_target(REPO).kind == "real"
         b_target, b_entry = job_b.checked_target(REPO)
