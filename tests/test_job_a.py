@@ -1829,3 +1829,37 @@ def test_J13_the_marker_in_make_rows_dbt_files_fails_the_check(monkeypatch):
     replies[f"{HOST}/a11"] = (200, _archive("zip", {"logs/x.log": check.MARKER.encode()}))
     lines = _report(check, monkeypatch, replies)
     assert lines[-1].startswith("verdict: FAIL") and "the marker is in make_rows' output" in lines[-1]
+
+
+# The second review of #129 (owner decision of 13 November): the rule on attempt numbers matches the approval
+# workflow's `_latest_attempt`, and `make_rows`' leak reason names all its places.
+
+
+def test_J13_a_negative_attempt_number_is_refused(monkeypatch):
+    check = _robot_check()
+    lines = _report(check, monkeypatch, _retried(check, number=-1))
+    assert "the run lists the task dbt without whole attempt numbers" in lines[-1]
+
+
+def test_J13_a_task_item_without_an_attempt_number_beside_a_numbered_one_is_refused(monkeypatch):
+    """As `_latest_attempt` refuses it: with several items, every item must carry its own number."""
+    check = _robot_check()
+    replies = _retried(check)
+    tasks = json.loads(replies[f"{HOST}/api/2.2/jobs/runs/get?run_id=99"][1])["tasks"]
+    for task in tasks:
+        if task["run_id"] == 12:
+            del task["attempt_number"]
+    lines = _report(check, monkeypatch, _with_tasks(replies, tasks))
+    assert lines[-1].startswith("verdict: FAIL")
+    assert "the run lists the task dbt without whole attempt numbers" in lines[-1]
+
+
+def test_J13_the_reason_for_a_leak_in_make_rows_names_its_output_or_details(monkeypatch):
+    check = _robot_check()
+    replies = _reached(check)
+    value = json.loads(replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=11"][1])
+    value["dbt_output"] = {"artifacts_link": f"{HOST}/a11", "artifacts_headers": {}}
+    replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=11"] = (200, json.dumps(value).encode())
+    replies[f"{HOST}/a11"] = (200, _archive("zip", {"logs/x.log": check.MARKER.encode()}))
+    lines = _report(check, monkeypatch, replies)
+    assert "the marker is in make_rows' output or details" in lines[-1]
