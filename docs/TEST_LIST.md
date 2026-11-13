@@ -802,6 +802,15 @@ Written on 13 November 2026, after #124 pinned the refit's vocabulary and #125 m
 - the steps say the run job shows a red cross when Job B did not finish, and that the workflow refuses a re-run's second attempt before it starts Job B (J10)
 - in round 6's row pull request: the run log holds one row for round 6, synthetic, naming the list and code hashes printed on `main` after #126 merged (J1)
 
+## The failcheck reads every attempt ([spec 004](../specs/004-june-test-and-baselines/spec.md), J5, J13), `tests/test_job_a.py`
+
+Written on 13 November 2026, after gate 2's first run failed because serverless auto-optimization retried both dbt tasks.
+
+- the robot check reads every attempt of a retried task, by its attempt number, and passes when every rule holds (J13)
+- a leak in any attempt of the quiet run fails it, and every quiet attempt must reach the failing model (J5, J13)
+- the control's latest attempt is the one that must show the marker (J13)
+- two items of a task with the same attempt number are still refused (J13)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

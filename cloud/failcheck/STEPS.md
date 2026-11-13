@@ -85,7 +85,10 @@ The job also makes these, which you delete at the end:
    name from the browser's address bar, without `https://`. Connect to serverless and run the cell.
 6. **Read the lines it prints.** They hold task keys, states, places, file counts, status codes, the time in UTC
    and the failcheck code's hash, never the secret, the token or a value it read. Paste them to Claude. The gate
-   passes only when the last line is `verdict: PASS`. The check itself applies every rule:
+   passes only when the last line is `verdict: PASS`. Databricks retries a failed task on its own, so `dbt` and
+   `dbt_control` may each have run more than once. The check reads every attempt, and its lines name each one,
+   such as `dbt (attempt 1)`. It applies every rule, to every attempt of `dbt`, and to the latest attempt of
+   `dbt_control`:
    - both dbt runs' dbt files show they reached the failing model, so the quiet flags were really tested
    - the marker is nowhere in `dbt`'s run details, output or dbt files, and every one of them could be read
    - the marker is in no other task, `make_rows` included
