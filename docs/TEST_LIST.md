@@ -837,6 +837,13 @@ Written on 13 November 2026, when both gates passed on the code of #132.
 - gate 2's two fails of 13 November stay on record (J1)
 - the hash script on the repo no longer refuses for a gate, and prints the two hashes only (J1). Changed from "refuses with no gate open", which is tested on a checkout copy
 
+## The June run's real row ([spec 004](../specs/004-june-test-and-baselines/spec.md), J1), `tests/test_dry_run.py`
+
+Written on 13 November 2026, plan item 10.
+
+- the run log holds one real row, naming the June list and the code printed on `main` after #133, dated after both gates' passes on that code, and Job A and Job B take it offline (J1)
+- the dry run's tests of the first and last rows take a real last row: Job A takes it, and the dry run's last row, round 6's, comes before it (J1)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

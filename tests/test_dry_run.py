@@ -666,7 +666,10 @@ def test_J1_the_steps_count_six_green_ticks_and_warn_about_the_one_time_boxes():
 
 def test_J1_the_run_log_s_first_row_is_round_1_s():
     """Round 1's row stays as the record of the dry run's first round. Its list and code are no longer the
-    checkout's, so Job A refuses it until the current round's row is added after it."""
+    checkout's. Job A takes the checkout only when its last row is the current round's on the checkout's code, or,
+    since 13 November, the June run's real row. With the real row last, a later change to the frozen code makes
+    Job A refuse, so this test errors: J1 means no code change after the real row without new gates and a new row
+    (review of #134, nit 2)."""
     from voc.frozen import code_hash, dry_run_list_hash, read_runs
     # Changed in the round 2 pull request, as the docstring planned: the code changed, so round 1's row is a record
     # now, and round 2's row comes in a pull request of its own.
@@ -678,7 +681,11 @@ def test_J1_the_run_log_s_first_row_is_round_1_s():
     assert row.code_hash != code_hash(REPO) and row.list_hash != dry_run_list_hash(REPO)
     # Review of #102, nit 7: Job A takes the checkout only once its last row is this round's.
     # Changed in pull request 6b, part 1: and only while that row names the checkout's frozen code.
-    if f"round {ROUND}" in entries[-1].reason and entries[-1].code_hash == code_hash(REPO):
+    # Changed in the real row's pull request (13 November): after the dry run comes the June run's real row,
+    # which Job A takes.
+    if entries[-1].kind == "real":
+        assert checked_target(REPO).kind == "real"
+    elif f"round {ROUND}" in entries[-1].reason and entries[-1].code_hash == code_hash(REPO):
         checked_target(REPO)
     else:
         with pytest.raises(JobAError, match="names a June list other than|not the frozen code"):
@@ -686,14 +693,21 @@ def test_J1_the_run_log_s_first_row_is_round_1_s():
 
 
 def test_J1_the_run_log_s_last_row_is_this_round_s():
-    """The run log's last row is the current round's: synthetic, naming the dry run's list and the checkout's frozen
+    """The dry run's last row is the current round's: synthetic, naming the dry run's list and the checkout's frozen
     code, so Job A takes it with the dry run's pin, and Job B takes it too (plan item 9, owner decision of 8 November:
-    the row comes last)."""
+    the row comes last). Since 13 November the June run's real row follows it, and is the run log's last row."""
     from voc import job_b
     from voc.frozen import code_hash, dry_run_list_hash, read_runs
     from voc.job_a import JobAError, checked_target, pin_for
     entries = read_runs(REPO / "runs" / "JUNE_RUNS.md")
     last = entries[-1]
+    # Changed in the real row's pull request (13 November): once the June run's real row follows the dry run, the
+    # dry run's last row is the one before it, this round's. The real row itself is tested in
+    # test_J1_the_real_row_names_the_june_list_and_the_code_of_132.
+    if last.kind == "real":
+        synthetic = [e for e in entries if e.kind == "synthetic"]
+        assert re.search(rf"\bround {ROUND}\b", synthetic[-1].reason) and synthetic[-1].date < last.date
+        return
     # Changed in round 3's pull request: between a round's code pull request and its row pull request, the last row is
     # the round before's, and Job A refuses the checkout until this round's row is added.
     # Changed in pull request 6b, part 1: the same holds after any change to the frozen code before its round's row,
@@ -766,6 +780,29 @@ def test_J1_round_6_s_row_names_the_code_merged_in_126():
     assert row.kind == "synthetic" and "#126" in row.reason
     assert row.list_hash == "74d8d5618301a677728154ee8136ef5868b8dcc90b3a986b22134147e67484b7"
     assert row.code_hash == "e6a61fe3a42497198ff7e020aa351dfef17aba2b8302d26499e5b5bea8ad55f6"
+
+
+def test_J1_the_real_row_names_the_june_list_and_the_code_of_132():
+    """The June run's row (plan item 10): one real row, naming the June list's hash and the frozen code that
+    `scripts/june_hash.py` printed on `main` at `394033f`, after both gates passed on that code (#133). It is dated
+    after both passes, and Job A and Job B both take it, offline. The run log only grows, so this stays true."""
+    from voc import job_b
+    from voc.frozen import GATES, read_gates, read_runs
+    from voc.job_a import checked_target
+    rows = [e for e in read_runs(REPO / "runs" / "JUNE_RUNS.md") if e.kind == "real"]
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.list_hash == "4ae0c333e53479527a53d67711d53c81272a07c2bbcea28fc36d020b346477d0"
+    assert row.code_hash == "db063ac8f671e5fa4b3944adca2b25c3c9b605f6b444157f91102ff30c0d677a"
+    assert "#133" in row.reason
+    # Review of #134, minor 1: a pass of each gate on the row's code, dated before the row. A later run of a gate
+    # on the same code adds a row to the gates log and does not change these.
+    before = [g for g in read_gates(REPO / GATES) if g.code_hash == row.code_hash and g.date < row.date]
+    assert {g.gate for g in before if g.result == "pass"} == {"june-check", "failcheck"}
+    if read_runs(REPO / "runs" / "JUNE_RUNS.md")[-1] == row:
+        assert checked_target(REPO).kind == "real"
+        b_target, b_entry = job_b.checked_target(REPO)
+        assert (b_target.kind, b_target.entry_kind) == ("real", "real") and b_entry == row
 
 
 # The dry run's round 2 (owner decisions of 9 November, after round 1 stopped at the repair history check)
