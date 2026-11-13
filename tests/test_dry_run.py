@@ -768,6 +768,27 @@ def test_J1_round_6_s_row_names_the_code_merged_in_126():
     assert row.code_hash == "e6a61fe3a42497198ff7e020aa351dfef17aba2b8302d26499e5b5bea8ad55f6"
 
 
+def test_J1_the_real_row_names_the_june_list_and_the_code_of_132():
+    """The June run's row (plan item 10): one real row, naming the June list's hash and the frozen code that
+    `scripts/june_hash.py` printed on `main` at `394033f`, after both gates passed on that code (#133). It is dated
+    after both passes, and Job A and Job B both take it, offline. The run log only grows, so this stays true."""
+    from voc import job_b
+    from voc.frozen import GATES, read_gates, read_runs
+    from voc.job_a import checked_target
+    rows = [e for e in read_runs(REPO / "runs" / "JUNE_RUNS.md") if e.kind == "real"]
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.list_hash == "4ae0c333e53479527a53d67711d53c81272a07c2bbcea28fc36d020b346477d0"
+    assert row.code_hash == "db063ac8f671e5fa4b3944adca2b25c3c9b605f6b444157f91102ff30c0d677a"
+    assert "#133" in row.reason
+    passes = [g.date for g in read_gates(REPO / GATES) if g.result == "pass" and g.code_hash == row.code_hash]
+    assert len(passes) == 2 and all(date < row.date for date in passes)
+    if read_runs(REPO / "runs" / "JUNE_RUNS.md")[-1] == row:
+        assert checked_target(REPO).kind == "real"
+        b_target, b_entry = job_b.checked_target(REPO)
+        assert (b_target.kind, b_target.entry_kind) == ("real", "real") and b_entry == row
+
+
 # The dry run's round 2 (owner decisions of 9 November, after round 1 stopped at the repair history check)
 # Review of #102, minor 6: the tests below read the round from the pin, so a new round rewrites no test.
 
