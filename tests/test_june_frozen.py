@@ -104,14 +104,20 @@ def test_J1_the_hash_script_on_the_repo_refuses_no_gate_once_both_gates_are_open
     # Changed on 13 November, when both gates' passes were recorded for the code of #132: the repo no longer has
     # "no gate open", so the script never refuses for a gate here. The refusal with no gate open is tested on a
     # checkout copy in tests/test_job_a.py (test_J1_the_hash_script_refuses_without_both_gates). With a frozen file
-    # changed against git, it refuses for that, which is another check.
+    # changed against git, it refuses for that, which is another check. Review of #133: it uses the live code hash,
+    # so a later change to the frozen code fails this test until both gates run again on the new code and their
+    # passes are recorded, as J1 asks anyway.
     result = subprocess.run([sys.executable, str(REPO / "scripts" / "june_hash.py")], capture_output=True,
                             text=True, cwd=REPO, env=SCRIPT_ENV)
+    lines = result.stdout.splitlines()
     assert "gate" not in result.stdout
     if result.returncode == 0:
-        assert result.stdout.splitlines() == [
-            f"june list sha256 {list_hash(REPO)}",
-            f"frozen code sha256 {code_hash(REPO)} over {len(frozen_files(REPO))} files"]
+        assert lines == [f"june list sha256 {list_hash(REPO)}",
+                         f"frozen code sha256 {code_hash(REPO)} over {len(frozen_files(REPO))} files"]
+    else:
+        # Review of #133, minor 1: the only other answer is the refusal for frozen files changed against git.
+        assert result.returncode == 1 and len(lines) == 1
+        assert "frozen files differ from the files git tracks" in lines[0]
 
 
 def _log(tmp_path, rows):
