@@ -1938,3 +1938,26 @@ def test_J13_the_probe_behind_the_control_rule_is_committed_with_its_hash():
     probe = REPO / "scripts" / "probes" / "failcheck_output_fields.py"
     digest = hashlib.sha256(probe.read_bytes()).hexdigest()
     assert digest == "82126bdda0b344f36b7accf2b0dbd29515b0c469996e6385abda4cd752e70514"
+
+
+# The review of #132, minor 2: each part of the control's text rule, tested on its own.
+
+
+@pytest.mark.parametrize("output", [{"error": "dbt failed"}, {"error": "dbt failed", "logs": 4379},
+                                    {"error": "", "logs": "synthetic dbt log"}])
+def test_J13_the_control_needs_both_error_and_logs_text(monkeypatch, output):
+    check = _robot_check()
+    replies = _reached(check)
+    replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=13"] = (200, json.dumps({
+        **output, "dbt_output": {"artifacts_link": f"{HOST}/a13", "artifacts_headers": {}}}).encode())
+    lines = _report(check, monkeypatch, replies)
+    assert "the control's output holds no dbt error and logs text" in lines[-1]
+
+
+def test_J13_the_control_s_text_must_be_in_its_latest_attempt(monkeypatch):
+    check = _robot_check()
+    replies = _retried(check)
+    replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=16"] = (200, json.dumps({
+        "dbt_output": {"artifacts_link": f"{HOST}/a16", "artifacts_headers": {}}}).encode())
+    lines = _report(check, monkeypatch, replies)
+    assert "the control's output holds no dbt error and logs text" in lines[-1]

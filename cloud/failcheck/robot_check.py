@@ -271,8 +271,8 @@ def report(host, client_id, client_secret, run_id):
         latest = control[-1]
         if latest["state"] != "FAILED":
             fails.append("the control did not fail")
-        # A+ (13 November): Databricks' output of a failed dbt task holds no row text even without the quiet
-        # flags (the probe of run 482710595894812), so the control proves its output was read, not that it leaks.
+        # A+ (13 November): in the probe of run 482710595894812 the control's output held dbt text but no marker,
+        # even without the quiet flags, so the control shows its output holds dbt text, not that it leaks there.
         if not latest["text"]:
             fails.append("the control's output holds no dbt error and logs text, so it cannot be told it was read")
         if not _ran_model(latest["names"]):
