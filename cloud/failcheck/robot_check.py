@@ -5,9 +5,11 @@
 #
 # It asks for a token with the `jobs` scope, and once more with `all-apis`, which must be refused. As the robot, it
 # reads the failcheck run (`runs/get`), each task's output (`runs/get-output`) and any dbt files the output links
-# to, and looks for the failcheck's synthetic marker in all of them. It tries the SQL warehouse's query history. Its
-# last line is the verdict, PASS only when every rule of STEPS.md holds. It prints only task keys, states, places,
-# counts, status codes, the time and the failcheck code's hash, never a value it read, the token or the secret.
+# to, and looks for the failcheck's synthetic marker in all of them. Serverless jobs retry a failed task on their
+# own, so it reads every attempt of each task, by its attempt number (gate 2's first run, 13 November). It tries
+# the SQL warehouse's query history. Its last line is the verdict, PASS only when every rule of STEPS.md holds.
+# It prints only task keys, states, places, counts, status codes, the time and the failcheck code's hash, never a
+# value it read, the token or the secret.
 import base64
 import io
 import json
@@ -116,17 +118,70 @@ def _found(body, parsed):
 
 
 def _code_hash(base, token, listed):
-    """The failcheck code's hash, from the first `make_rows` task's exit value, or None."""
-    first = next((t for t in listed if t.get("task_key") == "make_rows"), None)
-    if first is None:
+    """The failcheck code's hash, from the exit value of `make_rows`' latest attempt, or None (review of #129)."""
+    items = sorted((t for t in listed if t.get("task_key") == "make_rows"), key=_number)
+    latest = items[-1] if items else None
+    if latest is None:
         return None
-    status, body = _call(f"{base}/api/2.2/jobs/runs/get-output?run_id={int(first.get('run_id', 0))}", token=token)
+    status, body = _call(f"{base}/api/2.2/jobs/runs/get-output?run_id={int(latest.get('run_id', 0))}", token=token)
     try:
         value = json.loads((((_json(body) or {}).get("notebook_output") or {}).get("result")) or "")
     except ValueError:
         return None
     code = value.get("code_sha256") if isinstance(value, dict) else None
     return code if status == 200 and isinstance(code, str) and re.fullmatch(r"[0-9a-f]{64}", code) else None
+
+
+def _whole_number(task, alone):
+    """Whether a task item's attempt number is a whole number. An item alone may lack one, as the first attempt.
+    Beside others, every item must carry its own, as the approval workflow's `_latest_attempt` asks (second
+    review of #129)."""
+    if "attempt_number" not in task:
+        return alone
+    number = task["attempt_number"]
+    return type(number) is int and number >= 0
+
+
+def _number(task):
+    """A task item's attempt number. An item without one is the first attempt, as Databricks lists it."""
+    number = task.get("attempt_number", 0)
+    return number if type(number) is int and number >= 0 else -1
+
+
+def _leaks(read):
+    return bool(read["get"] or read["output"] or (isinstance(read["artifacts"], list) and read["artifacts"]))
+
+
+def _attempt(base, token, label, task, lines, fails):
+    """One attempt of a task: its state, and where the marker is in its run details, its output and its dbt files.
+    Its lines are added under `label`, and a place it cannot read is a fail."""
+    state = (task.get("state") or {}).get("result_state", "no state")
+    lines.append(f"{label}: {state}")
+    in_get = places(task)
+    lines.append(f"{label}: runs/get: marker {', '.join(in_get) or 'nowhere'}")
+    status, body = _call(f"{base}/api/2.2/jobs/runs/get-output?run_id={int(task.get('run_id', 0))}", token=token)
+    output = _json(body)
+    if status != 200 or output is None:
+        lines.append(f"{label}: output: could not read, HTTP {status}")
+        fails.append(f"could not read {label}'s output")
+        return {"state": state, "get": in_get, "output": None, "artifacts": "none", "names": []}
+    in_output = _found(body, output)
+    lines.append(f"{label}: output: marker {', '.join(in_output) or 'nowhere'}")
+    artifacts, names = "none", []
+    link = ((output or {}).get("dbt_output") or {}).get("artifacts_link")
+    if link:
+        headers = (output["dbt_output"].get("artifacts_headers") or {})
+        status, data = _call(link, headers=headers)
+        read = _archive(data) if status == 200 else None
+        if read is None:
+            lines.append(f"{label}: artifacts: could not read, HTTP {status}")
+            fails.append(f"could not read {label}'s artifacts")
+            artifacts = "unread"
+        else:
+            names = read[0]
+            lines.append(f"{label}: artifacts: files: {len(names)}, marker in: {', '.join(read[1]) or 'nowhere'}")
+            artifacts = read[1]
+    return {"state": state, "get": in_get, "output": in_output, "artifacts": artifacts, "names": names}
 
 
 def report(host, client_id, client_secret, run_id):
@@ -154,85 +209,70 @@ def report(host, client_id, client_secret, run_id):
     if status != 200 or run is None:
         return lines + [f"runs/get: HTTP {status}", _now(), "verdict: FAIL: runs/get could not be read"]
     listed = [t for t in run.get("tasks", []) if isinstance(t, dict)]
-    tasks = {t.get("task_key"): t for t in listed}
     # The code hash comes first, so even a check that stops early gives what its fail's row needs.
     code = _code_hash(base, token, listed)
     if code:
         lines.append(f"code sha256: {code}")
-    twice = sorted({str(t.get("task_key")) for t in listed if [u.get("task_key") for u in listed].count(
-        t.get("task_key")) > 1})
-    if twice:
-        # A repaired run can list a task again. Which attempt is which cannot be told, so nothing more is read.
-        return lines + [_now(), "verdict: FAIL: " + " | ".join(f"the run lists the task {key} twice"
-                                                                for key in twice)]
+    # Gate 2's first run, 13 November: serverless auto-optimization retries a failed task, so a run can list a task
+    # once per attempt, each with its own run ID and attempt number. Every attempt is read. Two items of a task with
+    # the same attempt number cannot be told apart, so nothing more is read then.
+    attempts = {}
+    for task in listed:
+        attempts.setdefault(task.get("task_key"), []).append(task)
+    # Review of #129, minor 1: an attempt number that is not a whole number is refused, as the approval workflow
+    # refuses it, since it cannot say which attempt is the latest.
+    odd = sorted(str(key) for key, items in attempts.items()
+                 if not all(_whole_number(t, len(items) == 1) for t in items))
+    twice = sorted(str(key) for key, items in attempts.items()
+                   if str(key) not in odd and len({_number(t) for t in items}) < len(items))
+    if odd or twice:
+        reasons = [f"the run lists the task {key} without whole attempt numbers" for key in odd]
+        reasons += [f"the run lists the task {key} twice" for key in twice]
+        return lines + [_now(), "verdict: FAIL: " + " | ".join(reasons)]
     outside = {k: v for k, v in run.items() if k != "tasks"}
     run_places = places(outside)
     lines.append(f"run: runs/get: marker {', '.join(run_places) or 'nowhere'}")
     if run_places:
         fails.append("the marker is in the run's runs/get")
     seen = {}
-    for key in sorted(tasks, key=lambda k: (ORDER.index(k) if k in ORDER else len(ORDER), str(k))):
-        task = tasks[key]
-        state = (task.get("state") or {}).get("result_state", "no state")
-        lines.append(f"{key}: {state}")
-        in_get = places(task)
-        lines.append(f"{key}: runs/get: marker {', '.join(in_get) or 'nowhere'}")
-        status, body = _call(f"{base}/api/2.2/jobs/runs/get-output?run_id={int(task.get('run_id', 0))}", token=token)
-        output = _json(body)
-        if status != 200 or output is None:
-            lines.append(f"{key}: output: could not read, HTTP {status}")
-            fails.append(f"could not read {key}'s output")
-            seen[key] = {"state": state, "get": in_get, "output": None, "artifacts": "none", "names": []}
-            continue
-        in_output = _found(body, output)
-        lines.append(f"{key}: output: marker {', '.join(in_output) or 'nowhere'}")
-        artifacts, names = "none", []
-        link = ((output or {}).get("dbt_output") or {}).get("artifacts_link")
-        if link:
-            headers = (output["dbt_output"].get("artifacts_headers") or {})
-            status, data = _call(link, headers=headers)
-            read = _archive(data) if status == 200 else None
-            if read is None:
-                lines.append(f"{key}: artifacts: could not read, HTTP {status}")
-                fails.append(f"could not read {key}'s artifacts")
-                artifacts = "unread"
-            else:
-                names = read[0]
-                lines.append(f"{key}: artifacts: files: {len(names)}, marker in: {', '.join(read[1]) or 'nowhere'}")
-                artifacts = read[1]
-        seen[key] = {"state": state, "get": in_get, "output": in_output, "artifacts": artifacts, "value": output,
-                     "names": names}
-        if key not in ("make_rows", "dbt", "dbt_control") and (in_get or in_output or (
-                isinstance(artifacts, list) and artifacts)):
-            fails.append(f"the marker is in {key}'s output or details")
+    for key in sorted(attempts, key=lambda k: (ORDER.index(k) if k in ORDER else len(ORDER), str(k))):
+        items = sorted(attempts[key], key=_number)
+        seen[key] = []
+        for task in items:
+            label = key if len(items) == 1 else f"{key} (attempt {_number(task)})"
+            read = _attempt(base, token, label, task, lines, fails)
+            seen[key].append(read)
+            if key not in ("make_rows", "dbt", "dbt_control") and _leaks(read):
+                fails.append(f"the marker is in {key}'s output or details")
     make_rows, quiet, control = seen.get("make_rows"), seen.get("dbt"), seen.get("dbt_control")
     if not (make_rows and quiet and control):
         fails.append("the run does not have the tasks make_rows, dbt and dbt_control")
     else:
         if not code:
             fails.append("no code hash from make_rows")
-        if make_rows["state"] != "SUCCESS":
+        if make_rows[-1]["state"] != "SUCCESS":
             fails.append("make_rows did not succeed")
-        if make_rows["get"] or make_rows["output"]:
-            fails.append("the marker is in make_rows' output")
-        if quiet["state"] != "FAILED":
+        if any(_leaks(a) for a in make_rows):  # its dbt files too (review of #129, nit 6)
+            fails.append("the marker is in make_rows' output or details")
+        if any(a["state"] != "FAILED" for a in quiet):
             fails.append("dbt did not fail")
-        if quiet["get"]:
+        if any(a["get"] for a in quiet):
             fails.append("the marker is in dbt's runs/get")
-        if quiet["output"]:
+        if any(a["output"] for a in quiet):
             fails.append("the marker is in dbt's output")
-        if isinstance(quiet["artifacts"], list) and quiet["artifacts"]:
+        if any(isinstance(a["artifacts"], list) and a["artifacts"] for a in quiet):
             fails.append("the marker is in dbt's artifacts")
-        if not _ran_model(quiet["names"]):
+        if not all(_ran_model(a["names"]) for a in quiet):
             fails.append("dbt's dbt files are missing or do not show it reached the failing model, so its quiet "
                          "flags were not tested")
-        if control["state"] != "FAILED":
+        latest = control[-1]
+        if latest["state"] != "FAILED":
             fails.append("the control did not fail")
-        if not control["output"]:
+        if not latest["output"]:
             fails.append("the control shows no leak in its output, so the check cannot see one")
-        if not _ran_model(control["names"]):
+        if not _ran_model(latest["names"]):
             fails.append("the control's dbt files are missing or do not show it reached the failing model")
-        elif isinstance(control["artifacts"], list) and not control["artifacts"]:
+        elif isinstance(latest["artifacts"], list) and not latest["artifacts"]:
             fails.append("the control shows no leak in its dbt files, so the check cannot see one")
     status, body = _call(f"{base}/api/2.0/sql/history/queries", token=token)
     lines.append(f"query history: HTTP {status}, {(_json(body) or {}).get('error_code', 'no error code')}")

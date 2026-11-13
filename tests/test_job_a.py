@@ -1226,7 +1226,8 @@ def test_J13_the_marker_in_any_other_task_fails_and_a_repeated_task_is_refused(m
     assert lines[-1].startswith("verdict: FAIL") and "other" in lines[-1]
     again = {"task_key": "dbt", "run_id": 15, "state": {"result_state": "FAILED"}}
     lines = _report(check, monkeypatch, _reached(check, extra_tasks=(again,)))
-    assert lines[-1].startswith("verdict: FAIL") and "twice" in lines[-1]
+    # Changed in the second review of #129: two items of a task with no attempt numbers are refused for that first.
+    assert lines[-1].startswith("verdict: FAIL") and "without whole attempt numbers" in lines[-1]
 
 
 def test_J13_the_control_must_show_the_marker_in_its_output_not_only_its_run_details(monkeypatch):
@@ -1633,3 +1634,233 @@ def test_J1_the_spec_says_how_the_dry_run_gets_its_hashes():
     """Minor 8 of the last review: pull request 9 must give the dry run's entry its own way to its hashes."""
     spec = (REPO / "specs" / "004-june-test-and-baselines" / "spec.md").read_text(encoding="utf-8")
     assert "the dry run's own way to its entry's hashes" in spec
+
+
+# Gate 2's first run, 13 November (failcheck run 340824676096743): serverless auto-optimization retried both dbt tasks,
+# which are meant to fail, so the run listed each twice, and the robot check refused it. Each attempt has its own run ID
+# and attempt number (the dry run's round 2). Owner decision, 13 November (option A): the check reads every attempt.
+# Every quiet attempt must have failed, reached the failing model and show no marker. The control's latest attempt
+# must show the marker. No attempt of any task may show it, the control's aside.
+
+
+def _retried(check, quiet_error="dbt failed", quiet_artifacts=None, number=1, first_control=None):
+    """Replies for a run in which both dbt tasks ran twice, each attempt with its own run ID and attempt number."""
+    host = "https://synthetic.example.invalid"
+    marker = check.MARKER
+    replies = _reached(check)
+    key = f"{host}/api/2.2/jobs/runs/get?run_id=99"
+    tasks = json.loads(replies[key][1])["tasks"]
+    for task in tasks:
+        task["attempt_number"] = 0
+    tasks += [{"task_key": "dbt", "run_id": 15, "attempt_number": number, "state": {"result_state": "FAILED"}},
+              {"task_key": "dbt_control", "run_id": 16, "attempt_number": number,
+               "state": {"result_state": "FAILED"}}]
+    replies[key] = (200, json.dumps({"tasks": tasks}).encode())
+    replies[f"{host}/api/2.2/jobs/runs/get-output?run_id=15"] = (200, json.dumps({
+        "error": quiet_error, "dbt_output": {"artifacts_link": f"{host}/a15", "artifacts_headers": {}}}).encode())
+    replies[f"{host}/a15"] = (200, quiet_artifacts if quiet_artifacts is not None else _archive(
+        "tar.gz", {RUN_FILE: b"create table x as select 1"}))
+    replies[f"{host}/api/2.2/jobs/runs/get-output?run_id=16"] = (200, json.dumps({
+        "error": f"dbt failed {marker}", "dbt_output": {"artifacts_link": f"{host}/a16",
+                                                         "artifacts_headers": {}}}).encode())
+    replies[f"{host}/a16"] = (200, _archive("zip", {RUN_FILE: b"create table x as select 1",
+                                                    "logs/dbt.log": marker.encode()}))
+    if first_control is not None:
+        replies[f"{host}/api/2.2/jobs/runs/get-output?run_id=13"] = (200, json.dumps({
+            "error": first_control, "dbt_output": {"artifacts_link": f"{host}/a13", "artifacts_headers": {}}}).encode())
+        replies[f"{host}/a13"] = (200, _archive("zip", {RUN_FILE: b"create table x as select 1"}))
+    return replies
+
+
+def test_J13_the_robot_check_reads_every_attempt_of_a_retried_task(monkeypatch):
+    check = _robot_check()
+    lines = _report(check, monkeypatch, _retried(check))
+    assert lines[-1] == "verdict: PASS"
+    assert "dbt (attempt 0): output: marker nowhere" in lines and "dbt (attempt 1): output: marker nowhere" in lines
+    assert "dbt_control (attempt 1): artifacts: files: 2, marker in: logs/dbt.log" in lines
+    assert check.MARKER not in "\n".join(lines)
+
+
+def test_J13_a_leak_in_any_attempt_of_the_quiet_run_fails_the_check(monkeypatch):
+    check = _robot_check()
+    lines = _report(check, monkeypatch, _retried(check, quiet_error=f"dbt failed {check.MARKER}"))
+    assert lines[-1].startswith("verdict: FAIL") and "the marker is in dbt's output" in lines[-1]
+
+
+def test_J13_every_attempt_of_the_quiet_run_must_reach_the_failing_model(monkeypatch):
+    check = _robot_check()
+    replies = _retried(check, quiet_artifacts=_archive("tar.gz", {"target/run.sql": b"select 1"}))
+    lines = _report(check, monkeypatch, replies)
+    assert lines[-1].startswith("verdict: FAIL") and "reached the failing model" in lines[-1]
+
+
+def test_J13_two_items_of_a_task_with_the_same_attempt_number_are_refused(monkeypatch):
+    check = _robot_check()
+    lines = _report(check, monkeypatch, _retried(check, number=0))
+    assert lines[-1].startswith("verdict: FAIL") and "the run lists the task dbt twice" in lines[-1]
+
+
+def test_J13_the_control_s_latest_attempt_is_the_one_that_must_show_the_marker(monkeypatch):
+    check = _robot_check()
+    lines = _report(check, monkeypatch, _retried(check, first_control="dbt failed"))
+    assert lines[-1] == "verdict: PASS"
+
+
+# The review of #129 (owner decision of 13 November: fix all): each rule on attempts, tested on its own.
+
+HOST = "https://synthetic.example.invalid"
+
+
+def _with_tasks(replies, tasks):
+    replies[f"{HOST}/api/2.2/jobs/runs/get?run_id=99"] = (200, json.dumps({"tasks": tasks}).encode())
+    return replies
+
+
+def _output_reply(error, link=None):
+    body = {"error": error}
+    if link:
+        body["dbt_output"] = {"artifacts_link": f"{HOST}/{link}", "artifacts_headers": {}}
+    return 200, json.dumps(body).encode()
+
+
+def _base_tasks():
+    return [{"task_key": "make_rows", "run_id": 11, "attempt_number": 0, "state": {"result_state": "SUCCESS"}},
+            {"task_key": "dbt", "run_id": 12, "attempt_number": 0, "state": {"result_state": "FAILED"}},
+            {"task_key": "dbt_control", "run_id": 13, "attempt_number": 0, "state": {"result_state": "FAILED"}}]
+
+
+@pytest.mark.parametrize("number", ["1", 1.0, True, None])
+def test_J13_attempt_numbers_that_are_not_whole_numbers_are_refused(monkeypatch, number):
+    check = _robot_check()
+    lines = _report(check, monkeypatch, _retried(check, number=number))
+    assert lines[-1].startswith("verdict: FAIL")
+    assert "the run lists the task dbt without whole attempt numbers" in lines[-1]
+
+
+def test_J13_the_control_fails_when_only_an_earlier_attempt_shows_the_marker(monkeypatch):
+    check = _robot_check()
+    replies = _retried(check)
+    replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=16"] = _output_reply("dbt failed", "a16")
+    replies[f"{HOST}/a16"] = (200, _archive("zip", {RUN_FILE: b"create table x as select 1"}))
+    lines = _report(check, monkeypatch, replies)
+    assert lines[-1].startswith("verdict: FAIL") and "the control shows no leak in its output" in lines[-1]
+
+
+def test_J13_a_leak_only_in_an_earlier_quiet_attempt_fails_the_check(monkeypatch):
+    check = _robot_check()
+    replies = _retried(check)
+    replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=12"] = _output_reply(f"dbt failed {check.MARKER}", "a12")
+    lines = _report(check, monkeypatch, replies)
+    assert lines[-1].startswith("verdict: FAIL") and "the marker is in dbt's output" in lines[-1]
+
+
+def test_J13_an_unreadable_earlier_attempt_fails_the_check(monkeypatch):
+    check = _robot_check()
+    replies = _retried(check)
+    replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=12"] = (403, b"{}")
+    lines = _report(check, monkeypatch, replies)
+    assert lines[-1].startswith("verdict: FAIL") and "could not read dbt (attempt 0)'s output" in lines[-1]
+
+
+def test_J13_a_run_where_only_one_task_was_retried_passes(monkeypatch):
+    check = _robot_check()
+    replies = _retried(check)
+    tasks = [t for t in json.loads(replies[f"{HOST}/api/2.2/jobs/runs/get?run_id=99"][1])["tasks"]
+             if t["run_id"] != 16]
+    lines = _report(check, monkeypatch, _with_tasks(replies, tasks))
+    assert lines[-1] == "verdict: PASS"
+    assert "dbt (attempt 1): output: marker nowhere" in lines and "dbt_control: output: marker $.error" in lines
+
+
+def test_J13_a_retried_make_rows_passes_when_its_latest_attempt_succeeded(monkeypatch):
+    check = _robot_check()
+    replies = _retried(check)
+    tasks = _base_tasks()
+    tasks[0] = {**tasks[0], "state": {"result_state": "FAILED"}}
+    tasks.append({"task_key": "make_rows", "run_id": 17, "attempt_number": 1, "state": {"result_state": "SUCCESS"}})
+    out = f"{HOST}/api/2.2/jobs/runs/get-output?run_id="
+    replies[out + "17"] = replies[out + "11"]
+    lines = _report(check, monkeypatch, _with_tasks(replies, tasks))
+    assert lines[-1] == "verdict: PASS"
+
+
+def test_J13_a_retried_make_rows_fails_when_its_latest_attempt_failed(monkeypatch):
+    check = _robot_check()
+    replies = _retried(check)
+    tasks = _base_tasks()
+    tasks.append({"task_key": "make_rows", "run_id": 17, "attempt_number": 1, "state": {"result_state": "FAILED"}})
+    replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=17"] = _output_reply("failed")
+    lines = _report(check, monkeypatch, _with_tasks(replies, tasks))
+    assert lines[-1].startswith("verdict: FAIL") and "make_rows did not succeed" in lines[-1]
+
+
+def test_J13_the_code_hash_comes_from_make_rows_latest_attempt(monkeypatch):
+    """Review of #129, nit 5: the first item listed may be an earlier attempt with no hash."""
+    check = _robot_check()
+    replies = _retried(check)
+    tasks = _base_tasks()
+    tasks[0] = {**tasks[0], "state": {"result_state": "FAILED"}}
+    tasks.append({"task_key": "make_rows", "run_id": 17, "attempt_number": 1, "state": {"result_state": "SUCCESS"}})
+    out = f"{HOST}/api/2.2/jobs/runs/get-output?run_id="
+    replies[out + "17"] = replies[out + "11"]
+    replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=11"] = _output_reply("failed")
+    lines = _report(check, monkeypatch, _with_tasks(replies, tasks))
+    assert f"code sha256: {B}" in lines and lines[-1] == "verdict: PASS"
+
+
+def test_J13_a_leak_in_an_earlier_attempt_of_another_task_fails_the_check(monkeypatch):
+    check = _robot_check()
+    replies = _retried(check)
+    tasks = json.loads(replies[f"{HOST}/api/2.2/jobs/runs/get?run_id=99"][1])["tasks"]
+    tasks += [{"task_key": "extra", "run_id": 21, "attempt_number": 0, "state": {"result_state": "FAILED"}},
+              {"task_key": "extra", "run_id": 22, "attempt_number": 1, "state": {"result_state": "SUCCESS"}}]
+    replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=21"] = _output_reply(f"failed {check.MARKER}")
+    replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=22"] = _output_reply("ok")
+    lines = _report(check, monkeypatch, _with_tasks(replies, tasks))
+    assert lines[-1].startswith("verdict: FAIL") and "the marker is in extra's output or details" in lines[-1]
+
+
+def test_J13_the_marker_in_make_rows_dbt_files_fails_the_check(monkeypatch):
+    """Review of #129, nit 6: `make_rows` is checked like every other task, its dbt files included."""
+    check = _robot_check()
+    replies = _reached(check)
+    value = json.loads(replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=11"][1])
+    value["dbt_output"] = {"artifacts_link": f"{HOST}/a11", "artifacts_headers": {}}
+    replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=11"] = (200, json.dumps(value).encode())
+    replies[f"{HOST}/a11"] = (200, _archive("zip", {"logs/x.log": check.MARKER.encode()}))
+    lines = _report(check, monkeypatch, replies)
+    assert lines[-1].startswith("verdict: FAIL") and "the marker is in make_rows' output" in lines[-1]
+
+
+# The second review of #129 (owner decision of 13 November): the rule on attempt numbers matches the approval
+# workflow's `_latest_attempt`, and `make_rows`' leak reason names all its places.
+
+
+def test_J13_a_negative_attempt_number_is_refused(monkeypatch):
+    check = _robot_check()
+    lines = _report(check, monkeypatch, _retried(check, number=-1))
+    assert "the run lists the task dbt without whole attempt numbers" in lines[-1]
+
+
+def test_J13_a_task_item_without_an_attempt_number_beside_a_numbered_one_is_refused(monkeypatch):
+    """As `_latest_attempt` refuses it: with several items, every item must carry its own number."""
+    check = _robot_check()
+    replies = _retried(check)
+    tasks = json.loads(replies[f"{HOST}/api/2.2/jobs/runs/get?run_id=99"][1])["tasks"]
+    for task in tasks:
+        if task["run_id"] == 12:
+            del task["attempt_number"]
+    lines = _report(check, monkeypatch, _with_tasks(replies, tasks))
+    assert lines[-1].startswith("verdict: FAIL")
+    assert "the run lists the task dbt without whole attempt numbers" in lines[-1]
+
+
+def test_J13_the_reason_for_a_leak_in_make_rows_names_its_output_or_details(monkeypatch):
+    check = _robot_check()
+    replies = _reached(check)
+    value = json.loads(replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=11"][1])
+    value["dbt_output"] = {"artifacts_link": f"{HOST}/a11", "artifacts_headers": {}}
+    replies[f"{HOST}/api/2.2/jobs/runs/get-output?run_id=11"] = (200, json.dumps(value).encode())
+    replies[f"{HOST}/a11"] = (200, _archive("zip", {"logs/x.log": check.MARKER.encode()}))
+    lines = _report(check, monkeypatch, replies)
+    assert "the marker is in make_rows' output or details" in lines[-1]
