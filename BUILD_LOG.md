@@ -3157,3 +3157,12 @@ Times are local, from the chat's message times, the owner's screenshots and GitH
   - Tokens: 2,820,190 in and 406,114 out. Live cost $0.4850760, $0.2340 per 1,000 complaints, against the spec's expected $0.49. Run time 4,739.7 seconds.
   - The run entry's hashes are the real row's: code `db063ac8…677a` and June list `4ae0c333…77d0`.
 - 16:54 Results and log written, before their gate. Claude ran the whole suite first.
+- Commit `68841a9` at 17:06 (git's commit time), through the gate, after the whole suite passed. Claude checked that it holds the three files before any push.
+- 17:16 Claude's push, with the pull request's creation in the same command, was refused by the session's permission check before it ran, with no reason given. It was the first push of results that came from real complaints. Claude did not retry it and asked the owner, who asked at 18:01 about the risks and at 18:06 why Claude asked now, when it pushes every other branch. Claude explained that the check, not Claude, had stopped it, and that the files hold IDs, labels, positions, reasons and counts only.
+- Owner decision ("push", 18:38): Claude pushes. 18:38 Claude pushed the branch and opened draft pull request #137, as two commands.
+- 18:42 The fresh reviewer's findings on #137 were posted as a comment. Nothing serious or minor. Three nits: the 11 `invalid_label` rows hold the fixed `proposed_label` `pipeline.NOT_IN_LIST`, which spec 004's description of the results file does not mention, the time of #136's merge against git's 16:52:59, and J7's cost per extra correct label not stated.
+- Owner decision ("Go as you recommend.", 19:14): no change to the data, and the three reasons logged here.
+- No change for the `invalid_label` rows: the data is right. `src/voc/june_results.py` allows `pipeline.NOT_IN_LIST` (`src/voc/pipeline.py:34`), and the July test CSV has the same rows. Spec 004's wording is corrected in the write-up's pull request, which comes next.
+- No change for the merge time: it is GitHub's `mergedAt`, 2026-11-14T05:53:00Z, read at 16:53, which is 16:53 local.
+- No change for the cost per extra correct label: the summary holds it, $0.017932 at the same coverage and $0.032197 at full coverage. The write-up's June section states it.
+- Log lines only, so no second review. 19:14 Lines written, before their gate. Claude ran the whole suite first.
