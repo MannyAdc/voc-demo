@@ -38,6 +38,9 @@ ledger.json
 !results/validation/v1_consistency_r*.csv
 !results/validation/v*_codes.csv
 !results/validation/v5_judge.csv
+# The June results hold IDs, labels, positions, reasons and counts, never complaint text (spec 004, J11).
+# Only the planned file: any other CSV there stays ignored.
+!results/june/v1_june.csv
 !splits/**
 !config/**
 !tests/fixtures/**/*.jsonl

@@ -3094,3 +3094,35 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - No change for the two tests: some of their strings were already in the steps, but each test also asserts strings that only the fix round added, and each failed in the red commit and passes now.
 - No change for the screen labels: the key's **Active** has a fallback in the text ("If a page has another name, tell Claude what you see"), and round 2's two attempts back the attempts on Job B's run page. Neither goes into frozen code, a gate or a test fake, so the probe rule of CLAUDE.md does not apply.
 - Docs and log only, no code, so no third review. 11:07 Fixes written, before their gate. Claude ran the whole suite first.
+- Fix commit `f0a553f` at 11:16 (git's commit time), through the gate, after the whole suite passed. Pushed. CI green on `f0a553f`. 11:29 Claude's merge verdict on #135 was MERGE, posted as a comment, and Claude marked #135 ready. 11:39 The owner merged #135 (time from GitHub). `main` at `60216a4`.
+
+### The June run
+
+Times are local, from the chat's message times, the owner's screenshots and GitHub's API. Claude read only the approval run's status and its jobs' times, never its logs.
+
+- 11:39 Claude checked the first two checks before the run: no other pull request open, and the run log's last row on `main` the real one.
+- 11:58 The owner reported the checks in Databricks as the steps say (Job B's settings and the robot's **Can Manage Run**, Job A's trigger **Paused**, `incoming`, the `june` folder and `voc_june` clean), the robot's secret ending on 2026-12-09 and the reader's on 2026-12-10, the spend limit of `voc-june-cloud` at $5 a month, and, by screenshots, the dispatch token `voc-receiver-dispatch` expiring on 9 December 2026, the Console key `voc-june-job-b` expiring on 10 December 2026 with a cost of $0.00, and no Application Insights app. The key's row had no status column, so Claude asked what its menu offers. The screenshot shows a personal name, which is not copied here.
+- 12:02 The owner reported the June zip in the Downloads folder at 19,624,767 bytes, the pin's size, and the reader's check in the owner's own terminal: `results volume readable | yes`, `raw volume refused | yes`, `secret scope refused | yes`, `verdict | PASS`. 12:02 Claude gave steps 1 to 3, with "go straight on" once the key's menu offers **Disable**.
+- Job A run `195625699108193`, launched by file arrival, 12:12 to 12:15 (3 minutes 13 seconds), **Succeeded** (the owner's screenshot). Its start in UTC was 01:12:45.
+- 12:16 The approval run `43539560019`, `June approval for Job A run 195625699108193`, started on its own on `main` at `60216a4`, from the receiver's dispatch. Its figures job ran from 12:16:22 to 12:16:29.
+- 12:17 The owner reported the key active, in the same message as Job A's run, so the key check's own time is not known.
+- 12:19 The owner pasted the figures: `Job A run: 195625699108193`, `kind: real`, `run log row: 2026-11-13 11:40, real`, `started: 2026-11-14 01:12:45 UTC`, `complaints: 2073`, `calls: 2073`, `worst_case_tokens: 37954560`, `tokens_left_under_cap: 40000000`, `expected_cost_usd: 0.50`. Claude checked each against Job A's run page and the repo at 12:19: the worst case fits the June ledger's real room of 39,991,987 with about 2 million to spare.
+- About 12:20 The owner approved `june-run`. The run job started at 12:20:11, after Claude's check. The owner did not note the minute.
+- Job B run `1052842636980751`, which its page says was launched Manually, 12:20 to 13:41 (1 hour 21 minutes 36 seconds), **Succeeded**, rows read 2,073 (the owner's screenshot). The approval run's run job ended green at 13:42:51, after 1 hour 22 minutes 40 seconds, which it does only when Job B finished (#125). The spec's estimate was about 70 minutes for the labelling.
+- 14:08 The owner reported the key's cost in the Console still at $0.00 after the run. Round 6's cost also lagged.
+- 14:09 Claude copied the results as the read-only reader: `uv run --native-tls --locked python scripts/copy_june_results.py 1052842636980751` printed `copied | v1_june.csv, v1_june.json` and `rows | 2073`. Claude then read only the CSV's header row, B19's twelve columns, and the summary's keys, numbers and fixed text.
+
+- 14:14 The owner reported Job A's trigger paused again (step 10).
+- 14:21 Claude's first try of the results commit, after the whole suite passed, did not commit. `.gitignore` ignores every `*.csv`, with an exception per results folder (`results/labels/`, `results/eval/`, `results/reviews/`, `results/validation/`), and none for `results/june/`, so `git add` refused `v1_june.csv` and the commit did not run. The push, at 14:22, ran anyway, since Claude had chained it with `;`, so the branch `results/june-1052842636980751` on GitHub holds only main's `60216a4`. The two results files stay staged in the main checkout.
+- AI mistake, caught by git at the commit: when the copy script was built (6b part 6), Claude added no `.gitignore` exception for `results/june/`, and no test that its CSV can be committed, as earlier results folders had (`tests/test_analyst.py`, `tests/test_validation.py`).
+- AI mistake, caught by Claude after the push: the push was chained after the commit with `;`, not `&&`, so it ran after the commit failed. Nothing wrong reached GitHub.
+- About 14:22 the owner sent Job B's run events (screenshot, by Claude's steps: the run's page, the `job_b` task, then **View run events**): `started`, `waitingForCompute`, `computeReady` and `startedRunning` at 12:20, and `succeeded` at 13:41, with no retry event. So the task ran once.
+- Owner decision ("go as you recommend", 14:23): two pull requests. First a small one with a test and the `.gitignore` exception, then the results pull request, data and log only, as spec 004 says (J11).
+
+### Pull request: the June results CSV in git
+
+- Work start, 14:23 on 14 November: branch `fix/june-results-ignore`, worktree `../voc-demo-ignore`, from main at `60216a4`. It needed `uv sync --native-tls --locked`.
+- The gate refused the first red commit at 14:25: the new worktree had no local names deny list, which git ignores. Claude copied the main checkout's file in, without reading it, and committed again, as on two earlier days.
+- Red commit `496e342` at 14:25 (git's commit time): only `tests/test_june_copy.py`, through the gate. One new test over both results files: `results/june/v1_june.csv` and `results/june/v1_june.json` are not ignored. The CSV case fails, the JSON case already passes.
+- The change: `.gitignore` gets `!results/june/v1_june.csv`, the planned file only, as for the validation results, with a comment that the June results hold IDs, labels, positions, reasons and counts, never complaint text (J11). `.gitignore` is not in the frozen paths (`voc.frozen.FROZEN_PATHS`), so the real row stays valid.
+- 14:46 Change written, before its gate. Claude ran the whole suite first.
