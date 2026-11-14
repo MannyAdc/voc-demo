@@ -5,9 +5,13 @@ No test opens a network connection: the reader's HTTP calls go to a fake. Fake s
 runs. Every results file is synthetic.
 """
 import json
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
+
+import git_helper
 
 REPO = Path(__file__).resolve().parents[1]
 HOST = "dbc-synthetic.cloud.databricks.com"
@@ -272,3 +276,17 @@ def test_J13_the_reader_asks_for_the_files_scope_read_only():
 def test_J13_a_404_is_not_proof_of_a_refusal(raw, scope):
     lines = _check(raw=raw, scope=scope)
     assert lines[-1] == "verdict | FAIL"
+
+
+@pytest.mark.parametrize(("name", "ignored"), [("v1_june.csv", False), ("v1_june.json", False),
+                                             ("other.csv", True)])
+def test_J11_only_the_june_results_files_can_be_committed(tmp_path, name, ignored):
+    # The results PR commits both files, which hold IDs, labels, positions, reasons and counts only (J11), and any
+    # other CSV there stays ignored. The gate runs the tests on a copy that is not a git repo, so the test makes its
+    # own repo with a copy of `.gitignore`.
+    shutil.copy(REPO / ".gitignore", tmp_path / ".gitignore")
+    git_helper.run(["git", "init", "-q"], cwd=tmp_path, check=True, capture_output=True)
+    found = subprocess.run(["git", "check-ignore", "--no-index", "-q", f"results/june/{name}"], cwd=tmp_path,
+                           capture_output=True)
+    assert found.returncode in (0, 1)
+    assert (found.returncode == 0) == ignored
