@@ -172,24 +172,24 @@ $0.88 in all: $0.0229437 for V1, $0.024326 for the judge's dry run ([results/val
 
 ## June: the untouched test of the mix
 
-V6 found that one mix of the two methods scored higher than the LLM alone on the development set. That was a tuning figure: the 0.9 rule was set after the development results were known. So the mix needed a test on complaints that no one had used to build or tune anything. [Spec 004](../specs/004-june-test-and-baselines/spec.md) ran that test once, on 14 November 2026, on complaints sent to the CFPB in June 2026.
+The cost check above, V6, found that one mix of the two methods scored higher than the LLM alone on the development set. That was a tuning figure: the 0.9 rule was set after the development results were known. So the mix needed a test on complaints that no one had used to build or tune anything. [Spec 004](../specs/004-june-test-and-baselines/spec.md) ran that test once, on 14 November 2026, on complaints sent to the CFPB in June 2026.
 
 **In plain words.**
 
 - **The question, fixed before the run.** Does the mix label more complaints correctly than the LLM alone? In the mix, TF-IDF + LR answers each complaint it is at least 90% sure of, and the LLM answers the rest.
-- **The answer: yes, the mix beats the LLM alone.** On 2,073 June complaints, the mix labelled 80.1% correctly and the LLM alone 78.7%. The mix's lead is +1.4 points, with a 95% interval of +0.9 to +2.0 points. The whole range is above zero, so the verdict is **beats**.
-- **The mix is also cheaper.** TF-IDF + LR answered 20.3% of the complaints, and it costs nothing to run, so the mix needs the LLM for only about 4 complaints in 5.
+- **The answer: yes, the mix beats the LLM alone.** On 2,073 June complaints, the mix labelled 80.1% correctly and the LLM alone 78.7%. The mix's lead is +1.4 points, with a 95% interval of +0.9 to +2.0 points: the range the true lead very likely lies in. The whole range is above zero, so the verdict is **beats**.
+- **The mix is also cheaper.** TF-IDF + LR answered 20.3% of the complaints, and it needs no API fee, so the mix needs the LLM for only about 4 complaints in 5.
 - **June cannot settle whether the LLM alone beats TF-IDF + LR.** The LLM scored higher, 78.7% against 77.4%, but the range of its lead, −0.5 to +3.0 points, includes zero. On July's sealed test set the LLM won this comparison (see the [README](../README.md#-the-result)). June alone does not confirm it, and the spec gave this comparison no verdict.
 
 **Why June counts.** No one had used June to build, tune or check any method. Its sample was drawn and frozen on 5 November, before any June complaint was labelled. The code was frozen too, and two checks passed on it before the run. The test could run only once, so it could not be repeated until it looked good.
 
-**How it ran.** Uploading the CFPB's June file started a chain in the cloud. Databricks checked the file against its recorded fingerprint and built the June tables. GitHub printed the expected figures, and the owner checked and approved them. A second Databricks job then labelled the 2,073 complaints through the Claude API and scored them. The labelling and the scoring ran in the cloud, not on the laptop. Then the read-only reader copied the two results files into this repo. [BUILD_LOG.md](../BUILD_LOG.md) records each step with its time.
+**How it ran.** Uploading the CFPB's June file started a chain in the cloud. Databricks checked the file against its recorded fingerprint and built the June tables. GitHub printed the run's planned figures: the number of complaints and calls, the most tokens the run could use, and the expected cost. The owner checked them and approved. A second Databricks job then labelled the 2,073 complaints through the Claude API and scored them. The labelling and the scoring ran in the cloud, not on the laptop. Then Claude ran `scripts/copy_june_results.py` on the laptop. It signs in to Databricks as a reader account that can read only the results folder, and it copied the two results files into this repo. [BUILD_LOG.md](../BUILD_LOG.md) records each step with its time.
 
-**Sample.** 2,073 complaints, drawn at random by product share from June's 15,119 complaints with a written story. Copies were removed first: 938 copies of July's stories, 646 exact copies and 117 near copies. [The June test sample](HOW_WE_MEASURE.md#the-june-test-sample) explains the size.
+**Sample.** June had 16,820 complaints with a written story. Copies were removed first: 938 copies of July's stories, then 646 exact copies and 117 near copies within June, which left 15,119. The 2,073 were drawn at random from those, by product share. [The June test sample](HOW_WE_MEASURE.md#the-june-test-sample) explains the size.
 
 **Command and file.** The cloud run's second job (Databricks run `1052842636980751`), started after the owner's approval, wrote [results/june/v1_june.json](../results/june/v1_june.json) and [results/june/v1_june.csv](../results/june/v1_june.csv). `scripts/copy_june_results.py` copied them here. 2,073 live calls, $0.485 from the token counts the API returned. The Claude Console had not yet shown the cost on 14 November.
 
-**The figures.** Each score is re-weighted by June's own pool: each product counts by its share of the 15,119 complaints. So these scores are not directly comparable with July's, whose mix of products differs. Each interval comes from a paired bootstrap of 2,000 redraws within each product, seed 0, as in [How we decide who wins](HOW_WE_MEASURE.md#how-we-decide-who-wins). A held-back LLM label counts as wrong.
+**The figures.** Each score is re-weighted by June's own pool: each product counts by its share of the 15,119 complaints. So these scores are not directly comparable with July's, whose mix of products differs. Each interval comes from a paired bootstrap of 2,000 redraws within each product, seed 0, as in [How we decide who wins](HOW_WE_MEASURE.md#how-we-decide-who-wins). Strict accuracy is the share labelled correctly, where a held-back LLM label counts as wrong. Coverage is the share of complaints with an accepted label. "At the same coverage" means that TF-IDF + LR answers only as many complaints as the LLM accepted, its most confident ones.
 
 | The one claim fixed before the run | The mix | The LLM alone | Lead (95% interval) | Verdict |
 |---|---|---|---|---|
@@ -201,11 +201,11 @@ V6 found that one mix of the two methods scored higher than the LLM alone on the
 
 On the development set, the mix's lead was +2.2 points (+0.8 to +3.8). On June it is smaller, +1.4 points, but still wholly above zero.
 
-**Cost per extra correct label.** The LLM cost $0.2340 per 1,000 June complaints. At the same coverage, its lead of +1.3 points means about 13 more correct labels per 1,000, so each one costs $0.017932, about 2 cents. Against TF-IDF + LR labelling every complaint, the lead is +0.7 points, and each extra correct label costs $0.032197. The lead's range includes zero, so the LLM may gain nothing at all on June. The mix would cost about $0.19 per 1,000, if every complaint costs the same.
+**Cost per extra correct label.** The LLM cost $0.2340 per 1,000 June complaints. At the same coverage, its lead of +1.3 points means about 13 more correct labels per 1,000, so each one costs $0.017932, about 2 cents. Against TF-IDF + LR labelling every complaint, the lead is +0.7 points, and each extra correct label costs $0.032197. The same-coverage lead's range, −0.5 to +3.0 points, includes zero, so the LLM may gain nothing at all on June. The mix would cost about $0.19 per 1,000, if every complaint costs the same.
 
 **The labels held back.** The quote check held back 37 of the 2,073 LLM labels (1.8%): 21 with a quote not in the text, 11 that named no listed product, 4 unreadable answers and 1 quote too short. On July's test set it held back 45 of 1,909.
 
-**Where the LLM is weak.** As on July's test set, credit reporting: the LLM gave that label too often, and only 27% of its credit reporting labels were right. The per-product figures are in the results file.
+**Where TF-IDF + LR does better.** Two products. Credit reporting, as on July's test set: the LLM gave that label too often, and only 27% of its credit reporting labels were right. And debt collection, a quarter of June's pool: the LLM found only 69% of those complaints. Its F1 score, which balances right labels against complaints found, was 0.79, against 0.85 for TF-IDF + LR labelling every complaint. The per-product figures are in the results file.
 
 **What it means.**
 
@@ -214,7 +214,7 @@ On the development set, the mix's lead was +2.2 points (+0.8 to +3.8). On June i
 
 **Limits.**
 
-- **Some June narratives may be in the model's training data.** Its training data ends in June 2026, and the CFPB could publish a June narrative from early June, after the company's response or 15 days. That would help the LLM. So it works against the mix in the main claim, which the mix still won, and in favour of the LLM in the side comparison.
+- **Some June narratives may be in the model's training data.** Its training data ends in June 2026. The CFPB could publish a June complaint's story within days, once the company had answered or after 15 days. So some June stories may have been public in time. That would help the LLM. In the main claim it helps the LLM alone more than the mix, which uses the LLM for only about 4 complaints in 5, so it works against the mix, which still won. In the side comparison it works in favour of the LLM.
 - The scores are weighted by June's mix of products, so they are not directly comparable with July's.
 - One month, one run, one model and one prompt version.
 - The answer key is still the consumer's own choice, which V2 shows is noisy.

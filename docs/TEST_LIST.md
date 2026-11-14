@@ -859,10 +859,12 @@ Written on 14 November 2026, plan item 11. The tests read their facts from the r
 
 ## The June write-up ([spec 004](../specs/004-june-test-and-baselines/spec.md), J7, J11), `tests/test_june_writeup.py`
 
-Written on 14 November 2026, plan item 11. Every June figure is read from `results/june/v1_june.json`.
+Written on 14 November 2026, plan item 11. The June figures are computed from `results/june/v1_june.json` and the June list's manifest. Words for a rounded share are checked by review.
 
 - the validation page's June section states the run's figures: both claims, their intervals, the share TF-IDF + LR answered, the count held back, the cost per extra correct label and the live cost, with the verdict (J7)
 - the README states the June verdict and links its section (J7)
+- the June section also states the coverage, the cost per 1,000, the full-coverage lead, the count and share held back by reason, the two products where TF-IDF + LR does better, the mix's cost, and the sample's stories, copies and pool (J7, review of #138)
+- the README gives the side comparison's lead and its range (J7, review of #138)
 - the training-data limit in the README and `docs/LIMITS.md` names June's narratives (J7, Known limits)
 - spec 004 names the `(not in list)` marker in the results files (J11, review of #137)
 
