@@ -3166,3 +3166,21 @@ Times are local, from the chat's message times, the owner's screenshots and GitH
 - No change for the merge time: it is GitHub's `mergedAt`, 2026-11-14T05:53:00Z, read at 16:53, which is 16:53 local.
 - No change for the cost per extra correct label: the summary holds it, $0.017932 at the same coverage and $0.032197 at full coverage. The write-up's June section states it.
 - Log lines only, so no second review. 19:14 Lines written, before their gate. Claude ran the whole suite first.
+- Log commit `881105b` at 19:25 (git's commit time), through the gate, after the whole suite passed. Pushed. CI green on `881105b`. 19:41 Claude's merge verdict on #137 was MERGE, posted as a comment, and Claude marked #137 ready. 20:10 The owner merged #137 (time from GitHub). `main` at `7502c38`. The main checkout is back on `main`.
+
+### Pull request: the June write-up
+
+- Owner decision ("Yeah. Go as you recommend.", 20:14): the outline Claude proposed: a June section in `docs/VALIDATION.md`, a short paragraph in the README, the wording fix of #137's review in spec 004, and a test that reads every June figure from the results file. Spec 004's plan item 11 leaves this to the owner.
+- In the same message the owner asked whether any page shows how the cloud platforms are wired, in plain words. Claude checked: the README's two diagrams show how one complaint is labelled and who checks what, and `docs/LINEAGE.md` draws the dbt models, but the cloud run's pieces are described only in text, in spec 004 and the setup steps. Claude offered a page `docs/CLOUD_RUN.md` as its own pull request after this one.
+- Work start, 20:14: branch `docs/june-writeup`, worktree `../voc-demo-writeup`, from main at `7502c38`. Claude copied the main checkout's names deny list in before the first commit, without reading it, and ran `uv sync --native-tls --locked`.
+- Red commit `92d2b3a` at 20:16 (git's commit time): only `tests/test_june_writeup.py`, through the gate. Four new failing tests: the validation page's June section and the README state the figures computed from `results/june/v1_june.json`, the training-data limit in the README and `docs/LIMITS.md` names June's narratives, and spec 004 names the `(not in list)` marker.
+- AI mistake, caught by Claude before the commit: the first draft of these lines gave `881105b`'s time as 19:28, written without checking. git gives 19:25.
+- AI mistake, caught by Claude before the red commit: the first training-data test passed on the old text, since the old lines already name "June 2026" as the cutoff's month. It now looks for "June narratives".
+- The change:
+  - `docs/VALIDATION.md`: a new section, "June: the untouched test of the mix", with the question, the answer, why June counts, how it ran, the sample, the figures of both claims, the cost per extra correct label (nit 3 of #137's review), the labels held back, the LLM's weak spot, what it means and the limits, the training-data one first. The intro, the table of checks, V6's last line, the limits and "What we would do next" point to it.
+  - `README.md`: one sentence in "In one minute", a paragraph under "The result", and the two limits lines on the months and the training data.
+  - `docs/LIMITS.md`: the training-data line names June's narratives.
+  - Spec 004: the results files' labels can also be the fixed marker `(not in list)` (nit 1 of #137's review).
+- In the green commit, `test_V4_the_readme_links_the_write_up_in_one_line` counts three README lines that link `docs/VALIDATION.md`, not two, with a comment: the June paragraph links its section. The README's training-data line carries no link, so the count rises by one only.
+- Noted, not in this pull request: two README lines that the June run changes. "Where it runs today" says the labelling runs on the laptop, and "Labelling from the warehouse" is listed as not done, though Job B labelled June in Databricks. They are left for the cloud page's pull request, if the owner wants it.
+- 20:48 Change written, before its gate. Claude ran the whole suite first.

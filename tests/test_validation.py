@@ -2768,10 +2768,11 @@ def test_V4_the_write_up_has_no_em_dash():
 
 def test_V4_the_readme_links_the_write_up_in_one_line():
     # Changed by the wording pull request: README line 100 also points to the write-up (owner decision,
-    # 4 November), so two lines, the "Read more" row and that one.
+    # 4 November), so two lines, the "Read more" row and that one. Changed by the June write-up (spec 004, plan
+    # item 11): the June paragraph under "The result" links its section, so three.
     readme = (REPO / "README.md").read_text(encoding="utf-8")
     lines = [line for line in readme.splitlines() if "docs/VALIDATION.md" in line]
-    assert len(lines) == 2
+    assert len(lines) == 3
 
 
 def test_V4_how_we_measure_explains_agreement_and_kappa_with_a_worked_example():

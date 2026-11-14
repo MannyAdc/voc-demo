@@ -857,6 +857,15 @@ Written on 14 November 2026, plan item 11. The tests read their facts from the r
 - they check each 30-day credential and the reader before the run (J13, review of #135)
 - they say what never to click after a refusal or a stop (J8, review of #135)
 
+## The June write-up ([spec 004](../specs/004-june-test-and-baselines/spec.md), J7, J11), `tests/test_june_writeup.py`
+
+Written on 14 November 2026, plan item 11. Every June figure is read from `results/june/v1_june.json`.
+
+- the validation page's June section states the run's figures: both claims, their intervals, the share TF-IDF + LR answered, the count held back, the cost per extra correct label and the live cost, with the verdict (J7)
+- the README states the June verdict and links its section (J7)
+- the training-data limit in the README and `docs/LIMITS.md` names June's narratives (J7, Known limits)
+- spec 004 names the `(not in list)` marker in the results files (J11, review of #137)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.

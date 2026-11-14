@@ -14,7 +14,7 @@ The task is kept simple on purpose: label each customer complaint by product. Th
 
 ## 🎯 In one minute
 
-- **📊 The result.** The claim was fixed before the first run: the LLM, with its quote check, beats TF-IDF + LR at the same coverage. On a sealed test set of 1,909 complaints, scored once, it did: **80.3% against 77.9%** on re-weighted strict accuracy (the share labelled correctly), +2.4 points, with a 95% interval of +0.5 to +4.1. It cost **$0.2373 per 1,000 complaints**. The command and the full figures are under "The result".
+- **📊 The result.** The claim was fixed before the first run: the LLM, with its quote check, beats TF-IDF + LR at the same coverage. On a sealed test set of 1,909 complaints, scored once, it did: **80.3% against 77.9%** on re-weighted strict accuracy (the share labelled correctly), +2.4 points, with a 95% interval of +0.5 to +4.1. It cost **$0.2373 per 1,000 complaints**. A second test, run once on June 2026, found that a mix of the two methods beats the LLM alone. The command and the full figures are under "The result".
 - **🖥️ The analyst's tool.** A dashboard with four tabs: the overview, browsing by product, the review queue where a person decides each quarantined complaint of the development set, and the method. On the analyst's own machine, the quoted sentence is highlighted in the complaint's text.
 - **🛡️ Safety.** No label is trusted without a quote that a script found in the text. Failures are held back and never counted as correct: on the development set a person decides each one (9 complaints), and on the test set they count as wrong (45 of 1,909). Spend has a hard cap.
 - **🔧 How it was built.** From the first commit on 27 October 2026 at 23:53 to 31 October: 57 merged pull requests (`gh pr list --state merged --limit 500`, 1 November) and 1,322 tests (`pytest --collect-only` on commit `9763017`).
@@ -74,6 +74,8 @@ What the two scores mean:
 Source: `uv run --native-tls voc final --prompt v1`, run once by the owner on 29 October 2026, written to [results/eval/v1_test.json](results/eval/v1_test.json).
 
 **Verdict: the LLM beats TF-IDF + LR**, by +2.4 points (95% interval +0.5 to +4.1, paired bootstrap). The interval comes from 2,000 random redraws of the 1,909 test complaints, each the same size, with both methods scored on each redraw. In 95% of them the LLM's lead was between +0.5 and +4.1 points, so the whole range is above zero. Step by step, with an example: [How we decide who wins](docs/HOW_WE_MEASURE.md#how-we-decide-who-wins). The LLM's clear weak spot is credit reporting, where TF-IDF + LR does better. The per-product table, the development figures and what each term means are in [docs/RESULTS.md](docs/RESULTS.md). [How we measure](docs/HOW_WE_MEASURE.md) explains the method in plain words.
+
+**June 2026: the untouched test of the mix.** On 14 November 2026 a second test ran once, in the cloud, on 2,073 complaints from June 2026, a month no method was built or tuned on. Its one question was fixed before the run: does a mix of the two methods beat the LLM alone? In the mix, TF-IDF + LR answers each complaint it is at least 90% sure of, and the LLM answers the rest. It did: **80.1% against 78.7%**, +1.4 points, with a 95% interval of +0.9 to +2.0. TF-IDF + LR answered about 1 complaint in 5, so the mix is also cheaper. On June, the LLM alone still scored higher than TF-IDF + LR, by +1.3 points, but that range includes zero, so June does not confirm July's verdict on its own. The figures and the limits: [June in the validation review](docs/VALIDATION.md#june-the-untouched-test-of-the-mix).
 
 ## 🖥️ The analyst's dashboard
 
@@ -160,8 +162,8 @@ Not done yet:
 
 - The product label was chosen by the consumer, so some measured "errors" are label noise.
 - The CFPB says its database "is not a statistical sample of consumers' experiences in the marketplace". The results describe this data only.
-- One month, one model, one prompt version and one test run. The improvement loop is ready (`/eval` adds a row to [EVAL_VERSIONS.md](EVAL_VERSIONS.md)) but was not run beyond prompt v1.
-- The model's training data ends in June 2026, and the complaints were received in July 2026, so they cannot be in its training data.
+- One month to build and test (July 2026), one untouched test month (June 2026), one model and one prompt version. The improvement loop is ready (`/eval` adds a row to [EVAL_VERSIONS.md](EVAL_VERSIONS.md)) but was not run beyond prompt v1.
+- The model's training data ends in June 2026, so the July complaints cannot be in it. Some June narratives may be in it, which would help the LLM in the June test.
 
 All limits, the known gaps in the guards, and notes on the data: [docs/LIMITS.md](docs/LIMITS.md).
 
