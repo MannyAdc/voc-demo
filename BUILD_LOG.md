@@ -3141,3 +3141,19 @@ Times are local, from the chat's message times, the owner's screenshots and GitH
 - Correction to the line on nit 7 above: CLAUDE.md asks only that the log be appended as things happen. That the results pull request holds data and its own log is the owner's decision of 14:23.
 - No change for the test's name: `.gitignore` never ignored JSON files, so another JSON in `results/june/` could be committed, as in any other results folder. Ignoring JSON there is outside this change, which lets the one blocked CSV through. The comments in `.gitignore` and the test say "any other CSV", which is accurate, and the V8 test's name has the same gap.
 - Log lines only, so no third review. 15:51 Lines written, before their gate. Claude ran the whole suite first.
+- Log commit `5fc0f18` at 16:00 (git's commit time), through the gate, after the whole suite passed. Pushed. CI green on `5fc0f18`. 16:14 Claude's merge verdict on #136 was MERGE, posted as a comment, and Claude marked #136 ready. 16:53 The owner merged #136 (time from GitHub). `main` at `2a28484`.
+
+### Pull request: the June results
+
+- Work start, 14:09 on 14 November: branch `results/june-1052842636980751` in the main checkout, from main at `60216a4`, since the copy reads the reader's sign-in from that checkout. Data and its log only (owner decision, 14:23), so no red commit (spec 004, J11).
+- AI mistake, caught by Claude before the push: the branch was first named `results/june-run`, not the spec's `results/june-<run ID>`. Renamed before any push.
+- 16:53 The branch, still at `60216a4` on GitHub with no commit of its own, was brought up to `main` at `2a28484` by a fast-forward merge. With #136, git no longer ignores `results/june/v1_june.csv`.
+- The two files as copied at 14:09: `v1_june.csv`, 2,074 lines (a header and 2,073 rows), SHA-256 `691ed962…bf33d`, and `v1_june.json`, SHA-256 `a5c55c78…58bd4`.
+- The figures, from `results/june/v1_june.json`, written by Job B:
+  - The primary claim, the hybrid against the LLM alone at full coverage (J7, V6): `beats`. The hybrid's reweighted accuracy 0.8007, the LLM's 0.7867, difference 0.0140, interval 0.0087 to 0.0198, 2,000 resamples, seed 0. TF-IDF + LR labelled 20.3% of complaints, at the 0.9 threshold.
+  - The secondary comparison, the LLM against TF-IDF + LR at the same coverage (B10), with no verdict: difference 0.0130, interval -0.0048 to 0.0300, from reweighted accuracies of 0.7867 and 0.7736. Precision 0.8011 against 0.7878, at a coverage of 0.9822.
+  - Accepted 2,036, quarantined 37: 21 quote not in the text, 11 invalid label, 4 unparseable, 1 quote too short.
+  - Macro F1: the LLM 0.7184, TF-IDF + LR 0.6209.
+  - Tokens: 2,820,190 in and 406,114 out. Live cost $0.4850760, $0.2340 per 1,000 complaints, against the spec's expected $0.49. Run time 4,739.7 seconds.
+  - The run entry's hashes are the real row's: code `db063ac8…677a` and June list `4ae0c333…77d0`.
+- 16:54 Results and log written, before their gate. Claude ran the whole suite first.

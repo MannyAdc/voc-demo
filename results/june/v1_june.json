@@ -1,0 +1,1499 @@
+{
+  "accepted": 2036,
+  "backend": "api",
+  "calls_without_usage": 0,
+  "charged_without_answer_tokens": 0,
+  "complaints": 2073,
+  "confusion": {
+    "hybrid": [
+      [
+        "Checking or savings account",
+        "Checking or savings account",
+        381
+      ],
+      [
+        "Checking or savings account",
+        "Credit card",
+        14
+      ],
+      [
+        "Checking or savings account",
+        "Credit reporting or other personal consumer reports",
+        5
+      ],
+      [
+        "Checking or savings account",
+        "Money transfer, virtual currency, or money service",
+        31
+      ],
+      [
+        "Checking or savings account",
+        "Payday loan, title loan, personal loan, or advance loan",
+        3
+      ],
+      [
+        "Checking or savings account",
+        "Prepaid card",
+        4
+      ],
+      [
+        "Checking or savings account",
+        "quarantined",
+        9
+      ],
+      [
+        "Credit card",
+        "Checking or savings account",
+        21
+      ],
+      [
+        "Credit card",
+        "Credit card",
+        318
+      ],
+      [
+        "Credit card",
+        "Credit reporting or other personal consumer reports",
+        23
+      ],
+      [
+        "Credit card",
+        "Debt collection",
+        6
+      ],
+      [
+        "Credit card",
+        "Money transfer, virtual currency, or money service",
+        5
+      ],
+      [
+        "Credit card",
+        "Payday loan, title loan, personal loan, or advance loan",
+        7
+      ],
+      [
+        "Credit card",
+        "Prepaid card",
+        1
+      ],
+      [
+        "Credit card",
+        "quarantined",
+        4
+      ],
+      [
+        "Credit reporting or other personal consumer reports",
+        "Credit reporting or other personal consumer reports",
+        50
+      ],
+      [
+        "Credit reporting or other personal consumer reports",
+        "Debt collection",
+        4
+      ],
+      [
+        "Credit reporting or other personal consumer reports",
+        "Mortgage",
+        1
+      ],
+      [
+        "Credit reporting or other personal consumer reports",
+        "Vehicle loan or lease",
+        2
+      ],
+      [
+        "Debt collection",
+        "Checking or savings account",
+        4
+      ],
+      [
+        "Debt collection",
+        "Credit card",
+        12
+      ],
+      [
+        "Debt collection",
+        "Credit reporting or other personal consumer reports",
+        71
+      ],
+      [
+        "Debt collection",
+        "Debt collection",
+        386
+      ],
+      [
+        "Debt collection",
+        "Debt or credit management",
+        2
+      ],
+      [
+        "Debt collection",
+        "Money transfer, virtual currency, or money service",
+        4
+      ],
+      [
+        "Debt collection",
+        "Mortgage",
+        6
+      ],
+      [
+        "Debt collection",
+        "Payday loan, title loan, personal loan, or advance loan",
+        13
+      ],
+      [
+        "Debt collection",
+        "Student loan",
+        9
+      ],
+      [
+        "Debt collection",
+        "Vehicle loan or lease",
+        9
+      ],
+      [
+        "Debt collection",
+        "quarantined",
+        4
+      ],
+      [
+        "Debt or credit management",
+        "Credit card",
+        1
+      ],
+      [
+        "Debt or credit management",
+        "Credit reporting or other personal consumer reports",
+        1
+      ],
+      [
+        "Debt or credit management",
+        "Debt collection",
+        7
+      ],
+      [
+        "Debt or credit management",
+        "Debt or credit management",
+        5
+      ],
+      [
+        "Debt or credit management",
+        "Mortgage",
+        2
+      ],
+      [
+        "Debt or credit management",
+        "Payday loan, title loan, personal loan, or advance loan",
+        2
+      ],
+      [
+        "Debt or credit management",
+        "quarantined",
+        1
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Checking or savings account",
+        41
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Credit card",
+        4
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Credit reporting or other personal consumer reports",
+        1
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Debt collection",
+        1
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Money transfer, virtual currency, or money service",
+        129
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Payday loan, title loan, personal loan, or advance loan",
+        2
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "quarantined",
+        4
+      ],
+      [
+        "Mortgage",
+        "Credit reporting or other personal consumer reports",
+        1
+      ],
+      [
+        "Mortgage",
+        "Debt collection",
+        2
+      ],
+      [
+        "Mortgage",
+        "Debt or credit management",
+        3
+      ],
+      [
+        "Mortgage",
+        "Mortgage",
+        145
+      ],
+      [
+        "Mortgage",
+        "Payday loan, title loan, personal loan, or advance loan",
+        1
+      ],
+      [
+        "Mortgage",
+        "Vehicle loan or lease",
+        1
+      ],
+      [
+        "Mortgage",
+        "quarantined",
+        5
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Checking or savings account",
+        4
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Credit card",
+        3
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Credit reporting or other personal consumer reports",
+        4
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Debt collection",
+        4
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Debt or credit management",
+        1
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Money transfer, virtual currency, or money service",
+        1
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Payday loan, title loan, personal loan, or advance loan",
+        67
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Vehicle loan or lease",
+        1
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "quarantined",
+        2
+      ],
+      [
+        "Prepaid card",
+        "Checking or savings account",
+        6
+      ],
+      [
+        "Prepaid card",
+        "Credit card",
+        1
+      ],
+      [
+        "Prepaid card",
+        "Debt collection",
+        1
+      ],
+      [
+        "Prepaid card",
+        "Money transfer, virtual currency, or money service",
+        8
+      ],
+      [
+        "Prepaid card",
+        "Prepaid card",
+        13
+      ],
+      [
+        "Prepaid card",
+        "quarantined",
+        1
+      ],
+      [
+        "Student loan",
+        "Checking or savings account",
+        2
+      ],
+      [
+        "Student loan",
+        "Credit reporting or other personal consumer reports",
+        1
+      ],
+      [
+        "Student loan",
+        "Debt collection",
+        1
+      ],
+      [
+        "Student loan",
+        "Debt or credit management",
+        1
+      ],
+      [
+        "Student loan",
+        "Payday loan, title loan, personal loan, or advance loan",
+        2
+      ],
+      [
+        "Student loan",
+        "Student loan",
+        71
+      ],
+      [
+        "Student loan",
+        "quarantined",
+        1
+      ],
+      [
+        "Vehicle loan or lease",
+        "Credit card",
+        2
+      ],
+      [
+        "Vehicle loan or lease",
+        "Credit reporting or other personal consumer reports",
+        5
+      ],
+      [
+        "Vehicle loan or lease",
+        "Debt collection",
+        1
+      ],
+      [
+        "Vehicle loan or lease",
+        "Payday loan, title loan, personal loan, or advance loan",
+        4
+      ],
+      [
+        "Vehicle loan or lease",
+        "Vehicle loan or lease",
+        95
+      ],
+      [
+        "Vehicle loan or lease",
+        "quarantined",
+        2
+      ]
+    ],
+    "llm": [
+      [
+        "Checking or savings account",
+        "Checking or savings account",
+        380
+      ],
+      [
+        "Checking or savings account",
+        "Credit card",
+        14
+      ],
+      [
+        "Checking or savings account",
+        "Credit reporting or other personal consumer reports",
+        4
+      ],
+      [
+        "Checking or savings account",
+        "Money transfer, virtual currency, or money service",
+        32
+      ],
+      [
+        "Checking or savings account",
+        "Payday loan, title loan, personal loan, or advance loan",
+        3
+      ],
+      [
+        "Checking or savings account",
+        "Prepaid card",
+        4
+      ],
+      [
+        "Checking or savings account",
+        "quarantined",
+        10
+      ],
+      [
+        "Credit card",
+        "Checking or savings account",
+        21
+      ],
+      [
+        "Credit card",
+        "Credit card",
+        317
+      ],
+      [
+        "Credit card",
+        "Credit reporting or other personal consumer reports",
+        23
+      ],
+      [
+        "Credit card",
+        "Debt collection",
+        6
+      ],
+      [
+        "Credit card",
+        "Money transfer, virtual currency, or money service",
+        5
+      ],
+      [
+        "Credit card",
+        "Payday loan, title loan, personal loan, or advance loan",
+        7
+      ],
+      [
+        "Credit card",
+        "Prepaid card",
+        1
+      ],
+      [
+        "Credit card",
+        "quarantined",
+        5
+      ],
+      [
+        "Credit reporting or other personal consumer reports",
+        "Credit reporting or other personal consumer reports",
+        51
+      ],
+      [
+        "Credit reporting or other personal consumer reports",
+        "Debt collection",
+        3
+      ],
+      [
+        "Credit reporting or other personal consumer reports",
+        "Mortgage",
+        1
+      ],
+      [
+        "Credit reporting or other personal consumer reports",
+        "Vehicle loan or lease",
+        2
+      ],
+      [
+        "Debt collection",
+        "Checking or savings account",
+        4
+      ],
+      [
+        "Debt collection",
+        "Credit card",
+        12
+      ],
+      [
+        "Debt collection",
+        "Credit reporting or other personal consumer reports",
+        97
+      ],
+      [
+        "Debt collection",
+        "Debt collection",
+        357
+      ],
+      [
+        "Debt collection",
+        "Debt or credit management",
+        2
+      ],
+      [
+        "Debt collection",
+        "Money transfer, virtual currency, or money service",
+        4
+      ],
+      [
+        "Debt collection",
+        "Mortgage",
+        6
+      ],
+      [
+        "Debt collection",
+        "Payday loan, title loan, personal loan, or advance loan",
+        13
+      ],
+      [
+        "Debt collection",
+        "Student loan",
+        9
+      ],
+      [
+        "Debt collection",
+        "Vehicle loan or lease",
+        10
+      ],
+      [
+        "Debt collection",
+        "quarantined",
+        6
+      ],
+      [
+        "Debt or credit management",
+        "Credit card",
+        1
+      ],
+      [
+        "Debt or credit management",
+        "Credit reporting or other personal consumer reports",
+        1
+      ],
+      [
+        "Debt or credit management",
+        "Debt collection",
+        7
+      ],
+      [
+        "Debt or credit management",
+        "Debt or credit management",
+        5
+      ],
+      [
+        "Debt or credit management",
+        "Mortgage",
+        2
+      ],
+      [
+        "Debt or credit management",
+        "Payday loan, title loan, personal loan, or advance loan",
+        2
+      ],
+      [
+        "Debt or credit management",
+        "quarantined",
+        1
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Checking or savings account",
+        39
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Credit card",
+        4
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Credit reporting or other personal consumer reports",
+        1
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Debt collection",
+        1
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Money transfer, virtual currency, or money service",
+        130
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Payday loan, title loan, personal loan, or advance loan",
+        2
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Prepaid card",
+        1
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "quarantined",
+        4
+      ],
+      [
+        "Mortgage",
+        "Credit reporting or other personal consumer reports",
+        1
+      ],
+      [
+        "Mortgage",
+        "Debt collection",
+        2
+      ],
+      [
+        "Mortgage",
+        "Debt or credit management",
+        4
+      ],
+      [
+        "Mortgage",
+        "Mortgage",
+        144
+      ],
+      [
+        "Mortgage",
+        "Payday loan, title loan, personal loan, or advance loan",
+        1
+      ],
+      [
+        "Mortgage",
+        "Vehicle loan or lease",
+        1
+      ],
+      [
+        "Mortgage",
+        "quarantined",
+        5
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Checking or savings account",
+        4
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Credit card",
+        3
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Credit reporting or other personal consumer reports",
+        4
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Debt collection",
+        4
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Debt or credit management",
+        1
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Money transfer, virtual currency, or money service",
+        1
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Payday loan, title loan, personal loan, or advance loan",
+        67
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Vehicle loan or lease",
+        1
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "quarantined",
+        2
+      ],
+      [
+        "Prepaid card",
+        "Checking or savings account",
+        6
+      ],
+      [
+        "Prepaid card",
+        "Debt collection",
+        1
+      ],
+      [
+        "Prepaid card",
+        "Money transfer, virtual currency, or money service",
+        8
+      ],
+      [
+        "Prepaid card",
+        "Prepaid card",
+        14
+      ],
+      [
+        "Prepaid card",
+        "quarantined",
+        1
+      ],
+      [
+        "Student loan",
+        "Checking or savings account",
+        2
+      ],
+      [
+        "Student loan",
+        "Credit reporting or other personal consumer reports",
+        1
+      ],
+      [
+        "Student loan",
+        "Debt collection",
+        1
+      ],
+      [
+        "Student loan",
+        "Debt or credit management",
+        1
+      ],
+      [
+        "Student loan",
+        "Payday loan, title loan, personal loan, or advance loan",
+        2
+      ],
+      [
+        "Student loan",
+        "Student loan",
+        71
+      ],
+      [
+        "Student loan",
+        "quarantined",
+        1
+      ],
+      [
+        "Vehicle loan or lease",
+        "Credit card",
+        2
+      ],
+      [
+        "Vehicle loan or lease",
+        "Credit reporting or other personal consumer reports",
+        5
+      ],
+      [
+        "Vehicle loan or lease",
+        "Debt collection",
+        1
+      ],
+      [
+        "Vehicle loan or lease",
+        "Payday loan, title loan, personal loan, or advance loan",
+        4
+      ],
+      [
+        "Vehicle loan or lease",
+        "Vehicle loan or lease",
+        95
+      ],
+      [
+        "Vehicle loan or lease",
+        "quarantined",
+        2
+      ]
+    ],
+    "note": "[recorded, predicted, count]. The LLM matrix has a 'quarantined' column. The TF-IDF and hybrid matrices cover every complaint",
+    "tfidf": [
+      [
+        "Checking or savings account",
+        "Checking or savings account",
+        384
+      ],
+      [
+        "Checking or savings account",
+        "Credit card",
+        24
+      ],
+      [
+        "Checking or savings account",
+        "Credit reporting or other personal consumer reports",
+        1
+      ],
+      [
+        "Checking or savings account",
+        "Debt collection",
+        8
+      ],
+      [
+        "Checking or savings account",
+        "Money transfer, virtual currency, or money service",
+        28
+      ],
+      [
+        "Checking or savings account",
+        "Mortgage",
+        1
+      ],
+      [
+        "Checking or savings account",
+        "Payday loan, title loan, personal loan, or advance loan",
+        1
+      ],
+      [
+        "Credit card",
+        "Checking or savings account",
+        37
+      ],
+      [
+        "Credit card",
+        "Credit card",
+        317
+      ],
+      [
+        "Credit card",
+        "Credit reporting or other personal consumer reports",
+        2
+      ],
+      [
+        "Credit card",
+        "Debt collection",
+        19
+      ],
+      [
+        "Credit card",
+        "Money transfer, virtual currency, or money service",
+        5
+      ],
+      [
+        "Credit card",
+        "Payday loan, title loan, personal loan, or advance loan",
+        4
+      ],
+      [
+        "Credit card",
+        "Vehicle loan or lease",
+        1
+      ],
+      [
+        "Credit reporting or other personal consumer reports",
+        "Checking or savings account",
+        2
+      ],
+      [
+        "Credit reporting or other personal consumer reports",
+        "Credit card",
+        2
+      ],
+      [
+        "Credit reporting or other personal consumer reports",
+        "Credit reporting or other personal consumer reports",
+        31
+      ],
+      [
+        "Credit reporting or other personal consumer reports",
+        "Debt collection",
+        20
+      ],
+      [
+        "Credit reporting or other personal consumer reports",
+        "Mortgage",
+        1
+      ],
+      [
+        "Credit reporting or other personal consumer reports",
+        "Vehicle loan or lease",
+        1
+      ],
+      [
+        "Debt collection",
+        "Checking or savings account",
+        6
+      ],
+      [
+        "Debt collection",
+        "Credit card",
+        17
+      ],
+      [
+        "Debt collection",
+        "Credit reporting or other personal consumer reports",
+        10
+      ],
+      [
+        "Debt collection",
+        "Debt collection",
+        465
+      ],
+      [
+        "Debt collection",
+        "Money transfer, virtual currency, or money service",
+        3
+      ],
+      [
+        "Debt collection",
+        "Mortgage",
+        4
+      ],
+      [
+        "Debt collection",
+        "Payday loan, title loan, personal loan, or advance loan",
+        3
+      ],
+      [
+        "Debt collection",
+        "Student loan",
+        1
+      ],
+      [
+        "Debt collection",
+        "Vehicle loan or lease",
+        11
+      ],
+      [
+        "Debt or credit management",
+        "Checking or savings account",
+        1
+      ],
+      [
+        "Debt or credit management",
+        "Credit card",
+        3
+      ],
+      [
+        "Debt or credit management",
+        "Debt collection",
+        12
+      ],
+      [
+        "Debt or credit management",
+        "Debt or credit management",
+        1
+      ],
+      [
+        "Debt or credit management",
+        "Mortgage",
+        2
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Checking or savings account",
+        68
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Credit card",
+        9
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Credit reporting or other personal consumer reports",
+        1
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Debt collection",
+        3
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Money transfer, virtual currency, or money service",
+        100
+      ],
+      [
+        "Money transfer, virtual currency, or money service",
+        "Vehicle loan or lease",
+        1
+      ],
+      [
+        "Mortgage",
+        "Checking or savings account",
+        5
+      ],
+      [
+        "Mortgage",
+        "Credit card",
+        1
+      ],
+      [
+        "Mortgage",
+        "Debt collection",
+        5
+      ],
+      [
+        "Mortgage",
+        "Money transfer, virtual currency, or money service",
+        2
+      ],
+      [
+        "Mortgage",
+        "Mortgage",
+        143
+      ],
+      [
+        "Mortgage",
+        "Payday loan, title loan, personal loan, or advance loan",
+        1
+      ],
+      [
+        "Mortgage",
+        "Vehicle loan or lease",
+        1
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Checking or savings account",
+        12
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Credit card",
+        15
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Debt collection",
+        12
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Money transfer, virtual currency, or money service",
+        2
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Mortgage",
+        4
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Payday loan, title loan, personal loan, or advance loan",
+        33
+      ],
+      [
+        "Payday loan, title loan, personal loan, or advance loan",
+        "Vehicle loan or lease",
+        9
+      ],
+      [
+        "Prepaid card",
+        "Checking or savings account",
+        18
+      ],
+      [
+        "Prepaid card",
+        "Credit card",
+        6
+      ],
+      [
+        "Prepaid card",
+        "Debt collection",
+        1
+      ],
+      [
+        "Prepaid card",
+        "Money transfer, virtual currency, or money service",
+        4
+      ],
+      [
+        "Prepaid card",
+        "Prepaid card",
+        1
+      ],
+      [
+        "Student loan",
+        "Checking or savings account",
+        2
+      ],
+      [
+        "Student loan",
+        "Credit card",
+        4
+      ],
+      [
+        "Student loan",
+        "Credit reporting or other personal consumer reports",
+        1
+      ],
+      [
+        "Student loan",
+        "Debt collection",
+        8
+      ],
+      [
+        "Student loan",
+        "Mortgage",
+        1
+      ],
+      [
+        "Student loan",
+        "Payday loan, title loan, personal loan, or advance loan",
+        2
+      ],
+      [
+        "Student loan",
+        "Student loan",
+        61
+      ],
+      [
+        "Vehicle loan or lease",
+        "Checking or savings account",
+        2
+      ],
+      [
+        "Vehicle loan or lease",
+        "Credit card",
+        6
+      ],
+      [
+        "Vehicle loan or lease",
+        "Debt collection",
+        15
+      ],
+      [
+        "Vehicle loan or lease",
+        "Money transfer, virtual currency, or money service",
+        1
+      ],
+      [
+        "Vehicle loan or lease",
+        "Mortgage",
+        1
+      ],
+      [
+        "Vehicle loan or lease",
+        "Payday loan, title loan, personal loan, or advance loan",
+        4
+      ],
+      [
+        "Vehicle loan or lease",
+        "Vehicle loan or lease",
+        80
+      ]
+    ]
+  },
+  "cost_per_1000_usd": "0.2340",
+  "cost_per_extra_correct_usd": {
+    "full_coverage": "0.032197",
+    "note": "against TF-IDF + LR at the same coverage, as V6's headline, with the full-coverage view next to it",
+    "same_coverage": "0.017932"
+  },
+  "difference": 0.013981696076248773,
+  "entry_code_sha256": "db063ac8f671e5fa4b3944adca2b25c3c9b605f6b444157f91102ff30c0d677a",
+  "entry_list_sha256": "4ae0c333e53479527a53d67711d53c81272a07c2bbcea28fc36d020b346477d0",
+  "figures_are": "the June claim's verdict, from the single June run (J1, J7)",
+  "full_coverage": {
+    "difference": 0.007267823430295306,
+    "llm_reweighted": 0.7866748997258796,
+    "tfidf_reweighted": 0.7794070762955843
+  },
+  "github_run_id": 43539560019,
+  "input_tokens": 2820190,
+  "interval": [
+    0.008681477605812843,
+    0.019767380826260568
+  ],
+  "job_a_run_id": 195625699108193,
+  "job_b_run_id": 1052842636980751,
+  "list_sha256": "4ae0c333e53479527a53d67711d53c81272a07c2bbcea28fc36d020b346477d0",
+  "live_cost_usd": "0.4850760",
+  "llm": {
+    "cost_per_1000_usd": "0.2340",
+    "coverage": 0.9821514712976362,
+    "macro_f1": 0.7183569262497553,
+    "no_time_per_1000_because": null,
+    "precision": 0.8010805500982319,
+    "quarantine_rate": 0.017848528702363753,
+    "reweighted_accuracy": 0.7866748997258796,
+    "seconds_per_1000_complaints": 2286.398
+  },
+  "model": "claude-haiku-5-5",
+  "note": "the June run: the LLM, TF-IDF + LR refit from July's training rows, and the hybrid, on the frozen June sample. The top-level verdict, difference and interval are the primary claim's (J7)",
+  "output_tokens": 406114,
+  "per_category": {
+    "categories": {
+      "Checking or savings account": {
+        "complaints": 447,
+        "llm": {
+          "f1": 0.8416389811738648,
+          "precision": 0.8333333333333334,
+          "recall": 0.8501118568232662
+        },
+        "tfidf": {
+          "f1": 0.7804878048780488,
+          "precision": 0.7150837988826816,
+          "recall": 0.8590604026845637
+        }
+      },
+      "Credit card": {
+        "complaints": 385,
+        "llm": {
+          "f1": 0.8590785907859079,
+          "precision": 0.8980169971671388,
+          "recall": 0.8233766233766234
+        },
+        "tfidf": {
+          "f1": 0.8035487959442332,
+          "precision": 0.7846534653465347,
+          "recall": 0.8233766233766234
+        }
+      },
+      "Credit reporting or other personal consumer reports": {
+        "complaints": 57,
+        "llm": {
+          "f1": 0.4163265306122449,
+          "precision": 0.2712765957446808,
+          "recall": 0.8947368421052632
+        },
+        "tfidf": {
+          "f1": 0.6019417475728156,
+          "precision": 0.6739130434782609,
+          "recall": 0.543859649122807
+        }
+      },
+      "Debt collection": {
+        "complaints": 520,
+        "llm": {
+          "f1": 0.7906976744186046,
+          "precision": 0.9321148825065274,
+          "recall": 0.6865384615384615
+        },
+        "tfidf": {
+          "f1": 0.8547794117647058,
+          "precision": 0.8186619718309859,
+          "recall": 0.8942307692307693
+        }
+      },
+      "Debt or credit management": {
+        "complaints": 19,
+        "too_few_to_judge": true
+      },
+      "Money transfer, virtual currency, or money service": {
+        "complaints": 182,
+        "llm": {
+          "f1": 0.7182320441988951,
+          "precision": 0.7222222222222222,
+          "recall": 0.7142857142857143
+        },
+        "tfidf": {
+          "f1": 0.6116207951070337,
+          "precision": 0.6896551724137931,
+          "recall": 0.5494505494505495
+        }
+      },
+      "Mortgage": {
+        "complaints": 158,
+        "llm": {
+          "f1": 0.9260450160771704,
+          "precision": 0.9411764705882353,
+          "recall": 0.9113924050632911
+        },
+        "tfidf": {
+          "f1": 0.9079365079365079,
+          "precision": 0.910828025477707,
+          "recall": 0.9050632911392406
+        }
+      },
+      "Payday loan, title loan, personal loan, or advance loan": {
+        "complaints": 87,
+        "llm": {
+          "f1": 0.7127659574468086,
+          "precision": 0.6633663366336634,
+          "recall": 0.7701149425287356
+        },
+        "tfidf": {
+          "f1": 0.4888888888888889,
+          "precision": 0.6875,
+          "recall": 0.3793103448275862
+        }
+      },
+      "Prepaid card": {
+        "complaints": 30,
+        "llm": {
+          "f1": 0.56,
+          "precision": 0.7,
+          "recall": 0.4666666666666667
+        },
+        "tfidf": {
+          "f1": 0.06451612903225806,
+          "precision": 1.0,
+          "recall": 0.03333333333333333
+        }
+      },
+      "Student loan": {
+        "complaints": 79,
+        "llm": {
+          "f1": 0.8930817610062892,
+          "precision": 0.8875,
+          "recall": 0.8987341772151899
+        },
+        "tfidf": {
+          "f1": 0.8652482269503546,
+          "precision": 0.9838709677419355,
+          "recall": 0.7721518987341772
+        }
+      },
+      "Vehicle loan or lease": {
+        "complaints": 109,
+        "llm": {
+          "f1": 0.8715596330275229,
+          "precision": 0.8715596330275229,
+          "recall": 0.8715596330275229
+        },
+        "tfidf": {
+          "f1": 0.7511737089201879,
+          "precision": 0.7692307692307693,
+          "recall": 0.7339449541284404
+        }
+      }
+    },
+    "note": "the LLM's quarantined labels count as wrong. TF-IDF here labels every complaint, at full coverage, not the matched coverage of the headline figures (B10)"
+  },
+  "precision_coverage": {
+    "llm": [
+      0.9821514712976362,
+      0.8010805500982319
+    ],
+    "tfidf": [
+      [
+        0.1,
+        0.9903381642512077
+      ],
+      [
+        0.2,
+        0.9710843373493976
+      ],
+      [
+        0.3,
+        0.9614147909967846
+      ],
+      [
+        0.4,
+        0.9517490952955368
+      ],
+      [
+        0.5,
+        0.9343629343629344
+      ],
+      [
+        0.6,
+        0.9091639871382636
+      ],
+      [
+        0.7,
+        0.8752584424534804
+      ],
+      [
+        0.8,
+        0.8552472858866104
+      ],
+      [
+        0.9,
+        0.8215434083601286
+      ],
+      [
+        1.0,
+        0.7795465508924264
+      ]
+    ]
+  },
+  "primary": {
+    "claim": "the hybrid against the LLM alone, both at full coverage, as V6 scores it",
+    "difference": 0.013981696076248773,
+    "hybrid_reweighted": 0.8006565958021283,
+    "interval": [
+      0.008681477605812843,
+      0.019767380826260568
+    ],
+    "llm_reweighted": 0.7866748997258796,
+    "resamples": 2000,
+    "seed": 0,
+    "tfidf_share": 0.20308731307284128,
+    "threshold": 0.9,
+    "verdict": "beats"
+  },
+  "prompt_version": "v1",
+  "quarantined": {
+    "invalid_label": 11,
+    "quote_not_in_text": 21,
+    "quote_too_short": 1,
+    "unparseable": 4
+  },
+  "quote_length": {
+    "max": 172,
+    "median": 65.0,
+    "min": 15
+  },
+  "replay_cost_usd": "0.4850760",
+  "resamples": 2000,
+  "review_queue": {
+    "invalid_label": {
+      "count": 11,
+      "tfidf_right": 7
+    },
+    "quote_not_in_text": {
+      "count": 21,
+      "tfidf_right": 15
+    },
+    "quote_too_short": {
+      "count": 1,
+      "tfidf_right": 0
+    },
+    "unparseable": {
+      "count": 4,
+      "tfidf_right": 4
+    }
+  },
+  "run_seconds": 4739.703,
+  "secondary": {
+    "comparison": "the LLM against TF-IDF + LR at the same coverage, as B10 defines it, with its interval and no verdict",
+    "coverage": 0.9821514712976362,
+    "difference": 0.013048948693926476,
+    "interval": [
+      -0.0048461127375127085,
+      0.029993073640771244
+    ],
+    "llm_precision": 0.8010805500982319,
+    "llm_reweighted": 0.7866748997258796,
+    "quarantine_rate": 0.017848528702363753,
+    "resamples": 2000,
+    "seed": 0,
+    "tfidf_precision": 0.787819253438114,
+    "tfidf_reweighted": 0.7736259510319531
+  },
+  "seed": 0,
+  "set": "june",
+  "settings": {
+    "api_version": "2023-06-01",
+    "effort": "low",
+    "max_tokens": 2048,
+    "model": "claude-haiku-5-5",
+    "thinking": "adaptive"
+  },
+  "shares": {
+    "Checking or savings account": 0.2157550102520008,
+    "Credit card": 0.18592499503935445,
+    "Credit reporting or other personal consumer reports": 0.027382763410278458,
+    "Debt collection": 0.25074409683180104,
+    "Debt or credit management": 0.009259871684635226,
+    "Money transfer, virtual currency, or money service": 0.08770421324161651,
+    "Mortgage": 0.07612937363582248,
+    "Payday loan, title loan, personal loan, or advance loan": 0.042000132283881206,
+    "Prepaid card": 0.014617368873602751,
+    "Student loan": 0.03803161584760897,
+    "Vehicle loan or lease": 0.052450558899398106
+  },
+  "tfidf": {
+    "cost_per_1000_usd": "0",
+    "coverage": 0.9821514712976362,
+    "macro_f1": 0.6209220015450031,
+    "precision": 0.787819253438114,
+    "reweighted_accuracy": 0.7736259510319531,
+    "seconds_per_1000_complaints": 0.263,
+    "settings_sha256": "c23b6d2ef12153272288ebac1781ad42ceed132b084b43c1884738307befdc74"
+  },
+  "verdict": "beats",
+  "weights": "June's own pool after copies are removed, from splits/june/manifest.json",
+  "who_was_right": {
+    "both": 1410,
+    "neither": 248,
+    "only_llm": 221,
+    "only_tfidf": 194
+  }
+}
