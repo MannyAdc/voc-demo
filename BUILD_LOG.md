@@ -3085,3 +3085,12 @@ Times are local, from the chat's message times, GitHub and Databricks. The owner
 - AI mistake, caught by Claude before the commit: the first draft of the new section said a Repair or a Run now of Job B makes a run its checks refuse. That was not checked, so the section now says Claude checks it in the code first.
 - Correction to the line on the change above (nit 8): the run has ten steps from the unpause to the second pause, and an eleventh after it, the Console cost.
 - 10:29 Fixes written, before their gate. Claude ran the whole suite first.
+- Green commit `2e23f22` at 10:39 (git's commit time), through the gate, after the whole suite passed. Pushed.
+- 10:53 A second fresh reviewer's findings on #135 were posted as a comment, since two first findings were serious. All eight first findings fixed, nothing serious. One minor: "A later attempt refuses at the markers" left out its condition, since spec 004's Known limits say a retry before Job B marks its run used makes its checks again and can go on to label. Five nits: the robot's client ID left out of the GitHub secrets with no end date, the reader's secret's end given as about 10 December though it was made on 10 or 11 November, no source in the log for 2 minutes 43 seconds, two tests with some strings already in the steps, and two screen labels written as facts.
+- AI mistake, caught by the reviewer: the retry sentence of the fix round stated the spec's rule without its condition.
+- Owner decision ("go", 11:07): fix the minor and the first three nits, and log why the last two need no change.
+- Fixes in `docs/JUNE_RUN_STEPS.md`: the retry sentence names both cases, the client ID is listed, and the reader's secret ends about 10 to 11 December.
+- Source of 2 minutes 43 seconds: the duration on round 6's Job B run page, on the owner's screenshot of 13 November. Round 6's own entry gives only 11:50 to 11:52 from the same screenshot.
+- No change for the two tests: some of their strings were already in the steps, but each test also asserts strings that only the fix round added, and each failed in the red commit and passes now.
+- No change for the screen labels: the key's **Active** has a fallback in the text ("If a page has another name, tell Claude what you see"), and round 2's two attempts back the attempts on Job B's run page. Neither goes into frozen code, a gate or a test fake, so the probe rule of CLAUDE.md does not apply.
+- Docs and log only, no code, so no third review. 11:07 Fixes written, before their gate. Claude ran the whole suite first.

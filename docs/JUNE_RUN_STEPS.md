@@ -51,13 +51,14 @@ until the run ends either, or both gates and the real row must be done again.
     access**, next to **Service principals** **Manage**, then `voc-june-runner`, the **Secrets** tab. Its row shows
     its dates. If it shows no end date, the end is its made date plus 30 days. It was made on 9 November, between
     15:33 and 15:48, so it ends about 9 December. The GitHub environments `june-figures` and `june-run` and the
-    Key Vault hold copies of this same secret, so its end is theirs too. Their other secrets, the host, the
-    receiver's address and the result secret, have no end date.
+    Key Vault hold copies of this same secret, so its end is theirs too. Their other secrets, the robot's client
+    ID `VOC_DATABRICKS_CLIENT_ID`, the host, the receiver's address and the result secret, have no end date.
   - The dispatch token `voc-receiver-dispatch`: on github.com, your profile picture at the top right, **Settings**,
     at the bottom of the left menu **Developer settings**, then **Personal access tokens**, **Fine-grained
     tokens**. Its row shows when it expires. It was made on 9 November at 08:45, so it ends about 9 December.
   - The reader's secret: the same Databricks page as the robot's, but `voc-results-reader`, the **Secrets** tab.
-    It was made just before the reader's checks of 11 November, so it ends about 10 December. Then, in your own
+    It was made on 10 or 11 November, before the reader's checks of 11 November, so it ends about 10 to 11
+    December. Then, in your own
     terminal, in the repo's folder, run
     `uv run --native-tls --locked python scripts/copy_june_results.py --check-reader` and paste its output to
     Claude. Its last line must be `verdict | PASS`. The copy after the run signs in as the reader.
@@ -133,8 +134,9 @@ The real row has one use, so a wrong click can spend it. After any refusal, stop
   approval are the way on, once Claude says so. Once Job B has marked Job A's run used, the way on needs a fresh Job
   A run too, and once it has written the start marker, a further pull request (spec 004, Known limits).
 - Databricks retries a failed task on its own, at most 3 times (spec 004, Known limits). Job B's run page shows each
-  attempt of its task. If it shows more than one attempt, tell Claude how many and each one's status. A later attempt
-  refuses at the markers, so a red cross can come from that refusal after an earlier attempt already labelled.
+  attempt of its task. If it shows more than one attempt, tell Claude how many and each one's status. A later attempt,
+  after the run was marked used, refuses at the markers, so a red cross can come from that refusal after an
+  earlier attempt already labelled. A later attempt before that makes Job B's checks again and can go on to label.
   Delete nothing in `voc_results` or `voc_raw`. A retried task of Job A makes the approval refuse its run.
 - Tell Claude the step, the fixed text or `stop_reason`, and the run IDs.
 
