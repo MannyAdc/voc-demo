@@ -844,6 +844,19 @@ Written on 13 November 2026, plan item 10.
 - the run log holds one real row, naming the June list and the code printed on `main` after #133, dated after both gates' passes on that code, and Job A and Job B take it offline (J1)
 - the dry run's tests of the first and last rows take a real last row: Job A takes it, and the dry run's last row, round 6's, comes before it (J1)
 
+## The owner's steps for the June run ([spec 004](../specs/004-june-test-and-baselines/spec.md), J1, J8, J11), `tests/test_june_run_steps.py`
+
+Written on 14 November 2026, plan item 11. The tests read their facts from the repo's own files.
+
+- the steps name the June zip and its hash from the pin, and the sample's size from the June list's manifest (J8)
+- they check the dry run's clean-up and the paused trigger first, and keep `main` still from the upload until Job B ends (J8)
+- they name the four figures to check before approving (J1)
+- they end with Claude's copy of the two results files (J11)
+- they show the figures as the approval prints them, with the expected cost from `voc.job_a.expected_cost` and the cap from `config/budget.toml` (J10, review of #135)
+- they check the Console key is **Active** and the $5 limit before the run (J12, review of #135)
+- they check each 30-day credential and the reader before the run (J13, review of #135)
+- they say what never to click after a refusal or a stop (J8, review of #135)
+
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), planned
 
 Added on 4 November 2026, revised twice the same day. Each piece adds its tests in its own pull request, failing first.
