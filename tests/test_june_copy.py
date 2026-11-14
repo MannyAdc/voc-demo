@@ -272,3 +272,19 @@ def test_J13_the_reader_asks_for_the_files_scope_read_only():
 def test_J13_a_404_is_not_proof_of_a_refusal(raw, scope):
     lines = _check(raw=raw, scope=scope)
     assert lines[-1] == "verdict | FAIL"
+
+
+@pytest.mark.parametrize("name", ["v1_june.csv", "v1_june.json"])
+def test_J11_both_june_results_files_can_be_committed(tmp_path, name):
+    # The results PR commits both files, which hold IDs, labels, positions, reasons and counts only (J11). The gate
+    # runs the tests on a copy that is not a git repo, so the test makes its own repo with a copy of `.gitignore`.
+    import shutil
+    import subprocess
+
+    import git_helper
+
+    shutil.copy(REPO / ".gitignore", tmp_path / ".gitignore")
+    git_helper.run(["git", "init", "-q"], cwd=tmp_path, check=True, capture_output=True)
+    found = subprocess.run(["git", "check-ignore", "--no-index", "-q", f"results/june/{name}"], cwd=tmp_path,
+                           capture_output=True)
+    assert found.returncode == 1
