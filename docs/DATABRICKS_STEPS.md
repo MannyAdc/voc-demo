@@ -5,6 +5,24 @@ says where to start, which button to click, and where each value comes from, for
 GitHub and Azure. Values in angle brackets, such as `<default domain>`, are private. Keep them in a note on your own
 computer, never in this repo or a chat.
 
+## Before any new cloud work
+
+On 15 November 2026, after the June run, the owner deleted or disabled the cloud run's working credentials (spec 004, Known limits, "The clean-up after the June run"). Nothing in the cloud can run until they are made again. So before any new work that runs, deploys or changes something in Databricks, Azure, the Claude Console or the cloud workflows, make the ones it needs, as below. Each new one lives 30 days, and is deleted again after the run (J13).
+
+| Credential | State on 15 November | How to make it again | Where it goes |
+|---|---|---|---|
+| the robot's secret, for `voc-june-runner` | deleted | step 2.4 | the six places step 2.4 lists: the Key Vault and the environments `june-figures` and `june-run` |
+| the token `voc-receiver-dispatch` | deleted | step 2.5 | the Key Vault, as `voc-github-token` |
+| the reader's secret, for `voc-results-reader` | deleted | step 1.9, items 5 and 6 | `.env` on the laptop, three lines |
+| the Console key `voc-june-job-b` | disabled, ends on 10 December | until 10 December, **Enable** in its menu on the Console's API keys page, workspace `voc-june-cloud` | already in the Databricks secret scope `voc-june`, as `anthropic-api-key` |
+
+Four more things to know:
+
+- The Key Vault takes a new secret only while you hold the role Key Vault Secrets Officer, which step 2.8 removed. Add it back as in `docs/RECEIVER_STEPS.md` step 3, item 5, paste, then remove it again with step 2.8.
+- After 10 December the Console key needs replacing. No step in this repo yet writes a new key into the secret scope `voc-june`. Ask Claude to write one first.
+- Job A and Job B run the code on `main` as you. Before you start one or unpause Job A's trigger, check that `main` holds only changes you merged.
+- The better design for a future run stores no long-lived secret: GitHub and Databricks trust each other through OIDC, with a short-lived token for each run. Spec 004 names it for the results copy in Known limits ("The two ways to close the `.env` limit"), and did not build it. It needs a read-only check first, that Free Edition supports it.
+
 Three words used below:
 
 - A catalog is the top folder of Databricks' data. This workspace has one, `workspace`.
