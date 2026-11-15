@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-02
 
-**Status**: Draft for the owner. Written from the owner's request and choices of 2 November 2026 (BUILD_LOG.md, 2 November).
+**Status**: Built. Merged in #69 on 2 November 2026. It was built in #70 to #83, except #77, a fix for a test that sometimes failed. The last was merged on 4 November. Its two planned follow-ups were done in #84 the same day. No approval line like spec 001's is logged. The owner approved the plan with "go", said "go" to all the fixes of the spec text after its review, and merged #69. Written from the owner's request and choices of 2 November 2026 (BUILD_LOG.md, 2 November).
 
 **Input**: The owner asked for a careful, independent look at how far the LLM labeller can be trusted, written up as `docs/VALIDATION.md`.
 
