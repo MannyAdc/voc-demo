@@ -7,21 +7,28 @@ computer, never in this repo or a chat.
 
 ## Before any new cloud work
 
-On 15 November 2026, after the June run, the owner deleted or disabled the cloud run's working credentials (spec 004, Known limits, "The clean-up after the June run"). Nothing in the cloud can run until they are made again. So before any new work that runs, deploys or changes something in Databricks, Azure, the Claude Console or the cloud workflows, make the ones it needs, as below. Each new one lives 30 days, and is deleted again after the run (J13).
+On 15 November 2026, after the June run, the owner reported deleting or disabling the cloud run's working credentials (spec 004, Known limits, "The clean-up after the June run"). Claude could not check this. Without them, the approval workflow cannot reach Databricks, the receiver cannot start the workflow, and the copy script cannot sign in. Job A and Job B still run as the owner, and the receiver's own deploy signs in through OIDC, so those need no credential from this list. Before any new work that runs, deploys or changes something in Databricks, Azure, the Claude Console or the cloud workflows, make the credentials it needs, in this order. Each new one lives 30 days, and is deleted again after the run (J13).
 
-| Credential | State on 15 November | How to make it again | Where it goes |
-|---|---|---|---|
-| the robot's secret, for `voc-june-runner` | deleted | step 2.4 | the six places step 2.4 lists: the Key Vault and the environments `june-figures` and `june-run` |
-| the token `voc-receiver-dispatch` | deleted | step 2.5 | the Key Vault, as `voc-github-token` |
-| the reader's secret, for `voc-results-reader` | deleted | step 1.9, items 5 and 6 | `.env` on the laptop, three lines |
-| the Console key `voc-june-job-b` | disabled, ends on 10 December | until 10 December, **Enable** in its menu on the Console's API keys page, workspace `voc-june-cloud` | already in the Databricks secret scope `voc-june`, as `anthropic-api-key` |
+1. If a new secret goes into the Key Vault `voc-june-kv`, first add your role Key Vault Secrets Officer back, as in `docs/RECEIVER_STEPS.md` step 3, item 5. It can take a few minutes to work.
+2. Make each credential the work needs, with the step in the table below, and paste it where the table says.
+3. Remove the role again with step 2.8.
+4. If you put a new version of a secret into the Key Vault, restart the receiver: in the Azure portal, open the Function app `<function app>` and click **Restart**. The owner did this when the robot's secret was renewed on 9 November (`BUILD_LOG.md`). Without it, the receiver may keep the old value.
+5. Check each new credential works, with the check in the table.
 
-Four more things to know:
+| Credential | State on 15 November | How to make it again | Where it goes | How to check it |
+|---|---|---|---|---|
+| the robot's secret, for `voc-june-runner` | deleted | step 2.4 | the six places step 2.4 lists: the Key Vault and the environments `june-figures` and `june-run` | its end date, as in `docs/JUNE_RUN_STEPS.md`, "The 30-day credentials" |
+| the token `voc-receiver-dispatch` | deleted | step 2.5 | the Key Vault, as `voc-github-token` | its end date, as in `docs/JUNE_RUN_STEPS.md`, "The 30-day credentials" |
+| the reader's secret, for `voc-results-reader` | deleted | step 1.9, items 5 and 6 | `.env` on the laptop, three lines | step 1.9, item 7, `--check-reader` |
+| the Console key `voc-june-job-b` | disabled, ends on 10 December | until 10 December, **Enable** in its menu on the Console's API keys page, workspace `voc-june-cloud` | already in the Databricks secret scope `voc-june`, as `anthropic-api-key` | its state **Active**, as in `docs/JUNE_RUN_STEPS.md`, "The Claude Console key and its limit" |
+| the receiver's Basic sign-in | kept, no end date | nothing to make | already in the Key Vault and the Databricks setting `voc-receiver` | none needed |
+| `voc-hmac-secret` | kept, no end date | nothing to make | already in the Key Vault and the environment `june-run` | none needed |
 
-- The Key Vault takes a new secret only while you hold the role Key Vault Secrets Officer, which step 2.8 removed. Add it back as in `docs/RECEIVER_STEPS.md` step 3, item 5, paste, then remove it again with step 2.8.
-- After 10 December the Console key needs replacing. No step in this repo yet writes a new key into the secret scope `voc-june`. Ask Claude to write one first.
+Three more things to know:
+
+- After 10 December the Console key needs replacing. Job B reads two secrets from the scope `voc-june`: `anthropic-api-key` and `anthropic-workspace-id` (`cloud/job_b/job_b.py`). So make the new key in the same Console workspace, `voc-june-cloud`, or change both. On 9 November a notebook Claude wrote, `voc-june-secret-setup`, put them in, and it is not kept in this repo (`BUILD_LOG.md`). So ask Claude to write that step first. Claude never makes or sees the key.
 - Job A and Job B run the code on `main` as you. Before you start one or unpause Job A's trigger, check that `main` holds only changes you merged.
-- The better design for a future run stores no long-lived secret: GitHub and Databricks trust each other through OIDC, with a short-lived token for each run. Spec 004 names it for the results copy in Known limits ("The two ways to close the `.env` limit"), and did not build it. It needs a read-only check first, that Free Edition supports it.
+- Spec 004's Known limits ("The two ways to close the `.env` limit") name one way to store no long-lived secret for the results copy: a GitHub workflow signs in to Databricks through OIDC, with a short-lived token for each run. It was not built. It needs a read-only check first, that Free Edition supports it, and opening the results pull request from a runner would need a GitHub write token, which J13 does not allow. It would not cover the receiver's secrets.
 
 Three words used below:
 
