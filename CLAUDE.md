@@ -101,6 +101,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 ## Secrets
 
 - Keys only in environment variables or a git-ignored `.env`, which the command line loads at start-up. Spec 004's cloud run is the one exception: its secrets live in a Databricks secret scope, GitHub environment secrets and an Azure Key Vault (constitution 2.1.0). Claude never approves a deployment, re-runs a cloud run or reads Actions run logs.
+- On 15 November 2026 the owner reported deleting or disabling the cloud run's working credentials (spec 004, Known limits). Cloud work means any task that would run, deploy or change something in Databricks, Azure or the Claude Console, or change `cloud/`, `receiver/` or a workflow in `.github/workflows/` that signs in to one of them. Before such a task, Claude first tells the owner which credentials it needs again, and points to "Before any new cloud work" in `docs/DATABRICKS_STEPS.md`. The owner makes and pastes every credential. Claude never does.
 - Never print, log or echo a key.
 - If a key leaks: rotate it at once. If a name leaks: tell the owner. Removing a leak from history is the only allowed rewrite, only before the repo is public, only by the owner's decision, and logged with its reason.
 
