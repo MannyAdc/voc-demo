@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-04. Revised three times the same day, after three reviews of #85 and the owner's decisions. Revised again on 5 November, after the fourth review and the owner's decisions of that day.
 
-**Status**: Draft for the owner. Nothing paid runs and no cloud resource is created before the owner approves.
+**Status**: Built and run. Merged in #85 on 5 November 2026. The one June run was on 14 November, and its results are in `results/june/` (#137). No owner approval of the spec text is logged. Before the run, the owner approved its printed figures (BUILD_LOG.md, 14 November). Nothing paid runs and no cloud resource is created before the owner approves.
 
 **Input**: The owner's requests of 4 November 2026 (BUILD_LOG.md, 4 November). This spec delivers one full cloud run with no laptop. The owner uploads the test month's file to the Databricks volume. Its arrival starts a Databricks job. A webhook starts an approval workflow. After the owner approves the figures, a second Databricks job labels and scores, inside Databricks. It writes the results to a volume that holds nothing else. Claude copies them into the repo through a draft pull request. The test month is June 2026, never used before. It answers the question `docs/VALIDATION.md` left open: does the 0.9 hybrid rule beat the LLM alone on untouched data? XGBoost and the fine-tuned transformer are not in this spec (owner decisions). XGBoost moves to a later spec 005.
 

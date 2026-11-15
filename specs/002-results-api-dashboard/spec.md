@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-29
 
-**Status**: Draft for the owner. Option A of 28 October: the dashboard shows results only.
+**Status**: Built. The spec came in with its first code in #32, merged on 29 October 2026, and was last changed in #62, merged on 1 November. The automatic deploy first passed on 1 November. No owner approval of the spec text is logged, only the owner's decisions on it. Option A of 28 October: the dashboard shows results only.
 
 **Input**: The brief asks for a front end, a middleware API, data engineering and public code, with Speed, Safety and Scale on screen.
 
