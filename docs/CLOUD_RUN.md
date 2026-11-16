@@ -1,12 +1,12 @@
 # How the June cloud run passed data
 
-This page shows how the June test passed data between four places: Databricks, Azure, GitHub and the Anthropic API. The test ran once, on 14 November 2026, and labelled 2,073 complaints. Between the upload and the copy of the results, the only laptop step was Claude Code's check of the printed figures. Its figures are in [the validation review](VALIDATION.md#june-the-untouched-test-of-the-mix). The rules behind each step are in [spec 004](../specs/004-june-test-and-baselines/spec.md), J8 to J16.
+This page shows how the June test passed data, mainly between four places: Databricks, Azure, GitHub and the Anthropic API. The test ran once, on 14 November 2026, and labelled 2,073 complaints. Between the upload and the copy of the results, the only laptop steps were the owner's paste of the printed figures and Claude Code's check of them. Its figures are in [the validation review](VALIDATION.md#june-the-untouched-test-of-the-mix). The rules behind each step are in [spec 004](../specs/004-june-test-and-baselines/spec.md), J8 to J16.
 
 Two different AIs are called Claude here. **Claude Code** is the AI coding agent that built this repo. It is built and guarded never to read complaint text. **The model claude-haiku-5-5** is the AI that labels the complaints, through the Anthropic API. Anthropic's **Claude Console** is the website where the API key and its spend limit are set.
 
 ## In one minute
 
-- **During the run, the complaint text stays in Databricks.** It leaves only to the Anthropic API, one complaint per call, in calls with no tools. Before the run, the owner uploaded the files by hand from the laptop. After it, the owner kept a backup of the data files and of the recordings in a folder on the laptop. The recordings hold each sampled complaint's full text (J15).
+- **During the run, the complaint text stays in Databricks.** It leaves only to the Anthropic API, one complaint per call, in calls with no tools. Before the run, the owner uploaded the files by hand from the laptop. After it, the owner kept a backup of the data files and of the recordings in a folder on the laptop, kept in sync by a storage service. The recordings hold each sampled complaint's full text (J15).
 - **Azure only passes messages on.** A small receiver hears that a Databricks job finished and starts the next step. It sees run IDs, statuses and counts, never complaint text.
 - **GitHub holds the approval.** No paid step starts until the owner has read the planned figures and clicked approve.
 - **The results reach this repo as two files** of IDs, labels, quote positions, reasons and counts, with no complaint text. They are copied from the run's own folder, in a store that holds only results.
@@ -47,6 +47,7 @@ Two different AIs are called Claude here. **Claude Code** is the AI coding agent
 | | `deploy.yml` and `deploy_receiver.yml` | deploy the dashboard and the receiver to Azure |
 | Anthropic | Anthropic's Claude Console, workspace `voc-june-cloud` | the API key for the cloud run, with a spend limit of $5 a month |
 | The laptop | the raw data folders | the July, August and June files, with complaint text, outside the repo. The June sample was drawn here on 5 November |
+| | the Downloads folder | where the June zip was before the owner uploaded it |
 | | the backup folder | a copy of the data files and the June recordings, kept in sync by a storage service this page does not name |
 | | `scripts/copy_june_results.py` | copies the two results files into `results/june/` |
 
@@ -142,6 +143,8 @@ Each step starts with who does it. Times are the owner's local time (UTC+11), fr
 
 ## What crosses each line
 
+This table covers the June run and its data files. The July labelling and scoring ran earlier, on the laptop: it sent each July complaint to the Anthropic API and kept its recordings, with each prompt, in the home folder `.voc`. That part is in [PIPELINE.md](PIPELINE.md).
+
 | From | To | What travels |
 |---|---|---|
 | the CFPB's website | the laptop | before the run, downloaded by the owner: the June zip from the CFPB's narratives archive, and earlier the July and August exports. These hold complaint text, which the CFPB publishes |
@@ -151,7 +154,7 @@ Each step starts with who does it. Times are the owner's local time (UTC+11), fr
 | the receiver | Databricks | a question: did this run succeed? |
 | the receiver | GitHub | a look at the workflow's runs, then the start of the approval workflow, with Job A's run ID |
 | GitHub | Databricks | read Job A's figures, start Job B, look at Job B's run. Both Databricks jobs also fetch their code from this repo's `main` |
-| GitHub | the chat with Claude Code | the printed figures, pasted by the owner: numbers only |
+| GitHub | the chat with Claude Code | the printed figures, pasted by the owner: run IDs, times and counts, no complaint text |
 | Databricks | GitHub | Job B reads the approval, on the public API, with no token |
 | GitHub | the receiver | the signed result: run IDs, how Job B ended, counts |
 | Databricks | the laptop, then this repo | the two results files: IDs, labels, confidences, quote positions, reasons, counts and hashes, the columns J11 lists |
