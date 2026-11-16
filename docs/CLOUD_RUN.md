@@ -1,13 +1,13 @@
 # How the June cloud run passed data
 
-This page shows how the June test passed data between four places: Databricks, Azure, GitHub and the Anthropic API. The test ran once, on 14 November 2026, and labelled 2,073 complaints, with no laptop step between the upload and the copy of the results. Its figures are in [the validation review](VALIDATION.md#june-the-untouched-test-of-the-mix). The rules behind each step are in [spec 004](../specs/004-june-test-and-baselines/spec.md), J8 to J16.
+This page shows how the June test passed data between four places: Databricks, Azure, GitHub and the Anthropic API. The test ran once, on 14 November 2026, and labelled 2,073 complaints. Between the upload and the copy of the results, the only laptop step was Claude Code's check of the printed figures. Its figures are in [the validation review](VALIDATION.md#june-the-untouched-test-of-the-mix). The rules behind each step are in [spec 004](../specs/004-june-test-and-baselines/spec.md), J8 to J16.
 
 Two different AIs are called Claude here. **Claude Code** is the AI coding agent that built this repo. It is built and guarded never to read complaint text. **The model claude-haiku-5-5** is the AI that labels the complaints, through the Anthropic API. Anthropic's **Claude Console** is the website where the API key and its spend limit are set.
 
 ## In one minute
 
-- **During the run, the complaint text stays in Databricks.** It leaves only to the Anthropic API, one complaint per call, in calls with no tools. Before the run, the owner uploaded the files by hand from the laptop. After it, the owner kept a backup copy of the data files and of the recordings, which hold each sampled complaint's full text (J15).
-- **Azure only passes messages on.** A small receiver hears that a job finished and starts the next step. It sees run IDs, statuses and counts, never complaint text.
+- **During the run, the complaint text stays in Databricks.** It leaves only to the Anthropic API, one complaint per call, in calls with no tools. Before the run, the owner uploaded the files by hand from the laptop. After it, the owner kept a backup of the data files and of the recordings in a folder on the laptop. The recordings hold each sampled complaint's full text (J15).
+- **Azure only passes messages on.** A small receiver hears that a Databricks job finished and starts the next step. It sees run IDs, statuses and counts, never complaint text.
 - **GitHub holds the approval.** No paid step starts until the owner has read the planned figures and clicked approve.
 - **The results reach this repo as two files** of IDs, labels, quote positions, reasons and counts, with no complaint text. They are copied from the run's own folder, in a store that holds only results.
 
@@ -46,7 +46,9 @@ Two different AIs are called Claude here. **Claude Code** is the AI coding agent
 | GitHub | `june_approval.yml` | the approval workflow, with its environments `june-figures` and `june-run` |
 | | `deploy.yml` and `deploy_receiver.yml` | deploy the dashboard and the receiver to Azure |
 | Anthropic | Anthropic's Claude Console, workspace `voc-june-cloud` | the API key for the cloud run, with a spend limit of $5 a month |
-| The laptop | `scripts/copy_june_results.py` | copies the two results files into `results/june/` |
+| The laptop | the raw data folders | the July, August and June files, with complaint text, outside the repo. The June sample was drawn here on 5 November |
+| | the backup folder | a copy of the data files and the June recordings, kept in sync by a storage service this page does not name |
+| | `scripts/copy_june_results.py` | copies the two results files into `results/june/` |
 
 ## The June run, step by step
 
@@ -54,7 +56,7 @@ How to read it:
 - **Yellow boxes with 👤** are the owner's steps by hand. There are three boxes: the upload, reading the figures and approving, and the merge. The owner also switched Job A's trigger on before the upload and off after the run, which is not drawn.
 - **Blue boxes with 🤖** are Claude Code's steps: checking the figures, the copy and the draft pull request.
 - **Every other box** runs on its own.
-- **Solid arrows** are the main path. **Dotted arrows** are the checks, reads and replies along the way.
+- **Solid arrows** are the main path. **Dotted arrows** are the checks, reads and replies along the way, and the owner's paste of the figures into the chat.
 
 ```mermaid
 flowchart TB
@@ -121,7 +123,7 @@ Each step starts with who does it. Times are the owner's local time (UTC+11), fr
 3. **Automatic: the success message.** Databricks tells the receiver that Job A succeeded, signed in with a user name and password (HTTP Basic). Databricks' message carries no signature, so the receiver does not take it on trust. It answers at once and puts the message on its queue. Then it asks Databricks itself whether that run really succeeded, as the robot account, and checks that no approval run for it exists yet.
 4. **Automatic, then by hand, then Claude Code: the figures.** The approval workflow `june_approval.yml` starts, run `43539560019`, at 12:16. The receiver starts it with a GitHub token for this repo's Actions only. Its first GitHub job reads Job A's figures from Databricks and prints them: 2,073 complaints, 2,073 calls, a worst case of 37,954,560 tokens and an expected cost of $0.50. The owner pasted them into the chat at 12:19, and Claude Code checked each against Job A's run page and the repo.
 5. **By hand: the approval.** The second GitHub job, `run`, waits in the environment `june-run` until the owner clicks approve on GitHub. No model call has been made before this point. The owner approved at about 12:20, after Claude Code's check. From here the GitHub job runs on its own: it started Job B, as the robot account, passing Job A's run ID and its own GitHub run ID.
-6. **Automatic: Job B.** One task, `job_b`. Run `1052842636980751`, 12:20 to 13:41. Before its first model call it checks the approval on GitHub's public API, Job A's run, the frozen code's hashes and the sample. It refits TF-IDF + LR on July's training rows, from the July export already in `voc_raw`, and checks that the refit gives July's committed development labels. Then it sends each complaint to the model claude-haiku-5-5 through the Anthropic API, with the key from the secret scope `voc-june`. Each answer is recorded, and each call's tokens go into a ledger with a cap of 40 million, both in `voc_raw`.
+6. **Automatic: Job B.** One task, `job_b`. Run `1052842636980751`, 12:20 to 13:41. Before its first model call it checks the approval on GitHub's public API, Job A's run, the frozen code's hashes and the sample. It refits TF-IDF + LR on July's training rows, from the July export already in `voc_raw`, and checks that the refit gives July's committed development labels. Then it sends each complaint to the model claude-haiku-5-5 through the Anthropic API, with the key from the secret scope `voc-june`. Each prompt, with the complaint's full text, is recorded with its answer, and each call's tokens go into a ledger with a cap of 40 million, both in `voc_raw`.
 7. **Automatic: the results files.** Job B scores the run and writes `v1_june.csv` and `v1_june.json` to its own folder in `voc_results`.
 8. **Automatic: the signed result.** The workflow looked at Job B once a minute. When Job B ended, it posted a result message to the receiver, signed with a shared secret (HMAC): the run IDs, how Job B ended and its counts. The GitHub job ended green at 13:42:51. It ends green only when Job B finished and the receiver accepted the message.
 9. **Claude Code, then by hand: the copy and the merge.** At 14:09 Claude Code ran `scripts/copy_june_results.py` on the laptop, signed in as the reader account. It checked the columns, the label and reason lists, the IDs against `splits/june/`, the size limit and that neither file holds the CFPB's header row (J11), and wrote them to `results/june/`. Claude Code opened them as a draft pull request, #137, at 18:38, and the owner merged it at 20:10.
@@ -142,21 +144,24 @@ Each step starts with who does it. Times are the owner's local time (UTC+11), fr
 
 | From | To | What travels |
 |---|---|---|
+| the CFPB's website | the laptop | before the run, downloaded by the owner: the June zip from the CFPB's narratives archive, and earlier the July and August exports. These hold complaint text, which the CFPB publishes |
 | the laptop | Databricks | before the run, by hand: the June zip, and on 31 October the July and August exports. These hold complaint text |
 | Databricks | the Anthropic API | each complaint's text, one per call, with no tools. Back: a label and a quote |
 | Databricks | the receiver | Job A's run ID, job ID and event type, which the receiver reads, and the workspace ID and job name, which it does not. Sent with the Basic sign-in |
 | the receiver | Databricks | a question: did this run succeed? |
 | the receiver | GitHub | a look at the workflow's runs, then the start of the approval workflow, with Job A's run ID |
 | GitHub | Databricks | read Job A's figures, start Job B, look at Job B's run. Both Databricks jobs also fetch their code from this repo's `main` |
+| GitHub | the chat with Claude Code | the printed figures, pasted by the owner: numbers only |
 | Databricks | GitHub | Job B reads the approval, on the public API, with no token |
 | GitHub | the receiver | the signed result: run IDs, how Job B ended, counts |
 | Databricks | the laptop, then this repo | the two results files: IDs, labels, confidences, quote positions, reasons, counts and hashes, the columns J11 lists |
-| the laptop | the owner's own backup copy | after the run, on 15 November, by hand: the July, August and June data files. These hold complaint text |
-| Databricks | the owner's own backup copy | after the run, on 15 November, downloaded by hand: a zip of the 2,073 June recordings (J15). Each holds the prompt, with the complaint's full text, and the model's answer |
+| the laptop's data folders | the laptop's backup folder | after the run, on 15 November, by hand: the July, August and June data files. These hold complaint text |
+| Databricks | the laptop's backup folder | after the run, on 15 November, downloaded by hand: a zip of the 2,073 June recordings (J15). Each holds the prompt, with the complaint's full text, and the model's answer |
+| the laptop's backup folder | a storage service | the same files and recordings, kept in sync. They hold complaint text |
 
-The backup is not in this repo, and not in any of the places above. This page does not name where it is kept: a reader needs to know that the text left the cloud, not which storage service holds it (the owner's decision, 17 November).
+The backup is a folder on the owner's laptop, kept in sync by a storage service this page does not name (the owner's decision, 17 November). It is not in this repo.
 
-During the run, no complaint text crosses any other line (J4). The repo is public, so its Actions logs are public. Every job is built to print only IDs, labels, reasons, positions, decisions and counts, and a test checks each one on hostile synthetic text (J5).
+During the run, no complaint text crosses any other line (J4). The repo is public, so its Actions logs are public. Every Databricks job and workflow is built to print only IDs, labels, reasons, positions, decisions and counts, and a test checks each one on hostile synthetic text (J5).
 
 ## The other paths
 
