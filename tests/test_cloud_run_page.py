@@ -5,7 +5,9 @@ Some of the page's facts are read from their sources here: the run IDs and the c
 `results/june/v1_june.json`, the token cap from `config/budget.toml` and the expected cost as
 `voc.job_a.expected_cost` computes it, the jobs' names, task keys and trigger folder from the job definitions in
 `cloud/`, and the app and environment names from the workflows. The times, the worst case and the sign-ins' states
-are checked by review, not here. Each numbered step says who does it. Every link on the page must point to a file and
+are checked by review, not here. Each numbered step says who does it, step 4 names Claude Code's check of the
+figures, and the diagram colours every box marked 👤 (the owner) or 🤖 (Claude Code). The backup of complaint text is
+placed on the laptop, and step 6 says the recordings hold the prompt. Every link on the page must point to a file and
 heading in the repo, and the README must link the page, or nobody finds it.
 """
 import json
@@ -63,7 +65,19 @@ def test_J8_the_diagram_colours_every_box_a_person_or_claude_code_acts_in():
     by_class = {name: set(nodes.split(",")) for nodes, name in re.findall(r"^\s*class (\S+) (\w+)$", diagram, flags=re.M)}
     people = set(re.findall(r'^\s*(\w+)\["👤', diagram, flags=re.M))
     assert people and by_class.get("person") == people
-    assert {"CP", "PR"} <= by_class.get("agent", set())
+    agent = set(re.findall(r'^\s*(\w+)\["🤖', diagram, flags=re.M))
+    assert {"CP", "PR"} <= agent and by_class.get("agent") == agent
+
+
+def test_J15_cloud_page_puts_the_backup_on_the_laptop_and_says_the_recordings_hold_the_prompt():
+    page = _page()
+    crossings = page.split("## What crosses each line")[1].split("\n## ")[0]
+    rows = re.findall(r"^\| ([^|]+) \| ([^|]+) \| ([^|]+) \|$", crossings, flags=re.M)
+    backup = [to for _, to, _ in rows if "backup" in to]
+    assert len(backup) == 2 and all("laptop" in to for to in backup), backup
+    assert "not in any of the places above" not in page
+    steps = page.split("## The June run, step by step")[1].split("\n## ")[0]
+    assert "prompt" in re.search(r"^6\. (.+)$", steps, flags=re.M).group(1)
 
 
 def test_J8_cloud_page_names_the_real_runs_from_the_summary():
@@ -116,7 +130,7 @@ def test_J8_cloud_page_names_the_app_and_the_environments_as_the_workflows_do():
 def test_J8_every_link_on_the_cloud_page_points_to_a_repo_file():
     # The heading search must skip `#` lines in code blocks, or a comment could stand in for a missing heading.
     assert _headings("# Title\n```powershell\n# a comment\n```\n~~~\n# another\n~~~\n## Next\n") == ["Title", "Next"]
-    links =re.findall(r"\]\(([^)#\s]+)(?:#([^)\s]*))?\)", _page())
+    links = re.findall(r"\]\(([^)#\s]+)(?:#([^)\s]*))?\)", _page())
     local = [(target, anchor) for target, anchor in links if not target.startswith(("http://", "https://"))]
     assert local
     for target, anchor in local:
