@@ -1,0 +1,134 @@
+# How the cloud run works
+
+This page shows how the June test passed data between four places: Databricks, Azure, GitHub and the Anthropic API. The test ran once, on 14 November 2026, and labelled 2,073 complaints with no laptop in the loop until the results were copied. Its figures are in [the validation review](VALIDATION.md#june-the-untouched-test-of-the-mix). The rules behind each step are in [spec 004](../specs/004-june-test-and-baselines/spec.md), J8 to J16.
+
+## In one minute
+
+- **The complaint text stays in Databricks.** It leaves only to the Anthropic API, one complaint per call, in calls with no tools.
+- **Azure only passes messages on.** A small receiver hears that a job finished and starts the next step. It sees run IDs, statuses and counts, never complaint text.
+- **GitHub holds the approval.** No paid step starts until the owner has read the planned figures and clicked approve.
+- **The results reach this repo as two files** of IDs, labels, quote positions, reasons and counts, with no complaint text, copied from a folder that holds nothing else.
+
+## The pieces, by place
+
+| Place | Piece | What it does |
+|---|---|---|
+| Databricks (Free Edition) | volume `voc_raw` | the raw files: the July and August exports, the June zip, and the June run's recordings, ledger and used markers |
+| | volume `voc_results` | the two results files, and nothing else |
+| | Job A, `voc-june-job-a` | checks the June file, builds it with dbt, picks the sample, works out the figures |
+| | Job B, `voc-june-job-b` | labels and scores the sample |
+| | secret scope `voc-june` | the Anthropic API key and its workspace's ID |
+| | `voc-june-runner`, the robot account | may look at both jobs' runs, and start or cancel Job B. It runs no job: both jobs run as the owner |
+| | `voc-results-reader`, the reader account | may read `voc_results` and nothing else |
+| Azure | the receiver, an Azure Function | takes Databricks' message, checks it, and starts GitHub's approval workflow |
+| | its storage | a queue, a failure queue `june-events-poison` and a table of the messages it has seen |
+| | Key Vault `voc-june-kv` | the receiver's secrets |
+| | App Service `voc-demo-20261030` | the public dashboard, a separate app |
+| GitHub | `june_approval.yml` | the approval workflow, with its environments `june-figures` and `june-run` |
+| | `deploy.yml` and `deploy_receiver.yml` | deploy the dashboard and the receiver to Azure |
+| Anthropic | Claude Console workspace `voc-june-cloud` | the API key for the cloud run, with a spend limit of $5 a month |
+| The laptop | `scripts/copy_june_results.py` | copies the two results files into `results/june/` |
+
+## The June run, step by step
+
+```mermaid
+flowchart TB
+    subgraph PC["💻 The owner's laptop"]
+        UP["👤 The owner uploads<br/>the June zip"]
+        CP["📥 Claude's copy script,<br/>signed in as the reader"]
+    end
+    subgraph DBX["🧱 Databricks"]
+        IN["📁 voc_raw/incoming/"]
+        JA["⚙️ Job A: unpack, dbt, job_a<br/>checks the file, picks the 2,073,<br/>works out the figures.<br/>No model call."]
+        JB["⚙️ Job B: checks the approval,<br/>refits TF-IDF + LR,<br/>labels and scores"]
+        RES["📁 voc_results<br/>two results files only"]
+    end
+    subgraph AZ["☁️ Azure"]
+        RCV["📨 The receiver<br/>(Azure Function)"]
+    end
+    subgraph GH["🔧 GitHub"]
+        W1["📋 Approval workflow, job 1:<br/>prints the figures"]
+        W2["✋ Job 2 waits<br/>for the owner's approval"]
+        PR["🔀 Draft pull request:<br/>results/june/"]
+    end
+    subgraph AN["🤖 Anthropic API"]
+        API["Claude labels<br/>one complaint per call"]
+    end
+    UP -- "1 upload" --> IN
+    IN -- "2 the file's arrival starts it" --> JA
+    JA -- "3 success message" --> RCV
+    RCV -- "4 starts it" --> W1
+    W1 --> W2
+    W2 -- "5 starts it" --> JB
+    JB -- "6 the complaint's text" --> API
+    API -. "the label and quote" .-> JB
+    JB -- "7 writes" --> RES
+    W2 -- "8 signed result" --> RCV
+    RES -- "9 copy" --> CP
+    CP --> PR
+```
+
+Times are the owner's local time (UTC+11), from [BUILD_LOG.md](../BUILD_LOG.md), "The June run".
+
+1. **Upload.** The owner drops the June zip into the Databricks volume folder `voc_raw/incoming/`. Job A's trigger was switched on just before, and off again after the run.
+2. **Job A**, started by the file's arrival. It has three tasks, run in order:
+   - `unpack` unzips the file into `voc_raw/june/` and checks it against its pin in `config/data_files.toml`.
+   - `dbt` builds the same dbt models as July, on Databricks' SQL warehouse, in the schema `voc_june`, with the data tests.
+   - `job_a` picks the 2,073 complaints of the frozen sample, checks them against `splits/june/`, and works out the figures for the approval. It makes no model call.
+
+   Run `195625699108193`, 12:12 to 12:15.
+3. **The success message.** Databricks tells the receiver that Job A succeeded, signed in with a user name and password (HTTP Basic). The receiver answers at once and puts the message on its queue. Then it asks Databricks itself whether that run really succeeded, as the robot account, and checks that no approval run for it exists yet.
+4. **The approval workflow** `june_approval.yml` starts, run `43539560019`, at 12:16. The receiver starts it with a GitHub token limited to this repo's Actions. Its first job reads Job A's figures and prints them: 2,073 complaints, 2,073 calls, a worst case of 37,954,560 tokens and an expected cost of $0.50. The owner pasted them into the chat at 12:19, and Claude checked each against Job A's run page and the repo.
+5. **The approval.** The second job, `run`, waits in the environment `june-run` until the owner approves. The owner approved at about 12:20. The job then started Job B, as the robot account, passing Job A's run ID and its own GitHub run ID.
+6. **Job B**, one task, `job_b`. Run `1052842636980751`, 12:20 to 13:41. Before its first model call it checks the approval on GitHub's public API, Job A's run, the frozen code's hashes and the sample. It refits TF-IDF + LR on July's training rows, from the July export already in `voc_raw`, and checks that the refit gives July's committed development labels. Then it sends each complaint to Claude (claude-haiku-5-5) through the Anthropic API, with the key from the secret scope `voc-june`. Each answer is recorded, and each call's tokens go into a ledger with a cap of 40 million, both in `voc_raw`.
+7. **The results files.** Job B scores the run and writes `v1_june.csv` and `v1_june.json` to `voc_results`.
+8. **The signed result.** The workflow looked at Job B once a minute. When Job B ended, it posted a result message to the receiver, signed with a shared secret (HMAC): the run IDs, how Job B ended and its counts. The job ended green at 13:42:51. It ends green only when Job B finished and the receiver accepted the message.
+9. **The copy.** At 14:09 Claude ran `scripts/copy_june_results.py` on the laptop, signed in as the reader account. It checked the columns, the label and reason lists, the IDs against `splits/june/`, the size limit and that neither file holds the CFPB's header row (J11), and wrote them to `results/june/`. They reached `main` through pull request #137, the same day.
+
+## What crosses each line
+
+| From | To | What travels |
+|---|---|---|
+| Databricks | the Anthropic API | each complaint's text, one per call, with no tools. Back: a label and a quote |
+| Databricks | the receiver | Job A's run ID, job ID and event type |
+| the receiver | Databricks | a question: did this run succeed? |
+| the receiver | GitHub | start the approval workflow, with Job A's run ID |
+| GitHub | Databricks | read Job A's figures, start Job B, look at Job B's run |
+| Databricks | GitHub | Job B reads the approval, on the public API, with no token |
+| GitHub | the receiver | the signed result: run IDs, how Job B ended, counts |
+| Databricks | the laptop, then this repo | the two results files: IDs, labels, confidences, quote positions, reasons, counts and hashes, the columns J11 lists |
+
+No complaint text crosses any other line (J4). The repo is public, so its Actions logs are public, and every job prints only IDs, labels, reasons, decisions and counts (J5).
+
+## The other paths
+
+**The public dashboard.** After CI passes on a push to `main`, `deploy.yml` uploads the committed files to the App Service app. It signs in to Azure with OpenID Connect: GitHub gives the workflow a short-lived token, and Azure trusts it only for this repo's `main`. No password is stored. The dashboard reads only the committed results, so it holds no complaint text. Details: [DEPLOY.md](DEPLOY.md).
+
+**The receiver's deploy.** `deploy_receiver.yml`, started by the owner by hand on `main`, signs in to Azure the same way, as its own identity `voc-receiver-deploy`, which can deploy only to the receiver. Details: [RECEIVER_STEPS.md](RECEIVER_STEPS.md).
+
+**Before June: July and August on Databricks.** On 31 October the owner uploaded the July and August exports to `voc_raw` by hand, and ran the same dbt models there from the laptop, with the owner's own token. That token expired on 6 November and was not renewed. Job B later read the July export there for its refit. Details: [PIPELINE.md](PIPELINE.md), "The real exports on Databricks".
+
+## Who can do what
+
+| Sign-in | Kept in | Lets its holder | Today |
+|---|---|---|---|
+| the robot's secret | the Key Vault, and the environments `june-figures` and `june-run` | look at both jobs' runs, and start or cancel Job B | deleted on 15 November |
+| the GitHub token `voc-receiver-dispatch` | the Key Vault | start this repo's workflows | deleted on 15 November |
+| the reader's secret | the owner's `.env` on the laptop | read `voc_results` | deleted on 15 November |
+| the Basic sign-in | the Key Vault, and the Databricks setting `voc-receiver` | send the receiver a success message | kept until the receiver goes |
+| the HMAC secret | the Key Vault, and the environment `june-run` | send the receiver a signed result | kept until the receiver goes |
+| the Console key `voc-june-job-b` | the secret scope `voc-june` | call Claude, within the $5 monthly limit | disabled, ends on 10 December |
+| OpenID Connect | nothing stored | deploy from `main` only | in use |
+
+The deletions are the owner's report. Claude could not check them. Spec 004's Known limits, "The clean-up after the June run", gives the worst case of each sign-in still kept.
+
+## Running it again
+
+Every piece above is still there until the owner takes it down, and Job A's trigger is paused. With the robot's secret and the GitHub token deleted, the chain stops at step 3: the receiver can no longer ask Databricks about a run. Before any new cloud work, follow [DATABRICKS_STEPS.md](DATABRICKS_STEPS.md#before-any-new-cloud-work), "Before any new cloud work".
+
+## Read more
+
+- [spec 004](../specs/004-june-test-and-baselines/spec.md): every rule of the run, J1 to J16, and its Known limits
+- [JUNE_RUN_STEPS.md](JUNE_RUN_STEPS.md): the owner's steps on the day of the run
+- [DATABRICKS_STEPS.md](DATABRICKS_STEPS.md) and [RECEIVER_STEPS.md](RECEIVER_STEPS.md): how each piece was set up
+- [VALIDATION.md](VALIDATION.md#june-the-untouched-test-of-the-mix): what the June run found
