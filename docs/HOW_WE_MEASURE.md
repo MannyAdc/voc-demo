@@ -117,7 +117,7 @@ The quote check sometimes sends an LLM label to quarantine. Quarantined labels c
 
 - It tells you which method labels this data more accurately, and how sure we are.
 - It also shows the cost and speed of each method, so you can judge whether the LLM's extra cost is worth it.
-- It does not tell you about other data, other months or other industries.
+- It does not tell you about other data, other industries or months other than July and June. June was tested once ([June in the validation review](VALIDATION.md#june-the-untouched-test-of-the-mix)).
 - The CFPB says its database "is not a statistical sample of consumers' experiences in the marketplace". So the results describe this data, not all consumers.
 - The rule for winning was written down before the first run, and the test set is used only once. So the result cannot be tuned after the fact.
 

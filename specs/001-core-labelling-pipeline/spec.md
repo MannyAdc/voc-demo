@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-28
 
-**Status**: Approved by the owner 2026-10-28. Revised after review rounds 1 to 4 and the owner's decisions of 28 October.
+**Status**: Approved by the owner 2026-10-28. Revised after review rounds 1 to 4 and the owner's decisions of 28 October. Built. Last changed in #104, merged on 9 November. Open in `tasks.md`: T014c (the `show` command, cut), T018a (the analyser, deferred) and T018 (error analysis and prompt versions after v1).
 
 **Input**: User description: "Label each CFPB consumer complaint by Product with an LLM. Every label quotes the sentence that supports it. A script checks the quote. Labels that fail go to quarantine with a reason. Compare against simple baselines at the same coverage."
 
@@ -19,7 +19,7 @@ The guards in this spec (hooks, checks, logs, the spend stop) are built to stop 
 - Deleting the ledger or the home-folder test log and starting again resets them, with no trace in git.
 - A git-ignored local settings file can turn off the project hooks.
 - Shell commands that write files are not seen by the data guard.
-- Until branch protection is on, the owner can merge with failing CI.
+- Until branch protection is on, the owner can merge with failing CI. *Closed on 1 November:* `main` has a ruleset that requires a pull request and the checks `tests`, `repo-checks` and `secret-scan` (BUILD_LOG.md, 1 November).
 - A tests-only commit can weaken an existing check. Only the reviewer agent would notice.
 - A script that opens the DuckDB file directly skips the `final` guard and the dbt test-row filter.
 - The staged DuckDB table under the dbt models still holds the test rows. So the real seal is the `final` command path, its committed log and the CI check on that log. The dbt flag is a second layer. *Changed on 29 October: dbt test-set flag built (owner decision).*
@@ -40,7 +40,7 @@ The guards in this spec (hooks, checks, logs, the spend stop) are built to stop 
 - No CI check yet stops `splits/` from changing compared with `main`. `voc sample` refuses to run while any list file is there, but a deleted folder can be rebuilt. With the same code and seed, the rebuilt lists are the same.
 - The merge verdict's trial merge (`--test-merge`) runs the tests with this checkout's installed packages, so a dependency change in a pull request is not covered.
 - The trial merge runs a pull request's tests on this machine. So it is for this repo's own pull requests only, and it refuses a pull request from a fork.
-- The Databricks target checks the seed's complaint IDs, not its text. A synthetic ID with real complaint text copied into the seed would pass. The seed is written by the fixture script from the committed synthetic fixture, and the repo has no seed folder.
+- The Databricks target checks the seed's complaint IDs, not its text. A synthetic ID with real complaint text copied into the seed would pass. The seed is written by the fixture script from the committed synthetic fixture, and the repo has no seed folder. *Changed on 5 November (spec 004):* the repo holds the test list seed copy `dbt/seeds/test_list.csv`, and the Databricks target refuses to run inside a git checkout (`src/voc/dbt_run.py`).
 - A hand run of dbt with the Databricks profile skips the wrapper's seed check.
 - The seed check trusts the work folder's `dbt_project.yml`. A hand edit of its seed path would point dbt at seeds the check never read.
 - The month build on Databricks (31 October) builds `landed_complaints` from the file before its data tests run, so that one table can hold rows from a file that then fails a check. No model below it is built if a check on `landed_complaints` fails. The checks on `stg_complaints` run after its merge, as on the local target.

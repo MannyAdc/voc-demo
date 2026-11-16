@@ -81,7 +81,7 @@ Drawn once, from the development set only, with a fixed seed, in this order, and
 - A hybrid with a different rule for each product.
 - Changing the labelling prompt.
 
-## Follow-ups, planned
+## Follow-ups, done in #84 on 4 November
 
 - The baseline's name. The baseline is TF-IDF features fed into a logistic regression (`voc.baselines`). Owner decision of 4 November: new reader-facing text says "TF-IDF + LR", spelled out on first use, from V6 on. The README, the docs and the dashboard, published on 1 November, still say "TF-IDF" as the short name, after naming it in full once. They are changed to "TF-IDF + LR" in their own wording-only pull request after `docs/VALIDATION.md`, with no number or conclusion changed. Code names and data keys keep "tfidf".
 - README line 100. It says no human has checked whether the quotes support their labels. V5 has now checked that. Owner decision of 4 November: update that line in the same wording-only pull request, pointing to `docs/VALIDATION.md`.

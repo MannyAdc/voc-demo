@@ -187,7 +187,7 @@ The cost check above, V6, found that one mix of the two methods scored higher th
 
 **Sample.** June had 16,820 complaints with a written story. Copies were removed first: 938 copies of July's stories, then 646 exact copies and 117 near copies within June, which left 15,119. The 2,073 were drawn at random from those, by product share. [The June test sample](HOW_WE_MEASURE.md#the-june-test-sample) explains the size.
 
-**Command and file.** The cloud run's second job (Databricks run `1052842636980751`), started after the owner's approval, wrote [results/june/v1_june.json](../results/june/v1_june.json) and [results/june/v1_june.csv](../results/june/v1_june.csv). `scripts/copy_june_results.py` copied them here. 2,073 live calls, $0.485 from the token counts the API returned. The Claude Console had not yet shown the cost on 14 November.
+**Command and file.** The cloud run's second job (Databricks run `1052842636980751`), started after the owner's approval, wrote [results/june/v1_june.json](../results/june/v1_june.json) and [results/june/v1_june.csv](../results/june/v1_june.csv). `scripts/copy_june_results.py` copied them here. 2,073 live calls, $0.485 from the token counts the API returned. At 23:27 on 14 November the owner saw $0.49 for the key in the Claude Console. That total also covers dry run round 6's 8 calls, about $0.002 (BUILD_LOG.md, 14 November).
 
 **The figures.** Each score is re-weighted by June's own pool: each product counts by its share of the 15,119 complaints. So these scores are not directly comparable with July's, whose mix of products differs. Each interval comes from a paired bootstrap of 2,000 redraws within each product, seed 0, as in [How we decide who wins](HOW_WE_MEASURE.md#how-we-decide-who-wins). Strict accuracy is the share labelled correctly, where a held-back LLM label counts as wrong. Coverage is the share of complaints with an accepted label. "At the same coverage" means that TF-IDF + LR answers only as many complaints as the LLM accepted, its most confident ones.
 
@@ -218,7 +218,7 @@ On the development set, the mix's lead was +2.2 points (+0.8 to +3.8). On June i
 - The scores are weighted by June's mix of products, so they are not directly comparable with July's.
 - One month, one run, one model and one prompt version.
 - The answer key is still the consumer's own choice, which V2 shows is noisy.
-- The $0.485 is computed from the API's token counts. The Console's own figure was not yet shown.
+- The $0.485 is computed from the API's token counts. The Console later showed $0.49 for the key, a total that also covers dry run round 6's 8 calls.
 
 ## Limits
 

@@ -3369,3 +3369,23 @@ Times are local, from the chat's message times, the owner's screenshots and GitH
 - The cloud. The credentials' state is in spec 004's Known limits, "The clean-up after the June run", and how to make them again is in `docs/DATABRICKS_STEPS.md`, "Before any new cloud work". The receiver, its Key Vault and their two kept secrets stay until the owner takes them down. So do, among others, the Databricks workspace, its volumes, and Job A and Job B, with Job A's trigger paused. Both jobs run the code on `main` as the owner when they run. The rest are in that Known limits entry and those steps: the service principals `voc-june-runner` and `voc-results-reader`, which keep their rights but have no secret, the secret scope `voc-june` with the disabled Console key, the GitHub environments `june-figures`, `june-run` and `receiver-deploy`, and the Databricks setting `voc-receiver`. Removing them is optional and not done.
 - Optional items Claude offered. At 23:52 on 14 November (line 3207): removing the cloud accounts and pieces, a plain page on the cloud wiring, the week's waste measure and an audit of the platform assumptions. At 21:28 on 15 November, in the chat: the same page, the waste measure, the audit, and taking the receiver and its Key Vault down. At 21:45 on 15 November: deleting the spike job `voc-june-spike`, which the owner did (line 3280). The owner also deleted the backup zip in the volume and the notebook `voc-june-backup` (line 3233). The page, the audit and the rest of the removal were not chosen. The waste measure was never optional: it was the owner's decision of 10 November.
 - This pull request's review, its merge verdict, the time it is marked ready and its merge are on GitHub only, since no later pull request will log them.
+
+### Pull request: stale limits and results
+
+Times are local, 17 November.
+
+- Group 3 of the owner's decision at 10:21 (the five fix pull requests in parallel): limits and results that later work overtook. It runs beside the other groups, each in its own worktree. Parallel run.
+- Work start, 10:24: branch `docs/stale-limits`, worktree `../voc-demo-stale-limits`, from main at `9362f27` (git's reflog). Claude copied the main checkout's names deny list in, without reading it, and ran `uv sync --native-tls --locked`.
+- The change, each with its source, and a dated note where a spec is a record:
+  - `docs/LIMITS.md`: two test runs, July's and June's (README, "Limits, in short"), the `show` command still cut while the owner rated 50 development quotes in V5, the needs the June run met (secret scope, Key Vault, the raw volume, the ruleset), the ruleset since 1 November (line 1093), and the one seed with the checkout refusal (`src/voc/dbt_run.py`).
+  - `docs/HOW_WE_MEASURE.md`: July and June, with June tested once.
+  - `docs/RESULTS.md`: V5 checked whether quotes support their labels.
+  - `docs/VALIDATION.md`: the Console showed $0.49 at 23:27 on 14 November, a total that also covers dry run round 6 (line 3202).
+  - `docs/DATA.md`: used, samples drawn on 28 October, and LIMITS states the point (T020 done).
+  - `docs/USER.md`: spec 002 was changed on 30 October.
+  - `docs/PIPELINE.md`: all four specs.
+  - Spec 001: its status (built, last changed in #104, open tasks T014c, T018a and T018), the ruleset and the seed. Its `research.md`: three open questions answered, with sources.
+  - Spec 002: the public copy's health route, and #143 in its status. Spec 003: its follow-ups done in #84.
+  - Spec 004: #143 in its status, spec 005 not written (two places), Job B ran `60216a4`, one merge after the real row's `a93a30f` with the same code hash, the later-row refusal that 6b did not lift, and the reader's check as built.
+- Spec 004's lines 141 and 231 lie inside the range another group edits (133 to 273), but on lines that group does not touch.
+- No code or test change, so no red commit. 10:28 Change written, before its gate. Claude ran the whole suite first.
