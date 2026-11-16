@@ -32,7 +32,7 @@ def _headings(text):
     """The Markdown headings of a page, leaving out `#` lines inside fenced code blocks."""
     headings, fenced = [], False
     for line in text.splitlines():
-        if line.lstrip().startswith("```"):
+        if line.lstrip().startswith(("```", "~~~")):
             fenced = not fenced
         elif not fenced and (match := re.match(r"#+ (.+)$", line)):
             headings.append(match.group(1))
@@ -40,16 +40,34 @@ def _headings(text):
 
 
 def test_J8_headings_skip_comment_lines_in_code_blocks():
-    assert _headings("# Title\n```powershell\n# a comment\n```\n## Next\n") == ["Title", "Next"]
+    assert _headings("# Title\n```powershell\n# a comment\n```\n~~~\n# another\n~~~\n## Next\n") == ["Title", "Next"]
 
 
 def test_J8_each_step_of_the_june_run_says_who_does_it():
     steps = _page().split("## The June run, step by step")[1].split("\n## ")[0]
     numbered = re.findall(r"^\d+\. (.+)$", steps, flags=re.M)
     assert len(numbered) == 9
+    who = r"(By hand|Automatic|Claude Code)"
     for step in numbered:
-        assert re.match(r"\*\*(By hand|Automatic|Claude Code)(, then by hand)?: [^*]+\.\*\* ", step), step
+        assert re.match(rf"\*\*{who}(, then {who})*: [^*]+\.\*\* ", step, flags=re.I), step
     assert "## Who does what" in _page()
+
+
+def test_J8_step_4_says_claude_code_checked_the_figures_before_the_approval():
+    # BUILD_LOG.md, "The June run": Claude checked the figures at 12:19, and the owner approved after that check.
+    steps = _page().split("## The June run, step by step")[1].split("\n## ")[0]
+    step_4 = re.search(r"^4\. \*\*([^:]+):", steps, flags=re.M).group(1)
+    assert "Claude Code" in step_4
+    row_4 = re.search(r"^\| 4 \| ([^|]+) \|", _page(), flags=re.M).group(1)
+    assert "Claude Code" in row_4
+
+
+def test_J8_the_diagram_colours_every_box_a_person_or_claude_code_acts_in():
+    diagram = _page().split("```mermaid")[1].split("```")[0]
+    by_class = {name: set(nodes.split(",")) for nodes, name in re.findall(r"^\s*class (\S+) (\w+)$", diagram, flags=re.M)}
+    people = set(re.findall(r'^\s*(\w+)\["👤', diagram, flags=re.M))
+    assert people and by_class.get("person") == people
+    assert {"CP", "PR"} <= by_class.get("agent", set())
 
 
 def test_J8_cloud_page_names_the_real_runs_from_the_summary():
