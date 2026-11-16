@@ -4,11 +4,11 @@ This page answers a question the owner asked on 10 November: how much of the wee
 
 In plain words:
 
-- Waste here means time that a better first attempt would have saved. For example, on 10 November the second dry run in the cloud failed, because the code read the commit from a field of a Databricks run that had never been checked live. The 181 minutes spent finding that, fixing it and preparing the next round (88 and 93 minutes in the table) are waste. Building the piece the first time, the reviews the rules require, and the real June run are not.
+- Waste here means time that a better first attempt would have saved. For example, on 10 November the second dry run in the cloud failed, because the code read the commit from a field of a Databricks run that had never been checked live. The 181 minutes spent finding that, fixing it and writing round 3's files (88 and 93 minutes in the table) are waste. So is round 3's row (75 minutes). Building the piece the first time, the reviews the rules require, and the real June run are not.
 - Each stretch of waste is an episode, with a start and an end time copied from the log, and one cause.
 - The minutes of all episodes are added up by cause, and compared with all the working time the log shows.
 
-The result, in one line: about 60 to 66 hours of 147 logged hours, or 41 to 45%, were waste. The biggest cause was fix rounds for Claude's own mistakes, about 36 hours. The second was rules about outside platforms built without a live check first, about 24 hours.
+The result, in one line: 66 hours of 147 logged hours, or 45%, were waste, or 60 hours (41%) without the episodes that ran beside other work. These are not bounds: the choices under Limits push the figures both ways. Nearly all of the waste was Claude's own mistakes, of two kinds. Fix rounds for Claude's mistakes took about 36 hours. Rules about outside platforms built without a live check first took about 24 hours, and the log marks most of those as Claude's mistakes too.
 
 The measure was made by a helper agent that read the log, then checked by Claude with the script under "Check the sums" below. It is an estimate: the minutes come straight from the log, but where an episode starts and ends, and which cause it gets, are judgement calls (see Limits).
 
@@ -21,18 +21,16 @@ Source: `BUILD_LOG.md`, read from line 1580 to the end on 16 November 2026, on t
 - **AI mistake:** an error of Claude's, marked as such in the build log.
 - **Merge verdict, ready:** Claude's last check of a pull request, then marking it ready for the owner to merge.
 - **Log commit:** a commit that only adds lines to the build log.
-- **CI:** GitHub's automatic checks, run on every push.
-- **Gate:** the check that runs all the tests before each commit. The two gates before the June run were other checks: the owner's check of the June file, and the failcheck.
-- **Red commit:** new tests, committed failing, before the code that makes them pass.
+- **CI:** GitHub's automatic checks, run on every pull request and on every push to `main`.
+- **Gate:** the check before each commit: all the tests, a scan for secrets and the names check. The two gates before the June run were other checks: the owner's check of the June file, and the failcheck.
 - **Dry run, round:** a full rehearsal of the June run in the cloud, on made-up complaints. Each try is a round.
 - **Row:** the line in the run log that allows one run.
 - **Job A, Job B:** the two Databricks jobs. Job A unpacks and checks the upload. Job B labels the sample after the owner approves.
 - **Receiver:** a small Azure app that hears from Databricks when Job A succeeds and starts the approval workflow.
 - **Refit:** Job B trains the simple TF-IDF baseline again in the cloud, and checks it gives the same labels as on the laptop.
 - **Scope:** the set of rights a sign-in token has, for example `jobs`.
-- **Failcheck:** a Databricks run with a row that must fail, to check that a failed data test stops the job as planned.
+- **Failcheck:** a Databricks run in which Job A's data step fails on a made-up row, to check that the robot account cannot read any of that row's text. A second run of the same step, without its quiet settings, is the control, which must show the row.
 - **Poison message:** a queue message that failed too often and was set aside.
-- **ARM:** a kind of processor. The cloud's machines use it, the laptop does not.
 - **Probe:** a small read-only check of how a platform really behaves, run before a rule about it is written.
 
 ## 1. Summary
@@ -49,7 +47,7 @@ The period runs from the start of spec 004 (4 November, 18:31, line 1603) to the
 | **Total waste** | **66.1 h (3,967 min), 45.1%** | **34.1 h (2,046 min), 39.6%** |
 | Total waste without the parallel episodes | 60.5 h (3,628 min), 41.2% | 31.6 h (1,893 min), 36.6% |
 
-Parallel episodes ran at the same time as first-build work, so a better first attempt might not have saved their wall-clock time. The figures without them are not a floor: the choices under Limits push the figures both ways.
+Parallel episodes ran at the same time as other work, mostly first-build work, so a better first attempt might not have saved their wall-clock time. The figures without them are not a floor: the choices under Limits push the figures both ways.
 
 After the owner's question, waste went on: 32.0 h of the 60.5 h logged from then to the end, or 53%.
 
@@ -64,7 +62,8 @@ Comparison with Claude's estimate of 10 November ("roughly 20 to 30 hours, a thi
 
 - An episode is a stretch with a start and an end time, both taken from log lines. Its minutes are end minus start. Where the log gives no end, the next logged time in the same thread is used and marked "end estimated". Two ends and one start are marked as estimated in the table.
 - Each episode has one cause. No stretch is counted twice. Where two waste episodes overlapped, the overlap was cut from one of them.
-- Fix rounds (cause 2): counted from the time the review's findings were posted to the fix commit, or to the time the log gives for the fix being written, when it gives that one first, when the log marks at least one finding of that round as an AI mistake. Where several rounds in a row had AI-marked findings, the stretch runs from the first findings to the last fix commit. Later rounds with no AI-marked finding are not counted. A whole pull request counts when it exists only to fix a logged AI mistake (for example #104, #118 and #136). So does work built on a cause Claude had not proven, which the log marks as an AI mistake: #121 to round 5 (line 2798).
+- Causes 1 and 2 overlap: the log marks most cause 1 episodes as Claude's mistakes too (for example lines 1820, 2093, 2339, 2430 and 2970). The rule used: a mistake about how an outside platform behaves, or code not yet run in the cloud, goes to cause 1. Every other mistake of Claude's goes to cause 2.
+- Fix rounds (cause 2): counted from the time the review's findings were posted, when the log marks at least one finding of that round as an AI mistake. Some early rows end at the time the log gives for the fix being written (for example lines 1666, 1691 and 1732). Others end at the fix commit, as #135, #139 and #141 do, about 10 minutes after their fix was written. Where several rounds in a row had AI-marked findings, the stretch runs from the first findings to the last fix commit. Later rounds with no AI-marked finding are not counted. A whole pull request counts when a logged AI mistake caused it (for example #104, #118 and #136). So does work built on a cause Claude had not proven, which the log marks as an AI mistake: #121 to round 5 (line 2798).
 - Platform assumptions (cause 1): a failed dry run round or gate run counts from the moment it failed. The final successful round or gate run is not waste, since a correct first attempt would have needed one. Every pull request and round in between counts: the fixes, the new round's files and its row. Code assumed to give the same result in the cloud as on the laptop, without being run there first, counts here too: in round 4 the refit kept other tied words in the cloud (line 2799).
 - Process overhead (cause 3): before the owner's leaner process of 10 November (line 2446), each pull request got a log commit and its own CI run between the merge verdict and "ready". After it, the same step took about 1 minute (#105, line 2453). The stretch from verdict to ready is counted. So is #107, a pull request for round 3's log alone. From 12 November, late log lines went into the next pull request instead (line 2737). Reviews and gates that CLAUDE.md requires are not counted.
 - Stalls (cause 4): waiting with no work caused by an avoidable error. Faults on GitHub's side, a network drop and a permission check are not counted.
@@ -101,7 +100,7 @@ Gaps removed, each over 2 hours: 4 Nov 22:15 to 5 Nov 00:46 (151 min), 5 Nov 02:
 
 ## 3. Episodes
 
-Causes: 1 platform assumption, 2 fix round for Claude's mistake, 3 process overhead, 4 stall. "Parallel" marks an episode that ran beside first-build work. The figures without the parallel episodes leave these out.
+Causes: 1 platform assumption, 2 fix round for Claude's mistake, 3 process overhead, 4 stall. "Parallel" marks an episode that ran beside other work: first-build work, or in two rows (11 November, 06:43, and 13 November, 13:25) another fix. The figures without the parallel episodes leave these out.
 
 | Date | Start | End | Min | Cause | Log lines | What happened |
 |---|---|---|---|---|---|---|
@@ -179,7 +178,7 @@ Causes: 1 platform assumption, 2 fix round for Claude's mistake, 3 process overh
 | 14 Nov | 21:13 | 23:25 | 132 | 2 | 3188-3201 | #138 write-up fix rounds: overstated claims (minor). Includes 64 min waiting for the owner. |
 | 15 Nov | 10:19 | 10:32 | 13 | 2 | 3217-3221 | #139 fix: the $0.49 claimed as Job B's alone. |
 | 15 Nov | 14:45 | 17:50 | 185 | 2 | 3240-3261 | #140 reviews 1 to 4: each found a wrong claim of Claude's on credential risk, three of them serious. |
-| 15 Nov | 20:13 | 22:03 | 94 | 2 | 3263-3283 | #140 reviews 5 and 6, minus 21:01 to 21:17 (the owner's question and deletions). |
+| 15 Nov | 20:13 | 22:03 | 94 | 2 | 3263-3283 | #140: the fix of review 4's findings, then reviews 5 and 6, minus 21:01 to 21:17 (the owner's question and deletions). |
 | 16 Nov | 08:12 | 08:24 | 12 | 2 | 3293-3297, and line 3298 at `cfed0c6` | #141 fix: a section written without checking past steps. |
 
 The first 49 rows are the sub-period up to line 2624.
@@ -198,10 +197,10 @@ Choices that move the figures:
 
 - Upward: a fix round counts whole when at least one of its findings is marked an AI mistake, though many rounds also fixed findings that were improvements, not mistakes. Some rows also hold the owner's own decisions (#87, #95, #100). A fix pull request counts whole, though a correct first build would also have taken some time.
 - Downward: not counted are the four review rounds of the spec itself (#85, about 5 h on 4 and 5 November), the first build of #97 (partly a fix for the concurrency), #125 (the workflow's red cross after a failed Job B), small AI mistakes with no time, the Windows file-lock rebuilds, the gate refusals for a missing names list, unclear owner steps not tied to a fix round, the CI re-run of 9 November after 18:34 (in a removed gap), and the push refused by a permission check on 14 November (17:16 to 18:38, 82 min).
-- Choices that could go either way: round 1 (9 November) counts as cause 1, though its refused `jobs:read` scope came partly from Claude's step text (lines 2338-2339). The log commits of #99 and #102 count as cause 3, though both hold a CI re-run after a download fault, the first one on GitHub's side. #115 (cause 2) and #131 (cause 1) count as waste, though they are rules the owner asked for after a mistake. The refit's tied words (round 4, #124 and round 6) count as cause 1, as code never run in the cloud before round 4, while #121 to round 5, built on a cause Claude had not proven, count as cause 2.
+- Choices that could go either way: round 1 (9 November) counts as cause 1, though its refused `jobs:read` scope came from Claude's step text (lines 2338-2339) as much as from the platform. The log commits of #99 and #102 count as cause 3, though both hold a CI re-run after a download fault on GitHub's side, and line 2371 logs #102's re-run as an AI mistake, which would make that part cause 2. #104 counts as cause 2 in full, though it also changed when CI runs, and its retries were work a better first attempt would also have needed, only earlier. #115 (cause 2) and #131 (cause 1) count as waste, though they are rules the owner asked for after a mistake. The refit's tied words (round 4, #124 and round 6) count as cause 1, as code never run in the cloud before round 4, while #121 to round 5, built on a cause Claude had not proven, count as cause 2.
 - Parallel work: 339 min of waste ran beside first-build work. The figures without the parallel episodes leave them out.
 
-How sure the figures are: every start and end comes from a logged time, so the minutes of each chosen stretch are exact to the minute. The doubt is in the choices: where an episode starts and ends, and which cause it gets. A fair range for the whole period is 60 to 66 hours, or 41 to 45% of logged time, from the figure without the parallel episodes to the total. Up to the owner's question it is 32 to 34 hours, or 37 to 40%. The split between causes 1 and 2 moves more than the total, since it rests on choices like the refit's above.
+How sure the figures are: every start and end comes from a logged time, so the minutes of each chosen stretch are exact to the minute. The doubt is in the choices: where an episode starts and ends, and which cause it gets. The figure without the parallel episodes and the total differ by that one choice only: 60 and 66 hours, or 41 and 45% of logged time, for the whole period, and 32 and 34 hours, or 37 and 40%, up to the owner's question. They are not bounds, since the other choices above push the figures both ways. The split between causes 1 and 2 moves more than the total, since it rests on choices like the refit's above.
 
 ## 5. Check the sums
 
