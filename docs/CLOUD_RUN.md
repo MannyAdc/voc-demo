@@ -6,7 +6,7 @@ Two different AIs are called Claude here. **Claude Code** is the AI coding agent
 
 ## In one minute
 
-- **During the run, the complaint text stays in Databricks.** It leaves only to the Anthropic API, one complaint per call, in calls with no tools. Before the run, the owner uploaded the files by hand from the laptop. After it, the owner kept a backup copy of the model's answers (J15).
+- **During the run, the complaint text stays in Databricks.** It leaves only to the Anthropic API, one complaint per call, in calls with no tools. Before the run, the owner uploaded the files by hand from the laptop. After it, the owner kept a backup copy of the data files and of the recordings, which hold each sampled complaint's full text (J15).
 - **Azure only passes messages on.** A small receiver hears that a job finished and starts the next step. It sees run IDs, statuses and counts, never complaint text.
 - **GitHub holds the approval.** No paid step starts until the owner has read the planned figures and clicked approve.
 - **The results reach this repo as two files** of IDs, labels, quote positions, reasons and counts, with no complaint text. They are copied from the run's own folder, in a store that holds only results.
@@ -17,15 +17,15 @@ Two different AIs are called Claude here. **Claude Code** is the AI coding agent
 - **Volume**: a folder of files in Databricks. **Schema**: a named group of tables. **Secret scope**: Databricks' locked store for keys.
 - **Robot account**: a sign-in for a program, not a person. Here a Databricks service principal.
 - **Used markers**: small files Job B writes so the same approval or Job A run can never start a second scoring.
-- **Job**: a set of steps Databricks runs, each step a **task**. A **trigger** starts a job, here when a file arrives. Each run gets a number, its **run ID**.
+- **Databricks job**: a set of steps Databricks runs, each step a **task**. Here Job A and Job B. A **trigger** starts a job, here when a file arrives. Each run gets a number, its **run ID**.
 - **dbt**: a tool that turns raw rows into clean tables and tests them. It runs on Databricks' **SQL warehouse**, the part that runs queries.
 - **Pin**: a file's fingerprint (its SHA-256), saved in the repo, so a changed file is refused.
 - **The frozen sample**: the 2,073 complaint IDs chosen on 5 November and saved in `splits/june/`, before anything was scored.
 - **TF-IDF + LR**: the simple word-based model that is the bar to beat ([How we measure](HOW_WE_MEASURE.md#what-we-compare)).
-- **Tokens**: the pieces of text the API counts and charges for. The **ledger** adds them up and stops the run at a cap. The **recordings** keep each model answer, so a re-run replays it for free.
+- **Tokens**: the pieces of text the API counts and charges for. The **ledger** adds them up and stops the run at a cap. The **recordings** keep each prompt, with the complaint's full text, and the model's answer, so a re-run replays it for free.
 - **Azure Function**: a small program that runs only when called. Its **queue** holds messages waiting for work, and the **failure queue** holds those that failed 5 times.
 - **Key Vault**: Azure's locked store for passwords and keys. **App Service**: Azure's web hosting.
-- **Workflow**: a script GitHub runs on its own computers, a feature called **GitHub Actions**. Each workflow has one or more **jobs**.
+- **Workflow**: a script GitHub runs on its own computers, a feature called **GitHub Actions**. Each workflow has one or more **GitHub jobs**, here GitHub job 1 and GitHub job 2.
 - **GitHub environment**: a named set of secrets that only some workflow jobs may use. Here each is limited to `main`, and only `june-run` also waits for the owner's approval.
 
 ## The pieces, by place
@@ -51,8 +51,8 @@ Two different AIs are called Claude here. **Claude Code** is the AI coding agent
 ## The June run, step by step
 
 How to read it:
-- **Yellow boxes with 👤** are what the owner does by hand. There are four: the upload, reading the figures, the approval and the merge.
-- **The blue box** is Claude Code's step, the copy of the results.
+- **Yellow boxes with 👤** are the owner's steps by hand. There are three boxes: the upload, reading the figures and approving, and the merge. The owner also switched Job A's trigger on before the upload and off after the run, which is not drawn.
+- **Blue boxes with 🤖** are Claude Code's steps: checking the figures, the copy and the draft pull request.
 - **Every other box** runs on its own.
 - **Solid arrows** are the main path. **Dotted arrows** are the checks, reads and replies along the way.
 
@@ -60,7 +60,8 @@ How to read it:
 flowchart TB
     subgraph PC["💻 The owner's laptop"]
         UP["👤 The owner uploads<br/>the June zip"]
-        CP["📥 Claude Code's copy script,<br/>signed in as the reader"]
+        CK["🤖 Claude Code checks<br/>the pasted figures"]
+        CP["🤖 Claude Code runs the copy script,<br/>signed in as the reader"]
     end
     subgraph DBX["🧱 Databricks"]
         IN["📁 voc_raw/incoming/"]
@@ -72,13 +73,13 @@ flowchart TB
         RCV["📨 The receiver<br/>(Azure Function)"]
     end
     subgraph GH["🔧 GitHub"]
-        W1["📋 Approval workflow, job 1:<br/>prints the figures"]
+        W1["📋 Approval workflow, GitHub job 1:<br/>prints the figures"]
         OK["👤 The owner reads the figures<br/>and approves"]
-        W2["✋ Job 2 waits<br/>for the approval"]
-        PR["🔀 Draft pull request:<br/>results/june/"]
+        W2["✋ GitHub job 2 waits<br/>for the approval"]
+        PR["🤖 Claude Code opens a draft<br/>pull request: results/june/"]
         MG["👤 The owner merges it"]
     end
-    subgraph AN["🤖 Anthropic API"]
+    subgraph AN["✨ Anthropic API"]
         API["The model claude-haiku-5-5<br/>labels one complaint per call"]
     end
     UP -- "1 upload" --> IN
@@ -88,6 +89,8 @@ flowchart TB
     RCV -- "4 starts it" --> W1
     W1 -. "4 reads the figures" .-> JA
     W1 -- "4 shows the figures" --> OK
+    OK -. "4 pastes them" .-> CK
+    CK -. "4 each one matches" .-> OK
     W1 --> W2
     OK -- "5 approves" --> W2
     W2 -- "5 starts it" --> JB
@@ -101,9 +104,9 @@ flowchart TB
     CP --> PR
     PR --> MG
     classDef person fill:#fde68a,stroke:#b45309,color:#1f2937
-    classDef agent fill:#c7d2fe,stroke:#4338ca,color:#1f2937
+    classDef agent fill:#93c5fd,stroke:#1d4ed8,color:#1f2937
     class UP,OK,MG person
-    class CP agent
+    class CK,CP,PR agent
 ```
 
 Each step starts with who does it. Times are the owner's local time (UTC+11), from [BUILD_LOG.md](../BUILD_LOG.md), "The June run".
@@ -116,11 +119,11 @@ Each step starts with who does it. Times are the owner's local time (UTC+11), fr
 
    Run `195625699108193`, 12:12 to 12:15.
 3. **Automatic: the success message.** Databricks tells the receiver that Job A succeeded, signed in with a user name and password (HTTP Basic). Databricks' message carries no signature, so the receiver does not take it on trust. It answers at once and puts the message on its queue. Then it asks Databricks itself whether that run really succeeded, as the robot account, and checks that no approval run for it exists yet.
-4. **Automatic, then by hand: the figures.** The approval workflow `june_approval.yml` starts, run `43539560019`, at 12:16. The receiver starts it with a GitHub token for this repo's Actions only. Its first job reads Job A's figures from Databricks and prints them: 2,073 complaints, 2,073 calls, a worst case of 37,954,560 tokens and an expected cost of $0.50. The owner pasted them into the chat at 12:19, and Claude Code checked each against Job A's run page and the repo.
-5. **By hand: the approval.** The second job, `run`, waits in the environment `june-run` until the owner clicks approve on GitHub. No model call has been made before this point. The owner approved at about 12:20. From here the job runs on its own: it started Job B, as the robot account, passing Job A's run ID and its own GitHub run ID.
+4. **Automatic, then by hand, then Claude Code: the figures.** The approval workflow `june_approval.yml` starts, run `43539560019`, at 12:16. The receiver starts it with a GitHub token for this repo's Actions only. Its first GitHub job reads Job A's figures from Databricks and prints them: 2,073 complaints, 2,073 calls, a worst case of 37,954,560 tokens and an expected cost of $0.50. The owner pasted them into the chat at 12:19, and Claude Code checked each against Job A's run page and the repo.
+5. **By hand: the approval.** The second GitHub job, `run`, waits in the environment `june-run` until the owner clicks approve on GitHub. No model call has been made before this point. The owner approved at about 12:20, after Claude Code's check. From here the GitHub job runs on its own: it started Job B, as the robot account, passing Job A's run ID and its own GitHub run ID.
 6. **Automatic: Job B.** One task, `job_b`. Run `1052842636980751`, 12:20 to 13:41. Before its first model call it checks the approval on GitHub's public API, Job A's run, the frozen code's hashes and the sample. It refits TF-IDF + LR on July's training rows, from the July export already in `voc_raw`, and checks that the refit gives July's committed development labels. Then it sends each complaint to the model claude-haiku-5-5 through the Anthropic API, with the key from the secret scope `voc-june`. Each answer is recorded, and each call's tokens go into a ledger with a cap of 40 million, both in `voc_raw`.
 7. **Automatic: the results files.** Job B scores the run and writes `v1_june.csv` and `v1_june.json` to its own folder in `voc_results`.
-8. **Automatic: the signed result.** The workflow looked at Job B once a minute. When Job B ended, it posted a result message to the receiver, signed with a shared secret (HMAC): the run IDs, how Job B ended and its counts. The job ended green at 13:42:51. It ends green only when Job B finished and the receiver accepted the message.
+8. **Automatic: the signed result.** The workflow looked at Job B once a minute. When Job B ended, it posted a result message to the receiver, signed with a shared secret (HMAC): the run IDs, how Job B ended and its counts. The GitHub job ended green at 13:42:51. It ends green only when Job B finished and the receiver accepted the message.
 9. **Claude Code, then by hand: the copy and the merge.** At 14:09 Claude Code ran `scripts/copy_june_results.py` on the laptop, signed in as the reader account. It checked the columns, the label and reason lists, the IDs against `splits/june/`, the size limit and that neither file holds the CFPB's header row (J11), and wrote them to `results/june/`. Claude Code opened them as a draft pull request, #137, at 18:38, and the owner merged it at 20:10.
 
 ## Who does what
@@ -130,7 +133,7 @@ Each step starts with who does it. Times are the owner's local time (UTC+11), fr
 | before 1 | the owner, by hand | switches Job A's trigger on, and off again after the run |
 | 1 | the owner, by hand | uploads the June zip |
 | 2 and 3 | automatic | Job A runs. The receiver checks it and starts the workflow |
-| 4 | automatic, then the owner | the workflow prints the figures. The owner reads them |
+| 4 | automatic, then the owner, then Claude Code | the workflow prints the figures. The owner pastes them into the chat, and Claude Code checks each one |
 | 5 | the owner, by hand | approves in `june-run`. Job B then starts on its own |
 | 6 to 8 | automatic | Job B labels and scores. The workflow sends the signed result |
 | 9 | Claude Code, then the owner | Claude Code copies the results and opens a draft pull request. The owner merges it |
@@ -143,12 +146,15 @@ Each step starts with who does it. Times are the owner's local time (UTC+11), fr
 | Databricks | the Anthropic API | each complaint's text, one per call, with no tools. Back: a label and a quote |
 | Databricks | the receiver | Job A's run ID, job ID and event type, which the receiver reads, and the workspace ID and job name, which it does not. Sent with the Basic sign-in |
 | the receiver | Databricks | a question: did this run succeed? |
-| the receiver | GitHub | start the approval workflow, with Job A's run ID |
-| GitHub | Databricks | read Job A's figures, start Job B, look at Job B's run |
+| the receiver | GitHub | a look at the workflow's runs, then the start of the approval workflow, with Job A's run ID |
+| GitHub | Databricks | read Job A's figures, start Job B, look at Job B's run. Both Databricks jobs also fetch their code from this repo's `main` |
 | Databricks | GitHub | Job B reads the approval, on the public API, with no token |
 | GitHub | the receiver | the signed result: run IDs, how Job B ended, counts |
 | Databricks | the laptop, then this repo | the two results files: IDs, labels, confidences, quote positions, reasons, counts and hashes, the columns J11 lists |
-| Databricks | the owner's own backup copy | after the run, on 15 November, by hand: a zip of the June recordings, 2,073 model answers (J15). These hold quotes from complaint text. The backup is not in this repo |
+| the laptop | the owner's own backup copy | after the run, on 15 November, by hand: the July, August and June data files. These hold complaint text |
+| Databricks | the owner's own backup copy | after the run, on 15 November, downloaded by hand: a zip of the 2,073 June recordings (J15). Each holds the prompt, with the complaint's full text, and the model's answer |
+
+The backup is not in this repo, and not in any of the places above. This page does not name where it is kept: a reader needs to know that the text left the cloud, not which storage service holds it (the owner's decision, 17 November).
 
 During the run, no complaint text crosses any other line (J4). The repo is public, so its Actions logs are public. Every job is built to print only IDs, labels, reasons, positions, decisions and counts, and a test checks each one on hostile synthetic text (J5).
 

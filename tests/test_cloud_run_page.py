@@ -39,10 +39,6 @@ def _headings(text):
     return headings
 
 
-def test_J8_headings_skip_comment_lines_in_code_blocks():
-    assert _headings("# Title\n```powershell\n# a comment\n```\n~~~\n# another\n~~~\n## Next\n") == ["Title", "Next"]
-
-
 def test_J8_each_step_of_the_june_run_says_who_does_it():
     steps = _page().split("## The June run, step by step")[1].split("\n## ")[0]
     numbered = re.findall(r"^\d+\. (.+)$", steps, flags=re.M)
@@ -118,7 +114,9 @@ def test_J8_cloud_page_names_the_app_and_the_environments_as_the_workflows_do():
 
 
 def test_J8_every_link_on_the_cloud_page_points_to_a_repo_file():
-    links = re.findall(r"\]\(([^)#\s]+)(?:#([^)\s]*))?\)", _page())
+    # The heading search must skip `#` lines in code blocks, or a comment could stand in for a missing heading.
+    assert _headings("# Title\n```powershell\n# a comment\n```\n~~~\n# another\n~~~\n## Next\n") == ["Title", "Next"]
+    links =re.findall(r"\]\(([^)#\s]+)(?:#([^)\s]*))?\)", _page())
     local = [(target, anchor) for target, anchor in links if not target.startswith(("http://", "https://"))]
     assert local
     for target, anchor in local:
