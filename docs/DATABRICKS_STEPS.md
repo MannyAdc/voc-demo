@@ -37,18 +37,20 @@ Three words used below:
   a table's list of columns.
 - A volume (a folder for files, such as a zip) sits inside a schema.
 
-What these steps make, and for how long:
+What these steps make, and for how long. The last column is the state after the clean-up of 15 November, as the owner reported it (spec 004, Known limits, "The clean-up after the June run"):
 
-| Name | Where | What it is for | Lifetime |
-|---|---|---|---|
-| `voc_results` | Databricks, Catalog, `workspace` → `voc_results` | Job B's results, in a schema of its own | until the real June results are copied |
-| `voc-receiver` | Databricks, Settings, Notifications | how Databricks tells the Azure receiver that Job A succeeded | as long as the receiver |
-| `voc-june-job-a` | Databricks, Jobs & Pipelines | Job A: unpacks and checks the upload, calls no model | until after the real June run |
-| `voc-june-job-b` | Databricks, Jobs & Pipelines | Job B: labels the sample once the owner approves | until after the real June run |
-| the robot's rights | each job's permissions | `voc-june-runner` may look at Job A's runs, and start, look at and cancel Job B's | as long as the jobs |
-| `june-figures`, `june-run` | GitHub, Settings, Environments | the approval workflow's two jobs, the second waiting for the owner's approval | until after the real June run |
-| the robot's secret | Databricks, Settings | the robot's sign-in, `jobs` scope only | 30 days |
-| `voc-receiver-dispatch` | GitHub, your Settings | a token that lets the receiver start the approval workflow | 30 days |
+| Name | Where | What it is for | Lifetime as planned | State on 15 November |
+|---|---|---|---|---|
+| `voc_results` | Databricks, Catalog, `workspace` → `voc_results` | Job B's results, in a schema of its own | until the real June results are copied | kept as the run's record (`docs/JUNE_RUN_STEPS.md`, step 13) |
+| `voc-receiver` | Databricks, Settings, Notifications | how Databricks tells the Azure receiver that Job A succeeded | as long as the receiver | kept |
+| `voc-june-job-a` | Databricks, Jobs & Pipelines | Job A: unpacks and checks the upload, calls no model | until after the real June run | kept, its trigger paused |
+| `voc-june-job-b` | Databricks, Jobs & Pipelines | Job B: labels the sample once the owner approves | until after the real June run | kept |
+| the robot's rights | each job's permissions | `voc-june-runner` may look at Job A's runs, and start, look at and cancel Job B's | as long as the jobs | kept, but the robot has no secret |
+| `june-figures`, `june-run` | GitHub, Settings, Environments | the approval workflow's two jobs, the second waiting for the owner's approval | until after the real June run | kept, so their approval rule stays. The robot's secret in them no longer works |
+| the robot's secret | Databricks, Settings | the robot's sign-in, `jobs` scope only | 30 days | deleted |
+| `voc-receiver-dispatch` | GitHub, your Settings | a token that lets the receiver start the approval workflow | 30 days | deleted |
+
+`cloud/failcheck/STEPS.md` describes the state before the clean-up of 15 November. It is kept unchanged as the run's record, because `cloud/` is a frozen path and an edit there would change the code hash the June run recorded (owner decision, 17 November).
 
 ## Copying a secret safely
 
@@ -172,7 +174,8 @@ The two job IDs then go into `config/june_cloud.toml`, in a pull request of thei
 
 The reader is a second service principal. It can read the results volume `voc_results` and nothing else, and it
 is in no job and never in `admins`. Claude's copy script signs in as it, from the laptop, to bring the two results
-files into the repo. It lives until the owner removes it after the June run.
+files into the repo. It lives until the owner removes it after the June run. On 15 November the owner reported its
+secret deleted. The account was kept, with its grants and no secret (spec 004, Known limits).
 
 1. In Databricks, your initial or name at the top right, **Settings**, **Identity and access**, next to **Service
    principals** **Manage**, then **Add service principal**, **Add new**. Name it `voc-results-reader`. Click

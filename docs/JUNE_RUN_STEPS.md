@@ -1,5 +1,7 @@
 # The June run: the owner's steps
 
+*Done on 14 November 2026. The robot's secret, the reader's secret and the dispatch token were deleted on 15 November, so a re-run first needs "Before any new cloud work" in [DATABRICKS_STEPS.md](DATABRICKS_STEPS.md#before-any-new-cloud-work).*
+
 Spec 004, plan item 11. The June run scores the frozen June sample once, in the cloud, on the code both gates
 passed, `db063ac8…677a` (#133), with the run log's real row (#134). It is the dry run's chain with the real June file:
 the upload, Job A, the webhook, the receiver, the approval workflow, your approval, Job B, and the result message.
@@ -112,7 +114,8 @@ until the run ends either, or both gates and the real row must be done again.
    estimates about 70 minutes for the labelling, since the laptop labelled 1,909 complaints in 3,847 seconds, one at
    a time (spec 004, Known limits). Round 6's whole Job B, its refit and 8 calls, took 2 minutes 43 seconds on its
    run page, from your screenshot of 13 November. The time for 2,073 calls in the cloud was not measured, so the
-   labelling should fit, but that is not proven.
+   labelling should fit, but that is not proven. *Measured on 14 November:* the real Job B ran from 12:20 to 13:41,
+   1 hour 21 minutes 36 seconds on its run page (`BUILD_LOG.md`, "The June run").
 9. When Job B ends, the workflow posts the result. Its `run` job shows a green tick, with the last log line `Job B
    finished`, or a red cross, with "Job B did not finish, so this job fails after the result was sent". Tell Claude
    which, and Job B's run ID from its run page. If it stopped, its run page shows the exit value's `stop_reason`:

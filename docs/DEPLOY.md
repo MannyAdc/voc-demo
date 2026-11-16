@@ -2,7 +2,9 @@
 
 The public copy (spec 002, rule A13) is the dashboard with the committed results files only. It answers only to its own Azure host name, never reads the local staged table, never serves complaint text or the consumer's own choice, and stores no review. So nothing in it is private: it is the same data as the public repo.
 
-The owner runs every command here, in their own PowerShell, after `az login -o none`. Every `az` command here ends with `-o none`, because `az` otherwise prints resource IDs, and they hold the subscription ID. Claude creates no account and holds no Azure credential.
+*Changed on 5 November 2026:* the owner no longer signs in to Azure on the laptop (spec 004, Known limits, owner decision of 5 November). So the command blocks below are the history of the first deploy and its setup. A redeploy goes through `deploy.yml` (see "Automatic deploy" below), and any manual Azure step is done in the Azure portal or Cloud Shell.
+
+Before that change, the owner ran every command here, in their own PowerShell, after `az login -o none`. Every `az` command here ends with `-o none`, because `az` otherwise prints resource IDs, and they hold the subscription ID. Claude creates no account and holds no Azure credential.
 
 ## Facts checked on Microsoft's pages (30 October 2026)
 
