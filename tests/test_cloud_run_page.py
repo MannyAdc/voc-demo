@@ -2,10 +2,11 @@
 GitHub and the Anthropic API.
 
 Some of the page's facts are read from their sources here: the run IDs and the count from the run's own summary,
-`results/june/v1_june.json`, the token cap and the expected cost as the code computes them, the jobs' names, task keys
-and trigger folder from the job definitions in `cloud/`, and the app and environment names from the workflows. The
-times, the worst case and the sign-ins' states are checked by review, not here. Every link on the page must point to
-a file and heading in the repo, and the README must link the page, or nobody finds it.
+`results/june/v1_june.json`, the token cap from `config/budget.toml` and the expected cost as
+`voc.job_a.expected_cost` computes it, the jobs' names, task keys and trigger folder from the job definitions in
+`cloud/`, and the app and environment names from the workflows. The times, the worst case and the sign-ins' states
+are checked by review, not here. Each numbered step says who does it. Every link on the page must point to a file and
+heading in the repo, and the README must link the page, or nobody finds it.
 """
 import json
 import re
@@ -25,6 +26,30 @@ def _page():
 def _slug(heading):
     """GitHub's anchor for a heading: lower case, punctuation but hyphens dropped, spaces as hyphens."""
     return re.sub(r"[^\w\- ]", "", heading.strip().lower()).replace(" ", "-")
+
+
+def _headings(text):
+    """The Markdown headings of a page, leaving out `#` lines inside fenced code blocks."""
+    headings, fenced = [], False
+    for line in text.splitlines():
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+        elif not fenced and (match := re.match(r"#+ (.+)$", line)):
+            headings.append(match.group(1))
+    return headings
+
+
+def test_J8_headings_skip_comment_lines_in_code_blocks():
+    assert _headings("# Title\n```powershell\n# a comment\n```\n## Next\n") == ["Title", "Next"]
+
+
+def test_J8_each_step_of_the_june_run_says_who_does_it():
+    steps = _page().split("## The June run, step by step")[1].split("\n## ")[0]
+    numbered = re.findall(r"^\d+\. (.+)$", steps, flags=re.M)
+    assert len(numbered) == 9
+    for step in numbered:
+        assert re.match(r"\*\*(By hand|Automatic|Claude Code)(, then by hand)?: [^*]+\.\*\* ", step), step
+    assert "## Who does what" in _page()
 
 
 def test_J8_cloud_page_names_the_real_runs_from_the_summary():
@@ -82,9 +107,12 @@ def test_J8_every_link_on_the_cloud_page_points_to_a_repo_file():
         path = (PAGE.parent / target).resolve()
         assert path.exists(), target
         if anchor:
-            headings = re.findall(r"^#+ (.+)$", path.read_text(encoding="utf-8"), flags=re.M)
+            headings = _headings(path.read_text(encoding="utf-8"))
             assert anchor in {_slug(h) for h in headings}, f"{target}#{anchor}"
 
 
 def test_J8_readme_links_the_cloud_page():
-    assert (REPO / "README.md").read_text(encoding="utf-8").count("(docs/CLOUD_RUN.md)") == 2
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    where = next(line for line in readme.splitlines() if line.startswith("**Where it runs today"))
+    assert "(docs/CLOUD_RUN.md)" in where
+    assert "(docs/CLOUD_RUN.md)" in readme.split("## 📚 Read more")[1]
