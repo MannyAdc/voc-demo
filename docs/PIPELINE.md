@@ -95,7 +95,7 @@ uv run voc serve
 
 Then open http://127.0.0.1:8000. The tests never open a network connection or call a model.
 
-To label real complaints you need the pinned July 2026 export. The CFPB serves only its current export, updated about daily, so that exact file cannot be downloaded again. `python scripts/download.py <empty folder>` fetches today's file, a zip archive, and prints the archive's SHA-256. The pins in `config/data_files.toml` are on the CSV inside, so a new file must be unzipped and given its own pin. The data folder is given by an environment variable. The API key goes in an environment variable too, never in a file in the repo. Contributors also install gitleaks and run `git config core.hooksPath .githooks` (see [CLAUDE.md](../CLAUDE.md)).
+To label real complaints you need the pinned July 2026 export. The CFPB's current export, updated about daily, has had no narrative column since 14 August 2026, so today's file cannot be labelled, and a file with a missing column fails the load (below). The CFPB's narratives archive lists a July 2026 file with the same name as the pinned one, not checked byte for byte (spec 004, "What we know before planning"). `python scripts/download.py <empty folder>` fetches only the current export, a zip archive, and prints the archive's SHA-256. The pins in `config/data_files.toml` are on the CSV inside, so a file must be unzipped and checked against its pin. The data folder is given by an environment variable. The API key goes in an environment variable too, never in a file in the repo. Contributors also install gitleaks and run `git config core.hooksPath .githooks` (see [CLAUDE.md](../CLAUDE.md)).
 
 
 ## Loading a new month
