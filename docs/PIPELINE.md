@@ -36,7 +36,7 @@ Owner decision, 31 October 2026: the same dbt models run on Databricks on the re
 
 1. Upload the two files: in the workspace's sidebar, click **New**, then **Add or upload data**, then **Upload files to a volume**. Pick catalog `workspace`, schema `default`, and create the volume `voc_raw`. Drop in `CCDB_Export_20_July_2026.csv` and `CCDB_Export_21_August_2026.csv` from the folders named by `VOC_DATA_DIR` and `VOC_NEXT_DATA_DIR`. (Databricks, "Upload files to a volume", updated 27 October 2026. The limit is 5 GB per file.)
 2. Find the connection details: in the sidebar, click **SQL Warehouses**, open the warehouse, and open **Connection details**. Keep the page open for the server hostname and the HTTP path.
-3. Open PowerShell in your clone of this repo and run these lines. Each `Read-Host` asks for one value. Paste it and press Enter. The token is read from the encrypted file made on 30 October and never shown:
+3. Open PowerShell in your clone of this repo and run these lines. Each `Read-Host` asks for one value. Paste it and press Enter. The token is read from the encrypted file made on 30 October and never shown. *Changed on 6 November 2026:* the owner revoked that token and deleted the encrypted file (`BUILD_LOG.md`, 6 November), so these steps need a new token first:
 
    ```powershell
    $env:DATABRICKS_HOST = Read-Host "Server hostname, without https://"
