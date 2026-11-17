@@ -48,7 +48,7 @@ The guards in this spec (hooks, checks, logs, the spend stop) are built to stop 
 - A month build's work folder is outside the repo's guards. If Databricks fails to read a row, dbt's log there can hold part of it. Nothing is printed, and the owner's steps delete the folder after the run.
 - August's row count is not pinned, so on Databricks August is checked by its SHA-256 and values, not by its count.
 - The real exports, with their narrative text, are in the owner's Databricks workspace (owner decision, 31 October 2026). The CFPB publishes them for anyone to use. Only the owner can open the workspace. Claude never reads the text: the commands print counts and check names only.
-- The Databricks run uses the owner's Free Edition workspace, which is for non-commercial use only. Its token is the owner's, kept encrypted on the owner's machine, and never in the repo.
+- The Databricks run uses the owner's Free Edition workspace, which is for non-commercial use only. Its token is the owner's, kept encrypted on the owner's machine, and never in the repo. *On 6 November the owner revoked it and deleted its encrypted copy (spec 004, J13, and `BUILD_LOG.md`).*
 
 ## User Scenarios & Testing *(mandatory)*
 
