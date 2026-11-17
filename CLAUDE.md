@@ -46,7 +46,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Run: `uv run pytest`
 - Tests never open a network connection or call a model. `tests/conftest.py` blocks sockets.
 - Tests check behaviour against the spec. Label quality is measured by `/eval`, not by tests.
-- Test names start with the rule ID: `test_B1_...`. The exception is the tests of the repo's own guards and helpers, which have no rule ID: some of `tests/test_hooks.py` and all of `tests/test_repo_checks.py` and `tests/test_git_helper.py` (90 tests on 17 November).
+- Test names start with the rule ID: `test_B1_...`. The exception is the tests of the repo's own guards and helpers, which have no rule ID: some of `tests/test_hooks.py` and all of `tests/test_repo_checks.py` and `tests/test_git_helper.py` (90 tests on 17 November). The tests of CLAUDE.md's own rules, such as `tests/test_build_log_grows.py`, have no rule ID either.
 - Test text is synthetic. Synthetic complaint IDs start with `SYN-`. Fake keys in tests are built while the test runs, never written as one string.
 
 ## Outside platforms
@@ -75,7 +75,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Tests, with no network.
 - gitleaks on the full history.
 - A names check against a deny list kept outside the repo (a CI secret, and a git-ignored `.names-denylist` locally). It fails if the list is missing or empty.
-- `runs/TEST_RUNS.md` only grows compared with `main`, and so do spec 004's `runs/JUNE_RUNS.md` and `runs/JUNE_GATES.md`.
+- `runs/TEST_RUNS.md` only grows compared with `main`, and so do spec 004's `runs/JUNE_RUNS.md` and `runs/JUNE_GATES.md`. So does `BUILD_LOG.md`.
 - No tracked file over the size limit. No tracked file with the CFPB header row and a real ID.
 - `dbt build` with data tests and usage stats off.
 
@@ -116,7 +116,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 
 - Append to `BUILD_LOG.md` as things happen, with the local time.
 - Log: work start and merge times, every AI mistake and how it was caught, every overruled suggestion and why, every parallel run and its result.
-- Never invent or tidy an entry.
+- Never invent or tidy an entry. A correction is a new line at the end. CI fails a pull request whose `BUILD_LOG.md` does not start with every line of `main`'s, unchanged.
 
 ## Calling the project or a milestone done
 

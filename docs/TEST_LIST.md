@@ -366,6 +366,7 @@ Every test feeds the checks synthetic `gh pr view` JSON. No test runs `gh` or op
 - any tracked file with the CFPB header row and a non-`SYN-` ID fails (review)
 - dbt build with data tests runs, with usage stats off (review, deferred to T011)
 - `runs/JUNE_RUNS.md` and `runs/JUNE_GATES.md` only grow compared with `main`, and `scripts/check_june_gates.py` refuses a new real row whose gate passes are not already on `main` (spec 004, J1)
+- `BUILD_LOG.md` only grows compared with `main`, with the same script: a changed ending or a removed old line fails. CI runs it in the required `repo-checks` job, and the step, its job and the workflow's triggers are pinned exactly (CLAUDE.md, "Build log", `tests/test_build_log_grows.py`)
 - the names, raw data, size and unreadable-file checks are in `src/voc/repo_checks.py`, tested with invented tokens in `tests/test_repo_checks.py`
 
 Written on 9 November 2026, after two CI runs failed at a download from GitHub (8 and 9 November), `tests/test_ci_workflow.py`:

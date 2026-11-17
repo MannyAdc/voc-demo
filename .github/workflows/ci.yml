@@ -125,6 +125,18 @@ jobs:
           fi
           uv run --locked python scripts/check_test_runs.py "$base" runs/JUNE_GATES.md
 
+      - name: The build log only grows compared with main (CLAUDE.md, Build log)
+        run: |
+          base="$RUNNER_TEMP/build_log_on_main.md"
+          # Fail if main cannot be read at all, so a git error never counts as "nothing on main yet".
+          git rev-parse --verify origin/main > /dev/null
+          if git cat-file -e origin/main:BUILD_LOG.md 2>/dev/null; then
+            git show origin/main:BUILD_LOG.md > "$base"
+          else
+            rm -f "$base"
+          fi
+          uv run --locked python scripts/check_test_runs.py "$base" BUILD_LOG.md
+
       - name: A new real row of the June run log has its gate passes on main already (spec 004, J1)
         run: |
           gates="$RUNNER_TEMP/june_gates_main.md"
