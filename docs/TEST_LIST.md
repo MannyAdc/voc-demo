@@ -1,6 +1,6 @@
 # Test list
 
-Status: approved by the owner on 2026-10-28, then revised after review rounds 1 to 4, and extended by every later pull request. Each line is a behaviour the tests check, grouped by rule, with the test files named. A line can cover several tests, and not every test has its own line. On 17 November 2026 the suite on `main` collected 2,888 tests in 55 files (`uv run --no-sync pytest --collect-only -q`). Tests check behaviour against the specs: [001](../specs/001-core-labelling-pipeline/spec.md), [002](../specs/002-results-api-dashboard/spec.md), [003](../specs/003-validation-review/spec.md) and [004](../specs/004-june-test-and-baselines/spec.md). They run offline in seconds and never call a model. Label quality is measured separately by evaluation.
+Status: approved by the owner on 2026-10-28, then revised after review rounds 1 to 4, and extended by later pull requests. Each line is a behaviour the tests check, grouped by rule, with the test files named. A line can cover several tests, and not every test has its own line. On 17 November 2026 the suite on `main` collected 2,888 tests in 55 files (`uv run --no-sync pytest --collect-only -q`). Tests check behaviour against the specs: [001](../specs/001-core-labelling-pipeline/spec.md), [002](../specs/002-results-api-dashboard/spec.md), [003](../specs/003-validation-review/spec.md) and [004](../specs/004-june-test-and-baselines/spec.md). They run offline and never call a model. The whole suite takes about 10 minutes on the owner's laptop: 586 seconds in the gate's run of 16 November 2026, and 1,182 seconds on 17 November while other runs shared the machine (the `time` of the `testsuite` element in the gate's `staged.xml`). Label quality is measured separately by evaluation.
 
 Lines marked (reused) come from test ideas in an earlier unpublished start of this project. Lines marked (review) were added after a reviewer finding. The rest are new.
 
@@ -15,9 +15,9 @@ All fixture data is synthetic. Synthetic complaint IDs start with `SYN-`, so the
 
 ## Output safety (B21 layer 1), in each entry point's own test file
 
-Started in the first pull request that adds an entry point (T002b), and extended by every later one. There is no single output safety file: each entry point's B21 tests sit in its own test file, such as `tests/test_analysis.py`, `tests/test_data.py`, `tests/test_load.py`, `tests/test_dbt.py`, `tests/test_download.py`, `tests/test_evaluate.py`, `tests/test_pipeline.py`, `tests/test_replay.py` and `tests/test_audit.py`. On 17 November 2026, 76 test functions in 19 files were named after B21, 36 of them in `tests/test_hooks.py` (`grep -c "def test_B21" tests/*.py`).
+Started in the first pull request that adds an entry point (T002b), and extended by every later one. There is no single output safety file: each entry point's B21 tests sit in its own test file, such as `tests/test_analysis.py`, `tests/test_data.py`, `tests/test_load.py`, `tests/test_dbt.py`, `tests/test_download.py`, `tests/test_evaluate.py`, `tests/test_pipeline.py`, `tests/test_replay.py` and `tests/test_audit.py`. On 17 November 2026, 76 test functions in 19 files were named after B21, for all three of its layers (`grep -c "def test_B21" tests/*.py`). 36 of them, in `tests/test_hooks.py`, test the hooks (layer 3). The other 40, in 18 files, test the entry points (layer 1).
 
-- each entry point (`download`, `load`, `profile`, `sample`, `label`, `evaluate`, the dbt wrapper) prints no narrative, quote or raw model answer on hostile synthetic text (review, moved earlier). The analyser was deferred on 29 October (`specs/001-core-labelling-pipeline/tasks.md`, T018a), so it has no entry point
+- each entry point (`download`, `load`, `profile`, `sample`, `label`, `evaluate`, `audit`, the dbt wrapper) prints no narrative, quote or raw model answer on hostile synthetic text (review, moved earlier). The analyser was deferred on 29 October (`specs/001-core-labelling-pipeline/tasks.md`, T018a), so it has no entry point.
 - a library error that echoes a raw row is replaced by its type, row number and complaint ID (review)
 
 ## Quote check (B1, B6), `tests/test_evidence.py`
@@ -58,7 +58,10 @@ Started in the first pull request that adds an entry point (T002b), and extended
 - values that are not text are unparseable (reused)
 - extra keys, two JSON objects, or text after the JSON are unparseable (review)
 - the examples used are logged by complaint ID (review)
-- the synthetic injection set is labelled and scored apart from every accuracy figure (B5, B10, `tests/test_injection.py`)
+
+## Injection set (B5, B7, B9, B10, B16), `tests/test_injection.py`
+
+- the synthetic injection set is labelled and scored apart from every accuracy figure
 
 ## Decision (B3, B5), `tests/test_decision.py`
 
@@ -134,7 +137,6 @@ Started in the first pull request that adds an entry point (T002b), and extended
 ## Loading (B14), `tests/test_load.py` and dbt data tests
 
 The dbt build is tested in `tests/test_dbt.py`, the Databricks target on synthetic seeds (T021) in `tests/test_databricks.py`, the real monthly exports on Databricks in `tests/test_databricks_month.py`, and the lineage graph in `tests/test_lineage.py`.
-
 
 - loading a synthetic fixture file twice gives the same row count
 - a column with the wrong type fails the schema check
@@ -220,7 +222,7 @@ The export's pin and the download script are tested in `tests/test_download.py` 
 
 ## Pipeline (B4, B5, B9), `tests/test_pipeline.py`
 
-The scheduled run on the committed synthetic fixture (T015c) is tested in `tests/test_scheduled_run.py`.
+The scheduled run on the committed synthetic fixture (T015c) is tested in `tests/test_scheduled_run.py`. Its tests are named mostly after B14, B16, B17 and B21, not this section's rules.
 
 - a good complaint is accepted and keeps its ID (reused)
 - no column other than the narrative reaches the model, including Sub-product and Sub-issue (reused, changed)
@@ -258,8 +260,8 @@ The one scored run of the test set and its log are tested in `tests/test_test_ru
 
 ## Label set and sample sizes (B24, B25, B9), `tests/test_labels.py` and `tests/test_data.py`
 
-- the label set config lists every label once, and the prompt and both baselines read the same list from it (B24, `tests/test_labels.py`)
-- a recorded Product that is not in the label set, and has no mapping, stops sampling with a clear message (B24). No test of the July `voc sample` is named for this. The load refuses such a Product (Loading, above), and June's sample has `test_J6_a_june_product_outside_the_label_set_is_refused` in `tests/test_june_sample.py`
+- the label set config lists every label once, and the prompt and both baselines read the same list from it (B24). `tests/test_labels.py` checks that each label is listed once, that a repeated label is refused, that each label lists the CFPB sub-products it covers, and that the labels are exactly the profiled categories. No test is named for the prompt and both baselines reading the same list
+- a recorded Product that is not in the label set, and has no mapping, stops sampling with a clear message (B24). No test of the July `voc sample` is named for this. The load refuses such a Product (`test_B14_a_product_outside_the_label_list_is_refused` in `tests/test_load.py`), and June's sample has `test_J6_a_june_product_outside_the_label_set_is_refused` in `tests/test_june_sample.py`
 - Cochran's formula gives 385, 1,068 and 2,401 for margins of 5, 3 and 2 points at 95 percent and p = 0.5 (B25)
 - the finite pool correction makes n smaller for a small pool, and changes almost nothing for a large one (B25)
 - the split across Products follows the pool's shares and the parts add up to n exactly (B25)
@@ -269,7 +271,7 @@ The one scored run of the test set and its log are tested in `tests/test_test_ru
 
 ## Human review (B20), built as the review screen (spec 002, A12), `tests/test_analyst.py`
 
-- an analyst decision never changes the scored results: it is stored in `results/reviews/`, apart from the scored results file (review, written with the review screen)
+- an analyst decision never changes the scored results (review, written with the review screen). The tests show a decision is stored in `results/reviews/`, apart from the scored results file. No test checks that the scored file stays unchanged
 
 ## Results API and dashboard ([spec 002](../specs/002-results-api-dashboard/spec.md), A1 to A15)
 
@@ -278,7 +280,7 @@ Written from 29 October 2026, with spec 002. Test counts are collected tests, fr
 - the API reads only committed files, its routes are read only, a bad version name is a 404, it answers only on this computer, and its routes are the spec's. It is tested with FastAPI's in-process test client, so no socket is opened (A1, A3, A4, A5, A8, A14, `tests/test_api.py`, 75 tests)
 - no route serves complaint text or a field the spec does not name (A2, `tests/test_api.py`, `tests/test_analyst.py`)
 - `voc audit` writes its counts for the dashboard (A6, `tests/test_audit.py`)
-- the page has a tab for each analyst task and one for the method, figure tiles and a bar per product on the overview, and an explanation for each core term (A7, A10, A12, A13, A14, `tests/test_ui.py`, 52 tests)
+- the page has a tab for each analyst task and one for the method, figure tiles and a bar per product on the overview, and an explanation for each core term (A7, A10, A12, A13, A14, `tests/test_ui.py`, 52 tests, and A7 also in `tests/test_api.py`)
 - every request is logged as one line, and the counters add up (A9, `tests/test_api_log.py`, 16 tests)
 - the analyst screens serve the development set only, hide the consumer's own choice while a person decides, and store one review decision per quarantined complaint through one route (A10, A11, A12, `tests/test_analyst.py`, 39 tests). Complaint text is shown only when the owner starts the app with `--with-text`, and the read guard blocks Claude from passing it (A10, `tests/test_hooks.py`)
 - the public copy answers only to its own host name, serves no complaint text and stores no review (A13, `tests/test_public.py`, 21 tests)
@@ -912,7 +914,7 @@ Added on 4 November 2026 as the plan, revised twice the same day. Each piece was
 - Job B checks the run entry's hashes and the June and July hashes, refuses unless the workspace header names the cloud workspace and the cap covers the whole worst case, stops on a 400 "usage limits" answer with no retry, is one task that refuses an approval for another Job A run or one already used, and writes only the two results files to the results volume (J11, J12)
 - The copy script reads only the two results file names, refuses any other file, and checks the columns, the label and reason lists, the IDs, the size limit and the CFPB header (J11)
 - The copy script signs in only with the reader's credential, named in its call, and never with a default profile or the environment's `DATABRICKS_TOKEN` (J13, review of #87)
-- recordings, the ledger and the fitted model never leave the volume, and complaint text never reaches GitHub (J4). No test is named after J4. It is covered by the J11 tests of the results files and the copy script (`tests/test_june_results.py`, `tests/test_june_copy.py`) and the J5 tests of what each job prints
+- recordings, the ledger and the fitted model never leave the volume, and complaint text never reaches GitHub (J4). No test is named after J4. It is partly covered: the J11 tests of the results files and the copy script (`tests/test_june_results.py`, `tests/test_june_copy.py`) and the J5 tests of what each job prints check that no complaint text reaches GitHub. No test checks that the recordings, the ledger or the fitted model stay in the volume
 - the read guard protects `VOC_JUNE_DATA_DIR`, the raw volume, all Actions run logs, and the approval workflow's start (J6, J14): written in pull request 2, listed under Hooks. The June tables are named in pull request 5, and Claude never runs the Databricks CLI at all
 - the laptop path and the cloud path give the same July results on mock or replay (J8)
 - the contract (J16): each side reads and writes exactly the fields of its fixed sample messages in `tests/fixtures/june_contract/`, refuses another `contract` value, a missing field or a field of the wrong type, and checks IDs against `^[1-9][0-9]{0,18}$`. The workflow's `display_title` is compared whole, never in part. Before the approval, on every path, the workflow refuses a Job A run of another job, one that did not succeed, one that is not Job A's latest, and one whose exit value does not name the pin and list of its kind, and it prints the run's ID, kind, start time and figures in the step summary. It also refuses a repaired run and one that does not match the target row, the last row of `runs/JUNE_RUNS.md`. Job B makes the same checks, refuses a run attempt other than 1, a used GitHub run and a used Job A run for its row. The result message's bytes and signature follow J16's exact rules. The result message's signature is built over the timestamp, a dot and the raw body. Each test is written in the pull request of its side (5 to 8)
