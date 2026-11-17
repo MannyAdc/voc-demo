@@ -3872,3 +3872,5 @@ Times are local, 18 November.
 - No test changed, so no red commit is needed.
 - AI mistake, caught by the whole suite before the gate: A5's first note linked `docs/VALIDATION.md` a fourth time, and `test_V4_the_readme_links_the_write_up_in_one_line` expects three lines. Claude had searched the tests for the changed sentences, not for the link. The note now points to the page under "Read more" with no link, and `tests/test_validation.py` passes.
 - 08:08 Fixes written, before their gate. Claude ran the whole suite first: exit code 0.
+- Commit `eae6051` at 08:08 (git's commit time), through the gate, after the whole suite passed (exit code 0). Pushed at 08:21, and draft pull request #157 opened at 08:21.
+- One more fix, found by the fresh review of #155 (Minor 4, posted 08:14), and given to this pull request since it is in `docs/LIMITS.md`: the limit on the build log check said "Since 17 November", but #153 merged at 01:11 on 18 November (`e068cec`, `git log -1 --date=iso e068cec`). It now says "Since 18 November (#153)". No test pins the date. 08:38 Fix written, before its gate. Claude ran the whole suite first: exit code 0.
