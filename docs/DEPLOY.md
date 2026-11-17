@@ -167,7 +167,7 @@ Remove-Item "$env:TEMP\voc-credential.json"
 
 Then rerun the failed run from the Actions tab, or merge the next change.
 
-To stop automatic deploys, delete the federated credential or the three secrets. The script below still works by hand, but it needs `az login` on the machine that runs it (next section).
+To stop automatic deploys, delete the federated credential or the three secrets. The script below still works by hand, but it needs an Azure sign-in, and since 5 November the owner never signs in to Azure on the laptop (next section).
 
 ## Redeploying after a change
 

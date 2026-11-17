@@ -38,9 +38,9 @@ until the run ends either, or both gates and the real row must be done again.
 - **The money side.** The run's calls go through the June ledger, with its cap of 40,000,000 tokens, of which round
   6 used 8,013. The spec expects about $0.49 for the whole sample, at the July test run's $0.2373 per 1,000
   complaints: 0.2373 × 2,073 / 1,000 = 0.4919. Job A's figures round it up to the cent, so they show 0.50. The
-  worst case the ledger reserves is about 38.4 million tokens (spec 004, an estimate. *Measured on 14 November:* Job
-  A's figures printed 37,954,560), which would cost more than the $5 monthly
-  spend limit of the Claude Console workspace `voc-june-cloud`, so that limit is the hard stop. In the Console, open
+  worst case the ledger reserves is about 38.4 million tokens (spec 004's estimate), which would cost more than the
+  $5 monthly spend limit of the Claude Console workspace `voc-june-cloud`, so that limit is the hard stop.
+  *Measured on 14 November:* Job A's figures printed 37,954,560. In the Console, open
   `voc-june-cloud` and note the cost the key `voc-june-job-b` shows now.
 - **The Claude Console key and its limit.** In the Console, open the workspace `voc-june-cloud`. Its API keys page
   lists `voc-june-job-b` as **Active**, with an end date after the run. On 13 November your screenshot showed it
