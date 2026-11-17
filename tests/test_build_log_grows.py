@@ -64,9 +64,9 @@ EXPECTED_STEP = {
 
 def test_build_log_ci_step_cannot_swallow_a_failure():
     # Reviews two to four of #153 kept finding edits to ci.yml that turn the check off while a list of banned forms
-    # still passed. So the step, its job and the workflow's triggers are pinned exactly: any edit fails this test
-    # and has to be made, and reviewed, on purpose. A change to ci.yml can still turn off any check, together with
-    # this test (docs/LIMITS.md).
+    # still passed. So the step, its job and the workflow's triggers are pinned exactly: an edit to them fails this
+    # test. A change to ci.yml can still turn off any check, even with this test unchanged, for example through the
+    # workflow's env or an earlier step (docs/LIMITS.md).
     workflow = yaml.safe_load((REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
     triggers = workflow.get("on", workflow.get(True))
     assert triggers == {"pull_request": None, "push": {"branches": ["main"]}}
