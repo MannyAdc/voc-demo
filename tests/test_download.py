@@ -1,7 +1,7 @@
 """B16: the export file is pinned by SHA-256, and the download script never overwrites.
 
-The CFPB serves only its current export, so the July 2026 file cannot be
-downloaded again. It is pinned by name, size and SHA-256 in
+The CFPB's current export changes about daily, so it is not the July 2026 file
+this project uses. That file is pinned by name, size and SHA-256 in
 `config/data_files.toml`, and every command checks the local file against it.
 """
 import hashlib
