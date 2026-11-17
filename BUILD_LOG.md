@@ -3398,3 +3398,49 @@ Times are local, 17 November.
 - Minor 2 is not fixed here on purpose: `docs/LIMITS.md:60` is in the credentials group's pull request, #148, which fixes it. This pull request leaves that line alone.
 - The fixes: RESULTS gives V5's 213 of 351 (60.7%). The headers of LIMITS and RESULTS name the later pull requests (#57, #114, #138 and #146 for LIMITS, #146 for RESULTS). VALIDATION hedges the $0.49 total as line 3202 does. HOW_WE_MEASURE says June tested a different claim. LIMITS line 20 is split, says the ledger was a file and not a shared database, and keeps the ruleset apart from the June run. LIMITS line 29 adds the limit of 0 approvals (spec 004, Known limits). LIMITS line 18 says T014c was cut on 29 October. Spec 003's heading is restored with a dated note under it, spec 004's line 78 rule text is restored with a "Changed on 17 November" note, spec 002's health route gets its dated marker, and spec 004's two notes are dated. The status lines of specs 001, 002 and 004 name #146. The research answers cite the models overview, say the byte margin was checked for one model on 20 calls, and give dates. DATA says what LIMITS is cited for.
 - No serious finding and no code or test change, so no second review. 11:42 Fixes written, before their gate. Claude ran the whole suite first.
+
+### Pull request: the test list brought up to date
+
+Times are local, 17 November.
+
+- Work start, 10:24: branch `docs/stale-test-list`, worktree `../voc-demo-stale-tests`, from main at `9362f27` (git's reflog). Claude copied the main checkout's names deny list in, without reading it, and ran `uv sync --native-tls --locked`. This is group 5, the test list, of the owner's decision at 10:21 (#145's log), run in parallel with the other groups in their own worktrees.
+- Claude checked the second audit's finding 3 against `tests/` before changing anything. The counts:
+  - `uv run --no-sync pytest --collect-only -q` collected 2,888 tests in 55 files. `docs/TEST_LIST.md` has 578 lines that start with "- " (`grep -c "^- " docs/TEST_LIST.md`), so "Each line is one test" was wrong.
+  - `tests/test_output_safety.py` does not exist. 76 test functions in 19 files are named after B21 (`grep -c "def test_B21" tests/*.py`), 36 of them in `tests/test_hooks.py`. `analyse` is not a command of `src/voc/cli.py`.
+  - No test in `tests/` names the analyser or the spot check (`grep -ln "analyser\|analyse" tests/*.py` finds nothing). The B24 tests are in `tests/test_labels.py` (4) and the B25 tests in `tests/test_data.py` (7). No test was found for "a smaller test size is refused unless a reason is given", and no test of the July `voc sample` for an unmapped Product. June's has `test_J6_a_june_product_outside_the_label_set_is_refused`.
+  - 25 test files were never named in the list. Rule IDs with tests but no line: A1 to A15, V4 (31 test functions) and T021 (2). J4 had a line but no test named after it.
+- The change, in `docs/TEST_LIST.md` only:
+  - the status line says each line is a behaviour, grouped by rule, gives the real count with its command, and links all four specs
+  - the output safety section names the files where B21's tests are, with the count, and drops `analyse`, which was deferred
+  - the analyser and spot-check lines are marked not built, with the reason (T018a and T014c, 29 October)
+  - the B24 and B25 lines have their own section naming `tests/test_labels.py` and `tests/test_data.py`, and the two lines with no test say so
+  - "Human review, later feature" is retitled as built with the review screen (A12)
+  - a new section for spec 002, A1 to A15, names its test files with their collected counts
+  - V4 and T021 get lines, and each of the 25 unnamed files is named in its section
+  - the J4 line names the tests that cover it
+  - the CI section adds the June logs' grow checks, the June gates check and `tests/test_repo_checks.py`
+  - "June test in the cloud, planned" and "Later features" are retitled as built, with what was not built and why
+- Checked after the change: every `tests/...py` path the list names exists, every `tests/test_*.py` file is named, and the added lines have no em dash and no semicolon.
+- No code or test change, so no red commit. 10:34 Change written, before its gate. Claude ran the whole suite first.
+- Correction to the work start line above: it cites the owner's decision at 10:21 and the second audit's finding 3 from #145's log, which is not on `main`. Here they are in full. The owner's decision at 10:21 on 17 November, in answer to Claude's question: "Yes, in parallel (Recommended)", so the 49 stale or wrong claims found by three audits of every public page are fixed in five pull requests side by side, each in its own worktree: credentials and setup state, the rules files, limits and results overtaken by later work, the data source, stack and build totals, and the test list. This pull request is the test list. The audit finding it fixes: `docs/TEST_LIST.md` says "Each line is one test", though it has 578 lines for 2,888 collected tests, names `tests/test_output_safety.py`, which does not exist, lists five tests that do not exist (four for the analyser and one for the spot-check record), puts the B24 and B25 tests in the wrong file, has no section for spec 002, never names 25 test files, and keeps three section headers that call built work planned or later.
+- The whole suite passed before the commit.
+- Commit `ab89ac8` at 11:01 (git's commit time), through the gate, after the whole suite passed. Pushed.
+- 11:21 Draft pull request #149 opened.
+- 11:38 The fresh reviewer's findings on #149 were posted as a comment. It re-ran the count, 2,888 tests in 55 files, and found every named path and every test file in the list. Nothing serious. Seven minor: the B21 layer 1 section counted all 76 B21 functions, 36 of them hook tests (layer 3), `audit` was missing from the entry points, the B24 line claimed a "same list" check `tests/test_labels.py` does not make, the review screen line claimed the scored file stays unchanged, which no test checks, the J4 line overstated its cover, and this section cited #145's log for the owner's decision and the audit finding and had no suite, gate, commit, push or pull request line. Nine nits: "in seconds" with no measured time, "every later pull request", the injection tests under prompt parsing, a double blank line, the load test not named, a missing full stop, `tests/test_api.py` missing from the page line, the scheduled run's rules, and a time in the middle of an entry.
+- AI mistakes, caught by the reviewer: Claude counted the B21 tests of all three layers under layer 1, left `audit` out of the entry points, though spec 001's B21 names it, wrote that `tests/test_labels.py` checks the prompt and both baselines read the same list, and that a review decision never changes the scored results, without a test for either, called J4 covered, though nothing checks that the recordings, the ledger or the model stay in the volume, cited another pull request's log for the decision and the finding, and kept "in seconds" for a suite that takes minutes.
+- Owner decision ("Fix all in all four (Recommended)", 11:39): fix every finding of the four group pull requests' reviews, this one's included.
+- The fixes, in `docs/TEST_LIST.md`:
+  - the status line drops "in seconds" and gives the suite's measured time: 586 seconds in the gate's run of 16 November and 1,182 seconds on 17 November while other runs shared the machine, read from the `time` of the `testsuite` element in the gate's `staged.xml` (`grep -o '<testsuite [^>]*>' staged.xml`). It says "later pull requests"
+  - the output safety section says the 76 B21 functions cover all three layers: 36 hook tests (layer 3) and 40 entry point tests in 18 files (layer 1). `audit` is listed among the entry points, and the line ends with a full stop
+  - the injection tests have their own section, with their rules B5, B7, B9, B10 and B16
+  - the double blank line in the Loading section is one
+  - the B24 line says what `tests/test_labels.py` checks, and that no test is named for the prompt and both baselines reading the same list. The unmapped Product line names `test_B14_a_product_outside_the_label_list_is_refused`
+  - the review screen line says no test checks that the scored file stays unchanged
+  - the page line names `tests/test_api.py` for A7 too
+  - the scheduled run's note says its tests are named mostly after B14, B16, B17 and B21
+  - the J4 line says it is partly covered, and names the gap
+- Correction to the change line above: its time, 10:34, ends a line about the red commit. It belongs to its own entry: 10:34 Change written, before its gate.
+- No serious finding and no code or test change, so no second review. 11:43 Fixes written, before their gate. Claude ran the whole suite first.
+- Fix commit `c843deb` at 12:06 (git's commit time), through the gate, after the whole suite passed. Pushed. CI green on `c843deb`. 12:40 Claude's merge verdict on #149 was MERGE, posted as a comment, and Claude marked #149 ready. Also at 12:40, #146's verdict was MERGE and #146 was marked ready.
+- 12:45 The owner merged #146 (time from GitHub). `main` at `25bdf24`. The owner then reported that GitHub shows a merge conflict on #149.
+- 12:47 Claude merged `main` into this branch with a normal merge commit. The one conflict was in BUILD_LOG.md, where #146 and #149 each added a section at the end. Both sections are kept word for word, #146's first, since it merged first. Claude ran the whole suite on the merged tree first. It had one failure, `test_B18_the_printout_gives_precision_and_each_category` in `tests/test_test_run.py`, which passed when run alone. Six suites were running on the laptop at once. Its reason was not kept, since the command printed only the last lines, so a cause from the load is likely but not shown. The gate runs the whole suite again on the merge.
