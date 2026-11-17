@@ -57,14 +57,23 @@ owner still decides and merges.
      reason. Do not mark the pull request ready.
 
 5. Only after a MERGE verdict, and just before marking it ready, run `gh pr view <N> --json mergeable`.
-   Go on only when it says MERGEABLE. On UNKNOWN, GitHub has not worked it out yet: wait and read it
-   again. On CONFLICTING, the verdict no longer holds: merge `main` in and start again at step 1. Then
-   run `gh pr ready <N>` and write "PR #N is ready to merge." in the chat.
+   Go on only when it says MERGEABLE. On UNKNOWN, GitHub has not worked it out yet: read it again a
+   few minutes later, and after three reads tell the owner. On CONFLICTING, the verdict no longer
+   holds: merge `main` in as step 6 says, and start again at step 1. Then run `gh pr ready <N>` and
+   write "PR #N is ready to merge." in the chat.
 
-6. When other open pull requests change the same file as this one, mark ready and name only one of them
-   at a time. After the owner merges it, merge `main` into each other open pull request that changes
-   that file, with a normal merge commit, keeping every `BUILD_LOG.md` section word for word in merge
-   order. Then run this skill on each of them alone, from step 1, before marking it ready.
+6. When other open pull requests change the same file as this one:
+   - Mark ready and name only one of them at a time, the lowest number first, as the script orders
+     them.
+   - If one already marked ready turns CONFLICTING, first mark it a draft again
+     (`gh pr ready <N> --undo`).
+   - After each merge to `main`, merge `main` into each other open pull request that changes that
+     file. Each is a normal merge commit. Keep every `BUILD_LOG.md` section word for word, in merge
+     order.
+   - Log each merge commit, its conflicts and the suite result in `BUILD_LOG.md`. A conflict resolved
+     in any file other than `BUILD_LOG.md` gets a fresh review of the merge.
+   - Then run this skill on each of them alone, from step 1. A FIX FIRST goes to the owner, and the
+     next one may go ahead.
 
 ## Never
 
