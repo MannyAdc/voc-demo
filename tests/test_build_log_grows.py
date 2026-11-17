@@ -46,3 +46,14 @@ def test_build_log_ci_checks_that_the_build_log_only_grows_compared_with_main():
                and 'git show origin/main:BUILD_LOG.md > "$base"' in run
                and "git rev-parse --verify origin/main" in run
                for run in runs)
+
+
+def test_build_log_ci_step_cannot_swallow_a_failure():
+    # Second review of #153, nit 2: a skipped step or a swallowed exit code would turn the check off unseen.
+    workflow = yaml.safe_load((REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
+    job = workflow["jobs"]["repo-checks"]
+    steps = [step for step in job["steps"] if '"$base" BUILD_LOG.md' in step.get("run", "")]
+    assert len(steps) == 1
+    step = steps[0]
+    assert "if" not in step and "continue-on-error" not in step and "continue-on-error" not in job
+    assert "|| true" not in step["run"] and "|| :" not in step["run"] and "set +e" not in step["run"]
