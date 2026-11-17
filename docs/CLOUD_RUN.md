@@ -48,7 +48,7 @@ Two different AIs are called Claude here. **Claude Code** is the AI coding agent
 | Anthropic | Anthropic's Claude Console, workspace `voc-june-cloud` | the API key for the cloud run, with a spend limit of $5 a month |
 | The laptop | the raw data folders | the July, August and June files, with complaint text, outside the repo. The June sample was drawn here on 5 November |
 | | the Downloads folder | where the June zip was before the owner uploaded it |
-| | the home folder `.voc` | July's recordings, with each prompt, and the laptop's token ledger |
+| | the home folder `.voc` | the recordings of the July labelling, the judge and the consistency run, with each prompt, and the laptop's token ledger |
 | | the backup folder | a copy of the data files and the June recordings, kept in sync by a storage service this page does not name |
 | | `scripts/copy_june_results.py` | copies the two results files into `results/june/` |
 
@@ -144,7 +144,7 @@ Each step starts with who does it. Times are the owner's local time (UTC+11), fr
 
 ## What crosses each line
 
-This table covers the June run and its data files. The July labelling ran earlier, on the laptop: it sent each sampled July complaint to the Anthropic API, and the laptop keeps its recordings, with each prompt, in the home folder `.voc` (`src/voc/replay.py`). How to run that labelling is in [PIPELINE.md](PIPELINE.md).
+This table covers the June run and its data files. Three July steps ran earlier, on the laptop: the labelling, the judge (V5) and the consistency run (V1). Each sent sampled July complaints to the Anthropic API, and the laptop keeps their recordings, with each prompt, in the home folder `.voc` (`src/voc/replay.py`). How to run the labelling is in [PIPELINE.md](PIPELINE.md), and the judge and the consistency run are in [VALIDATION.md](VALIDATION.md).
 
 | From | To | What travels |
 |---|---|---|
