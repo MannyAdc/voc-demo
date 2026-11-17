@@ -1,6 +1,6 @@
 # Why this stack
 
-Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. On 4 November 2026, the baseline, TF-IDF with logistic regression, got the short name TF-IDF + LR (owner decision). On 17 November 2026, the claims overtaken by spec 004 were brought up to date: the cloud pieces, the June test's reason and the tool list. Back to the [README](../README.md).
+Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. On 4 November 2026, the baseline, TF-IDF with logistic regression, got the short name TF-IDF + LR (owner decision). On 17 November 2026, the claims overtaken by spec 004 were brought up to date: the cloud pieces, the dbt runs on Databricks, the laptop's share of the work, the June test's reason and the tool list. Back to the [README](../README.md).
 
 ## Why this stack
 
@@ -20,7 +20,7 @@ The judgement here is to use the simplest tool that does the job. No tool was ad
 - There are many pipelines that depend on each other, retries for each step, or backfills of past months. Then a scheduler such as Airflow earns its cost (see the scheduler note under Scale in [RESULTS.md](RESULTS.md)). For the synthetic run, one scheduled GitHub Actions job is enough.
 - A run must happen with no laptop step, behind an approval before any paid call. That, not the data's size, is why the June test ran in the cloud: the owner uploads the month's file, Databricks checks it and works out the figures, and the second job labels only after the owner approves them ([spec 004](../specs/004-june-test-and-baselines/spec.md), Input and J8).
 
-Versions are the pins in `pyproject.toml`. Its dependency groups add the public copy's packages (`public`, exported to `requirements.txt`), the Databricks adapter (`databricks`) and Job B's packages (`cloud`, compiled to `cloud/job_b/requirements.txt`).
+Versions are the pins in `pyproject.toml`. Its dependency groups add the public copy's runtime packages (`public`, exported to `requirements.txt`), the Databricks adapter (`databricks`) and Job B's packages (`cloud`, compiled to `cloud/job_b/requirements.txt`).
 
 - **DuckDB** (`duckdb==1.5.6`): one local file, no server, enough for a monthly export of 216 MB (216,250,982 bytes, `config/data_files.toml`).
 - **dbt** (`dbt-core==1.12.6`, `dbt-duckdb==1.11.0`, and `dbt-databricks==1.13.0` in the `databricks` group): the models and data tests live as reviewed code, with incremental loads keyed on complaint ID.
@@ -29,8 +29,8 @@ Versions are the pins in `pyproject.toml`. Its dependency groups add the public 
 - **FastAPI** (`fastapi==0.143.0`, with `starlette==1.7.0` and `uvicorn==0.54.0`): a small read-only API and dashboard over the committed results.
 - **uv**: one lock file (`uv.lock`), so every machine and CI install the same versions.
 
-The cloud pieces, outside `pyproject.toml`:
+The cloud pieces:
 - **Azure App Service**: hosts the public dashboard ([DEPLOY.md](DEPLOY.md)).
 - **Azure Functions, with a storage account and a Key Vault**: the June test's receiver, with its own pins in `receiver/requirements.txt` ([RECEIVER_STEPS.md](RECEIVER_STEPS.md)).
-- **Databricks jobs**: Job A and Job B of the June test, defined in `cloud/job_a.yml` and `cloud/job_b.yml`, and the failing-row check before it, `cloud/failcheck.yml`. Job A's dbt task pins `dbt-databricks==1.13.0` in `cloud/job_a.yml`, and Job B's pins are in `cloud/job_b/requirements.txt`, compiled from the `cloud` group.
+- **Databricks jobs**: Job A and Job B of the June test, defined in `cloud/job_a.yml` and `cloud/job_b.yml`, and the failing-row check, `cloud/failcheck.yml`, a gate run on 13 November before the June run's real row. Its job is made for each check and deleted after (`cloud/failcheck/STEPS.md`). Job A's dbt task pins `dbt-databricks==1.13.0` in `cloud/job_a.yml`, and Job B's pins are in `cloud/job_b/requirements.txt`, compiled from the `cloud` group.
 - **GitHub Actions**: CI, the daily synthetic run, the two deploys and the June approval workflow (`.github/workflows/`).
