@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-28
 
-**Status**: Approved by the owner 2026-10-28. Revised after review rounds 1 to 4 and the owner's decisions of 28 October. Built. Last changed in #104, merged on 9 November, then in #146 and #150 (17 November). Open in `tasks.md`: T014c (the `show` command, cut), T018a (the analyser, deferred) and T018 (error analysis and prompt versions after v1).
+**Status**: Approved by the owner 2026-10-28. Revised after review rounds 1 to 4 and the owner's decisions of 28 October. Built. Last changed in #104, merged on 9 November, then in #146, #148 and #150 (17 November). Open in `tasks.md`: T014c (the `show` command, cut), T018a (the analyser, deferred) and T018 (error analysis and prompt versions after v1).
 
 **Input**: User description: "Label each CFPB consumer complaint by Product with an LLM. Every label quotes the sentence that supports it. A script checks the quote. Labels that fail go to quarantine with a reason. Compare against simple baselines at the same coverage."
 
@@ -48,7 +48,7 @@ The guards in this spec (hooks, checks, logs, the spend stop) are built to stop 
 - A month build's work folder is outside the repo's guards. If Databricks fails to read a row, dbt's log there can hold part of it. Nothing is printed, and the owner's steps delete the folder after the run.
 - August's row count is not pinned, so on Databricks August is checked by its SHA-256 and values, not by its count.
 - The real exports, with their narrative text, are in the owner's Databricks workspace (owner decision, 31 October 2026). The CFPB publishes them for anyone to use. Only the owner can open the workspace. Claude never reads the text: the commands print counts and check names only.
-- The Databricks run uses the owner's Free Edition workspace, which is for non-commercial use only. Its token is the owner's, kept encrypted on the owner's machine, and never in the repo.
+- The Databricks run uses the owner's Free Edition workspace, which is for non-commercial use only. Its token is the owner's, kept encrypted on the owner's machine, and never in the repo. *On 6 November the owner revoked it and deleted its encrypted copy (spec 004, J13, and `BUILD_LOG.md`).*
 
 ## User Scenarios & Testing *(mandatory)*
 
