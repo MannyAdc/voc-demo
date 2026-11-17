@@ -150,6 +150,7 @@ def test_J8_readme_links_the_cloud_page():
 
 def test_J8_readme_links_the_cloud_page_near_the_top_and_from_the_june_result():
     readme = (REPO / "README.md").read_text(encoding="utf-8")
+    assert "## 🎯 In one minute" in readme
     top = readme.split("## 🎯 In one minute")[0]
     assert "(docs/CLOUD_RUN.md)" in top
     june = next(line for line in readme.splitlines() if line.startswith("**June 2026: the untouched test of the mix.**"))
