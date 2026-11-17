@@ -3866,3 +3866,19 @@ Times are local, 18 November.
 - D11, fixed: the test list says CI is green when every check finished with success or neutral (`GREEN` in `src/voc/merge_verdict.py`).
 - No test pins the changed text, so no test changed and there is no red commit.
 - 07:51 Fixes written, before their gate. Claude ran the whole suite first: exit code 0.
+- Commit `37fcf0a` at 07:51 (git's commit time), through the gate, after the whole suite passed (exit code 0). Pushed at 08:05, and draft pull request #156 opened at 08:07, after #155, so the specs pull request has the lower number.
+- 08:14 The fresh reviewer's findings on #156 were posted as a comment. D2 to D6 and D9 to D11 hold, the guard answers the same at `b708392` and at the head, and the log only grows. Nothing serious. Five minor: the links to "The final audit of every page" resolve only once #155 is on `main`, the test list says deleting a variable is tested though only setting is, CLAUDE.md's claim that #12 had the checks by hand is not in the log, reading is allowed only for the repo's variables since an environment's are denied, and `tasks.md` still says "from T007 on". Four nits: the cloud run page tests were first written on 16 November, uneven line breaks in the guard's docstring and the skill, the skill's step 4 still describes a script MERGE, and the Known limit's owner decision has no date.
+- AI mistakes, caught by the reviewer: Claude wrote that deleting a variable is tested without checking the test, which tries only `gh variable set`. Claude wrote that T007's #12 had the checks by hand, which the log does not say (it says "marked ready after CI", line 197). Claude wrote that reading variables is allowed, though that holds only for the repo's variables. And Claude fixed "from T007 on" in CLAUDE.md and the skill but missed the same words in `specs/001-core-labelling-pipeline/tasks.md`.
+- 08:14 Claude recommended fixing all nine as text, with no second review.
+- Owner decision ("Fix all, no 2nd review (Recommended)", 08:15): fix all nine as text, with no second review.
+- Each finding checked against its source first. All nine hold. The guard itself refused Claude's probe command that named an environment's variables path, which confirms the fourth minor.
+- Minor 1: no file change. #155 is to be named ready and merged before this pull request, so both links resolve on `main`. The pull request's text cannot be edited by Claude, so the order is logged here.
+- Minor 2, fixed: the test list says `gh variable set` is denied and tested, and `gh variable delete` is denied by the same pattern, which no test tries.
+- Minor 3, fixed: CLAUDE.md's sentence about pull requests before #30, with #12, is taken out. Correction to the D9 line above: CLAUDE.md no longer says that #12 had the checks by hand.
+- Minor 4, fixed: CLAUDE.md, the test list and spec 004's Known limit say "the repo's variables", and the latter two say an environment's variables are denied by the environments rule.
+- Minor 5, fixed: `specs/001-core-labelling-pipeline/tasks.md` has a dated note at T006b: T007 merged in #12 before the command existed, so it was used from #30 on (`BUILD_LOG.md`, 29 October, 15:03).
+- Nit 6, fixed: the test list says the cloud run page tests were written on 16 and 17 November, in #145 (first test commit `e8dd2d9`, 16 November).
+- Nit 7, fixed: the guard's docstring and the skill's opening paragraph are re-wrapped, text only.
+- Nit 8, fixed: the skill's step 4 gives MERGE when the script said PENDING and every FOR CLAUDE item holds, "or if the script ever says MERGE".
+- Nit 9, fixed: spec 004's Known limit gives the owner decision's date, 18 November, 07:22.
+- 08:31 Fixes written, before their gate. Claude ran the whole suite first: exit code 0.

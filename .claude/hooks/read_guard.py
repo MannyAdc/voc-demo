@@ -37,9 +37,9 @@ spec 004). Claude's `gh` signs in
 as the owner, who approves the June run, so a command that reads an Actions
 run log or artifact, starts, re-runs, cancels or deletes a run, approves a
 deployment, uses the environments or secrets APIs, sets or deletes a
-variable, writes through the REST API or a GraphQL mutation, changes the repo's settings, prints the
-token, sets an alias or an extension, or merges, by `gh` or by the API, is
-denied too. Flags between `gh`, its group and its subcommand change nothing.
+variable, writes through the REST API or a GraphQL mutation, changes the
+repo's settings, prints the token, sets an alias or an extension, or merges,
+by `gh` or by the API, is denied too. Flags between `gh`, its group and its subcommand change nothing.
 Reads through `gh api` stay allowed.
 """
 import json

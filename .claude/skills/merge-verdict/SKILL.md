@@ -9,9 +9,8 @@ disable-model-invocation: false
 # /merge-verdict
 
 Runs before Claude marks a pull request ready, on every pull request since #30 (T006b), where it was built
-and first run. A script runs
-the mechanical checks. Claude judges the rest and gives the verdict. The verdict is a recommendation. The
-owner still decides and merges.
+and first run. A script runs the mechanical checks. Claude judges the rest and gives the verdict. The
+verdict is a recommendation. The owner still decides and merges.
 
 ## Steps
 
@@ -53,8 +52,8 @@ owner still decides and merges.
    - Tests on the merge, when not run: run again with `--test-merge`.
 
 4. Write one line in the chat:
-   - `MERGE: <reason>` when the script said MERGE, or said PENDING and Claude has checked that every
-     FOR CLAUDE item holds. For parallel branches, add the merge order the script printed.
+   - `MERGE: <reason>` when the script said PENDING and Claude has checked that every FOR CLAUDE item
+     holds, or if the script ever says MERGE. For parallel branches, add the merge order the script printed.
    - `FIX FIRST: <reason>` otherwise, and always after a script FIX FIRST. Give it to the owner with its
      reason. Do not mark the pull request ready.
 
