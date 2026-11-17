@@ -75,4 +75,4 @@ A Voice of the Customer analyst at a financial-services company.
 - One month of data (July 2026), so there is no trend over time.
 - The recorded product was chosen by the consumer, and the consumer may have picked the wrong product. So the AI can be right and still be scored wrong.
 - Complaint text is shown only when the owner starts the app on their own machine with the flag `--with-text`, with the local data. Without it, and on any public copy, the screens show IDs, labels and reasons only. The coding agent never passes that flag and never opens a page served with it.
-- These screens need the specs to change: spec 002 today says the app writes nothing and shows no complaint text. The screens' pull request changes it, with the owner's decision.
+- These screens needed the specs to change. Spec 002 was changed on 30 October, with the owner's decision (A10 to A12).
