@@ -1,7 +1,8 @@
 """Download the CFPB's current complaint export (B16).
 
-The CFPB serves only its current export, updated about daily. So this script
-fetches today's file, not the July 2026 file this project is pinned to. It
+The CFPB's current export is updated about daily, and on 4 November 2026 it had
+no narrative column (spec 004). So this script fetches today's file, not the
+July 2026 file this project is pinned to. It
 never overwrites a file, and a failed download leaves nothing behind. It
 prints the file's name, size and SHA-256, so the file can be pinned.
 

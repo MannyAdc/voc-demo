@@ -1,10 +1,10 @@
 # Why this stack
 
-Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. On 4 November 2026, the baseline, TF-IDF with logistic regression, got the short name TF-IDF + LR (owner decision). Back to the [README](../README.md).
+Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. On 4 November 2026, the baseline, TF-IDF with logistic regression, got the short name TF-IDF + LR (owner decision). On 17 November 2026, the claims overtaken by spec 004 were brought up to date: the cloud pieces, the June test's reason and the tool list. Back to the [README](../README.md).
 
 ## Why this stack
 
-The judgement here is to use the simplest tool that does the job. No tool was added for show. Databricks was first added (T021) to show that the dbt models carry over to another platform. *Changed on 4 November (constitution 2.1.0):* the June test of spec 004 then used Databricks' jobs, its volume and its file-arrival trigger, an Azure Function with its storage queue and table, an Azure Key Vault and a GitHub approval workflow, for that one run ([spec 004](../specs/004-june-test-and-baselines/spec.md), J8 to J13).
+The judgement here is to use the simplest tool that does the job. No tool was added for show. Databricks was first added (T021) to show that the dbt models carry over to another platform. *Changed on 17 November:* the June test of spec 004 then used more cloud pieces, for that one run (constitution 2.1.0, 4 November). They are Databricks' jobs, its volume and its file-arrival trigger, an Azure Function with its storage queue and table, an Azure Key Vault and a GitHub approval workflow ([spec 004](../specs/004-june-test-and-baselines/spec.md), J8 to J13).
 
 **Size.** The July 2026 export holds 672,036 complaints ([docs/DATA.md](DATA.md), `results/profile_july_2026.json`). The file is 216,250,982 bytes (`config/data_files.toml`). That fits on one laptop. A Spark cluster or a cloud warehouse would add setup time, cost and accounts, with no gain at this size.
 
@@ -12,7 +12,7 @@ The judgement here is to use the simplest tool that does the job. No tool was ad
 
 **Anyone can run it.** The tests, the dbt build on the synthetic fixture and the dashboard need no account, no key and no money. After `uv sync`, each is one command (see "Run it yourself" in [PIPELINE.md](PIPELINE.md)). CI runs the same dbt build, with its data tests, on the committed synthetic fixture with no network (`.github/workflows/ci.yml`).
 
-**Time goes to verification, not infrastructure.** For the July pipeline, with no cluster or warehouse to set up, the time went to the quote check (`src/voc/evidence.py`), the evaluation against TF-IDF with logistic regression (TF-IDF + LR) with a paired bootstrap ([docs/HOW_WE_MEASURE.md](HOW_WE_MEASURE.md)), and the tests written before the code.
+**Time goes to verification, not infrastructure.** For the labelling and scoring on the laptop, with no cluster or warehouse to set up, the time went to the quote check (`src/voc/evidence.py`), the evaluation against TF-IDF with logistic regression (TF-IDF + LR) with a paired bootstrap ([docs/HOW_WE_MEASURE.md](HOW_WE_MEASURE.md)), and the tests written before the code.
 
 **When to switch.**
 - The data no longer fits on one machine. Then the dbt models can move to a warehouse through its adapter. The Databricks run showed this on synthetic data, through another adapter. It did not show how a large load would move. *Added on 31 October:* the same models then ran on Databricks on the real July and August exports, 1,339,176 rows in the two files, with the same row counts as the local build ([PIPELINE.md](PIPELINE.md), "The real exports on Databricks"). That is two monthly files on the smallest warehouse, still not a large load.
@@ -20,17 +20,17 @@ The judgement here is to use the simplest tool that does the job. No tool was ad
 - There are many pipelines that depend on each other, retries for each step, or backfills of past months. Then a scheduler such as Airflow earns its cost (see the scheduler note under Scale in [RESULTS.md](RESULTS.md)). For the synthetic run, one scheduled GitHub Actions job is enough.
 - A run must happen with no laptop step, behind an approval before any paid call. That, not the data's size, is why the June test ran in the cloud: the owner uploads the month's file, Databricks checks it and works out the figures, and the second job labels only after the owner approves them ([spec 004](../specs/004-june-test-and-baselines/spec.md), Input and J8).
 
-Versions are the pins in `pyproject.toml`.
+Versions are the pins in `pyproject.toml`. Its dependency groups add the public copy's packages (`public`, exported to `requirements.txt`), the Databricks adapter (`databricks`) and Job B's packages (`cloud`, compiled to `cloud/job_b/requirements.txt`).
 
 - **DuckDB** (`duckdb==1.5.6`): one local file, no server, enough for a monthly export of 216 MB (216,250,982 bytes, `config/data_files.toml`).
 - **dbt** (`dbt-core==1.12.6`, `dbt-duckdb==1.11.0`, and `dbt-databricks==1.13.0` in the `databricks` group): the models and data tests live as reviewed code, with incremental loads keyed on complaint ID.
 - **scikit-learn** (`scikit-learn==1.9.1`): the baseline, TF-IDF word scores fed into a logistic regression (settings in `config/tfidf.toml`). It is cheap, fast and well understood, which makes it the honest thing to beat.
 - **Anthropic SDK** (`anthropic==1.13.0`) with claude-haiku-5-5: Anthropic's low-cost model for high-volume work such as classification, at $0.10 per million input tokens and $0.50 per million output tokens (`config/prices.toml`, from the [pricing page](https://platform.claude.com/docs/en/about-claude/pricing), checked 28 October 2026).
-- **FastAPI** (`fastapi==0.143.0`, with `uvicorn==0.54.0`): a small read-only API and dashboard over the committed results.
+- **FastAPI** (`fastapi==0.143.0`, with `starlette==1.7.0` and `uvicorn==0.54.0`): a small read-only API and dashboard over the committed results.
 - **uv**: one lock file (`uv.lock`), so every machine and CI install the same versions.
 
 The cloud pieces, outside `pyproject.toml`:
 - **Azure App Service**: hosts the public dashboard ([DEPLOY.md](DEPLOY.md)).
 - **Azure Functions, with a storage account and a Key Vault**: the June test's receiver, with its own pins in `receiver/requirements.txt` ([RECEIVER_STEPS.md](RECEIVER_STEPS.md)).
-- **Databricks jobs**: Job A and Job B of the June test, defined in `cloud/job_a.yml` and `cloud/job_b.yml`, with Job B's pins in `cloud/job_b/requirements.txt`.
+- **Databricks jobs**: Job A and Job B of the June test, defined in `cloud/job_a.yml` and `cloud/job_b.yml`, and the failing-row check before it, `cloud/failcheck.yml`. Job A's dbt task pins `dbt-databricks==1.13.0` in `cloud/job_a.yml`, and Job B's pins are in `cloud/job_b/requirements.txt`, compiled from the `cloud` group.
 - **GitHub Actions**: CI, the daily synthetic run, the two deploys and the June approval workflow (`.github/workflows/`).
