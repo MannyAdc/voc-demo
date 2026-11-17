@@ -8,7 +8,8 @@ disable-model-invocation: false
 
 # /merge-verdict
 
-Runs before Claude marks a pull request ready, on every pull request from T007 on (T006b). A script runs
+Runs before Claude marks a pull request ready, on every pull request since #30 (T006b), where it was built
+and first run. A script runs
 the mechanical checks. Claude judges the rest and gives the verdict. The verdict is a recommendation. The
 owner still decides and merges.
 
@@ -32,11 +33,12 @@ owner still decides and merges.
 
 2. Read each line. PASS and FAIL are mechanical. FOR CLAUDE is a judgement the script cannot make. The
    last line and the exit code give the script's result:
-   - `MERGE` (exit 0): every check passed.
    - `FIX FIRST: <reasons>` (exit 1): at least one check failed.
    - `PENDING: Claude must judge: <items>` (exit 3): nothing failed, but the FOR CLAUDE items are open.
-     This is not a MERGE. It is the usual result, because the review and the build log are always
-     FOR CLAUDE.
+     This is not a MERGE. The script prints it whenever nothing fails, because the review and the build
+     log are always FOR CLAUDE.
+   - `MERGE` (exit 0) would mean every check passed with no FOR CLAUDE item. Since the review and the
+     build log are always FOR CLAUDE, the script never prints it today.
    - Exit 2: the data could not be read, or the script crashed (printed as the error type only). Report
      that and stop.
 

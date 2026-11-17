@@ -3847,3 +3847,22 @@ Times are local, 18 November.
 - 01:57 Claude recommended fixing all ten as text, with no second review, since no code or test changed and nothing was serious.
 - Owner decision ("Fix all, no 2nd review (Recommended)", 01:58): fix all ten as text, with no second review.
 - The fixes: CLAUDE.md's rule is now two bullets plus a note on the script, and the skill's steps 5 and 6 say the same. The `mergeable` read applies to every pull request, with three reads on UNKNOWN before telling the owner, and on CONFLICTING a merge of `main` and a new verdict. With several pull requests that change the same file: one named ready at a time, lowest number first as the script orders them, a ready one that turns CONFLICTING is made a draft again first, `main` is merged into each other open pull request that changes that file, each merge commit, its conflicts and the suite result are logged, and the next one may go ahead after a FIX FIRST. Claude's design choice, for the owner to see: a conflict resolved in any file other than `BUILD_LOG.md` gets a fresh review of the merge, and a conflict in `BUILD_LOG.md` alone does not, since its sections are kept word for word and CI checks that the log only grows. 02:09 Fixes written, before their gate. Claude ran the whole suite first: exit code 0.
+
+### Pull request: audit fixes in the rules and the test list
+
+Times are local, 18 November.
+
+- The audit and the owner's decisions are in "The final audit of every page". This pull request fixes auditor D's 11 findings, on branch `docs/audit-rules`. Claude checked each finding against its source before the fix. None was wrong.
+- D1, fixed: `docs/TEST_LIST.md` now says the suite on `main` at `b708392` collected 2,910 tests in 58 files on 18 November (`uv run --no-sync pytest --collect-only -q`, recounted in this worktree), not 2,888 in 55.
+- D2, fixed: `docs/TEST_LIST.md` has a section for `tests/test_cloud_run_page.py` (J8, J15, written in #145), with one line per behaviour its 11 tests check.
+- D3, fixed: the line "`show` refuses test rows unless `final` is given" is marked not built, since `show` was cut on 29 October (T014c), and no such test exists.
+- D4, fixed: the check that no tracked Parquet, JSONL or headerless CSV holds a real-format ID with a text field is marked not built. T012 was done in #19 without it, and `src/voc/repo_checks.py` checks only the CFPB header row. No Parquet or JSONL file is tracked (`git ls-files`).
+- D5, fixed: the two lines "deferred to T015" and "deferred to T011" now name the CI steps that built them, in `.github/workflows/ci.yml`.
+- D6, fixed: the build log line names `scripts/check_test_runs.py` instead of "the same script".
+- D7, fixed as text, as the owner chose at 07:22 ("Fix the text (Recommended)"): CLAUDE.md, `docs/TEST_LIST.md` and the guard's docstring and refusal message in `.claude/hooks/read_guard.py` say the guard blocks setting and deleting a variable, not reading. Spec 004's Known limits names the reads. J14's own list never named variables, so it is unchanged. The guard's behaviour is unchanged. Claude checked it with the guard's `decide()` on made-up commands: `gh variable list`, `gh variable get X` and `gh api repos/o/r/actions/variables` allowed, `gh variable set X`, `gh variable delete X` and `gh secret list` denied.
+- D8, fixed: CLAUDE.md says "90 test functions on 18 November, which pytest collects as 128 tests" (85, 35 and 8 from the three files, counted with `--collect-only`), and that tests for a task start with the task ID, such as `test_T006b_`.
+- D9, fixed: CLAUDE.md and the merge-verdict skill say the command runs since #30 (T006b), where it was built and first run (`BUILD_LOG.md` line 444), not "from T007 on". CLAUDE.md adds that pull requests before it, T007's #12 among them, had the checks by hand.
+- D10, fixed: the skill says the script prints PENDING whenever nothing fails, and never prints MERGE today, since the review and the build log are always FOR CLAUDE (`src/voc/merge_verdict.py`, `check_review` and `check_build_log`).
+- D11, fixed: the test list says CI is green when every check finished with success or neutral (`GREEN` in `src/voc/merge_verdict.py`).
+- No test pins the changed text, so no test changed and there is no red commit.
+- 07:51 Fixes written, before their gate. Claude ran the whole suite first: exit code 0.

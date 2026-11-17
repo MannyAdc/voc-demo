@@ -36,8 +36,8 @@ that sign-in file. Azure's own saved sign-in is not named (Known limits in
 spec 004). Claude's `gh` signs in
 as the owner, who approves the June run, so a command that reads an Actions
 run log or artifact, starts, re-runs, cancels or deletes a run, approves a
-deployment, uses the environments, secrets or variables APIs, writes through
-the REST API or a GraphQL mutation, changes the repo's settings, prints the
+deployment, uses the environments or secrets APIs, sets or deletes a
+variable, writes through the REST API or a GraphQL mutation, changes the repo's settings, prints the
 token, sets an alias or an extension, or merges, by `gh` or by the API, is
 denied too. Flags between `gh`, its group and its subcommand change nothing.
 Reads through `gh api` stay allowed.
@@ -166,7 +166,8 @@ API_WRITE = re.compile(r"(?:-x|--method)[\s=]*(?:post|put|patch|delete)\b")
 API_FIELDS = re.compile(r"(?:^|\s)(?:-f|--field|--raw-field|--input)(?=[\s=]|$)")
 API_GET = re.compile(r"(?:-x|--method)[\s=]*get\b")
 GITHUB_DENIED = ("github guard: only the owner reads Actions run logs and artifacts, starts, re-runs, cancels or "
-                 "deletes a run, approves a deployment, uses the environments, secrets and variables APIs, writes "
+                 "deletes a run, approves a deployment, uses the environments and secrets APIs, sets or deletes a "
+                 "variable, writes "
                  "through the API, changes the repo's settings, reads the token, sets an alias or an extension, or "
                  "merges (spec 004, J14). Text that names them goes in a file.")
 
