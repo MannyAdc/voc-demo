@@ -15,8 +15,9 @@ def _deny():
     return json.loads((REPO / ".claude" / "settings.json").read_text(encoding="utf-8"))["permissions"]["deny"]
 
 
-# CLAUDE.md, "Who does what": the required deny patterns for git and gh, each for both shells. Forms left uncovered,
-# as best effort: colon refspecs such as `origin :x` and `feat:main`, combined flags such as `-uf`, and `git -C . push`.
+# CLAUDE.md, "Who does what": the required deny patterns for git and gh, each for both shells. Forms left uncovered, as
+# best effort, include colon refspecs such as `origin :x` and `feat:main`, combined flags such as `-uf`, `git -C . push`,
+# `git push origin refs/heads/main` and `gh pr -R o/r merge 1` (which the read guard catches).
 REQUIRED_FOR_GIT_AND_GH = [
     # Force pushes, also by a "+" refspec.
     "git push --force*", "git push -f*", "git push * --force*", "git push * -f*", "git push * +*",
@@ -34,10 +35,12 @@ REQUIRED_FOR_GIT_AND_GH = [
     "gh pr merge*",
 ]
 
-# Commands CLAUDE.md lets Claude run, which no deny rule may block.
+# A fixed list of commands CLAUDE.md lets Claude run, which no deny rule may block.
 ALLOWED = [
     "git push -u origin docs/x", "git push -q -u origin docs/x", "git push origin docs/x", "git push",
-    "git branch", "git branch -a", "gh pr create --draft", "gh pr comment 1", "gh pr ready 1",
+    "git branch", "git branch -a", "git branch --show-current", "git merge --no-commit --no-ff origin/main",
+    "gh pr create --draft", "gh pr create --draft --base main --head docs/x --title t --body-file f",
+    "gh pr comment 1", "gh pr ready 1", "gh pr view 1 --json state", "gh pr checks 1",
 ]
 
 
@@ -73,8 +76,21 @@ def test_who_does_what_the_matcher_follows_the_permissions_page():
     assert _matches("Bash(git push * -d *)", "git push origin -d x")
     assert not _matches("Bash(git push * -d *)", "git push -d origin x")
     assert _matches("Bash(ls:*)", "ls -la") and _matches("Bash(ls *)", "ls -la")
+    assert not _matches("Bash(ls *)", "lsof")
     assert _matches("PowerShell(git branch -D*)", "git branch -d x")
     assert not _matches("Bash(git branch -D*)", "git branch -d x")
+
+
+def test_who_does_what_no_deny_rule_for_git_and_gh_uses_the_colon_wildcard():
+    # The permissions page reads a trailing `:*` as a wildcard, not a literal colon, and does not say how a space
+    # before it is read, so no rule relies on it.
+    rules = [rule for rule in _deny() if re.fullmatch(r"(Bash|PowerShell)\((git|gh) .*\)", rule)]
+    assert rules and not [rule for rule in rules if ":*" in rule]
+
+
+def test_who_does_what_a_delete_flag_at_the_end_of_a_push_is_denied_in_both_shells():
+    deny = _deny()
+    assert "Bash(git push * -d)" in deny and "PowerShell(git push * -d)" in deny
 
 
 def test_who_does_what_every_deny_rule_for_git_and_gh_has_a_twin_in_the_other_shell():
