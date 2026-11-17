@@ -48,6 +48,7 @@ Two different AIs are called Claude here. **Claude Code** is the AI coding agent
 | Anthropic | Anthropic's Claude Console, workspace `voc-june-cloud` | the API key for the cloud run, with a spend limit of $5 a month |
 | The laptop | the raw data folders | the July, August and June files, with complaint text, outside the repo. The June sample was drawn here on 5 November |
 | | the Downloads folder | where the June zip was before the owner uploaded it |
+| | the home folder `.voc` | July's recordings, with each prompt, and the laptop's token ledger |
 | | the backup folder | a copy of the data files and the June recordings, kept in sync by a storage service this page does not name |
 | | `scripts/copy_june_results.py` | copies the two results files into `results/june/` |
 
@@ -143,7 +144,7 @@ Each step starts with who does it. Times are the owner's local time (UTC+11), fr
 
 ## What crosses each line
 
-This table covers the June run and its data files. The July labelling and scoring ran earlier, on the laptop: it sent each July complaint to the Anthropic API and kept its recordings, with each prompt, in the home folder `.voc`. That part is in [PIPELINE.md](PIPELINE.md).
+This table covers the June run and its data files. The July labelling ran earlier, on the laptop: it sent each sampled July complaint to the Anthropic API, and the laptop keeps its recordings, with each prompt, in the home folder `.voc` (`src/voc/replay.py`). How to run that labelling is in [PIPELINE.md](PIPELINE.md).
 
 | From | To | What travels |
 |---|---|---|
@@ -154,7 +155,7 @@ This table covers the June run and its data files. The July labelling and scorin
 | the receiver | Databricks | a question: did this run succeed? |
 | the receiver | GitHub | a look at the workflow's runs, then the start of the approval workflow, with Job A's run ID |
 | GitHub | Databricks | read Job A's figures, start Job B, look at Job B's run. Both Databricks jobs also fetch their code from this repo's `main` |
-| GitHub | the chat with Claude Code | the printed figures, pasted by the owner: run IDs, times and counts, no complaint text |
+| GitHub | the chat with Claude Code | the printed figures, pasted by the owner: run IDs, times, counts, the kind and the expected cost, no complaint text |
 | Databricks | GitHub | Job B reads the approval, on the public API, with no token |
 | GitHub | the receiver | the signed result: run IDs, how Job B ended, counts |
 | Databricks | the laptop, then this repo | the two results files: IDs, labels, confidences, quote positions, reasons, counts and hashes, the columns J11 lists |

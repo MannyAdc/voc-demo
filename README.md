@@ -12,7 +12,7 @@ The task is kept simple on purpose: label each customer complaint by product. Th
 
 📒 **Every step, decision and AI mistake:** [BUILD_LOG.md](BUILD_LOG.md)
 
-☁️ **How the June test ran in the cloud** (Databricks, Azure and GitHub), with a diagram, who did each step by hand, and where complaint text went: [docs/CLOUD_RUN.md](docs/CLOUD_RUN.md)
+☁️ **How the second test, on June 2026 complaints, ran in the cloud** (Databricks, Azure, GitHub and the Anthropic API), with a diagram, who did each step by hand, and where complaint text went: [docs/CLOUD_RUN.md](docs/CLOUD_RUN.md)
 
 ## 🎯 In one minute
 
