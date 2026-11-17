@@ -46,7 +46,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Run: `uv run pytest`
 - Tests never open a network connection or call a model. `tests/conftest.py` blocks sockets.
 - Tests check behaviour against the spec. Label quality is measured by `/eval`, not by tests.
-- Test names start with the rule ID: `test_B1_...`. The exception is the tests of the repo's own guards and helpers, which have no rule ID: some of `tests/test_hooks.py` and all of `tests/test_repo_checks.py` and `tests/test_git_helper.py` (90 tests on 17 November). So are the tests of CLAUDE.md's own rules, which have no rule ID either, such as `tests/test_build_log_grows.py`.
+- Test names start with the rule ID: `test_B1_...`. The exception is the tests of the repo's own guards and helpers, which have no rule ID: some of `tests/test_hooks.py` and all of `tests/test_repo_checks.py` and `tests/test_git_helper.py` (90 tests on 17 November). The tests of CLAUDE.md's own rules, such as `tests/test_build_log_grows.py`, have no rule ID either.
 - Test text is synthetic. Synthetic complaint IDs start with `SYN-`. Fake keys in tests are built while the test runs, never written as one string.
 
 ## Outside platforms
