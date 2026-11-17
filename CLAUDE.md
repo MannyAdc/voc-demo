@@ -33,7 +33,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 ## Who does what
 
 - Claude may push feature branches, run `gh pr create` and `gh pr comment`. Claude never pushes to `main`, never pushes with force, never deletes a branch, never merges, and never changes repo settings. Pushing is proposing. Merging is deciding.
-- Deny rules in `.claude/settings.json` block force pushes, pushes to `main`, branch deletion and `gh pr merge`, from Bash and PowerShell. Every Bash rule of these has a PowerShell twin, and `tests/test_deny_rules.py` checks it. They match command text only, so they are best effort.
+- Deny rules in `.claude/settings.json` block force pushes, pushes to `main`, branch deletion and `gh pr merge`, from Bash and PowerShell. They match command text only, so they are best effort.
 - Every pull request is opened as a draft, so GitHub cannot merge it yet. Claude marks it ready only after the reviewer agent's findings are posted and the owner has decided what to fix. Claude then writes "PR #N is ready to merge." in the chat. Without those words, the owner waits.
 - From T007 on, Claude runs `/merge-verdict` before marking a pull request ready. "PR #N is ready to merge." is written only after a MERGE verdict. A FIX FIRST verdict goes to the owner with its reason. The verdict is a recommendation. The owner still decides and merges.
 - The owner merges, using a normal merge commit (not squash or rebase). The owner creates any account and enters any password.
@@ -45,7 +45,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Run: `uv run pytest`
 - Tests never open a network connection or call a model. `tests/conftest.py` blocks sockets.
 - Tests check behaviour against the spec. Label quality is measured by `/eval`, not by tests.
-- Test names start with the rule ID: `test_B1_...`. The exception is the 90 tests of the repo's own guards and helpers, in `tests/test_hooks.py`, `tests/test_repo_checks.py` and `tests/test_git_helper.py`, which have no rule ID.
+- Test names start with the rule ID: `test_B1_...`. The exception is the tests of the repo's own guards and helpers, which have no rule ID: some of `tests/test_hooks.py` and all of `tests/test_repo_checks.py` and `tests/test_git_helper.py` (90 tests on 17 November).
 - Test text is synthetic. Synthetic complaint IDs start with `SYN-`. Fake keys in tests are built while the test runs, never written as one string.
 
 ## Outside platforms
@@ -116,12 +116,6 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Append to `BUILD_LOG.md` as things happen, with the local time.
 - Log: work start and merge times, every AI mistake and how it was caught, every overruled suggestion and why, every parallel run and its result.
 - Never invent or tidy an entry.
-
-## Calling something done
-
-- Nothing is called done, in the chat or in `BUILD_LOG.md`, until a fresh read-only audit of every public page comes back clean. The pages are the README, `docs/`, the specs, `CLAUDE.md`, the constitution and every other readme. The audit checks each claim against the code, the results files and `BUILD_LOG.md`.
-- The audit's result goes in `BUILD_LOG.md`. Each finding is fixed, or deferred with a reason, and the audit runs again.
-- This rule comes from 17 November: the project was called done on 16 November, and audits the next day found 49 stale or wrong claims.
 
 ## Local setup notes
 

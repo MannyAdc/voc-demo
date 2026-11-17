@@ -22,8 +22,6 @@
       "PowerShell(git push * main)",
       "PowerShell(git push * main *)",
       "PowerShell(git push * HEAD:main*)",
-      "PowerShell(git push * -d *)",
-      "PowerShell(git branch -D*)",
       "PowerShell(gh pr merge*)",
       "mcp__claude-in-chrome__*",
       "mcp__chrome-devtools__*",
