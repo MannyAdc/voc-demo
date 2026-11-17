@@ -33,6 +33,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 
 - Claude may push feature branches, run `gh pr create` and `gh pr comment`. Claude never pushes to `main`, never pushes with force, never deletes a branch, never merges, and never changes repo settings. Pushing is proposing. Merging is deciding.
 - Deny rules in `.claude/settings.json` block force pushes, pushes to `main`, branch deletion and `gh pr merge`, from Bash and PowerShell. They match command text only, so they are best effort.
+- `tests/test_deny_rules.py` checks that the deny list holds each required pattern for both shells, and that every Bash rule for git or gh has a PowerShell twin.
 - Every pull request is opened as a draft, so GitHub cannot merge it yet. Claude marks it ready only after the reviewer agent's findings are posted and the owner has decided what to fix. Claude then writes "PR #N is ready to merge." in the chat. Without those words, the owner waits.
 - From T007 on, Claude runs `/merge-verdict` before marking a pull request ready. "PR #N is ready to merge." is written only after a MERGE verdict. A FIX FIRST verdict goes to the owner with its reason. The verdict is a recommendation. The owner still decides and merges.
 - The owner merges, using a normal merge commit (not squash or rebase). The owner creates any account and enters any password.
