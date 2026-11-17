@@ -323,6 +323,15 @@ The helper that runs git in a test's own scratch repo, `tests/git_helper.py`, is
 - read guard: flags between `gh`, its group and its subcommand change nothing (`gh pr -R o/r merge`). Also denied: deleting a run, artifacts' downloads, the variables API, writes through `gh api` (any method but GET, or fields with no method), GraphQL mutations and queries read from a file, `git/refs`, aliases, extensions, `gh auth token`, `--show-token`, and the repo's settings by `gh repo edit` or the API. API paths count only after `repos/<owner>/<repo>/`, so `cat docs/environments.md` and `python scripts/rerun.py` stay allowed. Every J14 refusal names J14 (spec 004, J14, review of #87)
 - settings: permission deny rules remove the browser tools (Claude in Chrome, Chrome DevTools, the built-in browser, computer use and their enable tools) and deny WebFetch to `github.com`, `api.github.com`, `*.cloud.databricks.com` and `*.azuredatabricks.net` (spec 004, J14, owner decision of 5 November)
 
+## Settings, `tests/test_deny_rules.py`
+
+- the deny list holds the 25 required patterns for git and gh in both Bash and PowerShell: force push, remote branch deletion, pruning and mirroring, pushes to `main`, local branch deletion with the flag first or later, and merging (CLAUDE.md "Who does what", owner decisions of 17 November)
+- no deny rule blocks any of a fixed list of 14 commands Claude may run, such as `git push -u origin docs/x`, `git merge --no-commit --no-ff origin/main` or `gh pr checks 1`, matched as Claude Code's permissions page describes
+- the matcher follows the permissions page's rules: a trailing `:*` as a wildcard (its `ls:*` example), the space before a wildcard kept (`ls *` does not match `lsof`), and PowerShell without regard to case
+- no deny rule for git or gh uses `:*`, since the page does not say how a space before it is read
+- a delete flag at the end of a push (`git push * -d`) is denied in both shells
+- every deny rule for git or gh has a twin in the other shell, both ways
+
 ## Merge verdict (T006b), `tests/test_merge_verdict.py`
 
 Every test feeds the checks synthetic `gh pr view` JSON. No test runs `gh` or opens the network. The trial merge tests use a small git repo in a temporary folder.
