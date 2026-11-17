@@ -38,7 +38,8 @@ until the run ends either, or both gates and the real row must be done again.
 - **The money side.** The run's calls go through the June ledger, with its cap of 40,000,000 tokens, of which round
   6 used 8,013. The spec expects about $0.49 for the whole sample, at the July test run's $0.2373 per 1,000
   complaints: 0.2373 × 2,073 / 1,000 = 0.4919. Job A's figures round it up to the cent, so they show 0.50. The
-  worst case the ledger reserves is about 38.4 million tokens (spec 004), which would cost more than the $5 monthly
+  worst case the ledger reserves is about 38.4 million tokens (spec 004, an estimate. *Measured on 14 November:* Job
+  A's figures printed 37,954,560), which would cost more than the $5 monthly
   spend limit of the Claude Console workspace `voc-june-cloud`, so that limit is the hard stop. In the Console, open
   `voc-june-cloud` and note the cost the key `voc-june-job-b` shows now.
 - **The Claude Console key and its limit.** In the Console, open the workspace `voc-june-cloud`. Its API keys page
@@ -99,7 +100,8 @@ until the run ends either, or both gates and the real row must be done again.
    - `started: <date and time> UTC`, Job A's start
    - `complaints: 2073`, the frozen June sample
    - `calls: 2073`, one call per complaint
-   - `worst_case_tokens: <a whole number>`, about 38.4 million, and no larger than 39991987
+   - `worst_case_tokens: <a whole number>`, about 38.4 million, and no larger than 39991987 (*measured on 14
+     November:* 37954560, `BUILD_LOG.md`, "The June run")
    - `tokens_left_under_cap: 40000000`. Job A counts the cap only (`figures(root, rows, 0)` in
      `cloud/job_a/job_a.py`). Job B checks the ledger's real room, 39,991,987 after round 6's 8,013 tokens, before
      it marks anything used, and refuses if the worst case does not fit

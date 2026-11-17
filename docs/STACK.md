@@ -1,6 +1,6 @@
 # Why this stack
 
-Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. On 4 November 2026, the baseline, TF-IDF with logistic regression, got the short name TF-IDF + LR (owner decision). On 17 November 2026, the claims overtaken by spec 004 were brought up to date: the cloud pieces, the dbt runs on Databricks, the laptop's share of the work, the June test's reason and the tool list. Back to the [README](../README.md).
+Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. On 31 October 2026, a dated note on the real exports on Databricks was added (#58). On 2 November 2026, the scikit-learn line named the baseline's two parts and its settings file (#67). On 4 November 2026, the baseline, TF-IDF with logistic regression, got the short name TF-IDF + LR (owner decision). On 17 November 2026, the claims overtaken by spec 004 were brought up to date: the cloud pieces, the dbt runs on Databricks, the laptop's share of the work, the June test's reason and the tool list. Back to the [README](../README.md).
 
 ## Why this stack
 

@@ -16,7 +16,7 @@ Before that change, the owner ran every command here, in their own PowerShell, a
 ## What is deployed
 
 - A ZIP of the committed files on `main`, made with `git archive`, so nothing git ignores (data, `.env`, the deny list) can be in it.
-- `requirements.txt`, the public copy's packages only, pinned from `uv.lock`: the `public` dependency group (fastapi, starlette, uvicorn and duckdb) and what they need. It is made with `uv export --native-tls --frozen --only-group public --no-hashes --no-emit-project --format requirements-txt > requirements.txt`. Tests check each pin matches `uv.lock`, and that every package the public app loads is pinned.
+- `requirements.txt`, the public copy's packages only, pinned from `uv.lock`: the `public` dependency group (fastapi, starlette, uvicorn, duckdb, and sniffio, which the app loads though no package above declares it) and what they need. It is made with `uv export --native-tls --frozen --only-group public --no-hashes --no-emit-project --format requirements-txt > requirements.txt`. Tests check each pin matches `uv.lock`, and that every package the public app loads is pinned.
 - The ZIP leaves out `pyproject.toml` and `uv.lock`. Microsoft lists both a `requirements.txt` build and a `uv` build, and does not say which wins when both are there. Without them, the build can only use `requirements.txt`.
 - The startup command `python -m uvicorn voc.public:app --host 0.0.0.0 --port 8000 --app-dir src`.
 
@@ -167,9 +167,11 @@ Remove-Item "$env:TEMP\voc-credential.json"
 
 Then rerun the failed run from the Actions tab, or merge the next change.
 
-To stop automatic deploys, delete the federated credential or the three secrets. The script below still works by hand.
+To stop automatic deploys, delete the federated credential or the three secrets. The script below still works by hand, but it needs `az login` on the machine that runs it (next section).
 
 ## Redeploying after a change
+
+*Changed on 18 November 2026:* this section is history too, like the command blocks above (the note at the top). Since 5 November the owner does not sign in to Azure on the laptop, so the script below is not run there. A redeploy goes through `deploy.yml` after CI passes on a push to `main`, or by rerunning its last run from the Actions tab ("Automatic deploy" above).
 
 By hand, for example before the automatic deploy is set up: one line, after `az login`, from the repo folder:
 

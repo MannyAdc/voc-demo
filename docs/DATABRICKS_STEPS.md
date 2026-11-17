@@ -26,7 +26,7 @@ On 15 November 2026, after the June run, the owner reported deleting or disablin
 
 Three more things to know:
 
-- After 10 December the Console key needs replacing. Job B reads two secrets from the scope `voc-june`: `anthropic-api-key` and `anthropic-workspace-id` (`cloud/job_b/job_b.py`). So make the new key in the same Console workspace, `voc-june-cloud`, or change both. On 9 November a notebook Claude wrote, `voc-june-secret-setup`, put them in, and it is not kept in this repo (`BUILD_LOG.md`). So ask Claude to write that step first. Claude never makes or sees the key.
+- After 10 December the Console key needs replacing. Job B reads two secrets from the scope `voc-june`: `anthropic-api-key` and `anthropic-workspace-id` (`cloud/job_b/job_b.py`). So make the new key in the same Console workspace, `voc-june-cloud`, or change both. On 10 November a notebook Claude wrote, `voc-june-secret-setup`, put them in (the audit of 18 November corrected the date, which said 9 November), and it is not kept in this repo (`BUILD_LOG.md`). So ask Claude to write that step first. Claude never makes or sees the key.
 - Job A and Job B run the code on `main` as you. Before you start one or unpause Job A's trigger, check that `main` holds only changes you merged.
 - Spec 004's Known limits ("The two ways to close the `.env` limit") name one way to store no long-lived secret for the results copy: a GitHub workflow signs in to Databricks through OIDC, with a short-lived token for each run. It was not built. It needs a read-only check first, that Free Edition supports it, and opening the results pull request from a runner would need a GitHub write token, which J13 does not allow. It would not cover the receiver's secrets.
 
@@ -65,6 +65,8 @@ clipboard.
 
 1. In Databricks, in the left menu, click **Jobs & Pipelines**. Note the jobs listed. On 9 November only
    `voc-june-spike` was there. It is paused and watches `spike_incoming`, a folder of its own, so it can stay.
+   *Changed on 18 November:* the owner reported `voc-june-spike` deleted on 15 November (`BUILD_LOG.md`, "Pull
+   request: the log of the clean-up after the June run"), so you will not find it.
 2. In the left menu, click **Catalog**, then `workspace`, then `default`. Note the volumes. On 9 November only
    `voc_raw` was there. It holds the raw uploads, with real complaint text.
 

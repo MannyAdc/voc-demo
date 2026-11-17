@@ -3847,3 +3847,28 @@ Times are local, 18 November.
 - 01:57 Claude recommended fixing all ten as text, with no second review, since no code or test changed and nothing was serious.
 - Owner decision ("Fix all, no 2nd review (Recommended)", 01:58): fix all ten as text, with no second review.
 - The fixes: CLAUDE.md's rule is now two bullets plus a note on the script, and the skill's steps 5 and 6 say the same. The `mergeable` read applies to every pull request, with three reads on UNKNOWN before telling the owner, and on CONFLICTING a merge of `main` and a new verdict. With several pull requests that change the same file: one named ready at a time, lowest number first as the script orders them, a ready one that turns CONFLICTING is made a draft again first, `main` is merged into each other open pull request that changes that file, each merge commit, its conflicts and the suite result are logged, and the next one may go ahead after a FIX FIRST. Claude's design choice, for the owner to see: a conflict resolved in any file other than `BUILD_LOG.md` gets a fresh review of the merge, and a conflict in `BUILD_LOG.md` alone does not, since its sections are kept word for word and CI checks that the log only grows. 02:09 Fixes written, before their gate. Claude ran the whole suite first: exit code 0.
+
+### Pull request: audit fixes in the public and cloud pages
+
+Times are local, 18 November.
+
+- The audit and the owner's decisions are in "The final audit of every page".
+- Claude checked each of the 14 findings against its cited source before changing anything. Each holds.
+- A1, `docs/LIMITS.md` header: fixed. #57 changed no line of the page (`git diff 00b700f^1 00b700f -- docs/LIMITS.md` is empty), so the list now names #58 (31 October), and adds #148, #153 and these fixes.
+- A2, `docs/PIPELINE.md` header: fixed. A "Later changes" list names #58, #92, #146, #147, #148 and these fixes (`git log --first-parent -- docs/PIPELINE.md`).
+- A3, `docs/STACK.md` header: fixed. It names #58's dated note of 31 October and #67's change of 2 November to the scikit-learn line.
+- A4, `docs/LIMITS.md`, the June run's needs: fixed. It names the two met, keys in a secrets manager and the recordings in protected storage, since #146's review found that the ledger and the ruleset were wrongly counted as met (line 3396). It says the receiver's two routes each checked the sender, by a user name and password and by a signature (`receiver/receiver_core.py`, `_signed_in` and `_result`). "Apart from the June run" became "Separately", since the ruleset was in force during the run.
+- A5, README, the cut spot check: fixed, with a dated note, in the owner's voice as the list is, that V5's 50 ratings by the owner did the check another way.
+- A6, README, the injection command: fixed. It gives `--prompt v1 --note "<what changed>"`, since `--note` is required (`src/voc/cli.py`), and links `docs/RESULTS.md`.
+- A7, `docs/PIPELINE.md`, the first live run on Databricks: fixed. It says "first passing live run", and that the first try stopped with exit code 2 because the host was placeholder text (lines 655 to 658).
+- A8, `docs/DATA.md`, decision 2's promise: fixed, with a dated note that the plan was overtaken. The small categories stayed "too few to judge" on July's test set, so the README reports no result for them, and their limits are in `docs/LIMITS.md` and `docs/HOW_WE_MEASURE.md`. Claude's choice, for the owner to see: no new figure was added. June's prepaid card reached 30 complaints and was scored (`results/june/v1_june.json`), but no page reports it, and adding it would be a new result, not a fix.
+- B1, `docs/DATABRICKS_STEPS.md`, the secret notebook's date: fixed, 10 November, not 9 (line 2562 is in "Pull request 6b, part 3b", after round 3 of 10 November).
+- B2, `docs/DATABRICKS_STEPS.md`, step 1.1: fixed, with a dated note that the owner reported `voc-june-spike` deleted on 15 November.
+- B3, `docs/DRY_RUN_STEPS.md`: fixed, with a dated note that only round 3 reached that point, and that round 6 showed 8 accepted and 0 quarantined (line 2884).
+- B4, `docs/JUNE_RUN_STEPS.md`, the worst case: fixed. Both places keep the estimate and add the measured 37,954,560 (line 3109, "The June run").
+- B5, `docs/DEPLOY.md`, the `public` group: fixed. It names sniffio, which `pyproject.toml` pins in that group.
+- B6, `docs/DEPLOY.md`, the redeploy by hand: fixed, with a dated note that the section is history, since the owner does not sign in to Azure on the laptop, and that a redeploy goes through `deploy.yml` or a rerun from the Actions tab. The sentence on stopping automatic deploys says the script needs `az login`.
+- Not changed: `cloud/failcheck/STEPS.md`, which auditor B named as known and not new. It stays frozen by the owner's decision of 17 November, and `docs/DATABRICKS_STEPS.md` already points to it.
+- No test changed, so no red commit is needed.
+- AI mistake, caught by the whole suite before the gate: A5's first note linked `docs/VALIDATION.md` a fourth time, and `test_V4_the_readme_links_the_write_up_in_one_line` expects three lines. Claude had searched the tests for the changed sentences, not for the link. The note now points to the page under "Read more" with no link, and `tests/test_validation.py` passes.
+- 08:08 Fixes written, before their gate. Claude ran the whole suite first: exit code 0.
