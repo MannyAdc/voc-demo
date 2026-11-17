@@ -3369,3 +3369,27 @@ Times are local, from the chat's message times, the owner's screenshots and GitH
 - The cloud. The credentials' state is in spec 004's Known limits, "The clean-up after the June run", and how to make them again is in `docs/DATABRICKS_STEPS.md`, "Before any new cloud work". The receiver, its Key Vault and their two kept secrets stay until the owner takes them down. So do, among others, the Databricks workspace, its volumes, and Job A and Job B, with Job A's trigger paused. Both jobs run the code on `main` as the owner when they run. The rest are in that Known limits entry and those steps: the service principals `voc-june-runner` and `voc-results-reader`, which keep their rights but have no secret, the secret scope `voc-june` with the disabled Console key, the GitHub environments `june-figures`, `june-run` and `receiver-deploy`, and the Databricks setting `voc-receiver`. Removing them is optional and not done.
 - Optional items Claude offered. At 23:52 on 14 November (line 3207): removing the cloud accounts and pieces, a plain page on the cloud wiring, the week's waste measure and an audit of the platform assumptions. At 21:28 on 15 November, in the chat: the same page, the waste measure, the audit, and taking the receiver and its Key Vault down. At 21:45 on 15 November: deleting the spike job `voc-june-spike`, which the owner did (line 3280). The owner also deleted the backup zip in the volume and the notebook `voc-june-backup` (line 3233). The page, the audit and the rest of the removal were not chosen. The waste measure was never optional: it was the owner's decision of 10 November.
 - This pull request's review, its merge verdict, the time it is marked ready and its merge are on GitHub only, since no later pull request will log them.
+
+### Pull request: the test list brought up to date
+
+Times are local, 17 November.
+
+- Work start, 10:24: branch `docs/stale-test-list`, worktree `../voc-demo-stale-tests`, from main at `9362f27` (git's reflog). Claude copied the main checkout's names deny list in, without reading it, and ran `uv sync --native-tls --locked`. This is group 5, the test list, of the owner's decision at 10:21 (#145's log), run in parallel with the other groups in their own worktrees.
+- Claude checked the second audit's finding 3 against `tests/` before changing anything. The counts:
+  - `uv run --no-sync pytest --collect-only -q` collected 2,888 tests in 55 files. `docs/TEST_LIST.md` has 578 lines that start with "- " (`grep -c "^- " docs/TEST_LIST.md`), so "Each line is one test" was wrong.
+  - `tests/test_output_safety.py` does not exist. 76 test functions in 19 files are named after B21 (`grep -c "def test_B21" tests/*.py`), 36 of them in `tests/test_hooks.py`. `analyse` is not a command of `src/voc/cli.py`.
+  - No test in `tests/` names the analyser or the spot check (`grep -ln "analyser\|analyse" tests/*.py` finds nothing). The B24 tests are in `tests/test_labels.py` (4) and the B25 tests in `tests/test_data.py` (7). No test was found for "a smaller test size is refused unless a reason is given", and no test of the July `voc sample` for an unmapped Product. June's has `test_J6_a_june_product_outside_the_label_set_is_refused`.
+  - 25 test files were never named in the list. Rule IDs with tests but no line: A1 to A15, V4 (31 test functions) and T021 (2). J4 had a line but no test named after it.
+- The change, in `docs/TEST_LIST.md` only:
+  - the status line says each line is a behaviour, grouped by rule, gives the real count with its command, and links all four specs
+  - the output safety section names the files where B21's tests are, with the count, and drops `analyse`, which was deferred
+  - the analyser and spot-check lines are marked not built, with the reason (T018a and T014c, 29 October)
+  - the B24 and B25 lines have their own section naming `tests/test_labels.py` and `tests/test_data.py`, and the two lines with no test say so
+  - "Human review, later feature" is retitled as built with the review screen (A12)
+  - a new section for spec 002, A1 to A15, names its test files with their collected counts
+  - V4 and T021 get lines, and each of the 25 unnamed files is named in its section
+  - the J4 line names the tests that cover it
+  - the CI section adds the June logs' grow checks, the June gates check and `tests/test_repo_checks.py`
+  - "June test in the cloud, planned" and "Later features" are retitled as built, with what was not built and why
+- Checked after the change: every `tests/...py` path the list names exists, every `tests/test_*.py` file is named, and the added lines have no em dash and no semicolon.
+- No code or test change, so no red commit. 10:34 Change written, before its gate. Claude ran the whole suite first.
