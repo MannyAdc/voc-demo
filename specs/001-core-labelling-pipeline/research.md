@@ -15,12 +15,12 @@ Each item is checked on its official source before the pull request that needs i
 | `claude -p` flags for no tools, no MCP servers, no settings or instruction files, one turn | backend pull request (B12) | closed: `cli` cut on 28 October |
 | Does an `ANTHROPIC_API_KEY` in the environment make `claude -p` bill the API instead of the subscription | backend pull request (B12) | closed: `cli` cut on 28 October |
 | Does `claude -p` report token use in its JSON output | backend pull request (B8, B12) | closed: `cli` cut on 28 October |
-| Is the UTF-8 byte count of a prompt always at least its token count | ledger pull request (B8) | answered: checked and confirmed on 29 October (`config/budget.toml`, `margin_confirmed`) |
-| Training cutoff of `claude-haiku-5-5`, compared with the July 2026 complaint dates | README | answered: the training data ends in June 2026 (README, "Limits, in short") |
+| Is the UTF-8 byte count of a prompt always at least its token count | ledger pull request (B8) | answered: checked and confirmed on 29 October, for claude-haiku-5-5 on 20 calls only. A new model needs its own check (`config/budget.toml`, `margin_confirmed`) |
+| Training cutoff of `claude-haiku-5-5`, compared with the July 2026 complaint dates | README | answered on 29 October: the training data ends in June 2026 ([models overview](https://platform.claude.com/docs/en/about-claude/models/overview), read 29 October 2026, as `docs/LIMITS.md` cites it) |
 | How many input tokens `claude -p` adds for its own system prompt (the `cli` allowance) | backend pull request (B8, B12) | closed: `cli` cut on 28 October |
 | Export download URL for the July 2026 file, and its SHA-256 | download pull request (B16) | answered 28 October: the CFPB serves only its current export, so the July file is pinned by SHA-256 in `config/data_files.toml`, with no URL (T002b, B16 amended) |
 | Does `claude -p` let us set an output-token limit and a temperature | backend pull request (B8, B12) | closed: `cli` cut on 28 October |
-| How to run CI tests with no network on GitHub-hosted Linux runners | CI pull request | answered: the "Tests with no network" step in `.github/workflows/ci.yml` |
+| How to run CI tests with no network on GitHub-hosted Linux runners | CI pull request | answered on 28 October, in T003 (#4): the "Tests with no network" step in `.github/workflows/ci.yml` |
 
 ## Answered
 

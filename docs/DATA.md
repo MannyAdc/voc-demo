@@ -87,7 +87,7 @@ As a rough reading guide (our own, not a standard): under 0.05 is very similar, 
 - **On time, in student loans.** The company answered late for 21.8 percent of all student loan complaints, but 40.0 percent of those with text.
 - **State.** Some states are over- or under-represented. In credit reporting, Texas is 16.9 percent of all complaints and 27.0 percent of those with text.
 
-**What this means for the project.** Within most categories, complaints with text are similar to the rest on most fields, but not the same. So our results describe **complaints that have text**: all sent through the web form, and almost all already answered by the company. They do not describe all complaints, and they say least about credit reporting. [LIMITS.md](LIMITS.md) says this (task T020, done).
+**What this means for the project.** Within most categories, complaints with text are similar to the rest on most fields, but not the same. So our results describe **complaints that have text**: all sent through the web form, and almost all already answered by the company. They do not describe all complaints, and they say least about credit reporting. [LIMITS.md](LIMITS.md) says that the narratives are a small subset with a different mix (task T020, done).
 
 ## The text itself
 

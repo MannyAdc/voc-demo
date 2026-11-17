@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-29
 
-**Status**: Built. The spec came in with its first code in #32, merged on 29 October 2026. It was last changed in #62, merged on 1 November, and its status line in #143, on 16 November. The automatic deploy first passed on 1 November. No approval line like spec 001's is logged, but the owner merged each of these pull requests. Option A of 28 October: the hosted dashboard shows results only. Changed on 30 October: on the owner's own machine, the analyst screens can show development complaint text (A10), and a person can store a review decision (A12).
+**Status**: Built. The spec came in with its first code in #32, merged on 29 October 2026. It was last changed in #62, merged on 1 November, its status line in #143, on 16 November, and the health route's line in #146 (17 November). The automatic deploy first passed on 1 November. No approval line like spec 001's is logged, but the owner merged each of these pull requests. Option A of 28 October: the hosted dashboard shows results only. Changed on 30 October: on the owner's own machine, the analyst screens can show development complaint text (A10), and a person can store a review decision (A12).
 
 **Input**: The brief asks for a front end, a middleware API, data engineering and public code, with Speed, Safety and Scale on screen.
 
@@ -62,5 +62,5 @@ A small web app. The API serves the committed results files, and one page shows 
 - If a newer commit on `main` fails CI, the run for the older green commit is skipped too, so nothing deploys until the next green push. The skipped run shows as passed. *Second review of #56.*
 - The request counters live in memory. They start again at zero when `voc serve` restarts, and they are not stored anywhere.
 - The request log goes to the terminal only. It is not written to a file, so it is gone when the terminal closes.
-- `/api/health` is open to anyone who can reach the app. With the A4 host check and the 127.0.0.1 listener, that is this computer only. On the public copy (A13), the health route is public: its counts and the build commit are not secret, and A15's deploy reads it.
+- `/api/health` is open to anyone who can reach the app. With the A4 host check and the 127.0.0.1 listener, that is this computer only. *Changed on 17 November:* on the public copy (A13), the health route is public: its counts and the build commit are not secret, and A15's deploy reads it.
 - If a second test run is ever logged for the same version (B17 allows it only with a reason), the route serves the file that matches one of the rows, and the page still says "the single logged test run".

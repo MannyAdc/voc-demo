@@ -1,6 +1,6 @@
 # Limits
 
-Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. On 4 November 2026, the baseline, TF-IDF with logistic regression, got the short name TF-IDF + LR (owner decision). Back to the [README](../README.md).
+Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. On 4 November 2026, the baseline, TF-IDF with logistic regression, got the short name TF-IDF + LR (owner decision). Later changes: #57 (31 October), #114 (10 and 11 November), #138 (14 November) and #146 (17 November). Back to the [README](../README.md).
 
 ## Limits
 
@@ -15,9 +15,11 @@ Moved here from the README on 31 October 2026, word for word, except that refere
 - `voc ledger raise` writes a line to BUILD_LOG.md, and `voc final` needs a clean working tree. So after a raise, that line must be committed or set aside before the scored run.
 - Pending improvements:
   - The analyser for error analysis (T018a): a tool-less model call that names one cause from a fixed list for each wrong label.
-  - The `show` command for the owner (T014c). The human spot check it was for was done another way: in the validation review's V5, the owner rated 50 development quotes ([VALIDATION.md](VALIDATION.md#v5-does-each-quote-back-up-its-label)).
+  - Cut on 29 October, not pending: the `show` command for the owner (T014c). The human spot check it was for was done another way: in the validation review's V5, the owner rated 50 development quotes ([VALIDATION.md](VALIDATION.md#v5-does-each-quote-back-up-its-label)).
   - Catching a crash in the middle of the scored run.
-- The public copy on Azure App Service (spec 002, A13, and [docs/DEPLOY.md](DEPLOY.md)) serves only what this repo already holds: the results files, with no complaint text, no consumer's choice and no review saving. It needs no login for that reason. A deployment that labels or reviews in the cloud would need more: authentication on the API, keys in a secrets manager, the ledger in a shared database, the recordings in protected storage, and branch protection with required checks. The June run (spec 004) met some of these: its keys were in a Databricks secret scope and an Azure Key Vault, its ledger and recordings in the raw Databricks volume, and `main` has had a ruleset with required checks since 1 November. It served no API, so it needed no API sign-in.
+- The public copy on Azure App Service (spec 002, A13, and [docs/DEPLOY.md](DEPLOY.md)) serves only what this repo already holds: the results files, with no complaint text, no consumer's choice and no review saving. It needs no login for that reason. A deployment that labels or reviews in the cloud would need more: authentication on the API, keys in a secrets manager, the ledger in a shared database, the recordings in protected storage, and branch protection with required checks.
+  - The June run (spec 004) met two of these. Its keys were in a Databricks secret scope and an Azure Key Vault. Its ledger and recordings were files in the raw Databricks volume, not a shared database. It served no API.
+  - Apart from the June run, `main` has had a ruleset with required checks since 1 November (below).
 
 ### Known limits
 
@@ -26,7 +28,7 @@ These come from the threat model in the [spec](../specs/001-core-labelling-pipel
 - Deleting the ledger or the home-folder test log and starting again resets them, with no trace in git.
 - A git-ignored local settings file can turn off the project hooks.
 - Shell commands that write files are not seen by the data guard.
-- Since 1 November, `main` has a ruleset: changes by pull request only, with the checks `tests`, `repo-checks` and `secret-scan` required, and 0 approvals (BUILD_LOG.md, 1 November). So a pull request with failing required checks cannot be merged.
+- Since 1 November, `main` has a ruleset: changes by pull request only, with the checks `tests`, `repo-checks` and `secret-scan` required, and 0 approvals (BUILD_LOG.md, 1 November). So a pull request with failing required checks cannot be merged. But with 0 approvals, anyone who holds the owner's GitHub sign-in can merge a pull request that passes the checks (spec 004, Known limits).
 - A tests-only commit can weaken an existing check. Only the reviewer agent would notice.
 - A script that opens the DuckDB file directly skips the `final` guard and the dbt test-row filter.
 - The staged DuckDB table under the dbt models still holds the test rows. So the real seal is the `final` command path, its committed log and the CI check on that log. The dbt flag is a second layer.
