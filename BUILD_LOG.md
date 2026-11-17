@@ -3826,3 +3826,17 @@ Times are local, 17 November.
 - AI mistake, caught by the fifth reviewer: the 23:46 line says each of the 16 broken copies fails, "among them every form the fourth reviewer found". That holds for `BASH_ENV` only when set on the step or the job, not at the workflow level or through an earlier step, which Claude did not try.
 - Owner decision ("Fix as text, no 6th (Recommended)", 00:40): fix as text, with no sixth review.
 - The fixes, text only: `docs/LIMITS.md`'s limit and the test's comment say a change to `ci.yml` can turn off any check even with the test unchanged, for example through the workflow's `env` or an earlier step. The test's comment no longer says "any edit fails this test". `docs/TEST_LIST.md` names the two CI-step tests. No test's behaviour changed. 00:40 Fixes written, before their gate. Claude ran the whole suite first: exit code 0.
+
+### Pull request: the merge order rule
+
+Times are local, 18 November.
+
+- 01:11 The owner merged #153 (time from GitHub). `main` at `e068cec`.
+- The decisions behind this pull request: the owner's decision ("Okay, go as you recommend", 16:34 on 17 November) for a docs-only pull request, in "Pull request: the rule for calling something done", and the owner's decision ("Split into two (Recommended)", 20:58 on 17 November) that the rule moves out of #153 into its own pull request, written to match what the script does, in "Pull request: the merge order rule and the build log check".
+- Work start, 01:28: branch `docs/merge-order-rule`, worktree `../voc-demo-merge-order`, from `main` at `e068cec` (git's reflog). Claude copied the main checkout's names deny list in, without reading it, and ran `uv sync`.
+- Claude read `check_conflicts`, `check_shared_files` and `merge_order` in `src/voc/merge_verdict.py` before writing: with several numbers, the script fails any path two pull requests change, with or without `--test-merge`, and the "no conflicts" check is FOR CLAUDE when GitHub's `mergeable` is not yet known.
+- The change, docs only, so no red commit:
+  - `CLAUDE.md`, "Who does what": a new rule. When several open pull requests change the same file, Claude marks ready and names only one at a time, reads `mergeable` just before `gh pr ready` and goes on only on MERGEABLE, reads again on UNKNOWN, and after each merge to `main` merges `main` into every other open pull request and runs `/merge-verdict` on it alone. The script's check of several together is only for pull requests that share no file.
+  - `.claude/skills/merge-verdict/SKILL.md`: the description and step 1 say several numbers are only for pull requests that share no file. Step 5 reads `mergeable` just before `gh pr ready`, with what to do on UNKNOWN and CONFLICTING. A new step 6 gives the one-at-a-time order.
+- The findings moved from #153's first review, and how each is met: Serious 1, each pull request is checked alone after `main` is merged in, not together with `--test-merge`. Minor 1, both texts read `mergeable` only, and read again on UNKNOWN. Minor 2, the rule limits `gh pr ready`, "marks ready and names". Minor 3, both texts use the same trigger, pull requests that change the same file. Nit 5, step 6 is in short sentences and names "each other open pull request that changes that file". Nit 6, step 5 says what to do on UNKNOWN.
+- 01:45 Change written, before its gate. Claude ran the whole suite first: exit code 0.

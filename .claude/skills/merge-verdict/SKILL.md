@@ -1,6 +1,6 @@
 ---
 name: "merge-verdict"
-description: "Check one pull request, or several parallel ones, before marking it ready, and give a one-line MERGE or FIX FIRST verdict. The owner still merges."
+description: "Check one pull request, or several parallel ones that share no file, before marking it ready, and give a one-line MERGE or FIX FIRST verdict. The owner still merges."
 argument-hint: "One or more pull request numbers, for example: 29, or 29 30 for parallel branches"
 user-invocable: true
 disable-model-invocation: false
@@ -25,6 +25,10 @@ owner still decides and merges.
    minutes. It uses this checkout's packages, so a change to the dependencies is not covered. Its tests
    run with the mock backend, and with no variable whose name holds KEY, TOKEN or SECRET and no data
    folder variable. It refuses a pull request from a fork without fetching anything.
+
+   Several numbers together are only for pull requests that share no file. The script fails any file two
+   of them change, with or without `--test-merge`. Pull requests that change the same file, such as
+   `BUILD_LOG.md`, are checked one at a time, as in step 6.
 
 2. Read each line. PASS and FAIL are mechanical. FOR CLAUDE is a judgement the script cannot make. The
    last line and the exit code give the script's result:
@@ -52,7 +56,15 @@ owner still decides and merges.
    - `FIX FIRST: <reason>` otherwise, and always after a script FIX FIRST. Give it to the owner with its
      reason. Do not mark the pull request ready.
 
-5. Only after a MERGE verdict, run `gh pr ready <N>` and write "PR #N is ready to merge." in the chat.
+5. Only after a MERGE verdict, and just before marking it ready, run `gh pr view <N> --json mergeable`.
+   Go on only when it says MERGEABLE. On UNKNOWN, GitHub has not worked it out yet: wait and read it
+   again. On CONFLICTING, the verdict no longer holds: merge `main` in and start again at step 1. Then
+   run `gh pr ready <N>` and write "PR #N is ready to merge." in the chat.
+
+6. When other open pull requests change the same file as this one, mark ready and name only one of them
+   at a time. After the owner merges it, merge `main` into each other open pull request that changes
+   that file, with a normal merge commit, keeping every `BUILD_LOG.md` section word for word in merge
+   order. Then run this skill on each of them alone, from step 1, before marking it ready.
 
 ## Never
 
