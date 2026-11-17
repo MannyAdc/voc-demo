@@ -116,6 +116,13 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Log: work start and merge times, every AI mistake and how it was caught, every overruled suggestion and why, every parallel run and its result.
 - Never invent or tidy an entry.
 
+## Calling the project or a milestone done
+
+- The project or a milestone (such as a spec) is called done, anywhere in the repo or a pull request, only after a fresh agent that did no work on it audits every tracked Markdown file, except the Spec Kit templates, `BUILD_LOG.md` and the run logs in `runs/`, against the code, the results files and `BUILD_LOG.md`, and the audit is clean. The audit is read-only.
+- The audit reads `main` at a named commit. Its `BUILD_LOG.md` entry gives the commit, the pages read, the count of findings and each finding's outcome.
+- Clean means every finding is fixed through a pull request with its fresh review, or deferred by the owner's quoted decision, with its reason, in `BUILD_LOG.md`.
+- Why: on 16 November the project was called done with no such audit. Audits that evening and the next morning found 49 stale or wrong claims (`BUILD_LOG.md`, "Pull request: the cloud run page").
+
 ## Local setup notes
 
 - On the owner's machine, `uv` may need `--native-tls` (certificate error seen on 2026-10-28).
