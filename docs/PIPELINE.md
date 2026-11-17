@@ -112,7 +112,7 @@ To label real complaints you need the pinned July 2026 export. The CFPB serves o
 
 ## How it was built
 
-- Every rule is in the [spec](../specs/001-core-labelling-pipeline/spec.md), and the API's rules are in [specs/002-results-api-dashboard/spec.md](../specs/002-results-api-dashboard/spec.md). Every test is named after its rule.
+- Every rule is in [specs/](../specs/): the pipeline in [spec 001](../specs/001-core-labelling-pipeline/spec.md), the API and dashboard in [spec 002](../specs/002-results-api-dashboard/spec.md), the validation review in [spec 003](../specs/003-validation-review/spec.md) and the June test in [spec 004](../specs/004-june-test-and-baselines/spec.md). Every test is named after its rule.
 - Tests come first. Each pull request that changes code has a commit with failing tests only, then the code.
 - A git hook runs gitleaks, a names check and the full test suite on exactly the staged files, for every commit in a clone where the hook is switched on. Known limits in [LIMITS.md](LIMITS.md) lists the ways around it.
 - The rule: a fresh reviewer agent reads each pull request. Its findings and Claude's check of each are posted on the pull request. The owner decides what to fix, and the owner merges.
