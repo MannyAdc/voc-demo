@@ -1,8 +1,9 @@
 """Download the CFPB's current complaint export (B16).
 
-The CFPB serves only its current export, updated about daily. So this script
-fetches today's file, not the July 2026 file this project is pinned to. It
-never overwrites a file, and a failed download leaves nothing behind. It
+This script fetches the CFPB's current export, updated about daily, not the
+July 2026 file this project is pinned to. On 4 November 2026 that export had
+no narrative column (spec 004). The script never overwrites a file, and a
+failed download leaves nothing behind. It
 prints the file's name, size and SHA-256, so the file can be pinned.
 
 Run by the owner: python scripts/download.py <empty folder>
