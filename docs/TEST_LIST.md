@@ -326,8 +326,10 @@ The helper that runs git in a test's own scratch repo, `tests/git_helper.py`, is
 ## Settings, `tests/test_deny_rules.py`
 
 - the deny list holds 25 patterns for git and gh in both Bash and PowerShell: force push, remote branch deletion, pruning and mirroring, pushes to `main`, local branch deletion with the flag first or later, and merging (CLAUDE.md "Who does what", owner decisions of 17 November)
-- no deny rule blocks a command Claude may run, such as `git push -u origin docs/x`, `git branch -a` or `gh pr create --draft`, matched as Claude Code's permissions page describes
-- the matcher follows the permissions page's own examples
+- no deny rule blocks any of a fixed list of 14 commands Claude may run, such as `git push -u origin docs/x`, `git merge --no-commit --no-ff origin/main` or `gh pr checks 1`, matched as Claude Code's permissions page describes
+- the matcher follows the permissions page's rules: a trailing `:*` as a wildcard (its `ls:*` example), the space before a wildcard kept (`ls *` does not match `lsof`), and PowerShell without regard to case
+- no deny rule for git or gh uses `:*`, since the page does not say how a space before it is read
+- a delete flag at the end of a push (`git push * -d`) is denied in both shells
 - every deny rule for git or gh has a twin in the other shell, both ways
 
 ## Merge verdict (T006b), `tests/test_merge_verdict.py`
