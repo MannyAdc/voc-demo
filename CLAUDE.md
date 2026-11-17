@@ -116,6 +116,12 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Log: work start and merge times, every AI mistake and how it was caught, every overruled suggestion and why, every parallel run and its result.
 - Never invent or tidy an entry.
 
+## Calling the project or a milestone done
+
+- The project, or a milestone of it such as a spec, is called done in `BUILD_LOG.md` only after a fresh agent that did no work on it audits every public page, read-only. The pages are the README, `docs/`, the specs, `CLAUDE.md`, the constitution and every other readme. The agent checks each claim against the code, the results files and `BUILD_LOG.md`.
+- The audit is clean when every finding is fixed, or logged in `BUILD_LOG.md` as deferred with its reason. The audit's result goes in `BUILD_LOG.md`.
+- This rule comes from 17 November: the project was called done on 16 November, and audits the next day found 49 stale or wrong claims (`BUILD_LOG.md`, 17 November, from 10:18).
+
 ## Local setup notes
 
 - On the owner's machine, `uv` may need `--native-tls` (certificate error seen on 2026-10-28).
