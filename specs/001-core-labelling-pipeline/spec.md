@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-28
 
-**Status**: Approved by the owner 2026-10-28. Revised after review rounds 1 to 4 and the owner's decisions of 28 October. Built. Last changed in #104, merged on 9 November, then in #146, #147, #148 and #150 (17 November), and in the audit fixes of 18 November. Open in `tasks.md`: T014c (the `show` command, cut), T018a (the analyser, deferred) and T018 (error analysis and prompt versions after v1).
+**Status**: Approved by the owner 2026-10-28. Revised after review rounds 1 to 4 and the owner's decisions of 28 October. Built. Last changed in #104, merged on 9 November, then in #146, #147, #148 and #150 (17 November), and in #155 (18 November). Open in `tasks.md`: T014c (the `show` command, cut), T018a (the analyser, deferred) and T018 (error analysis and prompt versions after v1).
 
 **Input**: User description: "Label each CFPB consumer complaint by Product with an LLM. Every label quotes the sentence that supports it. A script checks the quote. Labels that fail go to quarantine with a reason. Compare against simple baselines at the same coverage."
 
@@ -20,8 +20,8 @@ The guards in this spec (hooks, checks, logs, the spend stop) are built to stop 
 - A git-ignored local settings file can turn off the project hooks.
 - Shell commands that write files are not seen by the data guard.
 - Until branch protection is on, the owner can merge with failing CI. *Closed on 1 November:* `main` has a ruleset that requires a pull request and the checks `tests`, `repo-checks` and `secret-scan` (BUILD_LOG.md, 1 November).
-- *Added on 18 November, as in `docs/LIMITS.md`:* since 17 November, CI fails a pull request whose `BUILD_LOG.md` does not start with every line of `main`'s, unchanged. So a line that must not be there, such as a local path or copied complaint text, cannot be taken out by a pull request that keeps the check. The only way round is the owner's decision, logged in `BUILD_LOG.md`, to change the check or the ruleset. Any line taken out stays in git history, since the repo is public and no rewrite is allowed.
-- *Added on 18 November, as in `docs/LIMITS.md`:* a change to `.github/workflows/ci.yml` can still turn off any check, this one included, even with the test that pins its step unchanged (`tests/test_build_log_grows.py`), for example through the workflow's `env` or an earlier step. A pull request can also change the test. Review of each change to `ci.yml` is the guard.
+- *Added on 18 November, from `docs/LIMITS.md`:* since 18 November (#153), CI fails a pull request whose `BUILD_LOG.md` does not start with every line of `main`'s, unchanged. So a line that must not be there, such as a local path or copied complaint text, cannot be taken out by a pull request that keeps the check. The only way round is the owner's decision, logged in `BUILD_LOG.md`, to change the check or the ruleset. Any line taken out stays in git history, since the repo is public and no rewrite is allowed.
+- *Added on 18 November, from `docs/LIMITS.md`:* a change to `.github/workflows/ci.yml` can still turn off any check, this one included, even with the test that pins its step unchanged (`tests/test_build_log_grows.py`), for example through the workflow's `env` or an earlier step. A pull request can also change the test. Review of each change to `ci.yml` is the guard.
 - A tests-only commit can weaken an existing check. Only the reviewer agent would notice.
 - A script that opens the DuckDB file directly skips the `final` guard and the dbt test-row filter.
 - The staged DuckDB table under the dbt models still holds the test rows. So the real seal is the `final` command path, its committed log and the CI check on that log. The dbt flag is a second layer. *Changed on 29 October: dbt test-set flag built (owner decision).*
@@ -215,7 +215,7 @@ Re-running the same prompt on the same complaints costs nothing. A live run stop
 - The prompt-injection test proves the checks work with a fake model. How the real model behaves is measured by a small set of synthetic injection complaints, labelled synthetic and reported apart. The injected sentence can itself be a valid quote, so the quote check cannot catch an injection that the model obeys and quotes. The synthetic injection set measures how often that happens, and the README says this.
 - CFPB narratives are public, so the model may have seen some of them in training. The README compares the model's stated training cutoff with the July 2026 dates.
 - Issue labelling is out of scope for this feature. It may be added later if time allows.
-- Development sample about 385 complaints and test set about 2,400, from Cochran's formula (B25). *Changed on 18 November: after the correction for the pool's size, the frozen sets hold 370 and 1,909.* The exact sizes depend on the pool size from the profile. *Earlier: a test set of about 1,000, then about 3,000. Both replaced on 28 October.*
+- Development sample about 385 complaints and test set about 2,400, from Cochran's formula (B25). The exact sizes depend on the pool size from the profile. *Earlier: a test set of about 1,000, then about 3,000. Both replaced on 28 October.* *Changed on 18 November: after the correction for the pool's size, the frozen sets hold 370 and 1,909.*
 - The LLM is not trained or fine-tuned. Prompt versions are judged on the development set. Only the TF-IDF baseline trains, on the training split.
 - The dashboard's quarantine queue shows the LLM labels that the quote check quarantined, with their reasons.
 - The synthetic sales-call stretch is a separate feature.
