@@ -1,6 +1,6 @@
 # The June run: the owner's steps
 
-*Done on 14 November 2026. The owner reported the robot's secret, the reader's secret and the dispatch token deleted on 15 November, so a re-run first needs "Before any new cloud work" in [DATABRICKS_STEPS.md](DATABRICKS_STEPS.md#before-any-new-cloud-work). It also needs a pull request with a new row in `runs/JUNE_RUNS.md`, since Job A and Job B refuse a later row (spec 004, Known limits).*
+*Done on 14 November 2026. The owner reported the robot's secret, the reader's secret and the dispatch token deleted on 15 November, so a re-run first needs "Before any new cloud work" in [DATABRICKS_STEPS.md](DATABRICKS_STEPS.md#before-any-new-cloud-work). This build's Job A and Job B refuse any later row of `runs/JUNE_RUNS.md` (spec 004, Known limits), so a re-run also needs a pull request that changes them to accept one, and then that row.*
 
 Spec 004, plan item 11. The June run scores the frozen June sample once, in the cloud, on the code both gates
 passed, `db063ac8…677a` (#133), with the run log's real row (#134). It is the dry run's chain with the real June file:

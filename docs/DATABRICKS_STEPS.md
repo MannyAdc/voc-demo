@@ -41,12 +41,12 @@ What these steps make, and for how long. The last column is the state after the 
 
 | Name | Where | What it is for | Lifetime as planned | State on 15 November |
 |---|---|---|---|---|
-| `voc_results` | Databricks, Catalog, `workspace` → `voc_results` | Job B's results, in a schema of its own | until the real June results are copied | no change reported. Step 13 of `docs/JUNE_RUN_STEPS.md` says to keep it as the run's record |
+| `voc_results` | Databricks, Catalog, `workspace` → `voc_results` | Job B's results, in a schema of its own | until the real June results are copied | no change reported. Step 13 of `docs/JUNE_RUN_STEPS.md` says to keep the results folder in it as the run's record |
 | `voc-receiver` | Databricks, Settings, Notifications | how Databricks tells the Azure receiver that Job A succeeded | as long as the receiver | kept, with the Basic sign-in in it (clean-up) |
 | `voc-june-job-a` | Databricks, Jobs & Pipelines | Job A: unpacks and checks the upload, calls no model | until after the real June run | kept, its trigger paused since 14 November (worst case) |
 | `voc-june-job-b` | Databricks, Jobs & Pipelines | Job B: labels the sample once the owner approves | until after the real June run | kept (worst case) |
 | the robot's rights | each job's permissions | `voc-june-runner` may look at Job A's runs, and start, look at and cancel Job B's | as long as the jobs | kept, but the robot has no secret (clean-up) |
-| `june-figures`, `june-run` | GitHub, Settings, Environments | the approval workflow's two jobs, the second waiting for the owner's approval | until after the real June run | kept. The robot's secret in them no longer works (clean-up) |
+| `june-figures`, `june-run` | GitHub, Settings, Environments | the approval workflow's two jobs, the second waiting for the owner's approval | until after the real June run | kept (`BUILD_LOG.md`, "Where the project ends"). The robot's secret in them no longer works (clean-up) |
 | the robot's secret | Databricks, Settings | the robot's sign-in, `jobs` scope only | 30 days | deleted (clean-up) |
 | `voc-receiver-dispatch` | GitHub, your Settings | a token that lets the receiver start the approval workflow | 30 days | deleted (clean-up) |
 

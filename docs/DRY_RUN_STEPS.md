@@ -1,6 +1,6 @@
 # The dry run: the owner's steps
 
-*Done: the last round, round 6, ran on 13 November 2026, and the real run on 14 November. A re-run first needs "Before any new cloud work" in [DATABRICKS_STEPS.md](DATABRICKS_STEPS.md#before-any-new-cloud-work).*
+*Done: the last round, round 6, ran on 13 November 2026, and the real run on 14 November. A re-run first needs "Before any new cloud work" in [DATABRICKS_STEPS.md](DATABRICKS_STEPS.md#before-any-new-cloud-work). The run log's last row is now the real one, and Job A and Job B take the last row as their target, so a new round also needs a pull request with a new synthetic row in `runs/JUNE_RUNS.md`.*
 
 Spec 004, plan item 9, owner decisions of 6 and 8 November. The dry run runs the whole cloud chain once on synthetic
 data: the upload, Job A in Databricks, Databricks' webhook to the Azure receiver, the approval workflow on GitHub,
