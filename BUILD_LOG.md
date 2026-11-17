@@ -3847,3 +3847,44 @@ Times are local, 18 November.
 - 01:57 Claude recommended fixing all ten as text, with no second review, since no code or test changed and nothing was serious.
 - Owner decision ("Fix all, no 2nd review (Recommended)", 01:58): fix all ten as text, with no second review.
 - The fixes: CLAUDE.md's rule is now two bullets plus a note on the script, and the skill's steps 5 and 6 say the same. The `mergeable` read applies to every pull request, with three reads on UNKNOWN before telling the owner, and on CONFLICTING a merge of `main` and a new verdict. With several pull requests that change the same file: one named ready at a time, lowest number first as the script orders them, a ready one that turns CONFLICTING is made a draft again first, `main` is merged into each other open pull request that changes that file, each merge commit, its conflicts and the suite result are logged, and the next one may go ahead after a FIX FIRST. Claude's design choice, for the owner to see: a conflict resolved in any file other than `BUILD_LOG.md` gets a fresh review of the merge, and a conflict in `BUILD_LOG.md` alone does not, since its sections are kept word for word and CI checks that the log only grows. 02:09 Fixes written, before their gate. Claude ran the whole suite first: exit code 0.
+- Not logged in #154's section: fix commit `3db275c` at 02:09 (git's commit time), through the gate, after the whole suite passed (exit code 0), pushed at 02:19. CI green on `3db275c` (tests, repo-checks, secret-scan). 02:23 Claude's merge verdict on #154 was MERGE, posted as a comment, and Claude marked #154 ready after `gh pr view 154 --json mergeable` gave MERGEABLE. It was the only open pull request.
+- 07:06 The owner merged #154 (time from GitHub). `main` at `b708392`.
+
+### The final audit of every page
+
+Times are local, 18 November.
+
+- The audit follows CLAUDE.md, "Calling the project or a milestone done" (#151). It reads `main` at `b708392`, in a detached worktree, `../voc-demo-audit`.
+- Pages read, 33: `README.md`, `EVAL_VERSIONS.md`, `CLAUDE.md`, `.specify/memory/constitution.md`, the two project skills (`.claude/skills/eval/SKILL.md`, `.claude/skills/merge-verdict/SKILL.md`), the 18 pages in `docs/`, `cloud/failcheck/STEPS.md`, `tests/fixtures/june_contract/README.md`, and the seven files of the four specs. Left out, as the rule says: the Spec Kit templates (`.specify/templates/` and the ten `.claude/skills/speckit-*` skills, as in the audits of 17 November, line 3517), this log and the run logs in `runs/`.
+- About 07:08 Claude started four fresh read-only auditors in parallel, none of which did work on the repo: A, the README and the story pages (12), B, the cloud and step pages (9), C, the specs and the constitution (8), D, CLAUDE.md, the test list and the two skills (4). Each checked its pages against the code, the results files, `BUILD_LOG.md` and git history. Parallel run. All four came back by about 07:20.
+- Findings, 41: A 8, B 6, C 16, D 11. No finding touches a results figure. Auditor A re-derived every headline figure, per-product F1, confusion count, Cochran size, profile table, validation count and June figure, and all match. Auditor B re-ran the waste page's script, and its output matches the page. Pages with no finding: `EVAL_VERSIONS.md`, `docs/RESULTS.md`, `docs/HOW_WE_MEASURE.md`, `docs/LINEAGE.md`, `docs/USER.md`, `docs/WIREFRAMES.md`, `docs/VALIDATION.md`, `docs/CLOUD_RUN.md`, `docs/RECEIVER_STEPS.md`, `docs/WASTE_MEASURE.md`, the June contract fixtures' readme, the constitution, spec 003 and the eval skill.
+- One finding is about the guard: CLAUDE.md and the test list say Claude's commands that use the variables API are blocked, but `.claude/hooks/read_guard.py` blocks only `gh variable set` and `delete` and writes through the API. Claude read the guard and confirmed it (lines 138, 152 and 153).
+- 07:22 Claude recommended three pull requests by theme, built in parallel and named ready one at a time, and a text fix for the guard finding, since variables are not secrets.
+- Owner decisions (07:22, the options chosen in Claude's questions): "Three PRs by theme (Recommended)": the specs, the rules and test list, then the public and cloud pages. "Fix the text (Recommended)": CLAUDE.md, the test list and the guard's message say what the guard does, and reading variables goes in Known limits, with no guard change.
+- Each finding's outcome is logged in the section of the pull request that fixes it. The audit is clean only when all 41 are fixed or deferred by the owner's quoted decision.
+- Work start, 07:23: branches `docs/audit-specs`, `docs/audit-rules` and `docs/audit-pages`, worktrees `../voc-demo-audit-specs`, `../voc-demo-audit-rules` and `../voc-demo-audit-pages`, from `main` at `b708392`. Claude copied the names deny list into each, without reading it, and ran `uv sync --native-tls --locked`.
+
+### Pull request: audit fixes in the specs
+
+Times are local, 18 November.
+
+- This pull request fixes the 16 findings of auditor C, the specs and the constitution. Claude checked each against its cited source before changing anything. All 16 hold. Each fix is a dated note or a small correction, so the pages keep their history.
+- C1, fixed: spec 002's status line names #148 (A13's note of 5 November), checked in `git diff 9fc60b2^1 9fc60b2`, and the audit fixes of 18 November.
+- C2, fixed: spec 004's status line names #148, which changed 22 lines of it, and the audit fixes of 18 November. Spec 001's status line names the audit fixes too.
+- C3, fixed: `research.md`'s adapters row is answered, with dbt's page as `docs/STACK.md` quotes it, read 30 October.
+- C4, fixed: `research.md`'s SDK row records the owner's choice of 1.13.0 at 17:14 on 28 October (this log, 28 October), pinned in `pyproject.toml`.
+- C5, fixed: `research.md`'s price row says no re-check in T009 is logged. The only price check, at 11:00 on 28 October, came before T009 started at 16:18. `config/prices.toml` still says `checked = "2026-10-28"`.
+- C6, fixed: T002b has a dated note that, after B16's amendment of 28 October, `scripts/download.py` fetches the current export with no pinned URL, and the July file is pinned by SHA-256 in `config/data_files.toml`.
+- C7, fixed: spec 001's B25 and its assumption, and `plan.md`'s scale line, say 385 and 2,400 are the sizes before the correction for the pool's size, and the frozen sets hold 370 and 1,909 (counted in `splits/dev.csv` and `splits/test.csv`).
+- C8, fixed: SC-006 and `plan.md`'s goal are marked not met: about 9 minutes on 4 November and 586 seconds on 16 November, from this log.
+- C9, fixed: spec 001's Known limits add the two limits of #153, in `docs/LIMITS.md`'s words, each marked as added on 18 November. `docs/LIMITS.md` is not changed here.
+- C10, fixed: `plan.md` has a note under its header that it is the plan as of 28 October, and names the four ways the build differs: one flat `dbt/models/` folder with no serving views, the labeller writes committed results files and only reads DuckDB (`src/voc/pipeline.py`), the API reads those files (A1), and the scheduled workflow exists (`.github/workflows/scheduled.yml`, T015c).
+- C11, fixed: B8 says the margin was confirmed on 29 October (`margin_confirmed = true` in `config/budget.toml`, commit `d197daf`).
+- C12, fixed: B12 says the project sends API version 2023-06-01 through SDK 1.13.0, which has no `temperature` parameter (`src/voc/backends.py`).
+- C13, fixed: A1 names the three committed files later rules read: `splits/dev.csv` and `splits/test.csv` (A10, `src/voc/analyst.py`), and `results/profile_july_2026.json` and `.github/workflows/scheduled.yml` (A14, `src/voc/api.py`).
+- C14, fixed: spec 004 says "an exception" in place of "the one exception", and names the other, the scope change `d508cf1` of 10 November, which came with its test in one commit (line 2623 of this log).
+- C15, fixed: spec 004 adds the measured time: Job B's labelling took 4,740 seconds (`run_seconds` in `results/june/v1_june.json`), and the whole job 1 hour 21 minutes ("The June run").
+- C16, fixed: the cut decision records the checkpoint's outcome of 29 October, 11:55: the analyser deferred, items 5 and 7 kept, the failing-test allowance kept. T020 and T020b name #40 and #42.
+- Spec 004's J14 and its variables wording are left to the rules pull request.
+- Five test files read spec 004's text. No test changed. The whole suite passed with the changes.
+- 07:51 Fixes written, before their gate. Claude ran the whole suite first: exit code 0.

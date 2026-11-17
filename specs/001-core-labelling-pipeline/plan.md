@@ -4,6 +4,8 @@
 
 **Input**: Feature specification from `/specs/001-core-labelling-pipeline/spec.md`
 
+*Note of 18 November:* this is the plan as of 28 October, kept as written apart from dated notes. What was built differs in four ways. The dbt models sit in one folder, `dbt/models/`, with no curated and serving subfolders and no serving views. The labeller reads DuckDB and writes its results as committed files under `results/`, not back to DuckDB. The API reads those committed files (spec 002, A1), not dbt views. And a scheduled GitHub workflow runs the pipeline daily on a synthetic fixture (`.github/workflows/scheduled.yml`, T015c), though the Constitution Check below says "no scheduler".
+
 ## Summary
 
 A batch pipeline loads the CFPB July 2026 export into DuckDB, builds de-duplicated samples (Python, unit tested), joins everything in curated dbt models, labels each sampled complaint with an LLM that must quote its evidence, checks every quote with a script, and quarantines failures with a reason. Two baselines and a coverage-matched bootstrap comparison decide whether the LLM adds value.
@@ -22,11 +24,11 @@ A batch pipeline loads the CFPB July 2026 export into DuckDB, builds de-duplicat
 
 **Project Type**: batch data pipeline plus Python library. The API and dashboard are later features that only read its results.
 
-**Performance Goals**: full test suite under 60 seconds. Loading one month (672,036 rows) in a few minutes on a laptop.
+**Performance Goals**: full test suite under 60 seconds. *Not met, noted on 18 November: see SC-006 in the spec.* Loading one month (672,036 rows) in a few minutes on a laptop.
 
 **Constraints**: one hard token cap shared by all runs and worktrees. No raw data in git. No network in tests.
 
-**Scale/Scope**: the July 2026 export. Row and narrative counts come from the `profile` command (B22). A development sample of about 385 and a frozen test set of about 2,400, from Cochran's formula (B25). *Changed on 28 October: the earlier estimate of about 10,000 narratives and a test set of about 1,000 is replaced.*
+**Scale/Scope**: the July 2026 export. Row and narrative counts come from the `profile` command (B22). A development sample of about 385 and a frozen test set of about 2,400, from Cochran's formula (B25). *Changed on 18 November: after the correction for the pool's size, the frozen sets hold 370 and 1,909.* *Changed on 28 October: the earlier estimate of about 10,000 narratives and a test set of about 1,000 is replaced.*
 
 ## Constitution Check
 
