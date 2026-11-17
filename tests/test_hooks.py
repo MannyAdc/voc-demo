@@ -1326,6 +1326,18 @@ def test_J14_aliases_extensions_the_owners_token_and_repo_settings_are_denied(re
     assert _j14_denied(_read_decision(read_guard, places, "Bash", {"command": command}))
 
 
+# Audit of 18 November, owner decision "Fix the text (Recommended)": the guard denies setting and deleting a
+# variable, but not reading one, so its docstring and its refusal message say that, not "the variables API".
+@pytest.mark.parametrize("command", ["gh variable set X", "gh variable delete X"])
+def test_J14_setting_or_deleting_a_variable_is_denied_and_the_guard_says_only_that(read_guard, places, command):
+    decision = _read_decision(read_guard, places, "Bash", {"command": command})
+    assert _j14_denied(decision)
+    assert "sets or deletes a variable" in decision[1]
+    assert "variables API" not in decision[1]
+    assert "sets or deletes a" in read_guard.__doc__
+    assert "variables API" not in read_guard.__doc__
+
+
 # Owner decision of 5 November: the browser tools are removed from this project, and WebFetch cannot reach GitHub
 # or a Databricks workspace. These are permission rules, so they hold for this project's sessions only.
 @pytest.mark.parametrize("rule", [
