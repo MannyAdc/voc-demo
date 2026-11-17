@@ -52,7 +52,12 @@ owner still decides and merges.
    - `FIX FIRST: <reason>` otherwise, and always after a script FIX FIRST. Give it to the owner with its
      reason. Do not mark the pull request ready.
 
-5. Only after a MERGE verdict, run `gh pr ready <N>` and write "PR #N is ready to merge." in the chat.
+5. Only after a MERGE verdict, run `gh pr ready <N>` and write "PR #N is ready to merge." in the chat. Just
+   before, run `gh pr view <N> --json mergeable,mergeStateStatus`, and go on only if it reports MERGEABLE.
+
+6. When several open pull requests are waiting, name only one as ready at a time. After the owner merges
+   one, merge `main` into each other one with a normal merge commit, keeping every `BUILD_LOG.md` section
+   word for word, in merge order, and run this skill again on it before naming it ready.
 
 ## Never
 

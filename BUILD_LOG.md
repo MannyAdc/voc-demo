@@ -3766,3 +3766,21 @@ Times are local, 17 November, from git and the chat.
 - Commit `04d1858` at 18:12 (git's commit time), through the gate, after the whole suite passed (exit code 0). Pushed at 18:23.
 - The owner merged #147 at 17:47 and #150 at 19:40 (times from GitHub). `main` at `ac89180`.
 - 19:40 Claude merged `main` at `ac89180` into this branch with a normal merge commit, apart from any fix. The one conflict was in BUILD_LOG.md: the sections of #147 and #150 are kept word for word, in merge order, before this pull request's. Against `main`, BUILD_LOG.md adds this section's lines and removes none (`git diff origin/main --numstat -- BUILD_LOG.md`), and CLAUDE.md adds one line, this pull request's line on the deny rules' test, with #151's section kept. Claude ran the whole suite on the merged tree first: exit code 0.
+
+### Pull request: the merge order rule and the build log check
+
+Times are local, 17 November.
+
+- 19:40 The owner merged #150, and at 20:07 #152 (times from GitHub). `main` at `b0f0741`. Before naming each one ready, Claude ran `/merge-verdict` on it and read `gh pr view <n> --json mergeable,mergeStateStatus`, which gave MERGEABLE and CLEAN.
+- The decisions behind this pull request are logged in #151's section: the owner's question of about 16:29, Claude's pros and cons, and the owner's decision ("Okay, go as you recommend", 16:34) for a docs-only pull request after the queue, with the correction that the `/merge-verdict` skill already has a mode for parallel pull requests.
+- 18:19 Claude told the owner that, before naming #150 ready, it had found that a broad find-and-replace had changed old log lines (logged in #150's section), and asked whether to add to this pull request a CI check that BUILD_LOG.md only grows, as the run logs do.
+- Owner decision ("Yes, add that to the pull request.", 18:26): add the check.
+- Work start, 20:08: branch `fix/log-only-grows`, worktree `../voc-demo-log-grows`, from main at `b0f0741` (git's reflog). Claude copied the main checkout's names deny list in, without reading it, and ran `uv sync --native-tls --locked`.
+- Red commit `d9ac638` at 20:09 (git's commit time): only `tests/test_build_log_grows.py`, through the gate. Four new tests. The one that fails asks that CI runs `scripts/check_test_runs.py` on BUILD_LOG.md against `origin/main`. The other three pass already: the existing script passes lines added at the end, and fails a removed old line and an old line whose ending changed, the mistake of 17 November.
+- The change:
+  - `.github/workflows/ci.yml`: a step "The build log only grows compared with main", built as the three run-log steps are, with the same script.
+  - `CLAUDE.md`, "Who does what": when open pull requests change the same file, run `/merge-verdict` on them together with `--test-merge`, name one ready at a time right after `gh pr view N --json mergeable` reports it mergeable, and after every merge to `main` merge `main` into each other one and run its verdict again. "CI checks" adds BUILD_LOG.md. "Build log": a correction is a new line, and CI fails a change to a line that is on `main`.
+  - `.claude/skills/merge-verdict/SKILL.md`: step 5 reads the mergeable state just before "ready", and a new step 6 says the same as CLAUDE.md for several waiting pull requests.
+  - `docs/TEST_LIST.md`: a line for the new check.
+- Claude's design choice, for the owner to see: the check has no way round it. A change to a merged line, even to put back its earlier words, fails CI, so a correction is always a new line. The one rewrite CLAUDE.md allows, removing a leak before the repo is public, rewrites history outside a pull request. A pull request with an older `main` fails the check until `main` is merged in, which the conflict already forces.
+- 20:31 Change written, before its gate. Claude ran the whole suite first: exit code 0.

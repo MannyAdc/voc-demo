@@ -37,6 +37,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - `tests/test_deny_rules.py` checks that the deny list holds each required pattern for both shells, that no rule blocks any of a list of commands Claude may run, and that every rule for git or gh has a twin in the other shell. Forms left uncovered, as best effort, include colon refspecs such as `origin :x` and `feat:main`, combined flags such as `-uf`, `git -C . push`, `git push origin refs/heads/main` and `gh pr -R o/r merge 1` (which the read guard catches). Claude Code's permissions page (https://code.claude.com/docs/en/permissions.md) says such a rule covers "the invocation Claude usually produces" and "isn't a security boundary".
 - Every pull request is opened as a draft, so GitHub cannot merge it yet. Claude marks it ready only after the reviewer agent's findings are posted and the owner has decided what to fix. Claude then writes "PR #N is ready to merge." in the chat. Without those words, the owner waits.
 - From T007 on, Claude runs `/merge-verdict` before marking a pull request ready. "PR #N is ready to merge." is written only after a MERGE verdict. A FIX FIRST verdict goes to the owner with its reason. The verdict is a recommendation. The owner still decides and merges.
+- When several open pull requests change the same file, such as `BUILD_LOG.md`, merging one makes the others conflict. Claude runs `/merge-verdict` on them together, with `--test-merge`, and gives its merge order. Claude writes "PR #N is ready to merge." for one pull request at a time, right after `gh pr view N --json mergeable` reports it mergeable. After every merge to `main`, Claude merges `main` into each other open pull request, with a normal merge commit, and runs its verdict again before naming it. This rule comes from 17 November, when Claude named two pull requests ready together and the second then conflicted.
 - The owner merges, using a normal merge commit (not squash or rebase). The owner creates any account and enters any password.
 - Since 1 November, `main` has a ruleset: changes only by pull request, with 0 approvals, and the checks `tests`, `repo-checks` and `secret-scan` must pass (`BUILD_LOG.md`, 1 November). So GitHub blocks a merge when a required check fails.
 - Before merge, a fresh reviewer agent reads only the diff, the spec and this file. It lists problems and does not edit. Claude posts its findings as a comment on the pull request. The owner decides what to fix.
@@ -75,7 +76,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 - Tests, with no network.
 - gitleaks on the full history.
 - A names check against a deny list kept outside the repo (a CI secret, and a git-ignored `.names-denylist` locally). It fails if the list is missing or empty.
-- `runs/TEST_RUNS.md` only grows compared with `main`, and so do spec 004's `runs/JUNE_RUNS.md` and `runs/JUNE_GATES.md`.
+- `runs/TEST_RUNS.md` only grows compared with `main`, and so do spec 004's `runs/JUNE_RUNS.md` and `runs/JUNE_GATES.md`, and `BUILD_LOG.md`.
 - No tracked file over the size limit. No tracked file with the CFPB header row and a real ID.
 - `dbt build` with data tests and usage stats off.
 
@@ -116,7 +117,7 @@ A Voice of the Customer pipeline on the public CFPB Consumer Complaint Database.
 
 - Append to `BUILD_LOG.md` as things happen, with the local time.
 - Log: work start and merge times, every AI mistake and how it was caught, every overruled suggestion and why, every parallel run and its result.
-- Never invent or tidy an entry.
+- Never invent or tidy an entry. A correction is a new line. CI fails a pull request that changes or removes a line of `BUILD_LOG.md` that is on `main`.
 
 ## Calling the project or a milestone done
 
