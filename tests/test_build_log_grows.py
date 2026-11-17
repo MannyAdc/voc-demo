@@ -2,9 +2,9 @@
 
 CI checks that BUILD_LOG.md only grows compared with `main`, with the same script as the run logs
 (`scripts/check_test_runs.py`). A correction to a merged line is a new line, never an edit of the old one.
-On 17 November a find-and-replace that was not limited to one line changed the ending of 44 old log lines on a
-branch and of one line on `main` (BUILD_LOG.md, "Pull request: stale rules files"), and only a manual check
-caught it. These tests have no rule ID: the rule is CLAUDE.md's, which has none.
+On 17 November a find-and-replace that was not limited to one line changed the ending of old log lines on a
+branch, 48 of them restored in all, one of them a line on `main` (BUILD_LOG.md, "Pull request: stale rules files"),
+and only a manual check caught it. These tests have no rule ID: the rule is CLAUDE.md's, which has none.
 """
 import subprocess
 import sys
@@ -40,7 +40,9 @@ def test_build_log_check_fails_when_an_old_line_is_removed(tmp_path):
 
 def test_build_log_ci_checks_that_the_build_log_only_grows_compared_with_main():
     workflow = yaml.safe_load((REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
-    runs = [step.get("run", "") for job in workflow["jobs"].values() for step in job["steps"]]
+    # In the job the ruleset requires, so a failure blocks the merge (BUILD_LOG.md, 1 November).
+    runs = [step.get("run", "") for step in workflow["jobs"]["repo-checks"]["steps"]]
     assert any("scripts/check_test_runs.py" in run and '"$base" BUILD_LOG.md' in run
-               and "origin/main:BUILD_LOG.md" in run and "git rev-parse --verify origin/main" in run
+               and 'git show origin/main:BUILD_LOG.md > "$base"' in run
+               and "git rev-parse --verify origin/main" in run
                for run in runs)
