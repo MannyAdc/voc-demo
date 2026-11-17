@@ -25,10 +25,12 @@ network connection. It prints figures, labels, reasons and IDs only (B21).
    the refusal as printed. Do not work around it.
 4. Report the printed figures to the owner as they are. Say they are tuning figures. Never call a version
    better than another from this table, because that needs a paired test, which is cut (B15).
-5. Never read the narratives, quotes or model answers behind the figures. For error analysis, use the
-   analyser (T018a). The owner spot-checks with `show` in their own terminal.
+5. Never read the narratives, quotes or model answers behind the figures. The analyser (T018a) was
+   deferred and `show` (T014c) was cut on 29 October (`specs/001-core-labelling-pipeline/tasks.md`), so
+   there is no error-analysis tool. Report the figures only.
 
 ## Never
 
-- Never score the test set. That waits for the owner's `final` (B17).
+- Never score the test set. It was scored once, on 29 October (`runs/TEST_RUNS.md`). A second scoring is
+  the owner's decision, with a written reason (B17).
 - Never edit or delete a row of `EVAL_VERSIONS.md`. Rows are only added.
