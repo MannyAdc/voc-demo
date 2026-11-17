@@ -48,16 +48,30 @@ def test_build_log_ci_checks_that_the_build_log_only_grows_compared_with_main():
                for run in runs)
 
 
+EXPECTED_STEP = {
+    "name": "The build log only grows compared with main (CLAUDE.md, Build log)",
+    "run": ('base="$RUNNER_TEMP/build_log_on_main.md"\n'
+            '# Fail if main cannot be read at all, so a git error never counts as "nothing on main yet".\n'
+            "git rev-parse --verify origin/main > /dev/null\n"
+            "if git cat-file -e origin/main:BUILD_LOG.md 2>/dev/null; then\n"
+            '  git show origin/main:BUILD_LOG.md > "$base"\n'
+            "else\n"
+            '  rm -f "$base"\n'
+            "fi\n"
+            'uv run --locked python scripts/check_test_runs.py "$base" BUILD_LOG.md\n'),
+}
+
+
 def test_build_log_ci_step_cannot_swallow_a_failure():
-    # Second and third reviews of #153: a skipped job or step, or a swallowed exit code, would turn the check off
-    # unseen. A rule, not a list of strings: nothing may skip the job or the step, change the step's shell, or
-    # follow a command with "||", and no line may turn off the shell's stop on error.
+    # Reviews two to four of #153 kept finding edits to ci.yml that turn the check off while a list of banned forms
+    # still passed. So the step, its job and the workflow's triggers are pinned exactly: any edit fails this test
+    # and has to be made, and reviewed, on purpose. A change to ci.yml can still turn off any check, together with
+    # this test (docs/LIMITS.md).
     workflow = yaml.safe_load((REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
+    triggers = workflow.get("on", workflow.get(True))
+    assert triggers == {"pull_request": None, "push": {"branches": ["main"]}}
+    assert "defaults" not in workflow
     job = workflow["jobs"]["repo-checks"]
-    steps = [step for step in job["steps"] if '"$base" BUILD_LOG.md' in step.get("run", "")]
-    assert len(steps) == 1
-    step = steps[0]
-    assert "if" not in job and "continue-on-error" not in job
-    assert set(step) == {"name", "run"}
-    assert "||" not in step["run"]
-    assert not any(line.strip().startswith("set +") for line in step["run"].splitlines())
+    assert set(job) == {"runs-on", "timeout-minutes", "steps"}
+    assert [step for step in job["steps"] if "BUILD_LOG.md" in step.get("run", "")] == [EXPECTED_STEP]
+    assert not any("needs" in other for other in workflow["jobs"].values())
