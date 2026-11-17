@@ -1,5 +1,5 @@
 """B17, spec 004's J1 and CLAUDE.md's "Build log": check that a log only grows. CI runs it on every pull
-request and on pushes to `main`, on `runs/TEST_RUNS.md`, `runs/JUNE_RUNS.md`, `runs/JUNE_GATES.md` and
+request that merges cleanly and on pushes to `main`, on `runs/TEST_RUNS.md`, `runs/JUNE_RUNS.md`, `runs/JUNE_GATES.md` and
 `BUILD_LOG.md`.
 
 Usage: python scripts/check_test_runs.py <log on main> <log here>
