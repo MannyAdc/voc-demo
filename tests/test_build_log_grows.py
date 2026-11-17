@@ -49,11 +49,15 @@ def test_build_log_ci_checks_that_the_build_log_only_grows_compared_with_main():
 
 
 def test_build_log_ci_step_cannot_swallow_a_failure():
-    # Second review of #153, nit 2: a skipped step or a swallowed exit code would turn the check off unseen.
+    # Second and third reviews of #153: a skipped job or step, or a swallowed exit code, would turn the check off
+    # unseen. A rule, not a list of strings: nothing may skip the job or the step, change the step's shell, or
+    # follow a command with "||", and no line may turn off the shell's stop on error.
     workflow = yaml.safe_load((REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
     job = workflow["jobs"]["repo-checks"]
     steps = [step for step in job["steps"] if '"$base" BUILD_LOG.md' in step.get("run", "")]
     assert len(steps) == 1
     step = steps[0]
-    assert "if" not in step and "continue-on-error" not in step and "continue-on-error" not in job
-    assert "|| true" not in step["run"] and "|| :" not in step["run"] and "set +e" not in step["run"]
+    assert "if" not in job and "continue-on-error" not in job
+    assert set(step) == {"name", "run"}
+    assert "||" not in step["run"]
+    assert not any(line.strip().startswith("set +") for line in step["run"].splitlines())
