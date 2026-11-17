@@ -131,7 +131,7 @@ Each line is in [BUILD_LOG.md](BUILD_LOG.md) on the day shown.
 
 - **The analyst screens use the development set.** The test set stays sealed. Claude added a safeguard to this: complaint text appears only when I start the app with `--with-text`. *(30 October)*
 - **The public copy stays without complaint text.** A signed-in analyst copy is named as the next step instead. *(31 October)*
-- **The real exports go to Databricks,** with their narrative text, not only synthetic rows. This changes my 29 October choice, which kept the narrative text out. The CFPB publishes these narratives for anyone to use. Only I can sign in to the workspace. Its token was encrypted on my machine, and Claude never held it. I revoked it and deleted its copy on 6 November. I judge this demo non-commercial, as the Free Edition's terms ask. *(31 October)*
+- **The real exports go to Databricks,** with their narrative text, not only synthetic rows. This changes my 29 October choice, which kept the narrative text out. The CFPB publishes these narratives for anyone to use. Only I can sign in to the workspace. Its token was encrypted on my machine, and Claude never held it. I judge this demo non-commercial, as the Free Edition's terms ask. *(31 October)* *Changed on 6 November: I revoked the token and deleted its copy.*
 
 ### Scope and delivery
 
