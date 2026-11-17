@@ -1,6 +1,6 @@
 # Limits
 
-Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. On 4 November 2026, the baseline, TF-IDF with logistic regression, got the short name TF-IDF + LR (owner decision). Back to the [README](../README.md).
+Moved here from the README on 31 October 2026, word for word, except that references to sections now on other pages became links, and, in review, one claim about reviews became a statement of the rule. On 4 November 2026, the baseline, TF-IDF with logistic regression, got the short name TF-IDF + LR (owner decision). Later changes: #57 (31 October), #114 (10 and 11 November), #138 (14 November) and #146 (17 November). Back to the [README](../README.md).
 
 ## Limits
 
@@ -11,13 +11,15 @@ Moved here from the README on 31 October 2026, word for word, except that refere
 - The CFPB file changes over time, and only the current export can be downloaded. So the July file cannot be fetched again, and a reader cannot re-run the labelling from this repo alone.
 - Classifying is not the same as measuring. Prepaid card (28 test complaints) and debt or credit management (19) are too few to judge. Both methods still label them, and they count in the overall score. They were not over-sampled, because the pool has only 134 and 91 of them, and taking more for the test set would leave fewer for TF-IDF + LR to train on. See "Small categories" in [docs/HOW_WE_MEASURE.md](HOW_WE_MEASURE.md) and in [docs/DATA.md](DATA.md).
 - The tests prove the code's rules. They do not prove label quality, which the evaluation measures, or how a cloud deployment would be secured.
-- One model, one prompt version and one test run. The result says nothing about other months, other data or other industries.
+- One model, one prompt version and two test runs: July's sealed test set and the one June test. The results say nothing about other months, other data or other industries.
 - `voc ledger raise` writes a line to BUILD_LOG.md, and `voc final` needs a clean working tree. So after a raise, that line must be committed or set aside before the scored run.
 - Pending improvements:
   - The analyser for error analysis (T018a): a tool-less model call that names one cause from a fixed list for each wrong label.
-  - A human spot check of whether quotes support their labels (T014c, the `show` command for the owner).
+  - Cut on 29 October, not pending: the `show` command for the owner (T014c). The human spot check it was for was done another way: in the validation review's V5, the owner rated 50 development quotes ([VALIDATION.md](VALIDATION.md#v5-does-each-quote-back-up-its-label)).
   - Catching a crash in the middle of the scored run.
 - The public copy on Azure App Service (spec 002, A13, and [docs/DEPLOY.md](DEPLOY.md)) serves only what this repo already holds: the results files, with no complaint text, no consumer's choice and no review saving. It needs no login for that reason. A deployment that labels or reviews in the cloud would need more: authentication on the API, keys in a secrets manager, the ledger in a shared database, the recordings in protected storage, and branch protection with required checks.
+  - The June run (spec 004) met two of these. Its keys were in a Databricks secret scope and an Azure Key Vault. Its ledger and recordings were files in the raw Databricks volume, not a shared database. It served no API.
+  - Apart from the June run, `main` has had a ruleset with required checks since 1 November (below).
 
 ### Known limits
 
@@ -26,7 +28,7 @@ These come from the threat model in the [spec](../specs/001-core-labelling-pipel
 - Deleting the ledger or the home-folder test log and starting again resets them, with no trace in git.
 - A git-ignored local settings file can turn off the project hooks.
 - Shell commands that write files are not seen by the data guard.
-- Until branch protection is on, the owner can merge with failing CI.
+- Since 1 November, `main` has a ruleset: changes by pull request only, with the checks `tests`, `repo-checks` and `secret-scan` required, and 0 approvals (BUILD_LOG.md, 1 November). So a pull request with failing required checks cannot be merged. But with 0 approvals, anyone who holds the owner's GitHub sign-in can merge a pull request that passes the checks (spec 004, Known limits).
 - A tests-only commit can weaken an existing check. Only the reviewer agent would notice.
 - A script that opens the DuckDB file directly skips the `final` guard and the dbt test-row filter.
 - The staged DuckDB table under the dbt models still holds the test rows. So the real seal is the `final` command path, its committed log and the CI check on that log. The dbt flag is a second layer.
@@ -47,7 +49,7 @@ These come from the threat model in the [spec](../specs/001-core-labelling-pipel
 - No CI check yet stops `splits/` from changing compared with `main`. `voc sample` refuses to run while any list file is there, but a deleted folder can be rebuilt. With the same code and seed, the rebuilt lists are the same.
 - The merge verdict's trial merge (`--test-merge`) runs the tests with this checkout's installed packages, so a dependency change in a pull request is not covered.
 - The trial merge runs a pull request's tests on this machine. So it is for this repo's own pull requests only, and it refuses a pull request from a fork.
-- The Databricks target checks the seed's complaint IDs, not its text. A synthetic ID with real complaint text copied into the seed would pass. The seed is written by the fixture script from the committed synthetic fixture, and the repo has no seed folder.
+- The Databricks target checks the seed's complaint IDs, not its text. A synthetic ID with real complaint text copied into the seed would pass. The seed is written by the fixture script from the committed synthetic fixture. The repo holds one seed, the test list copy `dbt/seeds/test_list.csv`, and the Databricks target refuses to run inside a git checkout (`src/voc/dbt_run.py`, owner decision of 5 November).
 - A hand run of dbt with the Databricks profile skips the wrapper's seed check.
 - The seed check trusts the work folder's `dbt_project.yml`. A hand edit of its seed path would point dbt at seeds the check never read.
 - The month build on Databricks (31 October) builds `landed_complaints` from the file before its data tests run, so that one table can hold rows from a file that then fails a check. No model below it is built if a check on `landed_complaints` fails. The checks on `stg_complaints` run after its merge, as on the local target.
