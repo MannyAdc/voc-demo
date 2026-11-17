@@ -29,6 +29,7 @@ These come from the threat model in the [spec](../specs/001-core-labelling-pipel
 - A git-ignored local settings file can turn off the project hooks.
 - Shell commands that write files are not seen by the data guard.
 - Since 1 November, `main` has a ruleset: changes by pull request only, with the checks `tests`, `repo-checks` and `secret-scan` required, and 0 approvals (BUILD_LOG.md, 1 November). So a pull request with failing required checks cannot be merged. But with 0 approvals, anyone who holds the owner's GitHub sign-in can merge a pull request that passes the checks (spec 004, Known limits).
+- Since 17 November, CI fails a pull request that changes or removes a line of `BUILD_LOG.md` that is on `main`. So a line that must not be there, such as a local path or copied complaint text, cannot be taken out by a pull request. Taking one out first needs the owner to change the check or the ruleset, by a decision logged in `BUILD_LOG.md`.
 - A tests-only commit can weaken an existing check. Only the reviewer agent would notice.
 - A script that opens the DuckDB file directly skips the `final` guard and the dbt test-row filter.
 - The staged DuckDB table under the dbt models still holds the test rows. So the real seal is the `final` command path, its committed log and the CI check on that log. The dbt flag is a second layer.
