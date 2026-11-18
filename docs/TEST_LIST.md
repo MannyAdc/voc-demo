@@ -1,6 +1,6 @@
 # Test list
 
-Status: approved by the owner on 2026-10-28, then revised after review rounds 1 to 4, and extended by later pull requests. Each line is a behaviour the tests check, grouped by rule, with the test files named. A line can cover several tests, and not every test has its own line. On 17 November 2026 the suite on `main` collected 2,888 tests in 55 files (`uv run --no-sync pytest --collect-only -q`). Tests check behaviour against the specs: [001](../specs/001-core-labelling-pipeline/spec.md), [002](../specs/002-results-api-dashboard/spec.md), [003](../specs/003-validation-review/spec.md) and [004](../specs/004-june-test-and-baselines/spec.md). They run offline and never call a model. The whole suite takes about 10 minutes on the owner's laptop: 586 seconds in the gate's run of 16 November 2026, and 1,182 seconds on 17 November while other runs shared the machine (the `time` of the `testsuite` element in the gate's `staged.xml`). Label quality is measured separately by evaluation.
+Status: approved by the owner on 2026-10-28, then revised after review rounds 1 to 4, and extended by later pull requests. Each line is a behaviour the tests check, grouped by rule, with the test files named. A line can cover several tests, and not every test has its own line. On 18 November 2026 the suite on `main` at `b708392` collected 2,910 tests in 58 files (`uv run --no-sync pytest --collect-only -q`). Tests check behaviour against the specs: [001](../specs/001-core-labelling-pipeline/spec.md), [002](../specs/002-results-api-dashboard/spec.md), [003](../specs/003-validation-review/spec.md) and [004](../specs/004-june-test-and-baselines/spec.md). They run offline and never call a model. The whole suite takes about 10 minutes on the owner's laptop: 586 seconds in the gate's run of 16 November 2026, and 1,182 seconds on 17 November while other runs shared the machine (the `time` of the `testsuite` element in the gate's `staged.xml`). Label quality is measured separately by evaluation.
 
 Lines marked (reused) come from test ideas in an earlier unpublished start of this project. Lines marked (review) were added after a reviewer finding. The rest are new.
 
@@ -244,7 +244,7 @@ The one scored run of the test set and its log are tested in `tests/test_test_ru
 - `final` refuses when the working tree is not clean (review)
 - `final` refuses when the remaining cap does not cover the whole test set, retries included (review)
 - `final` also writes the home-folder test log, and demands a reason if either log already has an entry (review)
-- `show` refuses test rows unless `final` is given (review)
+- not built: `show` refuses test rows unless `final` is given (review). The `show` command was cut on 29 October (`specs/001-core-labelling-pipeline/tasks.md`, T014c), so this test was never written
 - `final` commits the test run log entry before scoring starts (review)
 - reading test rows from the staged table, or setting the dbt final flag, goes through the same guard (review)
 - dbt models leave out test rows unless the final flag is set (review)
@@ -320,7 +320,7 @@ The helper that runs git in a test's own scratch repo, `tests/git_helper.py`, is
 - read guard: a command that runs the Databricks CLI, as any word of a line unless an earlier word only takes text (`git`, `gh`, `grep`), or by its full path, or names its SDK, its saved sign-in `.databrickscfg` or the volume `voc_raw`, is denied. A file tool on `.databrickscfg` is denied too. `ls dbt/databricks` and `uv run --group databricks` stay allowed (spec 004, J14, review of #87)
 - read guard: a command that names a `.dpapi` file or a call that decrypts one is denied, so a wildcard cannot reach the owner's encrypted Databricks token in `.voc` (review of #87)
 - read guard: reading an Actions run log, starting, re-running or cancelling a workflow, approving a deployment, the environments and secrets APIs, and merging a pull request are denied, by `gh`, `gh.exe` by its full path, the REST API or GraphQL. Checking, viewing and commenting on a pull request, viewing a run without its log, and running the merge verdict stay allowed (spec 004, J14)
-- read guard: flags between `gh`, its group and its subcommand change nothing (`gh pr -R o/r merge`). Also denied: deleting a run, artifacts' downloads, the variables API, writes through `gh api` (any method but GET, or fields with no method), GraphQL mutations and queries read from a file, `git/refs`, aliases, extensions, `gh auth token`, `--show-token`, and the repo's settings by `gh repo edit` or the API. API paths count only after `repos/<owner>/<repo>/`, so `cat docs/environments.md` and `python scripts/rerun.py` stay allowed. Every J14 refusal names J14 (spec 004, J14, review of #87)
+- read guard: flags between `gh`, its group and its subcommand change nothing (`gh pr -R o/r merge`). Also denied: deleting a run, artifacts' downloads, setting or deleting a variable (`gh variable set` and `delete`, both tried by `test_J14_setting_or_deleting_a_variable_is_denied_and_the_guard_says_only_that`, which also checks that the refusal message and the guard's docstring say only that), writes through `gh api` (any method but GET, or fields with no method), GraphQL mutations and queries read from a file, `git/refs`, aliases, extensions, `gh auth token`, `--show-token`, and the repo's settings by `gh repo edit` or the API. API paths count only after `repos/<owner>/<repo>/`, so `cat docs/environments.md` and `python scripts/rerun.py` stay allowed. Every J14 refusal names J14 (spec 004, J14, review of #87). Reading the repo's variables (`gh variable list` and `get`, or a GET through `gh api`) stays allowed, since variables are not secrets, and no test covers it. An environment's variables are denied by the environments rule (spec 004, Known limits)
 - settings: permission deny rules remove the browser tools (Claude in Chrome, Chrome DevTools, the built-in browser, computer use and their enable tools) and deny WebFetch to `github.com`, `api.github.com`, `*.cloud.databricks.com` and `*.azuredatabricks.net` (spec 004, J14, owner decision of 5 November)
 
 ## Settings, `tests/test_deny_rules.py`
@@ -336,7 +336,7 @@ The helper that runs git in a test's own scratch repo, `tests/git_helper.py`, is
 
 Every test feeds the checks synthetic `gh pr view` JSON. No test runs `gh` or opens the network. The trial merge tests use a small git repo in a temporary folder.
 
-- CI is green only when every check on the latest commit finished with success and every CI job reported (T006b)
+- CI is green only when every check on the latest commit finished with success or neutral and every CI job reported (T006b)
 - a failed, skipped or still running check, a failed or pending commit status, or no checks at all is FAIL (T006b, pending added in review)
 - the expected check names match the job names in `.github/workflows/ci.yml` (T006b)
 - a commit with only `tests/test_*.py` files must come before the first commit that changes code, and merge commits are left out (T006b)
@@ -359,14 +359,14 @@ Every test feeds the checks synthetic `gh pr view` JSON. No test runs `gh` or op
 - names, raw data, size and unreadable-file checks cover every blob in history, file paths, tags and pull request text (review of #4)
 - git pre-commit hook: gitleaks runs on every commit, and the hook fails if gitleaks is not installed (review, changed)
 - a names check fails on any word from a deny list kept outside the repo, in a CI secret, and fails if the list is missing or empty (review)
-- `runs/TEST_RUNS.md` only grows compared with `main` (review, deferred to T015, when the file first exists)
+- `runs/TEST_RUNS.md` only grows compared with `main` (review, deferred to T015, when the file first exists). Built: the step "The test run log only grows compared with main (B17)" in `.github/workflows/ci.yml`
 - the names check also scans commit authors, commit messages and branch names, and prints only the file and line of a match, never the word (review)
-- no tracked Parquet, JSONL or headerless CSV holds a real-format complaint ID with a text field, except committed results files with no text (review) (deferred to T012, when the first JSONL files are written)
+- not built: no tracked Parquet, JSONL or headerless CSV holds a real-format complaint ID with a text field, except committed results files with no text (review) (deferred to T012, when the first JSONL files are written). T012 was done in #19 without it, and `src/voc/repo_checks.py` checks only for the CFPB header row (`has_raw_cfpb_rows`). No Parquet or JSONL file is tracked (`git ls-files`, 18 November). A headerless CSV with real IDs and a text field would not be caught
 - any tracked file over a size limit fails (review)
 - any tracked file with the CFPB header row and a non-`SYN-` ID fails (review)
-- dbt build with data tests runs, with usage stats off (review, deferred to T011)
+- dbt build with data tests runs, with usage stats off (review, deferred to T011). Built: the step "dbt build on the synthetic fixture with no network" in `.github/workflows/ci.yml`
 - `runs/JUNE_RUNS.md` and `runs/JUNE_GATES.md` only grow compared with `main`, and `scripts/check_june_gates.py` refuses a new real row whose gate passes are not already on `main` (spec 004, J1)
-- `BUILD_LOG.md` only grows compared with `main`, with the same script: a changed ending or a removed old line fails. CI runs it in the required `repo-checks` job, and the step, its job and the workflow's triggers are pinned exactly (CLAUDE.md, "Build log", `tests/test_build_log_grows.py`)
+- `BUILD_LOG.md` only grows compared with `main`, with `scripts/check_test_runs.py`, as for the run logs: a changed ending or a removed old line fails. CI runs it in the required `repo-checks` job, and the step, its job and the workflow's triggers are pinned exactly (CLAUDE.md, "Build log", `tests/test_build_log_grows.py`)
 - the names, raw data, size and unreadable-file checks are in `src/voc/repo_checks.py`, tested with invented tokens in `tests/test_repo_checks.py`
 
 Written on 9 November 2026, after two CI runs failed at a download from GitHub (8 and 9 November), `tests/test_ci_workflow.py`:
@@ -906,6 +906,19 @@ Written on 14 November 2026, plan item 11. The June figures are computed from `r
 - the README gives the side comparison's lead and its range (J7, review of #138)
 - the training-data limit in the README and `docs/LIMITS.md` names June's narratives (J7, Known limits)
 - spec 004 names the `(not in list)` marker in the results files (J11, review of #137)
+
+## The cloud run page ([spec 004](../specs/004-june-test-and-baselines/spec.md), J8, J15), `tests/test_cloud_run_page.py`
+
+Written on 16 and 17 November 2026, in #145. Some facts on `docs/CLOUD_RUN.md` are read from their sources. The times, the worst case and the sign-ins' states are checked by review.
+
+- each step of the June run says who does it, and step 4 names Claude Code's check of the figures before the approval (J8)
+- the diagram colours every box where the owner or Claude Code acts (J8)
+- the backup of complaint text is on the laptop, and the page says the recordings hold the prompt (J15)
+- the page names the real run IDs and the count from `results/june/v1_june.json` (J8)
+- the page states the token cap from `config/budget.toml` and the expected cost as `voc.job_a.expected_cost` computes it (J8)
+- the page names the jobs, task keys and trigger folder as the job definitions in `cloud/` do, and the app and environments as the workflows do (J8)
+- every link on the page points to a file and heading in the repo (J8)
+- the README links the page near the top and from the June result (J8)
 
 ## June test in the cloud ([spec 004](../specs/004-june-test-and-baselines/spec.md)), the plan of 4 November, built
 
