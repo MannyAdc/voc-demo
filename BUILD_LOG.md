@@ -4015,3 +4015,17 @@ Times are local, 18 November.
 - Corrections to lines above, which stay as written since this log only grows: this pull request has one red commit, `15b966d`. `059a072` only tightens tests that already passed. The merge line's "60 lines added, none changed" was counted before its own four lines were written, and the commit holds 64. Its 12:46 is when that line was written, and git's commit time for `3154856` is 12:47. The 11:46 and 11:47 lines were written at 12:46, after the 12:20 lines.
 - The variable test keeps its name, `test_J14_setting_or_deleting_a_variable_is_denied_and_the_guard_says_only_that`. Its comment says what it checks: "sets or deletes a variable" in, and the word "variables" out.
 - The fix: `docs/TEST_LIST.md`'s J14 line names the docstring test in a sentence of its own. 13:14 Fix written, before its gate. Claude ran the whole suite first: exit code 0.
+
+### Pull request: the final audit is clean
+
+Times are local, 18 November.
+
+- #158's last steps, written here since its own section ends at its last fix: commit `e6f06f5` at 13:15 (git's commit time), through the gate, after the whole suite passed (exit code 0). Pushed at 13:24, when its CI started. CI green on `e6f06f5`: tests, repo-checks and secret-scan (`gh api` check runs of `e6f06f5`).
+- 13:29 Claude ran `/merge-verdict` on #158 alone, on `e6f06f5` with `main` at `930c80c`: PASS on open against main, CI, no conflicts and red commit first (`15b966d` before `d943794`), and PENDING on the review findings and the build log, which Claude checked. The verdict comment, MERGE, was posted at 13:29. `gh pr view 158 --json mergeable` gave MERGEABLE at head `e6f06f5`. Claude marked #158 ready at 13:29 (time from GitHub) and wrote "PR #158 is ready to merge." in the chat at 13:30.
+- 14:53 The owner wrote "Merge 158." Claude read #158's state, which was still open, and said that only the owner merges, with the steps.
+- 15:01 The owner merged #158 (time from GitHub). `main` at `4e4a26d`.
+- The final audit of `main` at `b708392` ("The final audit of every page") is clean. All 41 findings are fixed, and none is deferred: C1 to C16 in #155 (merged 09:35), A1 to A8 and B1 to B6 in #157 (merged 11:46), and D1 to D11 in #158 (merged 15:01), which replaced #156. Each finding's outcome line is in its pull request's section above. Each of the three pull requests had a fresh review, with its findings posted as a comment and fixed as the owner chose. #158 had two reviews.
+- How Claude checked it: in this log from "The final audit of every page" on, each of A1 to A8, B1 to B6, C1 to C16 and D1 to D11 has an outcome line, and each says fixed. No line defers a finding.
+- So under CLAUDE.md, "Calling the project or a milestone done" (#151), the project may be called done once this pull request is merged.
+- Work start, 15:03: branch `docs/log-audit-clean` from `main` at `4e4a26d`. Only this log changes, so there is no red commit.
+- 15:16 Section written, before its gate. Claude ran the whole suite first: exit code 0.
