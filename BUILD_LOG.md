@@ -3897,6 +3897,53 @@ Times are local, 18 November.
 - The fixes: A1's note says four files (minor 1). Spec 001's new limit says "since 18 November (#153)" (minor 4). `docs/LIMITS.md` has the same date and is fixed in the pages pull request. The C16 note quotes this log of 29 October word for word: Claude's suggestion at 11:55, the owner's "continue" at 12:08, "taken as a yes", and the owner's choice on the allowance (minor 5). Spec 004 says "another allowed one", since line 2366 logs a further slip as an AI mistake (nit 6). The adapters row says the answer went into the README on 30 October (`bea048d`) and moved to `docs/STACK.md` on 31 October (`a8d02b6`) (nit 7). T020 and T020b end with "Done in #40." and "Done in #42." (nit 8). The 18 November notes in `plan.md`'s scale line and spec 001's assumption now come after the 28 October notes (nit 9). Both new limits say "from `docs/LIMITS.md`" (nit 10). The status lines of specs 001, 002 and 004 name #155 (nit 13). Nits 11 and 12, and minors 2 and 3, are the corrections above. 08:30 Fixes written, before their gate. Claude ran the whole suite first: exit code 0.
 
 
+### Pull request: audit fixes in the public and cloud pages
+
+Times are local, 18 November.
+
+- The audit and the owner's decisions are in "The final audit of every page".
+- Claude checked each of the 14 findings against its cited source before changing anything. Each holds.
+- A1, `docs/LIMITS.md` header: fixed. #57 changed no line of the page (`git diff 00b700f^1 00b700f -- docs/LIMITS.md` is empty), so the list now names #58 (31 October), and adds #148, #153 and these fixes.
+- A2, `docs/PIPELINE.md` header: fixed. A "Later changes" list names #58, #92, #146, #147, #148 and these fixes (`git log --first-parent -- docs/PIPELINE.md`).
+- A3, `docs/STACK.md` header: fixed. It names #58's dated note of 31 October and #67's change of 2 November to the scikit-learn line.
+- A4, `docs/LIMITS.md`, the June run's needs: fixed. It names the two met, keys in a secrets manager and the recordings in protected storage, since #146's review found that the ledger and the ruleset were wrongly counted as met (line 3396). It says the receiver's two routes each checked the sender, by a user name and password and by a signature (`receiver/receiver_core.py`, `_signed_in` and `_result`). "Apart from the June run" became "Separately", since the ruleset was in force during the run.
+- A5, README, the cut spot check: fixed, with a dated note, in the owner's voice as the list is, that V5's 50 ratings by the owner did the check another way.
+- A6, README, the injection command: fixed. It gives `--prompt v1 --note "<what changed>"`, since `--note` is required (`src/voc/cli.py`), and links `docs/RESULTS.md`.
+- A7, `docs/PIPELINE.md`, the first live run on Databricks: fixed. It says "first passing live run", and that the first try stopped with exit code 2 because the host was placeholder text (lines 655 to 658).
+- A8, `docs/DATA.md`, decision 2's promise: fixed, with a dated note that the plan was overtaken. The small categories stayed "too few to judge" on July's test set, so the README reports no result for them, and their limits are in `docs/LIMITS.md` and `docs/HOW_WE_MEASURE.md`. Claude's choice, for the owner to see: no new figure was added. June's prepaid card reached 30 complaints and was scored (`results/june/v1_june.json`), but no page reports it, and adding it would be a new result, not a fix.
+- B1, `docs/DATABRICKS_STEPS.md`, the secret notebook's date: fixed, 10 November, not 9 (line 2562 is in "Pull request 6b, part 3b", after round 3 of 10 November).
+- B2, `docs/DATABRICKS_STEPS.md`, step 1.1: fixed, with a dated note that the owner reported `voc-june-spike` deleted on 15 November.
+- B3, `docs/DRY_RUN_STEPS.md`: fixed, with a dated note that only round 3 reached that point, and that round 6 showed 8 accepted and 0 quarantined (line 2884).
+- B4, `docs/JUNE_RUN_STEPS.md`, the worst case: fixed. Both places keep the estimate and add the measured 37,954,560 (line 3109, "The June run").
+- B5, `docs/DEPLOY.md`, the `public` group: fixed. It names sniffio, which `pyproject.toml` pins in that group.
+- B6, `docs/DEPLOY.md`, the redeploy by hand: fixed, with a dated note that the section is history, since the owner does not sign in to Azure on the laptop, and that a redeploy goes through `deploy.yml` or a rerun from the Actions tab. The sentence on stopping automatic deploys says the script needs `az login`.
+- Not changed: `cloud/failcheck/STEPS.md`, which auditor B named as known and not new. It stays frozen by the owner's decision of 17 November, and `docs/DATABRICKS_STEPS.md` already points to it.
+- No test changed, so no red commit is needed.
+- AI mistake, caught by the whole suite before the gate: A5's first note linked `docs/VALIDATION.md` a fourth time, and `test_V4_the_readme_links_the_write_up_in_one_line` expects three lines. Claude had searched the tests for the changed sentences, not for the link. The note now points to the page under "Read more" with no link, and `tests/test_validation.py` passes.
+- 08:08 Fixes written, before their gate. Claude ran the whole suite first: exit code 0.
+- Commit `eae6051` at 08:08 (git's commit time), through the gate, after the whole suite passed (exit code 0). Pushed at 08:21, and draft pull request #157 opened at 08:21.
+- One more fix, found by the fresh review of #155 (Minor 4, posted 08:14), and given to this pull request since it is in `docs/LIMITS.md`: the limit on the build log check said "Since 17 November", but #153 merged at 01:11 on 18 November (`e068cec`, `git log -1 --date=iso e068cec`). It now says "Since 18 November (#153)". No test pins the date. 08:38 Fix written, before its gate. Claude ran the whole suite first: exit code 0.
+- Commit `1d908bb` at 08:38 (git's commit time), through the gate, after the whole suite passed (exit code 0). Pushed at 08:54.
+- 09:08 The fresh reviewer's findings on #157 were posted as a comment. Every fix holds against its source. Nothing serious. Four minor: this section points to "The final audit of every page", which is only on #155's branch, LIMITS lets a reader count three needs met and read the receiver's checks as "authentication on the API", the README's injection command has a placeholder note in a sentence about one real run, and LIMITS' header leaves out the build log check's date. Seven nits: "in early November" and "V5" in the README, a full stop inside a bracket, brackets that carry a reason, `az login` and Cloud Shell, the DATA link's anchor, "webhook" and "signature" unexplained, and no line yet for `1d908bb`.
+- AI mistakes, caught by the reviewer: Claude wrote a placeholder `--note` into a command the README presents as the one live run, though `docs/RESULTS.md` gives the real one. Claude's LIMITS fix named the two needs met but did not say why the ruleset and the receiver's checks do not count, so the page still invited the count it was meant to settle.
+- 09:08 Claude recommended fixing all eleven as text, with no second review.
+- Owner decision ("Fix all, no 2nd review (Recommended)", 09:08): fix all eleven as text, with no second review.
+- Minor 1: no file change. #155, which adds "The final audit of every page", is named ready first, as the lowest number under CLAUDE.md's merge order rule, so the pointer resolves on `main` once it merges, before this one.
+- Minor 2: fixed. LIMITS says the receiver's checks guard its own messages, not an API for results or labels, and that the ruleset protects the repo in general, not the June run's cloud pieces, so neither counts.
+- Minor 3: fixed. The README gives the real command from `docs/RESULTS.md`, `uv run --native-tls voc evaluate injection --prompt v1 --note "first live run of the injection set"`, with the same prefix as the first command, and no new link.
+- Minor 4: fixed. LIMITS' "Later changes" names the build log check's date among the audit's fixes.
+- Nit 1: fixed, in the list's own first-person voice, in plain words: on 4 November the owner rated 50 accepted labels, each on whether its quote backs up the label, to check a second model that rated 351. The brief for this round said 3 November. The ratings that count are the redo, made between 00:28 and 00:50 on 4 November (line 1455), since the first ratings of 3 November were withdrawn (line 1425), so the note says 4 November. No link to `docs/VALIDATION.md` was added.
+- Nit 2: fixed. The measured worst case is its own sentence.
+- Nit 3: fixed. PIPELINE's failed first try and DATABRICKS_STEPS' date correction are their own sentences.
+- Nit 4: fixed. DEPLOY says the script needs an Azure sign-in, and that the owner never signs in to Azure on the laptop since 5 November. It does not say the script runs in Cloud Shell, which was not checked.
+- Nit 5: fixed. DATA links `#small-categories-labelled-but-not-measured`.
+- Nit 6: fixed. LIMITS says what the webhook is (Databricks' message that Job A had finished) and what a signature is (a code made from the message and a shared secret, which only a holder of the secret can make).
+- Nit 7: fixed by the first line of this round.
+- 09:22 Fixes written, before their gate. Claude ran the whole suite first: exit code 0.
+- 09:35 The owner merged #155 (time from GitHub). `main` at `71327aa`.
+- 10:00 Claude's merge verdict on #156 was FIX FIRST: its commit `37fcf0a` changed the text of `.claude/hooks/read_guard.py` with no tests-only commit before it. Owner decision ("Replace #156 (Recommended)", 10:01): the owner closes #156, and a new pull request replaces it. So this pull request goes next. #156's own record is carried in its replacement.
+- 10:15 Claude merged `main` at `71327aa` into this branch with a normal merge commit (CLAUDE.md, "Who does what"). The one conflict was in this log: `main`'s sections, "The final audit of every page" and "audit fixes in the specs", come first, word for word, then this section (`scripts/check_test_runs.py` against `main`'s log: 45 lines added, none changed). No conflict outside this log, so no fresh review of the merge is needed. With #155 in, this section's pointer to "The final audit of every page" resolves. Claude ran the whole suite on the merged tree first: exit code 0.
+
 ### Pull request: audit fixes in the rules and the test list
 
 Times are local, 18 November.
@@ -3956,3 +4003,7 @@ Times are local, 18 November.
 - The fixes: `.claude/hooks/read_guard.py`'s docstring paragraph and its refusal message are re-wrapped, with the same words (the tests above pass on both). `docs/TEST_LIST.md`'s J14 line names both tests and says what each checks.
 - Corrections to lines above, which stay as written since this log only grows: in #156's carried section, "No test pins the changed text, so no test changed and there is no red commit" held for #156 only. This pull request has red commits. The carried "Nit 7, fixed: re-wrapped" left the docstring's line 42 long and a fragment in the message, re-wrapped now.
 - 12:20 Fixes written, before their gate. Claude ran the whole suite first: exit code 0.
+- Commit `f2e739e` at 12:20 (git's commit time), through the gate, after the whole suite passed (exit code 0).
+- 11:46 The owner merged #157 (time from GitHub). `main` at `930c80c`. Before naming it ready, Claude ran `/merge-verdict` on it alone and read `gh pr view 157 --json mergeable`, which gave MERGEABLE, and read it again when the owner asked, just before the merge.
+- 11:47 The owner closed #156 unmerged (time from GitHub), as decided at 10:01, after Claude explained what closing it meant. Claude had asked for it without saying where or how.
+- 12:46 Claude merged `main` at `930c80c` into this branch with a normal merge commit (CLAUDE.md, "Who does what"). The one conflict was in this log: `main`'s section "audit fixes in the public and cloud pages" comes first, word for word, then #156's carried section and this section (`scripts/check_test_runs.py` against `main`'s log: 60 lines added, none changed). No conflict outside this log, so no fresh review of the merge is needed beyond the second review the owner chose. Claude ran the whole suite on the merged tree first: exit code 0.
