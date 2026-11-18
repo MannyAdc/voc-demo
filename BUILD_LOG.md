@@ -4029,3 +4029,15 @@ Times are local, 18 November.
 - So under CLAUDE.md, "Calling the project or a milestone done" (#151), the project may be called done once this pull request is merged.
 - Work start, 15:03: branch `docs/log-audit-clean` from `main` at `4e4a26d`. Only this log changes, so there is no red commit.
 - 15:16 Section written, before its gate. Claude ran the whole suite first: exit code 0.
+- Commit `6dae9a2` at 15:16 (git's commit time), through the gate, after the whole suite passed (exit code 0). Pushed, and draft pull request #159 opened at 15:28. About 15:29 Claude started the fresh review.
+- 15:37 The fresh reviewer's findings on #159 were posted as a comment. Every claim checked holds against git, GitHub and the log, and the definition of clean is met. Nothing serious. One minor: #155's last commit `5c2af14`, #157's last fix commit `3cdeda2` and #157's merge commit `c0013ad` have no commit line with their hash in this log, so the log is complete for #158's last steps but not for the other two. Four nits: D1 to D11's outcome lines are in #156's carried section, not in #158's own, the section does not say that `cloud/failcheck/STEPS.md` is outside the 41, the fixed pages were reviewed in each pull request but not audited again as a whole, and this pull request's own commit and push lines were not yet written.
+- 15:37 Claude checked the minor itself: none of the three hashes is in this log. Claude recommended fixing all as log lines, with no second review, since only this log changes.
+- Owner decision ("Fix all, no 2nd review (Recommended)", 15:38): fix all five as log lines, with no second review.
+- Minor, fixed. #155's and #157's last steps, written here since their sections end at their last fix. Times are from git and from GitHub, where a push time is when CI started on the commit:
+  - #155: commit `5c2af14` at 08:31 (git's commit time), through the gate. Pushed at 08:49. CI green on `5c2af14`. Merge verdict comment and ready at 08:54. Merged at 09:35.
+  - #157: commit `3cdeda2` at 09:22 (git's commit time), through the gate. Pushed at 09:31. CI green on `3cdeda2`. The 10:15 merge of `main` into #157 is merge commit `c0013ad`, at 10:15 (git's commit time), through the gate, pushed at 10:27. CI green on `c0013ad`. Merge verdict comment and ready at 10:56. Merged at 11:46.
+- Nit 1, fixed. More exactly: D1 to D11's outcome lines are in #156's section, "audit fixes in the rules and the test list", which #158 carried word for word. C1 to C16 are in #155's section, and A1 to A8 and B1 to B6 in #157's.
+- Nit 2, fixed. One item is outside the 41: auditor B named `cloud/failcheck/STEPS.md` as known and not new. It stays frozen by the owner's decision of 17 November (10:21), as #157's section says.
+- Nit 3, noted. The fixed pages were reviewed in each pull request's fresh review, against each finding's source, but not audited again as a whole. CLAUDE.md's rule does not ask for a second audit.
+- Nit 4, fixed by the first line of this round.
+- 15:40 Fixes written, before their gate. Claude then ran the whole suite, which ended at 15:53: exit code 0.
