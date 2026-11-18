@@ -93,7 +93,9 @@ new `SYN-96` IDs, before the real run.
     it, marks both used, and labels the 8 complaints through the API and the June ledger. Its results folder holds
     only `DRY_RUN.txt`. The note says Job B labelled with the API, then gives `Labelled: 8.` with the accepted and
     quarantined counts. The model decides those, so any split of the 8 is fine. Rounds 1 to 3, with the mock
-    answers, showed `Accepted: 7. Quarantined: 1.` The note's last line is the clean-up's, below. Then, in the
+    answers, showed `Accepted: 7. Quarantined: 1.` *Changed on 18 November:* only round 3 got that far, since
+    rounds 1 and 2 stopped earlier (above). Round 6, on 13 November, with the API, showed `Accepted: 8.
+    Quarantined: 0.` (`BUILD_LOG.md`). The note's last line is the clean-up's, below. Then, in the
     Claude Console, open the workspace `voc-june-cloud` and its usage or cost page, and tell Claude the cost it
     shows. If the page has another name, tell Claude what you see.
     A stop that only the API can cause ends the labelling early: 3 complaints in a row failing, as with a bad key

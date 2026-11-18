@@ -102,7 +102,7 @@ First the pipeline that labels the complaints, then how it was built.
 
 **🛡️ Safety**
 - Every accepted label has a quote that a script found in the text. That shows the quote is in the text, not that it supports the label. The [validation review](docs/VALIDATION.md) checked how often it does, later, on the development set.
-- 10 made-up complaints try to hijack the model. In one live run, none was obeyed: 9 reached the model, and 1 was caught by the script before any call (`uv run --native-tls voc label injection --prompt v1`, then `voc evaluate injection`).
+- 10 made-up complaints try to hijack the model. In one live run, none was obeyed: 9 reached the model, and 1 was caught by the script before any call (`uv run --native-tls voc label injection --prompt v1`, then `uv run --native-tls voc evaluate injection --prompt v1 --note "first live run of the injection set"`).
 - Complaint text goes to the model as data, in a call with no tools. Every live call goes through a hard token cap and one shared ledger.
 
 **📈 Scale**
@@ -137,7 +137,7 @@ Each line is in [BUILD_LOG.md](BUILD_LOG.md) on the day shown.
 
 ### Scope and delivery
 
-- **Scope.** The human spot check of whether quotes support their labels was cut, and listed as a pending improvement. Databricks was kept. *(29 October)*
+- **Scope.** The human spot check of whether quotes support their labels was cut, and listed as a pending improvement. Databricks was kept. *(29 October)* *Added on 18 November: the check was later done another way. On 4 November I rated 50 accepted labels myself, each on whether its quote backs up the label, to check a second model that rated 351 of them (the validation review, under "Read more" below).*
 - **Deploy to Azure the same day,** not on Saturday. *(30 October)*
 - **The spend cap.** When the cap refused the scored run, it was raised to 40,000,000 tokens. Changing the prompt's output limit after tuning, or relaxing the cap check, was turned down. *(29 October)*
 - **The monthly automatic feed is not built.** The audience's brief does not ask for it, and the time goes to the demo video. It is named as the next step below. *(31 October)* *Changed on 4 November: it is no longer possible with this data, as the next step below says.*
