@@ -1327,15 +1327,21 @@ def test_J14_aliases_extensions_the_owners_token_and_repo_settings_are_denied(re
 
 
 # Audit of 18 November, owner decision "Fix the text (Recommended)": the guard denies setting and deleting a
-# variable, but not reading one, so its docstring and its refusal message say that, not "the variables API".
+# variable, but not reading one. So its refusal message and its docstring say "sets or deletes a variable", and
+# neither uses the word "variables" at all, as the old wording "the environments, secrets or variables APIs" did.
 @pytest.mark.parametrize("command", ["gh variable set X", "gh variable delete X"])
 def test_J14_setting_or_deleting_a_variable_is_denied_and_the_guard_says_only_that(read_guard, places, command):
     decision = _read_decision(read_guard, places, "Bash", {"command": command})
     assert _j14_denied(decision)
-    assert "sets or deletes a variable" in decision[1]
-    assert "variables API" not in decision[1]
-    assert "sets or deletes a" in read_guard.__doc__
-    assert "variables API" not in read_guard.__doc__
+    message = " ".join(decision[1].split())
+    assert "sets or deletes a variable" in message
+    assert "variables" not in message
+
+
+def test_J14_the_guard_docstring_says_it_denies_setting_or_deleting_a_variable(read_guard):
+    doc = " ".join(read_guard.__doc__.split())
+    assert "sets or deletes a variable" in doc
+    assert "variables" not in doc
 
 
 # Owner decision of 5 November: the browser tools are removed from this project, and WebFetch cannot reach GitHub
