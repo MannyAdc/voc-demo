@@ -36,7 +36,7 @@ description: "Task list for the core labelling pipeline"
   - Every review finding is fixed or deferred with a reason.
   - For parallel branches: they touch no shared file, and the tests pass on both merged together.
 
-  Claude then gives a one-line verdict: MERGE or FIX FIRST, with the reason, and the merge order for parallel branches. The owner still merges. T005 and T006 get the same checks by hand. The command is used on every pull request from T007 on. Done in #30.
+  Claude then gives a one-line verdict: MERGE or FIX FIRST, with the reason, and the merge order for parallel branches. The owner still merges. T005 and T006 get the same checks by hand. The command is used on every pull request from T007 on. Done in #30. *Changed on 18 November:* T007 merged in #12 before the command existed, so the command was used from #30 on, where it was built and first run (`BUILD_LOG.md`, 29 October, 15:03).
 - [x] T007 PR "decision": tests in `tests/test_decision.py` (B3, B5), then `src/voc/decision.py`. Needs T005, T006. Done in #12.
 
 **Checkpoint**: one model answer can be checked and accepted or quarantined, with no model call.
